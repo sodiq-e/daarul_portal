@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Announcements</h1>
+        {% if user.is_staff or user.is_superuser %}
+        <a href="{% url 'announcement_create' %}" class="btn btn-primary">Create Announcement</a>
+        {% endif %}
+    </div>
+
+    {% if announcements %}
+    <div class="row">
+        {% for announcement in announcements %}
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ announcement.title }}</h5>
+                    <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ announcement.content|truncatechars:200 }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            Posted by {{ announcement.created_by.get_full_name|default:announcement.created_by.username }}
+                            on {{ announcement.created_at|date:"M j, Y g:i A" }}
+                        </small>
+                        <a href="{% url 'announcement_detail' announcement.pk %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                    </div>
+                </div>
+                {% if user.is_staff or user.is_superuser %}
+                <div class="card-footer">
+                    <a href="{% url 'announcement_edit' announcement.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'announcement_delete' announcement.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+    <nav aria-label="Announcement pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="alert alert-info">
+        <h4>No announcements available</h4>
+        <p>There are currently no active announcements.</p>
+        {% if user.is_staff or user.is_superuser %}
+        <a href="{% url 'announcement_create' %}" class="btn btn-primary">Create First Announcement</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

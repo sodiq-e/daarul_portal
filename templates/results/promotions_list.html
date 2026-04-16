@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Student Promotions</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Student</th>
+            <th>From Class</th>
+            <th>To Class</th>
+            <th>Exam</th>
+            <th>Promoted Date</th>
+            <th>Remarks</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for promotion in promotions %}
+        <tr>
+            <td>{{ promotion.student.full_name }} ({{ promotion.student.admission_no }})</td>
+            <td>{{ promotion.from_class.name }}</td>
+            <td>{{ promotion.to_class.name }}</td>
+            <td>{{ promotion.exam.name }}</td>
+            <td>{{ promotion.promoted_date }}</td>
+            <td>{{ promotion.remarks }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

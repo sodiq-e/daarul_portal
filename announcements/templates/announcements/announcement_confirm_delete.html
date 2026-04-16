@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Announcement{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h3>Delete Announcement</h3>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the announcement <strong>"{{ announcement.title }}"</strong>?</p>
+                    <p class="text-muted">This action cannot be undone.</p>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                        </form>
+                        <a href="{% url 'announcement_detail' announcement.pk %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+</style>
+{% endblock %}

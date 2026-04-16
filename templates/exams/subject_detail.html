@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ subject.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ subject.name }}</h1>
+        <div>
+            {% if can_modify %}
+            <a href="{% url 'subject_edit' subject.pk %}" class="btn btn-warning">Edit</a>
+            <a href="{% url 'subject_delete' subject.pk %}" class="btn btn-danger">Delete</a>
+            {% endif %}
+            <a href="{% url 'subject_list' %}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ subject.name }}</p>
+            <p><strong>Code:</strong> {{ subject.code }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

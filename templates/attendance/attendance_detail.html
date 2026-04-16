@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Record - {{ attendance_record.student.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Attendance Record</h1>
+        <div>
+            {% if can_modify %}
+            <a href="{% url 'attendance_edit' attendance_record.pk %}" class="btn btn-warning">Edit</a>
+            <a href="{% url 'attendance_delete' attendance_record.pk %}" class="btn btn-danger">Delete</a>
+            {% endif %}
+            <a href="{% url 'attendance_list' %}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <p><strong>Student:</strong> {{ attendance_record.student.full_name }}</p>
+            <p><strong>Date:</strong> {{ attendance_record.date|date:"F j, Y" }}</p>
+            <p><strong>Status:</strong> 
+                {% if attendance_record.present %}
+                <span class="badge bg-success">Present</span>
+                {% else %}
+                <span class="badge bg-danger">Absent</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

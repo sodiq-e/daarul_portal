@@ -1,0 +1,8 @@
+Django==4.2.7
+pytz
+reportlab
+python-dotenv
+Pillow
+django-admin-interface
+django-colorfield
+gunicorn

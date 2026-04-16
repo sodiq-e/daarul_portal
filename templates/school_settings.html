@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div style="max-width:800px; margin:auto; background:white; padding:20px; border-radius:10px;">
+
+    <h2 style="text-align:center; margin-bottom:20px;">School Settings</h2>
+
+    {% if messages %}
+        <div style="margin-bottom:20px;">
+            {% for message in messages %}
+                <div style="padding:10px; margin-bottom:10px; border-radius:5px; {% if message.tags %}background:{% if 'success' in message.tags %}#90EE90{% else %}#FFB6C6{% endif %};{% else %}background:#E0E0E0;{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- School Information Section -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">School Information</legend>
+
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">School Name</label>
+            {{ form.school_name }}
+
+            <label style="display:block; margin-top:15px; margin-bottom:5px; font-weight:bold;">Motto</label>
+            {{ form.motto }}
+
+            <label style="display:block; margin-top:15px; margin-bottom:5px; font-weight:bold;">School Logo</label>
+            <br>
+            {% if form.instance.logo %}
+                <img src="{{ form.instance.logo.url }}" width="120" style="display:block;margin-bottom:10px; border-radius:5px;">
+            {% endif %}
+            {{ form.logo }}
+        </fieldset>
+
+        <!-- Theme Colors Section -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Theme Colors</legend>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Primary Color</label>
+                    {{ form.primary_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Secondary Color</label>
+                    {{ form.secondary_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Accent Color</label>
+                    {{ form.accent_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Background Color</label>
+                    {{ form.background_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Text Color</label>
+                    {{ form.text_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Heading Text Color</label>
+                    {{ form.heading_text_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Icon Plate Color</label>
+                    {{ form.icon_plate_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Header Heading Color</label>
+                    {{ form.header_heading_color }}
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:5px; font-weight:bold;">Icon Color</label>
+                    {{ form.icon_color }}
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Gallery Section -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Gallery Images</legend>
+
+            {% if gallery_images %}
+                <div style="margin-bottom:20px;">
+                    <h4>Current Gallery Images</h4>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:15px;">
+                        {% for image in gallery_images %}
+                            <div style="border:1px solid #ccc; border-radius:5px; overflow:hidden; text-align:center;">
+                                <img src="{{ image.image.url }}" style="width:100%; height:120px; object-fit:cover;">
+                                <p style="margin:5px; font-size:12px;">{{ image.title }}</p>
+                                <small style="color:#666; padding:5px;">Order: {{ image.order }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <h4>Add/Edit Gallery Images</h4>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead style="background:#f0f0f0;">
+                    <tr>
+                        <th style="padding:10px; text-align:left; border:1px solid #ddd;">Image</th>
+                        <th style="padding:10px; text-align:left; border:1px solid #ddd;">Title</th>
+                        <th style="padding:10px; text-align:left; border:1px solid #ddd;">Description</th>
+                        <th style="padding:10px; text-align:left; border:1px solid #ddd;">Order</th>
+                        <th style="padding:10px; text-align:left; border:1px solid #ddd;">Delete</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ gallery_formset.management_form }}
+                    {% for form in gallery_formset %}
+                        <tr style="border:1px solid #ddd;">
+                            <td style="padding:10px; border:1px solid #ddd;">{{ form.image }}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">{{ form.title }}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">{{ form.description }}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">{{ form.order }}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">{{ form.DELETE }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </fieldset>
+
+        <br><br>
+        <button type="submit" style="padding:10px 20px; width:100%; border:none; background:var(--primary-color, #4b2e83); color:white; font-size:16px; border-radius:5px; cursor:pointer;">
+            Save Settings & Gallery
+        </button>
+    </form>
+
+</div>
+
+<style>
+    input[type="text"],
+    input[type="color"],
+    textarea,
+    input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    input[type="number"] {
+        width: 80px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    fieldset {
+        margin-bottom: 20px;
+    }
+
+    legend {
+        font-size: 16px;
+        font-weight: bold;
+        color: var(--primary-color, #4b2e83);
+    }
+</style>
+{% endblock %}

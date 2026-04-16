@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Attendance Record{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h1>Delete Attendance Record</h1>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the attendance record for <strong>{{ attendance_record.student.full_name }}</strong> on {{ attendance_record.date|date:"F j, Y" }}?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'attendance_detail' attendance_record.pk %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Delete Record</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

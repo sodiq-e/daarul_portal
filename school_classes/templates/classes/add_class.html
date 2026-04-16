@@ -1,0 +1,15 @@
+<h1>Add Class</h1>
+
+<form method="POST">
+    {% csrf_token %}
+    <label>Class Name:</label>
+    <input type="text" name="class_name"><br><br>
+
+    <label>Level:</label>
+    <input type="text" name="level"><br><br>
+
+    <label>Description:</label>
+    <textarea name="description"></textarea><br><br>
+
+    <button type="submit">Save</button>
+</form>

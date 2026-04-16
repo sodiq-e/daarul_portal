@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="no-print text-end mb-3">
+    <button onclick="window.print()" class="btn btn-primary">Print Report Card</button>
+  </div>
+  <h2>Report Card</h2>
+  <div>
+    <strong>Student:</strong> {{ student.full_name }} ({{ student.admission_no }})<br>
+    <strong>Exam:</strong> {{ exam.name }}<br>
+    <strong>Position:</strong> {{ position }}  &nbsp; <strong>Average:</strong> {{ average }} &nbsp; <strong>Grade:</strong> {{ overall_grade }}
+  </div>
+
+  <h3>Scores</h3>
+  <table>
+    <thead><tr><th>Subject</th><th>Score</th><th>Grade</th><th>Remark</th></tr></thead>
+    <tbody>
+      {% for s in scores %}
+      <tr>
+        <td>{{ s.subject.name }}</td>
+        <td>{{ s.score }}</td>
+        <td>{{ s.grade }}</td>
+        <td>{{ s.remark }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Psychomotor / Affective</h3>
+  <table>
+    <thead><tr><th>Trait</th><th>Rating (1-5)</th><th>Remark</th></tr></thead>
+    <tbody>
+      {% for rt in student.studenttraitrating_set.all %}
+        {% if rt.exam.id == exam.id %}
+        <tr><td>{{ rt.trait.name }}</td><td>{{ rt.rating }}</td><td>{{ rt.remark }}</td></tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p>Class teacher's comment: ____________________</p>
+  <p>Principal's comment: ________________________</p>
+{% endblock %}

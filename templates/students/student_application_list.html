@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Applications{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Student Applications</h1>
+            <p class="text-muted">Review submitted applications and update statuses.</p>
+        </div>
+        <div>
+            <a href="{% url 'student_application' %}" class="btn btn-primary no-print">New Application</a>
+            <button onclick="window.print()" class="btn btn-secondary no-print">Print Applications</button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card p-3 mb-3">
+                <h4>Pending</h4>
+                <p class="display-6">{{ pending_count }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 mb-3">
+                <h4>Accepted</h4>
+                <p class="display-6">{{ accepted_count }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 mb-3">
+                <h4>Rejected</h4>
+                <p class="display-6">{{ rejected_count }}</p>
+            </div>
+        </div>
+    </div>
+
+    {% if applications %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Class Applied</th>
+                    <th>Guardian</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for application in applications %}
+                <tr>
+                    <td>{{ application.full_name }}</td>
+                    <td>{{ application.desired_class }}</td>
+                    <td>{{ application.guardian_name }}</td>
+                    <td>{{ application.get_status_display }}</td>
+                    <td>{{ application.application_date|date:'M j, Y' }}</td>
+                    <td>
+                        <a href="{% url 'student_application_detail' application.pk %}" class="btn btn-sm btn-info">View</a>
+                        <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-sm btn-warning">Update</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No student applications have been submitted yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

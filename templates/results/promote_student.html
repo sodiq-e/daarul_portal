@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Promote Student</h2>
+<p>Student: {{ student.full_name }} ({{ student.admission_no }})</p>
+<p>Current Class: {{ student.student_class.name }}</p>
+<p>Exam: {{ exam.name }}</p>
+<form method="post">
+    {% csrf_token %}
+    <label for="to_class">Promote to Class:</label>
+    <select name="to_class" id="to_class" required>
+        {% for cls in classes %}
+        <option value="{{ cls.id }}">{{ cls.name }}</option>
+        {% endfor %}
+    </select><br>
+    <label for="remarks">Remarks:</label>
+    <textarea name="remarks" id="remarks"></textarea><br>
+    <button type="submit">Promote</button>
+</form>
+{% endblock %}

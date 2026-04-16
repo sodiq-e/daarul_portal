@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if not user.is_authenticated %}
+<!-- VISITOR SECTION -->
+<section class="welcome-hero">
+  <div class="hero-copy">
+    <span class="eyebrow">Welcome to DAARUL BAYAAN ISLAMIC SCHOOL Portal</span>
+    <h1>Welcome to the official digital platform</h1>
+    <p>{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone. We provide a balanced education that combines Western and Islamic studies, including modern fields such as STEM and Robotics." }}</p>
+    <div class="hero-actions">
+      <a href="{% url 'login' %}" class="button">Sign In</a>
+      <a href="{% url 'signup' %}" class="button secondary">Create Account</a>
+      <a href="{% url 'student_application' %}" class="button secondary">Apply for Admission</a>
+    </div>
+  </div>
+  <div class="hero-media">
+    <div class="video-card">
+      <div class="video-label">Portal Demo</div>
+      <div class="video-placeholder">
+        <!-- Replace this placeholder with your actual video embed code -->
+        <!-- Example for YouTube: <iframe width="560" height="315" src="https://www.youtube.com/embed/YOUR_VIDEO_ID" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> -->
+        <!-- Example for local video: <video width="560" height="315" controls><source src="/media/videos/school_intro.mp4" type="video/mp4"></video> -->
+        <div class="video-icon">▶</div>
+        <div>
+          <strong>Video demo area</strong>
+          <p>{{ school_settings.homepage_video_description|default:"Replace this placeholder with your school introduction video. Edit the template at templates/home.html to add your video embed code." }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% else %}
+<!-- LOGGED-IN USER SECTION -->
+<section class="welcome-authenticated">
+  <div class="authenticated-header">
+    {% if user.is_staff %}
+      <h1>Welcome, Administrator!</h1>
+      <p>You're logged in as <strong>{{ user.first_name|default:user.username }}</strong>. Use the admin panel below to manage school settings, classes, results, and more.</p>
+    {% else %}
+      <h1>Welcome, {{ user.first_name|default:user.username }}!</h1>
+      <p>You're logged in to the DAARUL BAYAAN ISLAMIC SCHOOL Portal. Use the navigation below to access your information and manage your account.</p>
+    {% endif %}
+  </div>
+
+  <div class="navigation-grid">
+    {% if user.is_staff %}
+      <!-- ADMIN NAVIGATION -->
+      <a href="/admin/" class="nav-card admin-card">
+        <div class="nav-icon">🔐</div>
+        <h3>Admin Panel</h3>
+        <p>Access school management dashboard</p>
+      </a>
+      <a href="{% url 'school_settings' %}" class="nav-card admin-card">
+        <div class="nav-icon">⚙️</div>
+        <h3>Portal Settings</h3>
+        <p>Configure school branding and themes</p>
+      </a>
+      <a href="{% url 'class_list' %}" class="nav-card admin-card">
+        <div class="nav-icon">📚</div>
+        <h3>Classes</h3>
+        <p>Manage school classes</p>
+      </a>
+      <a href="/results/" class="nav-card admin-card">
+        <div class="nav-icon">📊</div>
+        <h3>Results</h3>
+        <p>View student results and grades</p>
+      </a>
+      <a href="{% url 'promotions_list' %}" class="nav-card admin-card">
+        <div class="nav-icon">⬆️</div>
+        <h3>Promotions</h3>
+        <p>Manage student promotions</p>
+      </a>
+      <a href="{% url 'payroll_dashboard' %}" class="nav-card admin-card">
+        <div class="nav-icon">💼</div>
+        <h3>Finance</h3>
+        <p>Manage invoices, payments, and school expenses</p>
+      </a>
+    {% else %}
+      <!-- STUDENT NAVIGATION -->
+      <a href="{% url 'class_list' %}" class="nav-card">
+        <div class="nav-icon">📚</div>
+        <h3>Classes</h3>
+        <p>View class schedules and details</p>
+      </a>
+      <a href="/results/" class="nav-card">
+        <div class="nav-icon">📊</div>
+        <h3>Results</h3>
+        <p>Check your grades and reports</p>
+      </a>
+      <a href="{% url 'student_list' %}" class="nav-card">
+        <div class="nav-icon">🎒</div>
+        <h3>Students</h3>
+        <p>Browse student records and profiles</p>
+      </a>
+      <a href="{% url 'subject_list' %}" class="nav-card">
+        <div class="nav-icon">📝</div>
+        <h3>Subjects</h3>
+        <p>View the school's subject list</p>
+      </a>
+      <a href="{% url 'exam_list' %}" class="nav-card">
+        <div class="nav-icon">📅</div>
+        <h3>Exams</h3>
+        <p>Manage exam schedules and details</p>
+      </a>
+      <a href="{% url 'attendance_list' %}" class="nav-card">
+        <div class="nav-icon">✅</div>
+        <h3>Attendance</h3>
+        <p>Track attendance records</p>
+      </a>
+      <a href="{% url 'profile' %}" class="nav-card">
+        <div class="nav-icon">👤</div>
+        <h3>My Profile</h3>
+        <p>Manage your account settings</p>
+      </a>
+    {% endif %}
+  </div>
+</section>
+
+{% endif %}
+
+<section class="portal-overview">
+  <h2>What You Can Do on This Portal</h2>
+  <div class="overview-grid">
+    <div class="overview-card">
+      <h3>Access academic records</h3>
+      <p>View your results, grades, and progress reports from one secure location.</p>
+    </div>
+    <div class="overview-card">
+      <h3>View class schedules</h3>
+      <p>Check timetables, subject details, and classroom assignments at a glance.</p>
+    </div>
+    <div class="overview-card">
+      <h3>Receive school updates</h3>
+      <p>Stay informed with announcements, news, and important school events.</p>
+    </div>
+    <div class="overview-card">
+      <h3>Communicate easily</h3>
+      <p>Message teachers and school management through the portal's secure channels.</p>
+    </div>
+    <div class="overview-card">
+      <h3>Manage your profile</h3>
+      <p>Update your account information and keep your profile current.</p>
+    </div>
+  </div>
+</section>
+
+{% if not user.is_authenticated %}
+<section class="getting-started">
+  <h2>Getting Started</h2>
+  <p>To use this portal, you need an account.</p>
+  <div class="getting-started-cards">
+    <div class="getting-card">
+      <h3>Already have an account?</h3>
+      <p>Click the Sign In button and enter your login details to access your dashboard.</p>
+      <a href="{% url 'login' %}" class="button small">Sign In</a>
+    </div>
+    <div class="getting-card">
+      <h3>New here?</h3>
+      <p>Click the Create Account button to register. Use accurate school information during signup.</p>
+      <a href="{% url 'signup' %}" class="button small secondary">Create Account</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="important-notice">
+  <h2>Important Notice</h2>
+  <p>Your login details are personal and should not be shared with anyone. Keep your credentials safe to protect your academic information.</p>
+</section>
+
+<section class="help-section">
+  <h2>Need Help?</h2>
+  <p>If you experience any difficulty accessing your account or navigating the portal, please contact the school administration for assistance.</p>
+  <p>We are committed to providing a seamless and efficient digital experience. Thank you for being part of our community.</p>
+</section>
+
+<section class="gallery-section">
+  <div class="section-header">
+    <h2>Portal Gallery</h2>
+    <p>Browse highlights from the portal and explore the types of information available.</p>
+  </div>
+  <div class="slider" id="gallerySlider">
+    {% if gallery_images %}
+      {% for image in gallery_images %}
+        <div class="slide {% if forloop.first %}active{% endif %}">
+          {% if image.image %}
+            <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:100%; height:auto; border-radius:10px; margin-bottom:15px;">
+          {% endif %}
+          <h3>{{ image.title }}</h3>
+          <p>{{ image.description }}</p>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="slide active">
+        <h3>Student Dashboard</h3>
+        <p>Everything you need in one place: reports, class schedules, and notifications.</p>
+      </div>
+      <div class="slide">
+        <h3>Results & Grades</h3>
+        <p>Track academic performance and access detailed examinations reports.</p>
+      </div>
+      <div class="slide">
+        <h3>Announcements</h3>
+        <p>Receive school updates, event reminders, and important news instantly.</p>
+      </div>
+    {% endif %}
+  </div>
+  <div class="slider-controls">
+    <button id="prevSlide" type="button">← Previous</button>
+    <button id="nextSlide" type="button">Next →</button>
+  </div>
+</section>
+
+<style>
+.welcome-hero {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 30px;
+  align-items: center;
+  padding: 40px 0;
+}
+.eyebrow {
+  display: inline-block;
+  font-size: 0.9rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  margin-bottom: 18px;
+}
+.hero-copy h1 {
+  font-size: clamp(2rem, 3vw, 3.4rem);
+  margin: 0 0 20px;
+  line-height: 1.05;
+}
+.hero-copy p {
+  max-width: 640px;
+  line-height: 1.75;
+  margin-bottom: 28px;
+  color: #333;
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.hero-media {
+  min-height: 320px;
+}
+.video-card {
+  width: 100%;
+  border-radius: 22px;
+  padding: 28px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid rgba(0,0,0,0.05);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.08);
+}
+.video-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-color);
+  margin-bottom: 18px;
+}
+.video-placeholder {
+  min-height: 240px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(75,46,131,0.08), rgba(127,90,240,0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  gap: 16px;
+  padding: 24px;
+  color: #2a2a2a;
+}
+.video-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+}
+.portal-overview,
+.getting-started,
+.important-notice,
+.help-section,
+.gallery-section {
+  margin-bottom: 40px;
+}
+.portal-overview h2,
+.getting-started h2,
+.important-notice h2,
+.help-section h2,
+.gallery-section h2 {
+  margin-bottom: 18px;
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+.overview-card,
+.getting-card {
+  background: white;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 16px 40px rgba(16,24,48,0.06);
+}
+.overview-card h3,
+.getting-card h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--primary-color);
+}
+.getting-started-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+.button.small {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+}
+.important-notice,
+.help-section {
+  background: #fff7e1;
+  border: 1px solid rgba(255,190,0,0.24);
+  border-radius: 18px;
+  padding: 26px;
+}
+.gallery-section {
+  padding: 28px 0;
+}
+.section-header p {
+  margin: 8px 0 0;
+  color: #555;
+  max-width: 760px;
+}
+.slider {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.slide {
+  display: none;
+  padding: 36px;
+  min-height: 220px;
+}
+.slide.active {
+  display: block;
+}
+.slide h3 {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+.slider-controls {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+.slider-controls button {
+  border: 1px solid rgba(0,0,0,0.12);
+  background: white;
+  border-radius: 999px;
+  padding: 10px 18px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.2s, transform 0.2s;
+}
+.slider-controls button:hover {
+  background: rgba(75,46,131,0.08);
+  transform: translateY(-1px);
+}
+.button {
+  display: inline-block;
+  background: var(--primary-color);
+  color: white;
+  padding: 14px 26px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: background 0.25s ease;
+}
+.button:hover {
+  background: #3d236b;
+}
+.button.secondary {
+  background: var(--accent-color);
+  color: var(--text-color);
+}
+.welcome-authenticated {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  padding: 40px 30px;
+  border-radius: 18px;
+  margin-bottom: 40px;
+  box-shadow: 0 20px 50px rgba(35,31,89,.18);
+}
+.authenticated-header h1 {
+  font-size: 2.8rem;
+  margin: 0 0 16px;
+  line-height: 1.05;
+}
+.authenticated-header p {
+  font-size: 1.05rem;
+  max-width: 680px;
+  opacity: 0.95;
+  margin: 0 0 28px;
+}
+.navigation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-top: 28px;
+}
+.nav-card {
+  background: rgba(255,255,255,0.95);
+  color: var(--text-color);
+  padding: 24px;
+  border-radius: 16px;
+  text-decoration: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.nav-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+}
+.nav-icon {
+  font-size: 48px;
+  margin-bottom: 14px;
+  background: var(--icon-plate-color);
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--icon-color);
+}
+.nav-card h3 {
+  margin: 0 0 8px;
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+.nav-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #666;
+}
+.admin-card {
+  background: linear-gradient(135deg, rgba(75,46,131,0.08), rgba(127,90,240,0.08)) !important;
+  border: 2px solid var(--primary-color);
+}
+.admin-card:hover {
+  background: linear-gradient(135deg, rgba(75,46,131,0.15), rgba(127,90,240,0.15)) !important;
+}
+@media (max-width: 900px) {
+  .welcome-hero {
+    grid-template-columns: 1fr;
+  }
+  .authenticated-header h1 {
+    font-size: 2rem;
+  }
+}
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var slides = document.querySelectorAll('#gallerySlider .slide');
+    var current = 0;
+    var nextButton = document.getElementById('nextSlide');
+    var prevButton = document.getElementById('prevSlide');
+
+    function showSlide(index) {
+      slides[current].classList.remove('active');
+      current = (index + slides.length) % slides.length;
+      slides[current].classList.add('active');
+    }
+
+    nextButton.addEventListener('click', function () {
+      showSlide(current + 1);
+    });
+    prevButton.addEventListener('click', function () {
+      showSlide(current - 1);
+    });
+
+    setInterval(function () {
+      showSlide(current + 1);
+    }, 7000);
+  });
+</script>
+{% endblock %}

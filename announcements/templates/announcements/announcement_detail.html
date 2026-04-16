@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ announcement.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ announcement.title }}</h1>
+        <div>
+            <a href="{% url 'announcement_list' %}" class="btn btn-secondary">Back to Announcements</a>
+            {% if user.is_staff or user.is_superuser %}
+            <a href="{% url 'announcement_edit' announcement.pk %}" class="btn btn-warning">Edit</a>
+            <a href="{% url 'announcement_delete' announcement.pk %}" class="btn btn-danger">Delete</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Priority:</strong>
+                <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
+            </div>
+            <small class="text-muted">
+                Posted on {{ announcement.created_at|date:"F j, Y \a\t g:i A" }}
+            </small>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <strong>Posted by:</strong> {{ announcement.created_by.get_full_name|default:announcement.created_by.username }}
+            </div>
+            <div class="announcement-box border rounded p-4 mb-3">
+                <div class="announcement-content">
+                    {{ announcement.content|linebreaks }}
+                </div>
+            </div>
+        </div>
+        {% if announcement.updated_at != announcement.created_at %}
+        <div class="card-footer">
+            <small class="text-muted">
+                Last updated: {{ announcement.updated_at|date:"F j, Y \a\t g:i A" }}
+            </small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.announcement-box {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+}
+
+.announcement-content {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+</style>
+{% endblock %}

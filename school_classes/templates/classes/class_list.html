@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}School Classes{% endblock %}
+
+{% block content %}
+<div class="mt-4">
+    <h1>School Classes</h1>
+    {% for c in classes %}
+        <p>{{ c.class_name }} - {{ c.level }} - {{ c.description }}</p>
+    {% empty %}
+        <p>No classes yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Receipt #{{ payment.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Payment Receipt #{{ payment.id }}</h1>
+            <p class="text-muted">Payment details and receipt.</p>
+        </div>
+        <div>
+            <a href="{% url 'invoice_list' %}" class="btn btn-secondary">Back to Invoices</a>
+            <button onclick="window.print()" class="btn btn-primary no-print">Print Receipt</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4>Payment Details</h4>
+            <p><strong>Student:</strong> {{ payment.student.full_name }}</p>
+            <p><strong>Invoice:</strong> #{{ payment.invoice.id }}</p>
+            <p><strong>Amount Paid:</strong> {{ payment.amount }}</p>
+            <p><strong>Payment Date:</strong> {{ payment.payment_date }}</p>
+            <p><strong>Payment Method:</strong> {{ payment.get_payment_method_display }}</p>
+            <p><strong>Reference:</strong> {{ payment.reference|default:'N/A' }}</p>
+            <p><strong>Recorded By:</strong> {{ payment.created_by.get_full_name|default:payment.created_by.username }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

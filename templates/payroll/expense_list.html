@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}School Expenses{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>School Expenses</h1>
+            <p class="text-muted">Track all recorded school expenses in one place.</p>
+        </div>
+        <div>
+            <a href="{% url 'expense_add' %}" class="btn btn-primary no-print">Add Expense</a>
+            <button onclick="window.print()" class="btn btn-secondary no-print">Print Expense List</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <strong>Total Expenses:</strong> {{ total_expenses }}
+        </div>
+    </div>
+
+    {% if expenses %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Recorded By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense.date }}</td>
+                    <td>{{ expense.description }}</td>
+                    <td>{{ expense.category|default:'General' }}</td>
+                    <td>{{ expense.amount }}</td>
+                    <td>{% if expense.created_by %}{{ expense.created_by.get_full_name|default:expense.created_by.username }}{% else %}System{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No school expenses have been recorded yet.
+    </div>
+    {% endif %}
+</div>

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Application for {{ application.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Application Detail</h1>
+            <p class="text-muted">Review the submitted student application.</p>
+        </div>
+        <div>
+            <a href="{% url 'student_application_list' %}" class="btn btn-secondary">Back to Applications</a>
+            <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-warning">Update Status</a>
+            <button onclick="window.print()" class="btn btn-primary no-print">Print Application</button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>Student Information</h4>
+            <p><strong>Name:</strong> {{ application.full_name }}</p>
+            <p><strong>Requested Admission No:</strong> {{ application.admission_number_requested }}</p>
+            <p><strong>Date of Birth:</strong> {{ application.dob|date:'F j, Y' }}</p>
+            <p><strong>Gender:</strong> {{ application.get_gender_display }}</p>
+            <p><strong>Class Applying For:</strong> {{ application.desired_class }}</p>
+            <p><strong>Current/Previous School:</strong> {{ application.current_school }}</p>
+            <p><strong>Student Phone:</strong> {{ application.student_phone }}</p>
+            <p><strong>Student Email:</strong> {{ application.student_email }}</p>
+            <p><strong>Medical Information:</strong> {{ application.medical_information|default:'None' }}</p>
+            <p><strong>Special Needs:</strong> {{ application.special_needs|default:'None' }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>Guardian / Emergency Contact</h4>
+            <p><strong>Guardian Name:</strong> {{ application.guardian_name }}</p>
+            <p><strong>Relationship:</strong> {{ application.guardian_relationship }}</p>
+            <p><strong>Guardian Phone:</strong> {{ application.guardian_phone }}</p>
+            <p><strong>Guardian Email:</strong> {{ application.guardian_email }}</p>
+            <p><strong>Guardian Address:</strong> {{ application.guardian_address }}</p>
+            <p><strong>Occupation:</strong> {{ application.guardian_occupation }}</p>
+            <p><strong>Employer:</strong> {{ application.guardian_employer }}</p>
+            <p><strong>Emergency Contact:</strong> {{ application.emergency_contact_name }} — {{ application.emergency_contact_phone }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4>Review</h4>
+            <p><strong>Status:</strong> {{ application.get_status_display }}</p>
+            <p><strong>Submitted By:</strong>
+                {% if application.submitted_by %}
+                    {{ application.submitted_by.get_full_name|default:application.submitted_by.username }}
+                {% else %}
+                    Visitor
+                {% endif %}
+            </p>
+            <p><strong>Submitted At:</strong> {{ application.application_date|date:'F j, Y g:i A' }}</p>
+            <p><strong>Reviewer Notes:</strong> {{ application.reviewer_notes|default:'No notes yet' }}</p>
+            <p><strong>Reviewed By:</strong>
+                {% if application.reviewed_by %}
+                    {{ application.reviewed_by.get_full_name|default:application.reviewed_by.username }}
+                {% else %}
+                    Not assigned
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

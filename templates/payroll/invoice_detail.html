@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Invoice #{{ invoice.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Invoice #{{ invoice.id }}</h1>
+            <p class="text-muted">Review invoice details and linked payments.</p>
+        </div>
+        <div>
+            <a href="{% url 'invoice_list' %}" class="btn btn-secondary">Back to Invoices</a>
+            <a href="{% url 'payment_add' %}" class="btn btn-success">Record Payment</a>
+            <button onclick="window.print()" class="btn btn-primary no-print">Print Invoice</button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <h4>Invoice Summary</h4>
+                <p><strong>Student:</strong> {{ invoice.student.full_name }}</p>
+                <p><strong>Fee:</strong> {{ invoice.fee }}</p>
+                <p><strong>Issued:</strong> {{ invoice.issued_date }}</p>
+                <p><strong>Due:</strong> {{ invoice.due_date }}</p>
+                <p><strong>Amount Due:</strong> {{ invoice.amount_due }}</p>
+                <p><strong>Status:</strong> {{ invoice.get_status_display }}</p>
+                <p><strong>Balance:</strong> {{ invoice.balance }}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <h4>Notes</h4>
+                <p>{{ invoice.notes|default:'No notes saved.' }}</p>
+                <p><strong>Created By:</strong>
+                    {% if invoice.created_by %}
+                        {{ invoice.created_by.get_full_name|default:invoice.created_by.username }}
+                    {% else %}
+                        Unknown
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h4>Payments</h4>
+        </div>
+        <div class="card-body">
+            {% if invoice.payments.all %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Reference</th>
+                            <th>Recorded By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in invoice.payments.all %}
+                        <tr>
+                            <td>{{ payment.payment_date }}</td>
+                            <td>{{ payment.amount }}</td>
+                            <td>{{ payment.payment_method }}</td>
+                            <td>{{ payment.reference }}</td>
+                            <td>
+                                {% if payment.created_by %}
+                                    {{ payment.created_by.get_full_name|default:payment.created_by.username }}
+                                {% else %}
+                                    Unknown
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'payment_detail' payment.pk %}" class="btn btn-sm btn-outline-primary no-print">Receipt</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No payments have been recorded for this invoice yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

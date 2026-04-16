@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Subject{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h1>Delete Subject</h1>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete the subject <strong>{{ subject.name }}</strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'subject_detail' subject.pk %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Delete Subject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

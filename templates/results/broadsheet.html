@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="no-print text-end mb-3">
+    <button onclick="window.print()" class="btn btn-primary">Print Broadsheet</button>
+  </div>
+  <h2>Broadsheet for {{ exam.name }}</h2>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Admission No</th>
+        {% for subject in subjects %}
+        <th>{{ subject.name }}</th>
+        {% endfor %}
+        <th>Total</th>
+        <th>Average</th>
+        <th>Position</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr>
+        <td>{{ student.full_name }}</td>
+        <td>{{ student.admission_no }}</td>
+        {% for subject in subjects %}
+        <td>{{ scores_data|get_item:student.id|get_item:subject.id }}</td>
+        {% endfor %}
+        <td>{{ totals|get_item:student.id|default:0 }}</td>
+        <td>{{ averages|get_item:student.id|default:0|floatformat:2 }}</td>
+        <td>{{ positions|get_item:student.id }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

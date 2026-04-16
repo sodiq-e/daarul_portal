@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ SCHOOL_NAME }}</title>
+  {% load static %}
+  <style>
+    :root {
+      --primary-color: {{ primary_color }};
+      --secondary-color: {{ secondary_color }};
+      --accent-color: {{ accent_color }};
+      --background-color: {{ background_color }};
+      --text-color: {{ text_color }};
+      --heading-text-color: {{ heading_text_color }};
+      --icon-plate-color: {{ icon_plate_color }};
+      --header-heading-color: {{ header_heading_color }};
+      --icon-color: {{ icon_color }};
+    }
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:var(--background-color);color:var(--text-color)}
+    h1, h2, h3, h4, h5, h6 { color: var(--heading-text-color); }
+    header{background:var(--primary-color);color:white;padding:24px 24px}
+    .container{padding:20px;max-width:1100px;margin:0 auto}
+    .hero{background:linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);color:white;padding:60px 30px;border-radius:18px;box-shadow:0 20px 50px rgba(35,31,89,.18);margin-bottom:24px}
+    .hero h1{font-size:3rem;line-height:1.05;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px}
+    .hero p{font-size:1.05rem;max-width:680px;margin:0 0 24px;opacity:.92}
+    .button{display:inline-block;background:var(--accent-color);color:var(--text-color);padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;box-shadow:0 10px 20px rgba(0,0,0,.12)}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #ddd;padding:6px}
+    @media print {
+      .no-print { display: none !important; }
+      body { font-size: 12pt; margin: 0; }
+      .container { max-width: none; margin: 0; padding: 0; }
+      .card { border: none; box-shadow: none; }
+      a { text-decoration: none; color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display: flex; align-items: center; position: relative;">
+      <!-- Logo on the left -->
+      <div style="flex-shrink: 0;">
+        {% if school_logo %}
+          <img src="{{ school_logo }}" alt="logo" style="height:80px;vertical-align:middle">
+        {% else %}
+          <img src="{% static 'img/logo.png' %}" alt="logo" style="height:80px;vertical-align:middle">
+        {% endif %}
+      </div>
+
+      <!-- School name and motto centered -->
+      <div style="position: absolute; left: 50%; transform: translateX(-50%); text-align: center;">
+        <a href="{% url 'home' %}" style="color: var(--header-heading-color); text-decoration: none; display: block;">
+          <span style="font-size:32px; font-weight: bold;">{{ school_name }}</span>
+        </a>
+        <div style="font-size:18px; margin-top: 6px; color: var(--header-heading-color);">{{ motto }}</div>
+      </div>
+
+      <!-- User info on the right -->
+      {% if user.is_authenticated %}
+        <div style="position: absolute; right: 0; display: flex; align-items: center; gap: 15px;">
+          <!-- Announcements icon -->
+          <a href="{% url 'announcement_list' %}" title="Announcements" style="color: white; text-decoration: none; font-size: 20px; position: relative;">
+            📢
+            {% if active_announcements_count > 0 %}
+            <span style="position: absolute; top: -8px; right: -8px; background: #ff4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;">{{ active_announcements_count }}</span>
+            {% endif %}
+          </a>
+          <span style="font-size: 14px;">Welcome, <strong>{{ user.first_name|default:user.username }}</strong></span>
+          <a href="{% url 'logout' %}" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: 0.3s;">
+            Logout
+          </a>
+        </div>
+      {% else %}
+        <div style="position: absolute; right: 0; display: flex; align-items: center; gap: 15px;">
+          <!-- Announcements icon for non-logged-in users -->
+          <a href="{% url 'announcement_list' %}" title="Announcements" style="color: white; text-decoration: none; font-size: 20px; position: relative;">
+            📢
+            {% if active_announcements_count > 0 %}
+            <span style="position: absolute; top: -8px; right: -8px; background: #ff4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: bold;">{{ active_announcements_count }}</span>
+            {% endif %}
+          </a>
+          <a href="{% url 'login' %}" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: 0.3s;">
+            Login
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </header>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

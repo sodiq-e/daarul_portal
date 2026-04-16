@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Update Student Status</h2>
+<p>Student: {{ student.full_name }} ({{ student.admission_no }})</p>
+<p>Current Status: {{ student.get_status_display }}</p>
+<form method="post">
+    {% csrf_token %}
+    <label for="status">New Status:</label>
+    <select name="status" id="status" required>
+        <option value="transferred">Transferred</option>
+        <option value="graduated">Graduated</option>
+    </select><br>
+    <label for="date_left">Date Left:</label>
+    <input type="date" name="date_left" id="date_left"><br>
+    <button type="submit" class="btn btn-primary no-print">Update Status</button>
+    <button type="button" onclick="window.print()" class="btn btn-secondary no-print">Print Status Form</button>
+</form>
+{% endblock %}
