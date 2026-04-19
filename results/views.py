@@ -1,115 +1,324 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import HttpResponse
+from django.template.loader import get_template
+from django.db.models import Avg, Count, Sum, Q
 from students.models import Student
-from exams.models import Exam, Subject
-from .models import Score, Promotion
+from exams.models import Term, ClassSubject
+from school_classes.models import SchoolClasses
+from .models import (
+    StudentResult, TermResult, ResultTemplate,
+    GradeScale, Promotion
+)
+
+
+def user_profile_approved(user):
+    """Defensively check if user profile is approved"""
+    try:
+        return user.profile.is_approved
+    except AttributeError:
+        return False
+
+
+def user_is_staff(user):
+    """Check if user is staff/teacher"""
+    try:
+        return (
+            user.profile.is_approved and
+            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        )
+    except AttributeError:
+        return False
 
 
 @login_required
 def results_home(request):
-    if not request.user.profile.is_approved:
-        from django.contrib import messages
+    """Main results dashboard"""
+    if not user_profile_approved(request.user):
         messages.error(request, 'Your account is not approved yet.')
         return redirect('home')
 
-    score_entries = Score.objects.order_by('exam__date', 'student__surname').values(
-        'student_id', 'student__admission_no', 'student__surname', 'student__other_names',
-        'exam_id', 'exam__name'
+    # Get active terms
+    active_terms = Term.objects.filter(is_active=True)
+
+    # Get classes with results
+    classes_with_results = SchoolClasses.objects.filter(
+        students__results__isnull=False
     ).distinct()
-    result_items = [
-        {
-            'student_id': entry['student_id'],
-            'exam_id': entry['exam_id'],
-            'student_name': f"{entry['student__surname']} {entry['student__other_names'] or ''}".strip(),
-            'admission_no': entry['student__admission_no'],
-            'exam_name': entry['exam__name'],
-        }
-        for entry in score_entries
-    ]
-    exams = Exam.objects.filter(score__isnull=False).distinct()
-    return render(request, 'results/results_home.html', {'result_items': result_items, 'exams': exams})
+
+    context = {
+        'active_terms': active_terms,
+        'classes_with_results': classes_with_results,
+    }
+
+    return render(request, 'results/results_home.html', context)
 
 
 @login_required
-def report_card(request, student_id, exam_id):
-    if not request.user.profile.is_approved:
-        from django.contrib import messages
+def class_results(request, class_id, term_id):
+    """View results for a specific class and term"""
+    if not user_profile_approved(request.user):
+        messages.error(request, 'Your account is not approved yet.')
+        return redirect('home')
+
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Get result template for this class and term
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=school_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, f'No result template found for {school_class} - {term}')
+        return redirect('results_home')
+
+    # Get all students in this class
+    students = Student.objects.filter(
+        student_class=school_class,
+        status='active'
+    ).order_by('surname', 'other_names')
+
+    # Get results for each student
+    student_results = []
+    for student in students:
+        results = StudentResult.objects.filter(
+            student=student,
+            term=term,
+            result_template=result_template
+        ).select_related('class_subject__subject')
+
+        # Calculate term aggregates
+        term_result, created = TermResult.objects.get_or_create(
+            student=student,
+            term=term,
+            result_template=result_template,
+            defaults={'is_complete': False}
+        )
+
+        if results.exists() and not term_result.is_complete:
+            term_result.calculate_aggregates()
+
+        student_results.append({
+            'student': student,
+            'results': results,
+            'term_result': term_result,
+        })
+
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'result_template': result_template,
+        'student_results': student_results,
+        'can_modify': user_is_staff(request.user),
+    }
+
+    return render(request, 'results/class_results.html', context)
+
+
+@login_required
+def student_report_card(request, student_id, term_id):
+    """Generate individual student report card"""
+    if not user_profile_approved(request.user):
         messages.error(request, 'Your account is not approved yet.')
         return redirect('home')
 
     student = get_object_or_404(Student, pk=student_id)
-    exam = get_object_or_404(Exam, pk=exam_id)
-    scores = Score.objects.filter(student=student, exam=exam).select_related('subject')
-    total = sum([float(s.score) for s in scores]) if scores else 0
-    count = scores.count()
-    average = (total / count) if count else 0.0
-    students = Student.objects.all()
-    totals = []
-    for st in students:
-        st_total = sum([float(x.score) for x in Score.objects.filter(student=st, exam=exam)])
-        totals.append((st, st_total))
-    totals_sorted = sorted(totals, key=lambda x: x[1], reverse=True)
-    position = next((i+1 for i,(st,tot) in enumerate(totals_sorted) if st.pk==student.pk), None)
-    def grade_from_avg(avg):
-        if avg >= 70:
-            return 'A'
-        if avg >= 60:
-            return 'B'
-        if avg >= 50:
-            return 'C'
-        if avg >= 45:
-            return 'D'
-        if avg >= 40:
-            return 'E'
-        return 'F'
-    overall_grade = grade_from_avg(average)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Check if user can view this student's results
+    if not user_is_staff(request.user) and student.admission_no != request.user.username:
+        messages.error(request, 'You do not have permission to view this report card.')
+        return redirect('home')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=student.student_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, 'No results available for this term.')
+        return redirect('results_home')
+
+    # Get student results
+    results = StudentResult.objects.filter(
+        student=student,
+        term=term,
+        result_template=result_template
+    ).select_related('class_subject__subject').order_by('class_subject__order')
+
+    # Get term result
+    term_result, created = TermResult.objects.get_or_create(
+        student=student,
+        term=term,
+        result_template=result_template,
+        defaults={'is_complete': False}
+    )
+
+    if results.exists() and not term_result.is_complete:
+        term_result.calculate_aggregates()
+
     context = {
         'student': student,
-        'exam': exam,
-        'scores': scores,
-        'total': total,
-        'average': round(average, 2),
-        'position': position,
-        'overall_grade': overall_grade,
+        'term': term,
+        'result_template': result_template,
+        'results': results,
+        'term_result': term_result,
     }
-    return render(request, 'results_report.html', context)
+
+    return render(request, 'results/student_report_card.html', context)
+
+
+@login_required
+def broadsheet(request, class_id, term_id):
+    """Generate printable broadsheet for a class"""
+    if not user_is_staff(request.user):
+        messages.error(request, 'You do not have permission to view broadsheets.')
+        return redirect('home')
+
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=school_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, f'No result template found for {school_class} - {term}')
+        return redirect('results_home')
+
+    # Get all subjects for this class
+    class_subjects = ClassSubject.objects.filter(
+        school_class=school_class
+    ).select_related('subject').order_by('order')
+
+    # Get all students
+    students = Student.objects.filter(
+        student_class=school_class,
+        status='active'
+    ).order_by('surname', 'other_names')
+
+    # Build broadsheet data
+    broadsheet_data = []
+    for student in students:
+        student_data = {
+            'student': student,
+            'subject_scores': {},
+            'term_result': None,
+        }
+
+        # Get results for each subject
+        for class_subject in class_subjects:
+            try:
+                result = StudentResult.objects.get(
+                    student=student,
+                    class_subject=class_subject,
+                    term=term,
+                    result_template=result_template
+                )
+                student_data['subject_scores'][class_subject.subject.name] = {
+                    'test_score': result.test_score,
+                    'exam_score': result.exam_score,
+                    'total_score': result.total_score,
+                    'grade': result.grade,
+                }
+            except StudentResult.DoesNotExist:
+                student_data['subject_scores'][class_subject.subject.name] = None
+
+        # Get term result
+        try:
+            term_result = TermResult.objects.get(
+                student=student,
+                term=term,
+                result_template=result_template
+            )
+            if not term_result.is_complete:
+                term_result.calculate_aggregates()
+            student_data['term_result'] = term_result
+        except TermResult.DoesNotExist:
+            pass
+
+        broadsheet_data.append(student_data)
+
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'result_template': result_template,
+        'class_subjects': class_subjects,
+        'broadsheet_data': broadsheet_data,
+    }
+
+    return render(request, 'results/broadsheet.html', context)
+
+
+@login_required
+def student_results_by_admission(request):
+    """Allow students to view their results by admission number"""
+    if request.method == 'POST':
+        admission_no = request.POST.get('admission_no', '').strip()
+
+        if not admission_no:
+            messages.error(request, 'Please enter an admission number.')
+            return redirect('home')
+
+        try:
+            student = Student.objects.get(admission_no=admission_no)
+        except Student.DoesNotExist:
+            messages.error(request, 'Student not found with this admission number.')
+            return redirect('home')
+
+        # Get active terms
+        active_terms = Term.objects.filter(is_active=True)
+
+        context = {
+            'student': student,
+            'active_terms': active_terms,
+        }
+
+        return render(request, 'results/student_results_lookup.html', context)
+
+    return render(request, 'results/student_results_lookup.html')
+
+
+# Legacy views for backward compatibility
+@login_required
+def report_card(request, student_id, exam_id):
+    """Legacy view for backward compatibility"""
+    messages.info(request, 'This feature has been updated. Please use the new results system.')
+    return redirect('results_home')
 
 
 @login_required
 def promotions_list(request):
-    if not request.user.is_staff:
+    if not user_is_staff(request.user):
+        messages.error(request, 'You do not have permission to view promotions.')
         return redirect('home')
-    promotions = Promotion.objects.select_related('student', 'from_class', 'to_class', 'exam').order_by('-promoted_date')
+
+    promotions = Promotion.objects.select_related(
+        'student', 'from_class', 'to_class', 'term'
+    ).order_by('-promoted_date')
+
     return render(request, 'results/promotions_list.html', {'promotions': promotions})
 
 
 @login_required
 def promote_student(request, student_id, exam_id):
-    if not request.user.is_staff:
+    if not user_is_staff(request.user):
+        messages.error(request, 'You do not have permission to promote students.')
         return redirect('home')
+
     student = get_object_or_404(Student, pk=student_id)
-    exam = get_object_or_404(Exam, pk=exam_id)
-    if request.method == 'POST':
-        to_class_id = request.POST.get('to_class')
-        remarks = request.POST.get('remarks', '')
-        from school_classes.models import SchoolClasses
-        to_class = get_object_or_404(SchoolClasses, pk=to_class_id)
-        Promotion.objects.create(
-            student=student,
-            from_class=student.student_class,
-            to_class=to_class,
-            exam=exam,
-            remarks=remarks
-        )
-        student.student_class = to_class
-        student.save()
-        return redirect('promotions_list')
-    classes = SchoolClasses.objects.all()
-    return render(request, 'results/promote_student.html', {
-        'student': student,
-        'exam': exam,
-        'classes': classes
-    })
+    # For backward compatibility, we'll redirect to the new system
+    messages.info(request, 'Student promotion has been moved to the new results system.')
+    return redirect('results_home')
 
 
 @login_required

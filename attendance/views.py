@@ -8,6 +8,25 @@ from .models import AttendanceRecord
 from .forms import AttendanceRecordForm
 
 
+def user_profile_approved(user):
+    """Defensively check if user profile is approved"""
+    try:
+        return user.profile.is_approved
+    except AttributeError:
+        return False
+
+
+def user_is_staff(user):
+    """Defensively check if user is staff"""
+    try:
+        return (
+            user.profile.is_approved and
+            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        )
+    except AttributeError:
+        return False
+
+
 class AttendanceRecordListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = AttendanceRecord
     template_name = 'attendance/attendance_list.html'
@@ -16,14 +35,11 @@ class AttendanceRecordListView(LoginRequiredMixin, UserPassesTestMixin, ListView
     ordering = ['-date', 'student']
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
@@ -33,14 +49,11 @@ class AttendanceRecordDetailView(LoginRequiredMixin, UserPassesTestMixin, Detail
     context_object_name = 'attendance_record'
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
@@ -51,7 +64,7 @@ class AttendanceRecordCreateView(LoginRequiredMixin, UserPassesTestMixin, Create
     success_url = reverse_lazy('attendance_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Attendance record created successfully.')
@@ -65,7 +78,7 @@ class AttendanceRecordUpdateView(LoginRequiredMixin, UserPassesTestMixin, Update
     success_url = reverse_lazy('attendance_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Attendance record updated successfully.')
@@ -78,7 +91,7 @@ class AttendanceRecordDeleteView(LoginRequiredMixin, UserPassesTestMixin, Delete
     success_url = reverse_lazy('attendance_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Attendance record deleted successfully.')

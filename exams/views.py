@@ -8,6 +8,25 @@ from .models import Subject, Exam
 from .forms import SubjectForm, ExamForm
 
 
+def user_profile_approved(user):
+    """Defensively check if user profile is approved"""
+    try:
+        return user.profile.is_approved
+    except AttributeError:
+        return False
+
+
+def user_is_staff(user):
+    """Defensively check if user is staff"""
+    try:
+        return (
+            user.profile.is_approved and
+            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        )
+    except AttributeError:
+        return False
+
+
 # Subject Views
 class SubjectListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Subject
@@ -16,14 +35,11 @@ class SubjectListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     paginate_by = 20
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
@@ -33,14 +49,11 @@ class SubjectDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     context_object_name = 'subject'
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
@@ -51,7 +64,7 @@ class SubjectCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     success_url = reverse_lazy('subject_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Subject created successfully.')
@@ -65,7 +78,7 @@ class SubjectUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     success_url = reverse_lazy('subject_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Subject updated successfully.')
@@ -78,7 +91,7 @@ class SubjectDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     success_url = reverse_lazy('subject_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Subject deleted successfully.')
@@ -93,14 +106,11 @@ class ExamListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     paginate_by = 20
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
@@ -110,14 +120,11 @@ class ExamDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     context_object_name = 'exam'
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
@@ -128,7 +135,7 @@ class ExamCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     success_url = reverse_lazy('exam_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Exam created successfully.')
@@ -142,7 +149,7 @@ class ExamUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     success_url = reverse_lazy('exam_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Exam updated successfully.')
@@ -155,7 +162,7 @@ class ExamDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     success_url = reverse_lazy('exam_list')
 
     def test_func(self):
-        return self.request.user.profile.is_approved and self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user_is_staff(self.request.user)
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Exam deleted successfully.')

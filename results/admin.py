@@ -1,9 +1,52 @@
 from django.contrib import admin
-from .models import Score
-@admin.register(Score)
-class ScoreAdmin(admin.ModelAdmin):
-    list_display = ('student','exam','subject','score','_grade')
-    list_filter = ('exam','subject')
-    def _grade(self,obj):
-        return obj.grade()
-    _grade.short_description = 'Grade'
+from .models import (
+    GradeScale, ResultTemplate, StudentResult,
+    TermResult, Promotion
+)
+
+
+@admin.register(GradeScale)
+class GradeScaleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'grade', 'min_score', 'max_score', 'remark', 'grade_point')
+    list_filter = ('name',)
+    ordering = ('name', '-min_score')
+
+
+@admin.register(ResultTemplate)
+class ResultTemplateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'school_class', 'term', 'grade_scale', 'is_active')
+    list_filter = ('school_class', 'term', 'is_active')
+    search_fields = ('name', 'school_class__class_name')
+
+
+@admin.register(StudentResult)
+class StudentResultAdmin(admin.ModelAdmin):
+    list_display = (
+        'student', 'get_subject', 'term', 'test_score',
+        'exam_score', 'total_score', 'percentage', 'grade'
+    )
+    list_filter = ('term', 'class_subject__school_class', 'grade')
+    search_fields = ('student__admission_no', 'student__surname')
+    readonly_fields = ('total_score', 'percentage', 'grade', 'remark', 'grade_point')
+
+    def get_subject(self, obj):
+        return obj.class_subject.subject.name
+    get_subject.short_description = 'Subject'
+
+
+@admin.register(TermResult)
+class TermResultAdmin(admin.ModelAdmin):
+    list_display = (
+        'student', 'term', 'total_subjects', 'average_percentage',
+        'overall_grade', 'class_position'
+    )
+    list_filter = ('term', 'overall_grade', 'is_complete')
+    search_fields = ('student__admission_no', 'student__surname')
+    readonly_fields = ('total_score', 'average_percentage', 'overall_grade')
+
+
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    list_display = ('student', 'from_class', 'to_class', 'term', 'promoted_date')
+    list_filter = ('term', 'from_class', 'to_class')
+    search_fields = ('student__admission_no', 'student__surname')

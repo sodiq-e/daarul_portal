@@ -3,7 +3,27 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.utils.decorators import method_decorator
 from django.views.generic import ListView
+from django.contrib import messages
 from .models import SchoolClasses
+
+
+def user_profile_approved(user):
+    """Defensively check if user profile is approved"""
+    try:
+        return user.profile.is_approved
+    except AttributeError:
+        return False
+
+
+def user_is_staff(user):
+    """Defensively check if user is staff"""
+    try:
+        return (
+            user.profile.is_approved and
+            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        )
+    except AttributeError:
+        return False
 
 
 @method_decorator(login_required, name='dispatch')
@@ -13,21 +33,17 @@ class ClassListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     context_object_name = 'classes'
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = (
-            self.request.user.profile.is_approved and
-            self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        context['can_modify'] = user_is_staff(self.request.user)
         return context
 
 
 @login_required
 def add_class(request):
-    if not (request.user.profile.is_approved and request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()):
-        from django.contrib import messages
+    if not user_is_staff(request.user):
         messages.error(request, 'You do not have permission to add classes.')
         return redirect('class_list')
 

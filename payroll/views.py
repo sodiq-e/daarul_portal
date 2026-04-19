@@ -9,11 +9,25 @@ from .forms import SchoolExpenseForm, SchoolFeeForm, StudentInvoiceForm, Student
 
 
 def staff_can_manage(user):
-    return (
-        getattr(user, 'profile', None) is not None and
-        user.profile.is_approved and
-        user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-    )
+    """Check if user can manage payroll (approve staff access)"""
+    if not user or not user.is_authenticated:
+        return False
+    
+    try:
+        return (
+            getattr(user, 'profile', None) is not None and
+            user.profile.is_approved and
+            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        )
+    except AttributeError:
+        # Profile doesn't exist or other attribute error
+        return False
+    except Exception as e:
+        # Log unexpected errors but don't crash
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in staff_can_manage: {str(e)}")
+        return False
 
 
 class PayrollDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):

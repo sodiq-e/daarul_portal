@@ -9,12 +9,32 @@ from .models import Student, StudentApplication
 from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm
 
 
+def user_profile_approved(user):
+    """Defensively check if user profile is approved"""
+    try:
+        return user.profile.is_approved
+    except AttributeError:
+        return False
+
+
 def staff_can_edit(user):
-    return (
-        getattr(user, 'profile', None) is not None and
-        user.profile.is_approved and
-        user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-    )
+    """Check if user can edit student records"""
+    if not user or not user.is_authenticated:
+        return False
+    
+    try:
+        return (
+            getattr(user, 'profile', None) is not None and
+            user.profile.is_approved and
+            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        )
+    except AttributeError:
+        return False
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in staff_can_edit: {str(e)}")
+        return False
 
 
 class StudentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -24,7 +44,7 @@ class StudentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     paginate_by = 20
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -38,7 +58,7 @@ class StudentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     context_object_name = 'student'
 
     def test_func(self):
-        return self.request.user.profile.is_approved
+        return user_profile_approved(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
