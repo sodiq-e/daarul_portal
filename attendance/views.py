@@ -6,6 +6,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponseForbidden, JsonResponse
 from django.db.models import Count, Q
+from django.utils.decorators import method_decorator
 from .models import AttendanceRecord, AttendanceSession
 from .forms import AttendanceRecordForm
 from students.models import Student
@@ -216,9 +217,6 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
         except SchoolClasses.DoesNotExist:
             messages.error(request, 'Class not found.')
             return redirect('teacher_mark_attendance')
-
-
-from django.utils.decorators import method_decorator
 
 
 @method_decorator(login_required, name='dispatch')

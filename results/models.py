@@ -237,7 +237,7 @@ class Promotion(models.Model):
         on_delete=models.CASCADE,
         related_name='promotions_to'
     )
-     term = models.ForeignKey(Term, on_delete=models.CASCADE)
+    term = models.ForeignKey(Term, on_delete=models.CASCADE)
     promoted_date = models.DateField(auto_now_add=True)
     remarks = models.TextField(blank=True)
     promoted_by = models.ForeignKey(
