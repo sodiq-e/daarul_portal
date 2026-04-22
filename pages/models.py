@@ -72,3 +72,76 @@ class Page(models.Model):
         if not self.slug:
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
+
+
+class PageContent(models.Model):
+    """
+    Structured content entries for Pages.
+    Supports lesson notes, scheme of work, and other structured content.
+    
+    Each entry belongs to a Page and can be ordered for display.
+    Future-proof with extra_data JSONField for flexible extensions.
+    """
+    
+    page = models.ForeignKey(
+        Page,
+        on_delete=models.CASCADE,
+        related_name='contents',
+        help_text="The page this content belongs to"
+    )
+    
+    title = models.CharField(
+        max_length=255,
+        help_text="Title or heading for this content section"
+    )
+    
+    body = models.TextField(
+        help_text="Main content body (supports HTML in future)"
+    )
+    
+    image = models.ImageField(
+        upload_to='page_contents/',
+        null=True,
+        blank=True,
+        help_text="Optional image for this content section"
+    )
+    
+    extra_data = models.JSONField(
+        null=True,
+        blank=True,
+        default=dict,
+        help_text="Flexible JSON field for future extensions (e.g., lessons, objectives)"
+    )
+    
+    created_by = models.ForeignKey(
+        'auth.User',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='page_contents_created',
+        help_text="User who created this content"
+    )
+    
+    is_published = models.BooleanField(
+        default=True,
+        help_text="Only published content is visible to users"
+    )
+    
+    order = models.IntegerField(
+        default=0,
+        help_text="Display order (lower numbers appear first)"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['order', '-created_at']
+        verbose_name = "Page Content"
+        verbose_name_plural = "Page Contents"
+        indexes = [
+            models.Index(fields=['page', 'is_published', 'order']),
+        ]
+    
+    def __str__(self):
+        return f"{self.page.title} - {self.title}"

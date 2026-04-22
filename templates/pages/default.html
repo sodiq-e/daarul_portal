@@ -9,10 +9,40 @@
             <article class="page-content">
                 <h1>{{ page.title }}</h1>
                 
-                {% if page.content %}
-                <div class="page-body mt-4">
-                    {{ page.content|linebreaks }}
+                <!-- PageContent sections - if structured content exists -->
+                {% if contents %}
+                <div class="page-contents mt-4">
+                    {% for item in contents %}
+                    <section class="content-item mb-5">
+                        <h2 class="content-title">{{ item.title }}</h2>
+                        
+                        {% if item.image %}
+                        <div class="content-image mb-3">
+                            <img src="{{ item.image.url }}" alt="{{ item.title }}" class="img-fluid rounded">
+                        </div>
+                        {% endif %}
+                        
+                        <div class="content-body">
+                            {{ item.body|linebreaks }}
+                        </div>
+                        
+                        <!-- Future extensions can use extra_data here -->
+                        {% if item.extra_data %}
+                        <div class="content-meta mt-2 text-muted small">
+                            <!-- Custom rendering based on extra_data can be added here -->
+                        </div>
+                        {% endif %}
+                    </section>
+                    {% endfor %}
                 </div>
+                
+                <!-- Fallback to page.content if no structured contents -->
+                {% else %}
+                    {% if page.content %}
+                    <div class="page-body mt-4">
+                        {{ page.content|linebreaks }}
+                    </div>
+                    {% endif %}
                 {% endif %}
                 
                 <!-- Messages section - rendered if page_type is "messages" -->

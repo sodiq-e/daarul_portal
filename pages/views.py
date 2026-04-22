@@ -10,6 +10,7 @@ def page_view(request, slug):
     
     - Fetches only published pages
     - Dynamically handles different page types (normal, messages, news)
+    - Fetches related PageContent entries if they exist
     - Gracefully falls back if related models don't exist
     - Renders custom templates per page
     """
@@ -21,6 +22,12 @@ def page_view(request, slug):
     context = {
         'page': page,
     }
+    
+    # Fetch related PageContent entries
+    # These are automatically included via the 'contents' related_name
+    contents = page.contents.filter(is_published=True).order_by('order')
+    if contents.exists():
+        context['contents'] = contents
     
     # Handle dynamic page types with fallback logic
     if page.page_type == 'messages':
