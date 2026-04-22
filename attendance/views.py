@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
@@ -142,7 +143,7 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
         ).values_list('school_class_id', flat=True).distinct()
 
         context['classes'] = SchoolClasses.objects.filter(id__in=assigned_classes)
-        
+
         # Get class if specified
         class_id = self.request.GET.get('class_id')
         if class_id:
@@ -167,7 +168,7 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
 
         try:
             school_class = SchoolClasses.objects.get(id=class_id)
-            
+
             # Verify teacher is assigned
             if not ClassTeacher.objects.filter(teacher=teacher, school_class=school_class).exists():
                 messages.error(request, 'You are not assigned to this class.')
@@ -235,7 +236,7 @@ class TeacherAttendanceListView(LoginRequiredMixin, UserPassesTestMixin, ListVie
 
     def get_queryset(self):
         teacher = self.request.user.teacher_profile
-        
+
         # Get classes assigned to teacher
         assigned_classes = ClassTeacher.objects.filter(
             teacher=teacher,

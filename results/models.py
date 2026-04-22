@@ -226,20 +226,25 @@ class TermResult(models.Model):
 
 class Promotion(models.Model):
     """Student promotions between classes"""
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
+
     from_class = models.ForeignKey(
         SchoolClasses,
         on_delete=models.CASCADE,
         related_name='promotions_from'
     )
+
     to_class = models.ForeignKey(
         SchoolClasses,
         on_delete=models.CASCADE,
         related_name='promotions_to'
     )
+
     term = models.ForeignKey(Term, on_delete=models.CASCADE)
     promoted_date = models.DateField(auto_now_add=True)
     remarks = models.TextField(blank=True)
+
     promoted_by = models.ForeignKey(
         'auth.User',
         on_delete=models.SET_NULL,
@@ -249,7 +254,6 @@ class Promotion(models.Model):
 
     def __str__(self):
         return f"{self.student} promoted from {self.from_class} to {self.to_class}"
-
 
 class ReportCardComment(models.Model):
     """Teacher comments on student report cards"""
