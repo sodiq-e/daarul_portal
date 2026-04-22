@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Teacher Management{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Teacher Management</h2>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Teachers</h5>
+                            <p class="display-4">{{ teachers.paginator.count }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Pending Approval</h5>
+                            <p class="display-4 text-warning">{{ pending_count }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">Approved</h5>
+                            <p class="display-4 text-success">{{ approved_count }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'class_teacher_list' %}" class="btn btn-info w-100 h-100">
+                        <div>View Assignments</div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5>Teachers</h5>
+                    <div class="btn-group mt-2" role="group">
+                        <a href="{% url 'teacher_list' %}?status=all" class="btn btn-sm btn-outline-secondary {% if current_status == 'all' %}active{% endif %}">All</a>
+                        <a href="{% url 'teacher_list' %}?status=pending" class="btn btn-sm btn-outline-warning {% if current_status == 'pending' %}active{% endif %}">Pending</a>
+                        <a href="{% url 'teacher_list' %}?status=approved" class="btn btn-sm btn-outline-success {% if current_status == 'approved' %}active{% endif %}">Approved</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Employee ID</th>
+                                    <th>Qualification</th>
+                                    <th>Date Joined</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for teacher in teachers %}
+                                    <tr>
+                                        <td>{{ teacher.user.get_full_name }}</td>
+                                        <td>{{ teacher.employee_id }}</td>
+                                        <td>{{ teacher.qualification }}</td>
+                                        <td>{{ teacher.date_joined|date:"Y-m-d" }}</td>
+                                        <td>
+                                            {% if teacher.is_approved %}
+                                                <span class="badge bg-success">Approved</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'teacher_detail' teacher.id %}" class="btn btn-sm btn-info">View</a>
+                                            {% if not teacher.is_approved %}
+                                                <a href="{% url 'approve_teacher' teacher.id %}" class="btn btn-sm btn-success">Approve</a>
+                                                <a href="{% url 'reject_teacher' teacher.id %}" class="btn btn-sm btn-danger">Reject</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">No teachers found</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if is_paginated %}
+                        <nav>
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item"><a class="page-link" href="?page=1">First</a></li>
+                                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                                {% endif %}
+                                
+                                <li class="page-item active"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a></li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

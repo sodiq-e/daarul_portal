@@ -9,8 +9,9 @@ from exams.models import Term, ClassSubject
 from school_classes.models import SchoolClasses
 from .models import (
     StudentResult, TermResult, ResultTemplate,
-    GradeScale, Promotion
+    GradeScale, Promotion, ReportCardComment
 )
+
 
 
 def user_profile_approved(user):
@@ -321,39 +322,456 @@ def promote_student(request, student_id, exam_id):
     return redirect('results_home')
 
 
+
+
+# ==================== TEACHER RESULTS VIEWS ====================
+
+def teacher_has_permission(teacher, permission_code):
+    """Check if teacher has specific permission"""
+    from school_classes.models import TeacherPermission
+    try:
+        perm = TeacherPermission.objects.filter(
+            teacher=teacher,
+            permission=permission_code,
+            is_granted=True
+        ).exists()
+        return perm
+    except:
+        return False
+
+
 @login_required
-def broadsheet(request, exam_id):
-    if not request.user.is_staff:
+def teacher_results_list(request):
+    """Teachers view results for their classes"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
-    exam = get_object_or_404(Exam, pk=exam_id)
-    students = Student.objects.filter(status='active').order_by('surname', 'other_names')
-    subjects = Subject.objects.filter(exam__id=exam_id).distinct()
-    scores_data = {}
-    totals = {}
-    averages = {}
+
+    if not teacher_has_permission(teacher, 'view_results'):
+        messages.error(request, 'You do not have permission to view results.')
+        return redirect('home')
+
+    # Get classes assigned to this teacher
+    from school_classes.models import ClassTeacher
+    assigned_classes = ClassTeacher.objects.filter(
+        teacher=teacher,
+        is_active=True
+    ).values_list('school_class_id', flat=True).distinct()
+
+    # Get terms
+    terms = Term.objects.filter(is_active=True)
+
+    context = {
+        'assigned_classes': SchoolClasses.objects.filter(id__in=assigned_classes),
+        'terms': terms,
+    }
+
+    return render(request, 'teachers/results/teacher_results_list.html', context)
+
+
+@login_required
+def teacher_class_results(request, class_id, term_id):
+    """Teachers view results for a specific class"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not teacher_has_permission(teacher, 'view_results'):
+        messages.error(request, 'You do not have permission to view results.')
+        return redirect('home')
+
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Verify teacher is assigned to this class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(teacher=teacher, school_class=school_class).exists():
+        messages.error(request, 'You are not assigned to this class.')
+        return redirect('teacher_results_list')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=school_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, f'No result template found for {school_class} - {term}')
+        return redirect('teacher_results_list')
+
+    # Get students in class
+    students = Student.objects.filter(
+        student_class=school_class,
+        status='active'
+    ).order_by('surname', 'other_names')
+
+    # Get results for each student
+    student_results = []
     for student in students:
-        scores_data[student.id] = {}
-        total = 0
-        count = 0
-        for subject in subjects:
-            score = Score.objects.filter(student=student, exam=exam, subject=subject).first()
-            scores_data[student.id][subject.id] = score.score if score else '-'
-            if score:
-                total += float(score.score)
-                count += 1
-        totals[student.id] = total
-        averages[student.id] = total / count if count else 0
-    # Sort students by total descending for positions
-    sorted_students = sorted(students, key=lambda s: totals.get(s.id, 0), reverse=True)
-    positions = {}
-    for i, student in enumerate(sorted_students, 1):
-        positions[student.id] = i
-    return render(request, 'results/broadsheet.html', {
-        'exam': exam,
-        'students': students,
-        'subjects': subjects,
-        'scores_data': scores_data,
-        'totals': totals,
-        'averages': averages,
-        'positions': positions
-    })
+        results = StudentResult.objects.filter(
+            student=student,
+            term=term,
+            result_template=result_template
+        ).select_related('class_subject__subject')
+
+        term_result, created = TermResult.objects.get_or_create(
+            student=student,
+            term=term,
+            result_template=result_template,
+            defaults={'is_complete': False}
+        )
+
+        if results.exists() and not term_result.is_complete:
+            term_result.calculate_aggregates()
+
+        student_results.append({
+            'student': student,
+            'results': results,
+            'term_result': term_result,
+        })
+
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'result_template': result_template,
+        'student_results': student_results,
+        'can_edit': teacher_has_permission(teacher, 'edit_results'),
+        'can_print': teacher_has_permission(teacher, 'print_results'),
+    }
+
+    return render(request, 'teachers/results/teacher_class_results.html', context)
+
+
+@login_required
+def teacher_edit_student_result(request, result_id):
+    """Teachers edit student result scores"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not teacher_has_permission(teacher, 'edit_results'):
+        messages.error(request, 'You do not have permission to edit results.')
+        return redirect('home')
+
+    result = get_object_or_404(StudentResult, pk=result_id)
+
+    # Verify teacher is assigned to this class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(
+        teacher=teacher,
+        school_class=result.class_subject.school_class
+    ).exists():
+        messages.error(request, 'You are not authorized to edit this result.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        test_score = request.POST.get('test_score')
+        exam_score = request.POST.get('exam_score')
+
+        if test_score:
+            result.test_score = float(test_score)
+        if exam_score:
+            result.exam_score = float(exam_score)
+
+        result.entered_by = request.user
+        result.save()
+
+        messages.success(request, 'Result updated successfully.')
+        return redirect('teacher_class_results', class_id=result.class_subject.school_class.id, term_id=result.term.id)
+
+    context = {'result': result}
+    return render(request, 'teachers/results/edit_student_result.html', context)
+
+
+@login_required
+def teacher_print_results(request, student_id, term_id):
+    """Print student results (printable format)"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not teacher_has_permission(teacher, 'print_results'):
+        messages.error(request, 'You do not have permission to print results.')
+        return redirect('home')
+
+    student = get_object_or_404(Student, pk=student_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Verify teacher is assigned to student's class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(teacher=teacher, school_class=student.student_class).exists():
+        messages.error(request, 'You are not authorized to print this result.')
+        return redirect('home')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=student.student_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, 'No results available for this term.')
+        return redirect('home')
+
+    results = StudentResult.objects.filter(
+        student=student,
+        term=term,
+        result_template=result_template
+    ).select_related('class_subject__subject').order_by('class_subject__order')
+
+    term_result, created = TermResult.objects.get_or_create(
+        student=student,
+        term=term,
+        result_template=result_template,
+        defaults={'is_complete': False}
+    )
+
+    if results.exists() and not term_result.is_complete:
+        term_result.calculate_aggregates()
+
+    context = {
+        'student': student,
+        'term': term,
+        'result_template': result_template,
+        'results': results,
+        'term_result': term_result,
+    }
+
+    return render(request, 'teachers/results/print_results.html', context)
+
+
+@login_required
+def teacher_print_broadsheet(request, class_id, term_id):
+    """Print class broadsheet"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not teacher_has_permission(teacher, 'print_broadsheet'):
+        messages.error(request, 'You do not have permission to print broadsheet.')
+        return redirect('home')
+
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Verify teacher is assigned to this class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(teacher=teacher, school_class=school_class).exists():
+        messages.error(request, 'You are not assigned to this class.')
+        return redirect('home')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=school_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, f'No result template found for {school_class} - {term}')
+        return redirect('home')
+
+    # Get all subjects
+    class_subjects = ClassSubject.objects.filter(
+        school_class=school_class
+    ).select_related('subject').order_by('order')
+
+    # Get all students
+    students = Student.objects.filter(
+        student_class=school_class,
+        status='active'
+    ).order_by('surname', 'other_names')
+
+    # Build broadsheet data
+    broadsheet_data = []
+    for student in students:
+        student_data = {
+            'student': student,
+            'subject_scores': {},
+            'term_result': None,
+        }
+
+        for class_subject in class_subjects:
+            try:
+                result = StudentResult.objects.get(
+                    student=student,
+                    class_subject=class_subject,
+                    term=term,
+                    result_template=result_template
+                )
+                student_data['subject_scores'][class_subject.subject.name] = {
+                    'test_score': result.test_score,
+                    'exam_score': result.exam_score,
+                    'total_score': result.total_score,
+                    'grade': result.grade,
+                }
+            except StudentResult.DoesNotExist:
+                student_data['subject_scores'][class_subject.subject.name] = None
+
+        try:
+            term_result = TermResult.objects.get(
+                student=student,
+                term=term,
+                result_template=result_template
+            )
+            if not term_result.is_complete:
+                term_result.calculate_aggregates()
+            student_data['term_result'] = term_result
+        except TermResult.DoesNotExist:
+            pass
+
+        broadsheet_data.append(student_data)
+
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'result_template': result_template,
+        'class_subjects': class_subjects,
+        'broadsheet_data': broadsheet_data,
+    }
+
+    return render(request, 'teachers/results/print_broadsheet.html', context)
+
+
+# ==================== TEACHER: REPORT CARD COMMENTS ====================
+
+@login_required
+def teacher_edit_report_card(request, student_id, term_id):
+    """Teachers edit/add comments to student report cards"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not teacher_has_permission(teacher, 'edit_results'):
+        messages.error(request, 'You do not have permission to edit report cards.')
+        return redirect('home')
+
+    student = get_object_or_404(Student, pk=student_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Verify teacher is assigned to student's class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(teacher=teacher, school_class=student.student_class).exists():
+        messages.error(request, 'You are not authorized to edit this report card.')
+        return redirect('home')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=student.student_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, 'No results available for this term.')
+        return redirect('home')
+
+    # Get or create term result
+    term_result, created = TermResult.objects.get_or_create(
+        student=student,
+        term=term,
+        result_template=result_template,
+        defaults={'is_complete': False}
+    )
+
+    # Get existing comment or create new form
+    report_comment = ReportCardComment.objects.filter(
+        term_result=term_result,
+        teacher=teacher
+    ).first()
+
+    from .forms import ReportCardCommentForm
+
+    if request.method == 'POST':
+        form = ReportCardCommentForm(request.POST, instance=report_comment)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.term_result = term_result
+            comment.teacher = teacher
+            comment.created_by = request.user
+            comment.save()
+            messages.success(request, 'Report card comment saved successfully.')
+            return redirect('teacher_class_results', class_id=student.student_class.id, term_id=term.id)
+    else:
+        form = ReportCardCommentForm(instance=report_comment)
+
+    # Get student results for display
+    results = StudentResult.objects.filter(
+        student=student,
+        term=term,
+        result_template=result_template
+    ).select_related('class_subject__subject').order_by('class_subject__order')
+
+    context = {
+        'student': student,
+        'term': term,
+        'term_result': term_result,
+        'results': results,
+        'form': form,
+        'comment': report_comment
+    }
+
+    return render(request, 'teachers/results/edit_report_card.html', context)
+
+
+@login_required
+def teacher_view_report_card_comments(request, student_id, term_id):
+    """Teachers view all comments on a student's report card"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    student = get_object_or_404(Student, pk=student_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Verify teacher is assigned to student's class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(teacher=teacher, school_class=student.student_class).exists():
+        messages.error(request, 'You are not authorized to view this report card.')
+        return redirect('home')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=student.student_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, 'No results available for this term.')
+        return redirect('home')
+
+    # Get term result and comments
+    term_result, created = TermResult.objects.get_or_create(
+        student=student,
+        term=term,
+        result_template=result_template,
+        defaults={'is_complete': False}
+    )
+
+    comments = ReportCardComment.objects.filter(term_result=term_result)
+
+    context = {
+        'student': student,
+        'term': term,
+        'term_result': term_result,
+        'comments': comments,
+    }
+
+    return render(request, 'teachers/results/report_card_comments.html', context)

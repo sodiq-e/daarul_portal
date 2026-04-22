@@ -1,6 +1,6 @@
 from django import forms
 from .models import (
-    GradeScale, ResultTemplate, StudentResult
+    GradeScale, ResultTemplate, StudentResult, ReportCardComment
 )
 from exams.models import Term
 from school_classes.models import SchoolClasses
@@ -85,3 +85,20 @@ class AdmissionLookupForm(forms.Form):
         label="Admission Number",
         widget=forms.TextInput(attrs={'placeholder': 'Enter your admission number'})
     )
+
+
+class ReportCardCommentForm(forms.ModelForm):
+    """Form for teachers to add comments to report cards"""
+    class Meta:
+        model = ReportCardComment
+        fields = ['comment']
+        widgets = {
+            'comment': forms.Textarea(attrs={
+                'rows': 4,
+                'placeholder': 'Add your comment about the student\'s performance and conduct',
+                'class': 'form-control'
+            })
+        }
+        labels = {
+            'comment': 'Report Card Comment'
+        }

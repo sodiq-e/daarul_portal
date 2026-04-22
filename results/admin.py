@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     GradeScale, ResultTemplate, StudentResult,
-    TermResult, Promotion
+    TermResult, Promotion, ReportCardComment
 )
 
 
@@ -50,3 +50,12 @@ class PromotionAdmin(admin.ModelAdmin):
     list_display = ('student', 'from_class', 'to_class', 'term', 'promoted_date')
     list_filter = ('term', 'from_class', 'to_class')
     search_fields = ('student__admission_no', 'student__surname')
+
+
+@admin.register(ReportCardComment)
+class ReportCardCommentAdmin(admin.ModelAdmin):
+    list_display = ('term_result', 'teacher', 'created_by', 'created_at')
+    list_filter = ('created_at', 'created_by')
+    search_fields = ('term_result__student__admission_no', 'comment')
+    readonly_fields = ('created_at', 'updated_at')
+

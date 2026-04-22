@@ -237,7 +237,7 @@ class Promotion(models.Model):
         on_delete=models.CASCADE,
         related_name='promotions_to'
     )
-    term = models.ForeignKey(Term, on_delete=models.CASCADE)
+     term = models.ForeignKey(Term, on_delete=models.CASCADE)
     promoted_date = models.DateField(auto_now_add=True)
     remarks = models.TextField(blank=True)
     promoted_by = models.ForeignKey(
@@ -249,3 +249,36 @@ class Promotion(models.Model):
 
     def __str__(self):
         return f"{self.student} promoted from {self.from_class} to {self.to_class}"
+
+
+class ReportCardComment(models.Model):
+    """Teacher comments on student report cards"""
+    term_result = models.ForeignKey(
+        TermResult,
+        on_delete=models.CASCADE,
+        related_name='teacher_comments'
+    )
+    teacher = models.ForeignKey(
+        'school_classes.Teacher',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='report_card_comments'
+    )
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_report_comments'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment for {self.term_result.student} by {self.created_by}"
+

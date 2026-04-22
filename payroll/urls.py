@@ -13,4 +13,10 @@ urlpatterns = [
     path('payments/add/', views.StudentPaymentCreateView.as_view(), name='payment_add'),
     path('payments/<int:pk>/', views.StudentPaymentDetailView.as_view(), name='payment_detail'),
     path('payments/', views.StudentPaymentListView.as_view(), name='payment_list'),
+    
+    # Teacher Payroll Views
+    path('teacher/payroll/', views.TeacherPayrollView.as_view(), name='teacher_payroll'),
+    path('teacher/dashboard/', views.TeacherPayrollDashboardView.as_view(), name='teacher_payroll_dashboard'),
+    path('teacher/payslip/<int:pk>/', views.TeacherPayslipDetailView.as_view(), name='teacher_payslip_detail'),
+    path('teacher/payslip/<int:pk>/print/', views.teacher_print_payslip, name='teacher_print_payslip'),
 ]
