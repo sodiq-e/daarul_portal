@@ -17,8 +17,13 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
             'fields': ('school_name', 'motto', 'logo')
         }),
         ('Homepage Content', {
-            'fields': ('homepage_welcome_text', 'homepage_video_description'),
-            'description': 'Editable text content for the homepage.'
+    'fields': (
+        'homepage_welcome_text',
+        'homepage_video_description',
+        'homepage_video',          # ✅ ADD THIS
+        'homepage_video_url'       # ✅ (optional but recommended)
+    ),
+    'description': 'Editable text content for the homepage.'
         }),
         ('Default Theme Colors', {
             'fields': (
@@ -31,13 +36,13 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
             'description': 'These are the default colors used across all pages. Each page can have its own custom theme.'
         }),
     )
-    
+
     inlines = [GalleryImageInline]
-    
+
     def has_add_permission(self, request):
         # Limit to only one school settings object
         return not SchoolSettings.objects.exists()
-    
+
     class Media:
         css = {
             'all': ('admin-colorpicker.css',)
@@ -50,7 +55,7 @@ class PageThemeAdmin(admin.ModelAdmin):
     list_filter = ('is_enabled', 'page_name')
     list_editable = ('is_enabled',)
     search_fields = ('page_name', 'page_display_name')
-    
+
     fieldsets = (
         ('Page Selection', {
             'fields': ('page_name', 'page_display_name', 'url_pattern', 'is_enabled'),
@@ -67,16 +72,16 @@ class PageThemeAdmin(admin.ModelAdmin):
             'description': 'Customize colors for this page only'
         }),
     )
-    
+
     def page_display_name_or_name(self, obj):
         return obj.page_display_name or f"{obj.page_name.title()}"
     page_display_name_or_name.short_description = 'Page'
-    
+
     def primary_color_preview(self, obj):
         return f'<div style="width: 30px; height: 30px; background-color: {obj.primary_color}; border: 1px solid #ccc;"></div>'
     primary_color_preview.short_description = 'Color Preview'
     primary_color_preview.allow_tags = True
-    
+
     class Media:
         css = {
             'all': ('admin-colorpicker.css',)
@@ -90,7 +95,7 @@ class GalleryImageAdmin(admin.ModelAdmin):
     list_editable = ('order',)
     search_fields = ('title', 'description')
     ordering = ('order', '-created_at')
-    
+
     fieldsets = (
         ('Image Information', {
             'fields': ('school_settings', 'image', 'title', 'description')
@@ -100,11 +105,11 @@ class GalleryImageAdmin(admin.ModelAdmin):
             'description': 'Set the order to control where this image appears in the gallery'
         }),
     )
-    
+
     def title_or_date(self, obj):
         return obj.title or f"Gallery Image - {obj.created_at.strftime('%Y-%m-%d')}"
     title_or_date.short_description = 'Title'
-    
+
     def image_preview(self, obj):
         if obj.image:
             return f'<img src="{obj.image.url}" width="50" height="50" />'

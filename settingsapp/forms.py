@@ -2,42 +2,15 @@ from django import forms
 from .models import SchoolSettings, PageTheme, GalleryImage
 
 class SchoolSettingsForm(forms.ModelForm):
-    primary_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    secondary_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    accent_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    background_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    text_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    heading_text_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    icon_plate_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    header_heading_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    icon_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
+    primary_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    secondary_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    accent_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    background_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    text_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    heading_text_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    icon_plate_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    header_heading_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    icon_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
 
     class Meta:
         model = SchoolSettings
@@ -53,47 +26,24 @@ class SchoolSettingsForm(forms.ModelForm):
             'heading_text_color',
             'icon_plate_color',
             'header_heading_color',
-            'icon_color'
+            'icon_color',
+            'homepage_video',
+            'homepage_video_url',
+            'homepage_video_description',
+
         ]
 
 
 class PageThemeForm(forms.ModelForm):
-    primary_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    secondary_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    accent_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    background_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    text_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    heading_text_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    icon_plate_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    header_heading_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
-    icon_color = forms.CharField(
-        widget=forms.TextInput(attrs={'type': 'color'}),
-        required=True
-    )
+    primary_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    secondary_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    accent_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    background_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    text_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    heading_text_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    icon_plate_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    header_heading_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
+    icon_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=True)
 
     class Meta:
         model = PageTheme
@@ -120,23 +70,26 @@ class PageThemeForm(forms.ModelForm):
 
 
 class GalleryImageForm(forms.ModelForm):
-    """Form for uploading individual gallery images"""
-    
+
     class Meta:
         model = GalleryImage
-        fields = ['image', 'title', 'description', 'order']
+        fields = ['image', 'video', 'title', 'description', 'order']
         widgets = {
             'image': forms.FileInput(attrs={
                 'class': 'gallery-image-input',
                 'accept': 'image/*'
             }),
+            'video': forms.FileInput(attrs={
+                'class': 'gallery-video-input',
+                'accept': 'video/*'
+            }),
             'title': forms.TextInput(attrs={
-                'placeholder': 'Image title (optional)',
+                'placeholder': 'Title (optional)',
                 'class': 'form-control'
             }),
             'description': forms.Textarea(attrs={
                 'rows': 3,
-                'placeholder': 'Image description (optional)',
+                'placeholder': 'Description (optional)',
                 'class': 'form-control'
             }),
             'order': forms.NumberInput(attrs={
@@ -146,4 +99,10 @@ class GalleryImageForm(forms.ModelForm):
         }
 
 
-GalleryImageFormSet = forms.modelformset_factory(GalleryImage, form=GalleryImageForm, extra=3, can_delete=True)
+
+GalleryImageFormSet = forms.modelformset_factory(
+    GalleryImage,
+    form=GalleryImageForm,
+    extra=3,
+    can_delete=True
+)

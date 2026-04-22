@@ -88,14 +88,23 @@ class SchoolSettings(models.Model):
         blank=True,
         help_text="Description text for the video placeholder on homepage"
     )
+    homepage_video = models.FileField(
+        upload_to='videos/',
+        blank=True,
+        null=True
+    )
 
+    homepage_video_url = models.URLField(
+        blank=True,
+        null=True
+    )
     def __str__(self):
         return self.school_name or "School Settings"
 
 
 class PageTheme(models.Model):
     """Define custom theme for specific pages/routes"""
-    
+
     # Predefined common pages
     PREDEFINED_PAGES = [
         ('home', 'Home Page'),
@@ -108,30 +117,30 @@ class PageTheme(models.Model):
         ('psychomotor', 'Psychomotor Page'),
         ('payroll', 'Payroll Page'),
     ]
-    
+
     page_name = models.CharField(
         max_length=50,
         unique=True,
         help_text="Enter page name (e.g., 'home', 'classes', 'announcements'). Use lowercase with underscores for spaces."
     )
-    
+
     page_display_name = models.CharField(
         max_length=100,
         blank=True,
         help_text="Display name for this page (optional, e.g., 'Home Page', 'Custom Reports')"
     )
-    
+
     url_pattern = models.CharField(
         max_length=100,
         blank=True,
         help_text="URL path to match (e.g., '/classes/', '/announcements/'). Leave blank for automatic detection."
     )
-    
+
     is_enabled = models.BooleanField(
         default=True,
         help_text="Enable or disable this page theme"
     )
-    
+
     # Theme colors
     primary_color = models.CharField(
         max_length=7,
@@ -186,14 +195,14 @@ class PageTheme(models.Model):
         default="#4b2e83",
         help_text="Icon/emoji color (hex format)"
     )
-    
+
     class Meta:
         ordering = ['page_name']
         verbose_name_plural = "Page Themes"
-    
+
     def __str__(self):
         return self.page_display_name or f"{self.page_name.title()} Theme"
-    
+
     @classmethod
     def get_predefined_pages(cls):
         """Get list of predefined pages"""
@@ -202,40 +211,53 @@ class PageTheme(models.Model):
 
 class GalleryImage(models.Model):
     """Gallery images for the school portal"""
-    
+
     school_settings = models.ForeignKey(
         SchoolSettings,
         on_delete=models.CASCADE,
         related_name='gallery_images'
     )
-    
+
     image = models.ImageField(
-        upload_to='gallery/',
-        help_text="Upload gallery image"
+    upload_to='gallery/images/',
+    blank=True,
+    null=True,
+    help_text="Upload image (optional)"
     )
-    
+
+    video = models.FileField(
+    upload_to='gallery/videos/',
+    blank=True,
+    null=True,
+    help_text="Upload video (optional)"
+    )
+    homepage_video_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="Paste YouTube embed link (https://www.youtube.com/embed/...)"
+    )
     title = models.CharField(
         max_length=200,
         blank=True,
         help_text="Image title or caption (optional)"
     )
-    
+
     description = models.TextField(
         blank=True,
         help_text="Image description (optional)"
     )
-    
+
     order = models.PositiveIntegerField(
         default=0,
         help_text="Display order in gallery"
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['order', 'created_at']
         verbose_name_plural = "Gallery Images"
-    
+
     def __str__(self):
         return self.title or f"Gallery Image - {self.created_at.strftime('%Y-%m-%d')}"

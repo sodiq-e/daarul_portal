@@ -16,20 +16,36 @@
     </div>
   </div>
   <div class="hero-media">
-    <div class="video-card">
-      <div class="video-label">Portal Demo</div>
-      <div class="video-placeholder">
-        <!-- Replace this placeholder with your actual video embed code -->
-        <!-- Example for YouTube: <iframe width="560" height="315" src="https://www.youtube.com/embed/YOUR_VIDEO_ID" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe> -->
-        <!-- Example for local video: <video width="560" height="315" controls><source src="/media/videos/school_intro.mp4" type="video/mp4"></video> -->
-        <div class="video-icon">▶</div>
-        <div>
-          <strong>Video demo area</strong>
-          <p>{{ school_settings.homepage_video_description|default:"Replace this placeholder with your school introduction video. Edit the template at templates/home.html to add your video embed code." }}</p>
-        </div>
-      </div>
+  <div class="video-card">
+    <div class="video-label">Portal Demo</div>
+
+  <div class="video-placeholder">
+
+  {% if school_settings.homepage_video %}
+    <video width="100%" height="315" controls style="border-radius:10px;">
+      <source src="{{ school_settings.homepage_video.url }}" type="video/mp4">
+      Your browser does not support video.
+    </video>
+
+  {% elif school_settings.homepage_video_url %}
+    <iframe width="100%" height="315"
+      src="{{ school_settings.homepage_video_url }}"
+      frameborder="0"
+      allowfullscreen
+      style="border-radius:10px;">
+    </iframe>
+
+  {% else %}
+    <div class="video-icon">▶</div>
+    <div>
+      <strong>No video uploaded</strong>
+      <p>Upload a video from admin panel</p>
     </div>
-  </div>
+  {% endif %}
+
+</div>
+
+</div>
 </section>
 
 {% else %}
@@ -123,27 +139,34 @@
 
 <section class="portal-overview">
   <h2>What You Can Do on This Portal</h2>
+
   <div class="overview-grid">
-    <div class="overview-card">
+
+    <a href="/results/" class="overview-card">
       <h3>Access academic records</h3>
       <p>View your results, grades, and progress reports from one secure location.</p>
-    </div>
-    <div class="overview-card">
+    </a>
+
+    <a href="{% url 'class_list' %}" class="overview-card">
       <h3>View class schedules</h3>
       <p>Check timetables, subject details, and classroom assignments at a glance.</p>
-    </div>
-    <div class="overview-card">
+    </a>
+
+    <a href="{% url 'student_list' %}" class="overview-card">
       <h3>Receive school updates</h3>
       <p>Stay informed with announcements, news, and important school events.</p>
-    </div>
-    <div class="overview-card">
-      <h3>Communicate easily</h3>
-      <p>Message teachers and school management through the portal's secure channels.</p>
-    </div>
-    <div class="overview-card">
+    </a>
+
+   <a href="{% url 'contact' %}" class="overview-card">
+        <h3>Communicate easily</h3>
+        <p>Message teachers and school management through the portal's secure channels.</p>
+    </a>
+
+    <a href="{% url 'profile' %}" class="overview-card">
       <h3>Manage your profile</h3>
       <p>Update your account information and keep your profile current.</p>
-    </div>
+    </a>
+
   </div>
 </section>
 
@@ -186,9 +209,14 @@
     {% if gallery_images %}
       {% for image in gallery_images %}
         <div class="slide {% if forloop.first %}active{% endif %}">
-          {% if image.image %}
-            <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:100%; height:auto; border-radius:10px; margin-bottom:15px;">
-          {% endif %}
+          {% if image.video %}
+  <video width="100%" height="250" controls style="border-radius:10px; margin-bottom:15px;">
+    <source src="{{ image.video.url }}" type="video/mp4">
+  </video>
+
+{% elif image.image %}
+  <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:100%; height:auto; border-radius:10px; margin-bottom:15px;">
+{% endif %}
           <h3>{{ image.title }}</h3>
           <p>{{ image.description }}</p>
         </div>
@@ -485,6 +513,34 @@
 }
 </style>
 
+.overview-card {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.slider {
+  position: relative;
+  z-index: 1;
+}
+
+.slide {
+  position: relative;
+}
+
+.welcome-authenticated {
+  position: relative;
+  z-index: 10;
+}
+
+.navigation-grid {
+  position: relative;
+  z-index: 10;
+}
+
+.nav-card {
+  position: relative;
+  z-index: 10;
+}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var slides = document.querySelectorAll('#gallerySlider .slide');
@@ -494,6 +550,13 @@
 
     function showSlide(index) {
       slides[current].classList.remove('active');
+
+      // pause any playing video before leaving slide
+      var currentVideo = slides[current].querySelector('video');
+      if (currentVideo) {
+        currentVideo.pause();
+      }
+
       current = (index + slides.length) % slides.length;
       slides[current].classList.add('active');
     }
@@ -501,12 +564,18 @@
     nextButton.addEventListener('click', function () {
       showSlide(current + 1);
     });
+
     prevButton.addEventListener('click', function () {
       showSlide(current - 1);
     });
 
     setInterval(function () {
-      showSlide(current + 1);
+      var activeVideo = slides[current].querySelector('video');
+
+      // only slide if no video is playing
+      if (!activeVideo || activeVideo.paused) {
+        showSlide(current + 1);
+      }
     }, 7000);
   });
 </script>

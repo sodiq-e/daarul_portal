@@ -28,7 +28,7 @@ def user_profile(request):
                     messages.error(request, f'{field}: {error}')
     else:
         form = UserProfileForm(instance=request.user)
-    
+
     return render(request, 'accounts/profile.html', {'form': form})
 
 
@@ -37,7 +37,7 @@ def student_signup(request):
     """Student sign up view"""
     if request.user.is_authenticated:
         return redirect('home')
-    
+
     if request.method == 'POST':
         form = StudentSignUpForm(request.POST)
         if form.is_valid():
@@ -53,7 +53,7 @@ def student_signup(request):
                     messages.error(request, f'{field}: {error}')
     else:
         form = StudentSignUpForm()
-    
+
     return render(request, 'accounts/signup.html', {'form': form})
 
 

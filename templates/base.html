@@ -66,9 +66,22 @@
             {% endif %}
           </a>
           <span style="font-size: 14px;">Welcome, <strong>{{ user.first_name|default:user.username }}</strong></span>
-          <a href="{% url 'logout' %}" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: 0.3s;">
-            Logout
-          </a>
+        <form method="post" action="{% url 'logout' %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" style="
+        background: rgba(255,255,255,0.2);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        transition: 0.3s;
+        border: none;
+        cursor: pointer;
+    ">
+        Logout
+    </button>
+</form>
         </div>
       {% else %}
         <div style="position: absolute; right: 0; display: flex; align-items: center; gap: 15px;">
