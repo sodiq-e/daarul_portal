@@ -14,6 +14,20 @@
         </div>
     </div>
 
+    <!-- Dynamic Page Navigation for Results -->
+    {% if navigation_pages_by_prefix.results %}
+    <section class="page-navigation">
+        <h5>📊 Related Pages ({{ navigation_pages_by_prefix.results|length }})</h5>
+        <div class="nav-links">
+            {% for page in navigation_pages_by_prefix.results %}
+            <a href="{% url 'pages:page_detail' page.slug %}" class="nav-link">
+                {{ page.title }}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
     {% if result_items %}
     <div class="row g-3">
         {% for item in result_items %}

@@ -61,6 +61,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'settingsapp.context_processors.school_settings',
                 'settingsapp.context_processors.announcements_context',
+                'pages.context_processors.navigation_pages',
             ],
         },
     },

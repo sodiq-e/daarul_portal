@@ -3,12 +3,35 @@
 {% block title %}School Classes{% endblock %}
 
 {% block content %}
-<div class="mt-4">
+<div class="container mt-4">
     <h1>School Classes</h1>
-    {% for c in classes %}
-        <p>{{ c.class_name }} - {{ c.level }} - {{ c.description }}</p>
-    {% empty %}
-        <p>No classes yet.</p>
-    {% endfor %}
+
+    <!-- Dynamic Page Navigation for Classes -->
+    {% if navigation_pages_by_prefix.classes %}
+    <section class="page-navigation">
+        <h5>📖 Related Pages ({{ navigation_pages_by_prefix.classes|length }})</h5>
+        <div class="nav-links">
+            {% for page in navigation_pages_by_prefix.classes %}
+            <a href="{% url 'pages:page_detail' page.slug %}" class="nav-link">
+                {{ page.title }}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <div class="mt-4">
+        {% for c in classes %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ c.class_name }}</h5>
+                    <p class="card-text"><strong>Level:</strong> {{ c.level }}</p>
+                    <p class="card-text">{{ c.description }}</p>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">No classes yet.</div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}
