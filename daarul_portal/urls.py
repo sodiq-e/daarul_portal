@@ -5,10 +5,19 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from accounts.views import CustomLoginView
+from pages.models import Page
 
 
 def home(request):
-    return render(request, 'home.html')
+    pages = Page.objects.filter(
+        is_published=True,
+        show_on_homepage=True
+    )
+    print("PAGES:", pages)
+
+    return render(request, 'home.html', {
+        'pages': pages
+    })
 
 
 urlpatterns = [
@@ -28,6 +37,7 @@ urlpatterns = [
     path('attendance/', include('attendance.urls')),
     path('announcements/', include('announcements.urls')),
     path('payroll/', include('payroll.urls')),
+    path('<str:prefix>/page/<slug:slug>/', include('pages.urls')),
     path('', include('pages.urls')),
 ]
 

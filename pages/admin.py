@@ -9,7 +9,7 @@ class PageContentInline(admin.TabularInline):
     fields = ('title', 'order', 'is_published', 'created_by')
     readonly_fields = ('created_by',)
     extra = 1
-    
+
     def save_model(self, request, obj, form, change):
         """Auto-set created_by to current user"""
         if not obj.created_by:
@@ -20,16 +20,16 @@ class PageContentInline(admin.TabularInline):
 @admin.register(Page)
 class PageAdmin(admin.ModelAdmin):
     """Admin interface for dynamic pages"""
-    
+
     list_display = ('title', 'slug', 'page_type', 'is_published', 'created_at')
     list_filter = ('is_published', 'page_type', 'created_at')
     search_fields = ('title', 'slug', 'content')
     readonly_fields = ('created_at', 'updated_at', 'slug')
     inlines = [PageContentInline]
-    
+
     fieldsets = (
         ('Page Information', {
-            'fields': ('title', 'slug', 'page_type', 'is_published')
+            'fields': ('title', 'slug', 'url_prefix', 'page_type', 'is_published', 'show_in_navigation',)
         }),
         ('Content', {
             'fields': ('content', 'template')
@@ -44,7 +44,7 @@ class PageAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def save_model(self, request, obj, form, change):
         """Auto-generate slug if empty"""
         if not obj.slug:
@@ -55,12 +55,12 @@ class PageAdmin(admin.ModelAdmin):
 @admin.register(PageContent)
 class PageContentAdmin(admin.ModelAdmin):
     """Admin interface for page contents"""
-    
+
     list_display = ('title', 'page', 'order', 'is_published', 'created_by', 'created_at')
     list_filter = ('page', 'is_published', 'created_at')
     search_fields = ('title', 'body', 'page__title')
     readonly_fields = ('created_at', 'updated_at', 'created_by')
-    
+
     fieldsets = (
         ('Content Information', {
             'fields': ('page', 'title', 'order', 'is_published')
@@ -82,8 +82,9 @@ class PageContentAdmin(admin.ModelAdmin):
             'fields': ('created_by', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
+
     )
-    
+
     def save_model(self, request, obj, form, change):
         """Auto-set created_by to current user on creation"""
         if not obj.created_by:
