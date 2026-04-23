@@ -37,7 +37,6 @@ urlpatterns = [
     path('attendance/', include('attendance.urls')),
     path('announcements/', include('announcements.urls')),
     path('payroll/', include('payroll.urls')),
-    path('<str:prefix>/page/<slug:slug>/', include('pages.urls')),
     path('', include('pages.urls')),
 ]
 
