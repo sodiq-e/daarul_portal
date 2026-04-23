@@ -3,7 +3,7 @@
 {% block title %}{{ page.title }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4 theme-{{ page.theme|default:'default' }}">
     <div class="row">
         <div class="col-lg-8 offset-lg-2">
             <article class="page-content">

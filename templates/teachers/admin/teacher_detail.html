@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ teacher.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">{{ teacher.user.get_full_name }}</h3>
+                        <a href="{% url 'teacher_list' %}" class="btn btn-sm btn-light">Back to Teachers</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-muted">Full Name</h5>
+                            <p>{{ teacher.user.get_full_name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-muted">Email</h5>
+                            <p>{{ teacher.user.email }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-muted">Qualification</h5>
+                            <p>{{ teacher.qualification|default:"Not specified" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-muted">Specialization</h5>
+                            <p>{{ teacher.specialization|default:"Not specified" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-muted">Status</h5>
+                            <p>
+                                {% if teacher.is_approved %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Pending Approval</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-muted">Active</h5>
+                            <p>
+                                {% if teacher.is_active %}
+                                    <span class="badge bg-success">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-danger">No</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% if teacher.bio %}
+                    <div class="mb-4">
+                        <h5 class="text-muted">Bio</h5>
+                        <p>{{ teacher.bio }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if assigned_classes %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Assigned Classes</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Subject</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in assigned_classes %}
+                                <tr>
+                                    <td>{{ assignment.school_class }}</td>
+                                    <td>{{ assignment.subject }}</td>
+                                    <td>
+                                        {% if assignment.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if permissions %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">Permissions</h4>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for perm in permissions %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>{{ perm.get_permission_display }}</span>
+                                {% if perm.is_granted %}
+                                    <span class="badge bg-success">Granted</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Not Granted</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if schemes %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Schemes of Work</h4>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for scheme in schemes %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ scheme.school_class }} - {{ scheme.subject }}</h5>
+                                <small>{{ scheme.term }}</small>
+                            </div>
+                            <small>
+                                {% if scheme.is_submitted %}
+                                    <span class="badge bg-info">Submitted</span>
+                                {% endif %}
+                                {% if scheme.is_approved %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

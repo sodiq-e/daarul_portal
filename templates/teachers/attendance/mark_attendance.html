@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">Mark Class Attendance</h3>
+        </div>
+        <div class="card-body">
+            <form method="get" class="mb-4">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="class_id" class="form-label">Select Class</label>
+                        <select name="class_id" id="class_id" class="form-select">
+                            <option value="">-- Select a Class --</option>
+                            {% for class in classes %}
+                            <option value="{{ class.pk }}" {% if selected_class.pk == class.pk %}selected{% endif %}>
+                                {{ class }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="date" class="form-label">Date</label>
+                        <input type="date" name="date" id="date" class="form-control" value="{{ selected_date }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Load Class</button>
+            </form>
+
+            {% if selected_class and students %}
+            <form method="post">
+                {% csrf_token %}
+                <h4 class="mb-3">{{ selected_class }} - {{ selected_date }}</h4>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Admission No</th>
+                                <th>Present</th>
+                                <th>Absent</th>
+                                <th>Late</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student.full_name }}</td>
+                                <td>{{ student.admission_no }}</td>
+                                <td>
+                                    <input type="radio" name="student_{{ student.pk }}" value="present">
+                                </td>
+                                <td>
+                                    <input type="radio" name="student_{{ student.pk }}" value="absent">
+                                </td>
+                                <td>
+                                    <input type="radio" name="student_{{ student.pk }}" value="late">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    <textarea name="notes" class="form-control mb-3" rows="3" placeholder="Additional notes (optional)"></textarea>
+                    <button type="submit" class="btn btn-success">Save Attendance</button>
+                </div>
+            </form>
+            {% elif selected_class %}
+            <div class="alert alert-info">
+                No students in the selected class.
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                Please select a class to mark attendance.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

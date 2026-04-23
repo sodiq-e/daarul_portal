@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Bulk Assign Permissions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">Bulk Assign/Revoke Permissions</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+                            <label class="form-label"><strong>Select Teachers</strong></label>
+                            <div class="border p-3 rounded" style="max-height: 300px; overflow-y: auto;">
+                                {% for teacher in teachers %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="teachers" value="{{ teacher.pk }}" id="teacher_{{ teacher.pk }}">
+                                    <label class="form-check-label" for="teacher_{{ teacher.pk }}">
+                                        {{ teacher.user.get_full_name }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label"><strong>Select Permissions</strong></label>
+                            <div class="border p-3 rounded">
+                                {% for code, name in permission_choices %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="{{ code }}" id="perm_{{ code }}">
+                                    <label class="form-check-label" for="perm_{{ code }}">
+                                        {{ name }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label"><strong>Action</strong></label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_granted" value="on" id="grant" checked>
+                                <label class="form-check-label" for="grant">
+                                    Grant these permissions
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_granted" value="off" id="revoke">
+                                <label class="form-check-label" for="revoke">
+                                    Revoke these permissions
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Apply Changes</button>
+                            <a href="{% url 'teacher_permissions' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Payroll{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h3 class="mb-0">My Payroll Information</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5 class="text-muted">Name</h5>
+                    <p>{{ teacher.user.get_full_name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="text-muted">Teacher ID</h5>
+                    <p>{{ teacher.user.username }}</p>
+                </div>
+            </div>
+
+            <h4 class="mb-3">Salary Components</h4>
+            <div class="table-responsive mb-4">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for component in salary_components %}
+                        <tr>
+                            <td>{{ component.name }}</td>
+                            <td>{{ component.amount|floatformat:2 }}</td>
+                            <td>
+                                {% if component.is_deduction %}
+                                    <span class="badge bg-danger">Deduction</span>
+                                {% else %}
+                                    <span class="badge bg-success">Addition</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">No salary components configured</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <h4 class="mb-3">Recent Payslips</h4>
+            <div class="list-group">
+                {% for payslip in recent_payslips %}
+                <a href="{% url 'payslip_detail' payslip.pk %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">{{ payslip.month|date:"F Y" }}</h5>
+                        <span class="badge bg-primary">{{ payslip.net_pay|floatformat:2 }}</span>
+                    </div>
+                    <p class="mb-1 text-muted">Status: 
+                        {% if payslip.is_processed %}
+                            <span class="badge bg-success">Processed</span>
+                        {% else %}
+                            <span class="badge bg-warning">Pending</span>
+                        {% endif %}
+                    </p>
+                </a>
+                {% empty %}
+                <div class="alert alert-info">No payslips available</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

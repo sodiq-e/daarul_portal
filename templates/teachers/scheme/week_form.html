@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Add{% endif %} Week - {{ scheme.school_class }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h3 class="mb-0">{% if form.instance.pk %}Edit{% else %}Add{% endif %} Week</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        <strong>Scheme:</strong> {{ scheme.school_class }} - {{ scheme.subject }}<br>
+                        <strong>Term:</strong> {{ scheme.term }}
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                {% for error in form.non_field_errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="id_week_number" class="form-label">Week Number <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="week_number" id="id_week_number" value="{{ form.instance.week_number|default:next_week_number }}" required>
+                        </div>
+
+                        {% for field in form %}
+                            {% if field.name != "week_number" %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {% if field.name in "learning_objectives,activities,assessment" %}
+                                    <textarea name="{{ field.name }}" class="form-control" rows="4" id="{{ field.id_for_label }}">{{ field.value|default:"" }}</textarea>
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in field.errors %}
+                                            <p>{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Save Week</button>
+                            <a href="{% url 'teacher_scheme_detail' scheme.pk %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -70,6 +70,14 @@ class Page(models.Model):
         help_text="Display this page on homepage"
     )
 
+    theme = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        default='default',
+        help_text="Theme class for styling (e.g., 'default', 'dark', 'school')"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

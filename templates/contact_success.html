@@ -1,3 +1,22 @@
-<h2>Message Sent Successfully!</h2>
-<p>Thank you for contacting us.</p>
-<a href="/">Go back home</a>
+{% extends 'base.html' %}
+
+{% block title %}Message Sent Successfully{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-success">
+                <div class="card-body text-center">
+                    <div style="font-size: 3rem; color: #28a745; margin-bottom: 20px;">✓</div>
+                    <h2 class="card-title mb-3">Message Sent Successfully!</h2>
+                    <p class="card-text text-muted mb-4">
+                        Thank you for contacting us. We have received your message and will get back to you soon.
+                    </p>
+                    <a href="{% url 'home' %}" class="btn btn-primary">Go Back Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

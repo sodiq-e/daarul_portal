@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Scheme of Work - {{ scheme.school_class }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">{{ scheme.school_class }} - {{ scheme.subject }}</h3>
+                <div>
+                    {% if not scheme.is_submitted %}
+                    <a href="{% url 'teacher_scheme_edit' scheme.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    {% endif %}
+                    <a href="{% url 'teacher_scheme_list' %}" class="btn btn-sm btn-light">Back</a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <strong>Term:</strong> {{ scheme.term }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Status:</strong>
+                    {% if scheme.is_approved %}
+                        <span class="badge bg-success">Approved</span>
+                    {% elif scheme.is_submitted %}
+                        <span class="badge bg-info">Submitted</span>
+                    {% else %}
+                        <span class="badge bg-warning">Draft</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 text-end">
+                    {% if can_submit and not scheme.is_submitted %}
+                    <a href="{% url 'submit_scheme' scheme.pk %}" class="btn btn-sm btn-success">Submit for Approval</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Weekly Content</h4>
+                {% if not scheme.is_submitted %}
+                <a href="{% url 'scheme_week_create' scheme.pk %}" class="btn btn-sm btn-light">Add Week</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if weeks %}
+            <div class="accordion" id="weeksAccordion">
+                {% for week in weeks %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ week.pk }}">
+                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ week.pk }}">
+                            <strong>Week {{ week.week_number }}</strong>
+                            {% if week.is_completed %}
+                            <span class="badge bg-success ms-2">Completed</span>
+                            {% endif %}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ week.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#weeksAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Topic:</strong> {{ week.topic }}</p>
+                            <p><strong>Learning Objectives:</strong> {{ week.learning_objectives|linebreaks }}</p>
+                            <p><strong>Activities:</strong> {{ week.activities|linebreaks }}</p>
+                            <p><strong>Assessment:</strong> {{ week.assessment|linebreaks }}</p>
+                            
+                            {% if not scheme.is_submitted %}
+                            <div class="mt-3">
+                                <a href="{% url 'scheme_week_edit' week.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                                {% if week.is_completed %}
+                                <a href="{% url 'mark_week_incomplete' week.pk %}" class="btn btn-sm btn-secondary">Mark Incomplete</a>
+                                {% else %}
+                                <a href="{% url 'mark_week_complete' week.pk %}" class="btn btn-sm btn-success">Mark Complete</a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                No weeks added yet. Add weekly content to your scheme.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

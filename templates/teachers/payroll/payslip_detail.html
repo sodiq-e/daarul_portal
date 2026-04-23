@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Payslip - {{ payslip.month|date:"F Y" }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Payslip - {{ payslip.month|date:"F Y" }}</h3>
+                <div>
+                    <button type="button" class="btn btn-sm btn-light" onclick="window.print()">Print</button>
+                    <a href="{% url 'teacher_payroll' %}" class="btn btn-sm btn-secondary">Back</a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Header Information -->
+            <div class="row mb-4 pb-4 border-bottom">
+                <div class="col-md-6">
+                    <h5 class="text-muted">Employee Information</h5>
+                    <p>
+                        <strong>Name:</strong> {{ payslip.teacher.user.get_full_name }}<br>
+                        <strong>Teacher ID:</strong> {{ payslip.teacher.user.username }}<br>
+                        <strong>Department:</strong> {{ payslip.teacher.specialization|default:"General" }}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="text-muted">Payroll Information</h5>
+                    <p>
+                        <strong>Month:</strong> {{ payslip.month|date:"F Y" }}<br>
+                        <strong>Status:</strong> 
+                        {% if payslip.is_processed %}
+                            <span class="badge bg-success">Processed</span>
+                        {% else %}
+                            <span class="badge bg-warning">Pending</span>
+                        {% endif %}<br>
+                        <strong>Date Generated:</strong> {{ payslip.generated_at|date:"M d, Y" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Earnings Section -->
+            <h5 class="mb-3">Earnings</h5>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for component in earnings %}
+                        <tr>
+                            <td>{{ component.name }}</td>
+                            <td class="text-end">{{ component.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td>Total Earnings</td>
+                            <td class="text-end">{{ total_earnings|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Deductions Section -->
+            <h5 class="mb-3">Deductions</h5>
+            <div class="table-responsive mb-4">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for component in deductions %}
+                        <tr>
+                            <td>{{ component.name }}</td>
+                            <td class="text-end">{{ component.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="text-center text-muted">No deductions</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light fw-bold">
+                            <td>Total Deductions</td>
+                            <td class="text-end text-danger">{{ total_deductions|floatformat:2 }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="row bg-light p-3 rounded">
+                <div class="col-md-6"></div>
+                <div class="col-md-6">
+                    <div class="mb-2 d-flex justify-content-between">
+                        <span>Total Earnings:</span>
+                        <strong>{{ total_earnings|floatformat:2 }}</strong>
+                    </div>
+                    <div class="mb-3 d-flex justify-content-between border-bottom pb-2">
+                        <span>Total Deductions:</span>
+                        <strong class="text-danger">{{ total_deductions|floatformat:2 }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between" style="font-size: 1.2rem;">
+                        <span><strong>Net Pay:</strong></span>
+                        <strong class="text-success">{{ payslip.net_pay|floatformat:2 }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            {% if payslip.notes %}
+            <div class="mt-4 p-3 bg-light rounded">
+                <strong>Notes:</strong>
+                <p>{{ payslip.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

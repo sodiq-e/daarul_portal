@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Scheme - {{ scheme.school_class }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">{{ scheme.school_class }} - {{ scheme.subject }}</h3>
+                <a href="{% url 'admin_scheme_list' %}" class="btn btn-sm btn-light">Back to Schemes</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <strong>Teacher:</strong> {{ scheme.teacher.user.get_full_name }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Term:</strong> {{ scheme.term }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Status:</strong>
+                    {% if scheme.is_approved %}
+                        <span class="badge bg-success">Approved</span>
+                    {% else %}
+                        <span class="badge bg-warning">Pending Approval</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <strong>Submitted:</strong> {{ scheme.submitted_at|date:"M d, Y H:i" }}
+                </div>
+                {% if scheme.is_approved %}
+                <div class="col-md-6">
+                    <strong>Approved by:</strong> {{ scheme.approved_by.get_full_name }}<br>
+                    <strong>Date:</strong> {{ scheme.approved_at|date:"M d, Y H:i" }}
+                </div>
+                {% endif %}
+            </div>
+
+            {% if scheme.approval_notes %}
+            <div class="alert alert-info">
+                <strong>Notes:</strong> {{ scheme.approval_notes }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0">Scheme Content - Weekly Breakdown</h4>
+        </div>
+        <div class="card-body">
+            {% if weeks %}
+            <div class="accordion" id="weeksAccordion">
+                {% for week in weeks %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ week.pk }}">
+                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ week.pk }}">
+                            <strong>Week {{ week.week_number }}</strong>
+                            {% if week.is_completed %}
+                            <span class="badge bg-success ms-2">Completed</span>
+                            {% endif %}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ week.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#weeksAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Topic:</strong> {{ week.topic }}</p>
+                            <p><strong>Learning Objectives:</strong></p>
+                            <p>{{ week.learning_objectives|linebreaks }}</p>
+                            <p><strong>Activities:</strong></p>
+                            <p>{{ week.activities|linebreaks }}</p>
+                            <p><strong>Assessment:</strong></p>
+                            <p>{{ week.assessment|linebreaks }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                No weekly content found in this scheme.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not scheme.is_approved %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">Admin Actions</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>Approve Scheme</h5>
+                    <form method="post" action="{% url 'approve_scheme' scheme.pk %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="approval_notes" class="form-label">Notes (optional)</label>
+                            <textarea name="approval_notes" id="approval_notes" class="form-control" rows="3" placeholder="Enter approval notes..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Approve Scheme</button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <h5>Request Revision</h5>
+                    <form method="post" action="{% url 'reject_scheme' scheme.pk %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="revision_notes" class="form-label">Revision Notes (required)</label>
+                            <textarea name="approval_notes" id="revision_notes" class="form-control" rows="3" placeholder="Explain what needs to be revised..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning">Request Revision</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
