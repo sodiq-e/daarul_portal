@@ -97,7 +97,7 @@
         <h3>Portal Settings</h3>
         <p>Configure school branding and themes</p>
       </a>
-      <a href="{% url 'class_list' %}" class="nav-card admin-card">
+      <a href="{% url 'school_classes:class_list' %}" class="nav-card admin-card">
         <div class="nav-icon">📚</div>
         <h3>Classes</h3>
         <p>Manage school classes</p>
@@ -119,7 +119,7 @@
       </a>
     {% else %}
       <!-- STUDENT NAVIGATION -->
-      <a href="{% url 'class_list' %}" class="nav-card">
+      <a href="{% url 'school_classes:class_list' %}" class="nav-card">
         <div class="nav-icon">📚</div>
         <h3>Classes</h3>
         <p>View class schedules and details</p>
@@ -170,7 +170,7 @@
       <p>View your results, grades, and progress reports from one secure location.</p>
     </a>
 
-    <a href="{% url 'class_list' %}" class="overview-card">
+    <a href="{% url 'school_classes:class_list' %}" class="overview-card">
       <h3>View class schedules</h3>
       <p>Check timetables, subject details, and classroom assignments at a glance.</p>
     </a>

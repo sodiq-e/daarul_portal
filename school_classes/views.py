@@ -84,7 +84,7 @@ class ClassListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 def add_class(request):
     if not user_is_staff(request.user):
         messages.error(request, 'You do not have permission to add classes.')
-        return redirect('class_list')
+        return redirect('school_classes:class_list')
 
     if request.method == 'POST':
         name = request.POST.get('class_name')
@@ -103,7 +103,7 @@ def add_class(request):
                 # Handles duplicate class_name (unique=True)
                 pass
 
-        return redirect('class_list')
+        return redirect('school_classes:class_list')
 
     return render(request, 'classes/add_class.html')
 
