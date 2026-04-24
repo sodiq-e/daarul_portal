@@ -19,6 +19,7 @@ from .forms import (
     BulkTeacherPermissionForm
 )
 from exams.models import Subject
+from students.models import Student
 
 
 def user_profile_approved(user):
@@ -107,7 +108,47 @@ def add_class(request):
     return render(request, 'classes/add_class.html')
 
 
+@method_decorator(login_required, name='dispatch')
+class ClassDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    """View students in a specific class"""
+    model = SchoolClasses
+    template_name = 'classes/class_detail.html'
+    context_object_name = 'school_class'
+
+    def test_func(self):
+        return user_profile_approved(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        school_class = self.get_object()
+        context['students'] = Student.objects.filter(
+            student_class=school_class,
+            status='active'
+        ).order_by('surname', 'other_names')
+        context['can_modify'] = user_is_staff(self.request.user)
+        context['teachers'] = ClassTeacher.objects.filter(
+            school_class=school_class,
+            is_active=True
+        ).select_related('teacher__user', 'subject')
+        return context
+
+
 # ==================== TEACHER PROFILE VIEWS ====================
+
+@login_required
+def teacher_dashboard(request):
+    """Teacher dashboard - redirects based on user role"""
+    if user_is_admin(request.user):
+        return redirect('teachers:teacher_list')
+    elif user_is_staff(request.user):
+        try:
+            teacher = request.user.teacher_profile
+            if teacher.is_approved:
+                return redirect('teachers:teacher_profile')
+        except:
+            pass
+    return redirect('teachers:teacher_apply')
+
 
 class TeacherApplicationView(CreateView):
     """Teachers can apply for registration"""
@@ -257,6 +298,14 @@ def approve_teacher(request, pk):
     from django.contrib.auth.models import Group
     group, _ = Group.objects.get_or_create(name='Teacher')
     teacher.user.groups.add(group)
+
+    # Initialize all permissions for teacher (all set to False by default)
+    for perm_code, perm_name in TeacherPermission.PERMISSION_CHOICES:
+        TeacherPermission.objects.get_or_create(
+            teacher=teacher,
+            permission=perm_code,
+            defaults={'is_granted': False}
+        )
 
     messages.success(request, f'{teacher.user.get_full_name()} has been approved.')
     return redirect('teacher_detail', pk=pk)
@@ -445,6 +494,7 @@ class BulkPermissionView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['permission_choices'] = TeacherPermission.PERMISSION_CHOICES
+        context['teachers'] = Teacher.objects.filter(is_approved=True).select_related('user')
         return context
 
     def post(self, request, *args, **kwargs):

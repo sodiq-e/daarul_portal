@@ -14,20 +14,16 @@ class AnnouncementListView(ListView):
     context_object_name = 'announcements'
     paginate_by = 10
 
-def get_context_data(self, **kwargs):
+    def get_queryset(self):
+        return Announcement.objects.filter(is_active=True).order_by('-created_at')
 
+    def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
         context['pages'] = Page.objects.filter(
-
             is_published=True,
-
             url_prefix='announcements',
-
             show_in_navigation=True
-
         )
-
         return context
 
 
@@ -38,6 +34,15 @@ class AnnouncementDetailView(DetailView):
 
     def get_queryset(self):
         return Announcement.objects.filter(is_active=True)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['pages'] = Page.objects.filter(
+            is_published=True,
+            url_prefix='announcements',
+            show_in_navigation=True
+        )
+        return context
 
 
 class AnnouncementCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):

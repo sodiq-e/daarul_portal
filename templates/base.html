@@ -89,6 +89,18 @@
       <!-- User info on the right -->
       {% if user.is_authenticated %}
         <div style="position: absolute; right: 0; display: flex; align-items: center; gap: 15px;">
+          <!-- Classes icon -->
+          <a href="{% url 'class_list' %}" title="Classes" style="color: white; text-decoration: none; font-size: 20px; position: relative;">
+            📚
+          </a>
+          
+          <!-- Teachers icon (only for staff/admin) -->
+          {% if user.is_staff %}
+            <a href="{% url 'teachers:teacher_list' %}" title="Teachers" style="color: white; text-decoration: none; font-size: 20px; position: relative;">
+              👨‍🏫
+            </a>
+          {% endif %}
+          
           <!-- Announcements icon -->
           <a href="{% url 'announcement_list' %}" title="Announcements" style="color: white; text-decoration: none; font-size: 20px; position: relative;">
             📢
