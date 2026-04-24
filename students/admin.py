@@ -10,9 +10,37 @@ class StudentAdmin(admin.ModelAdmin):
         "other_names",
         "student_class",
         "gender",
+        "get_user_status",
     )
-    list_filter = ("student_class", "gender")
-    search_fields = ("admission_no", "surname", "other_names")
+    list_filter = ("student_class", "gender", "user")
+    search_fields = ("admission_no", "surname", "other_names", "user__username", "user__email")
+    readonly_fields = ("get_user_link",)
+    
+    fieldsets = (
+        (None, {
+            'fields': (
+                'admission_no', 'surname', 'other_names', 'dob', 'gender', 'student_class', 'photo', 'status', 'date_left'
+            )
+        }),
+        ('Student Login Account', {
+            'fields': ('user', 'get_user_link'),
+            'description': 'Link this student to a user account to allow portal login. Student must first create an account and request the "Student" role.'
+        }),
+    )
+    
+    def get_user_status(self, obj):
+        """Display whether student has a linked user account"""
+        if obj.user:
+            return f'✓ {obj.user.username}'
+        return '✗ Not linked'
+    get_user_status.short_description = 'User Account'
+    
+    def get_user_link(self, obj):
+        """Display user details if linked"""
+        if obj.user:
+            return f'Linked to: {obj.user.get_full_name()} ({obj.user.username}) - Email: {obj.user.email}'
+        return 'No user account linked'
+    get_user_link.short_description = 'Account Details'
 
 
 @admin.register(StudentApplication)

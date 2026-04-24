@@ -244,7 +244,7 @@ class TeacherListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         elif status == 'inactive':
             queryset = queryset.filter(is_active=False)
         
-        return queryset.order_by('-created_at' if not Teacher._meta.get_field('created_at') else '-date_joined')
+        return queryset.order_by('-date_joined')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -485,7 +485,7 @@ def revoke_teacher_permission(request, teacher_id, permission_code):
 
 @method_decorator(login_required, name='dispatch')
 class BulkPermissionView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    """Admin bulk assign/revoke permissions"""
+    """Admin bulk assign/revoke permissions for a teacher"""
     template_name = 'teachers/admin/bulk_permissions.html'
 
     def test_func(self):
@@ -493,33 +493,55 @@ class BulkPermissionView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['teachers'] = Teacher.objects.filter(is_approved=True).select_related('user').order_by('user__last_name')
         context['permission_choices'] = TeacherPermission.PERMISSION_CHOICES
-        context['teachers'] = Teacher.objects.filter(is_approved=True).select_related('user')
+        
+        # If a teacher is selected, show their current permissions
+        teacher_id = self.request.GET.get('teacher_id')
+        if teacher_id:
+            try:
+                teacher = Teacher.objects.get(pk=teacher_id)
+                context['selected_teacher'] = teacher
+                
+                # Get all permissions with their current granted status for this teacher
+                granted_perms = TeacherPermission.objects.filter(
+                    teacher=teacher,
+                    is_granted=True
+                ).values_list('permission', flat=True)
+                context['granted_permissions'] = list(granted_perms)
+            except Teacher.DoesNotExist:
+                pass
+        
         return context
 
     def post(self, request, *args, **kwargs):
-        teachers = request.POST.getlist('teachers')
-        permissions = request.POST.getlist('permissions')
-        is_granted = request.POST.get('is_granted') == 'on'
-
-        for teacher_id in teachers:
-            teacher = Teacher.objects.get(pk=teacher_id)
-            for perm_code in permissions:
-                perm_obj, _ = TeacherPermission.objects.get_or_create(
-                    teacher=teacher,
-                    permission=perm_code
-                )
-                perm_obj.is_granted = is_granted
-                perm_obj.granted_by = request.user
-                perm_obj.granted_at = timezone.now()
-                perm_obj.save()
-
-        action = 'granted' if is_granted else 'revoked'
+        teacher_id = request.POST.get('teacher_id')
+        if not teacher_id:
+            messages.error(request, 'Please select a teacher.')
+            return redirect('bulk_permissions')
+        
+        teacher = get_object_or_404(Teacher, pk=teacher_id)
+        
+        # Get all selected permissions from the form
+        selected_permissions = request.POST.getlist('permissions')
+        
+        # Grant/Revoke all permissions based on checkbox state
+        for code, name in TeacherPermission.PERMISSION_CHOICES:
+            perm_obj, _ = TeacherPermission.objects.get_or_create(
+                teacher=teacher,
+                permission=code
+            )
+            is_granted = code in selected_permissions
+            perm_obj.is_granted = is_granted
+            perm_obj.granted_by = request.user
+            perm_obj.granted_at = timezone.now()
+            perm_obj.save()
+        
         messages.success(
             request,
-            f'Permissions {action} to {len(teachers)} teacher(s).'
+            f'Permissions updated for {teacher.user.get_full_name()}.'
         )
-        return redirect('teacher_permissions')
+        return redirect('bulk_permissions') + f'?teacher_id={teacher_id}'
 
 
 # ==================== TEACHER: SCHEME OF WORK ====================

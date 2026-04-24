@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -177,3 +177,85 @@ class StudentApplicationUpdateView(LoginRequiredMixin, UserPassesTestMixin, Upda
         form.instance.reviewed_by = self.request.user
         messages.success(self.request, 'Application updated successfully.')
         return super().form_valid(form)
+
+
+# ==================== STUDENT PORTAL VIEWS ====================
+
+class StudentDashboardView(LoginRequiredMixin, TemplateView):
+    """Student view their own profile and summary"""
+    template_name = 'students/portal/student_dashboard.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            student = self.request.user.student_profile
+            context['student'] = student
+            context['invoices'] = student.invoices.all().order_by('-issued_date')
+            context['pending_invoices'] = student.invoices.filter(status='pending').count()
+            context['total_owing'] = sum(inv.balance for inv in student.invoices.filter(status__in=['pending', 'overdue']))
+        except Student.DoesNotExist:
+            context['student'] = None
+        return context
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not hasattr(request.user, 'student_profile'):
+            messages.error(request, 'You do not have a student profile linked to your account.')
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
+
+
+class StudentProfileDetailView(LoginRequiredMixin, DetailView):
+    """Student view their full profile"""
+    model = Student
+    template_name = 'students/portal/student_profile.html'
+    context_object_name = 'student'
+    
+    def get_object(self):
+        return self.request.user.student_profile
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not hasattr(request.user, 'student_profile'):
+            messages.error(request, 'You do not have a student profile.')
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
+
+
+class StudentResultsView(LoginRequiredMixin, TemplateView):
+    """Student view their academic results"""
+    template_name = 'students/portal/student_results.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            from results.models import StudentResult
+            student = self.request.user.student_profile
+            context['student'] = student
+            context['results'] = StudentResult.objects.filter(student=student).select_related('exam', 'subject').order_by('-exam__date')
+        except Student.DoesNotExist:
+            context['student'] = None
+            context['results'] = []
+        return context
+
+
+class StudentFeesView(LoginRequiredMixin, TemplateView):
+    """Student view their fee/invoice records"""
+    template_name = 'students/portal/student_fees.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            from payroll.models import StudentPayment
+            student = self.request.user.student_profile
+            context['student'] = student
+            context['invoices'] = student.invoices.all().order_by('-issued_date')
+            context['payments'] = StudentPayment.objects.filter(student=student).order_by('-payment_date')
+            
+            # Summary calculations
+            total_due = sum(inv.amount_due for inv in context['invoices'])
+            total_paid = sum(p.amount for p in context['payments'])
+            context['total_due'] = total_due
+            context['total_paid'] = total_paid
+            context['total_owing'] = total_due - total_paid
+        except Student.DoesNotExist:
+            context['student'] = None
+        return context

@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Portal - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if student %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <h4>Welcome, {{ student.full_name }}!</h4>
+                <p>Admission No: <strong>{{ student.admission_no }}</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Class</h5>
+                    <p class="card-text">
+                        <strong>{{ student.student_class.class_name|default:"Not Assigned" }}</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Status</h5>
+                    <p class="card-text">
+                        <span class="badge bg-success">{{ student.get_status_display }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Invoices</h5>
+                    <p class="card-text">
+                        <strong class="text-warning">{{ pending_invoices }}</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Amount Owing</h5>
+                    <p class="card-text">
+                        <strong class="text-danger">KES {{ total_owing }}</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <h4 class="mb-3">Portal Menu</h4>
+            <div class="list-group">
+                <a href="{% url 'student_portal_profile' %}" class="list-group-item list-group-item-action">
+                    <h5 class="mb-1">📋 View Profile</h5>
+                    <p class="mb-0">View your personal information</p>
+                </a>
+                <a href="{% url 'student_portal_results' %}" class="list-group-item list-group-item-action">
+                    <h5 class="mb-1">📊 View Results</h5>
+                    <p class="mb-0">Check your academic results and grades</p>
+                </a>
+                <a href="{% url 'student_portal_fees' %}" class="list-group-item list-group-item-action">
+                    <h5 class="mb-1">💰 School Fees</h5>
+                    <p class="mb-0">View invoices and payment history</p>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="alert alert-danger">
+        <p>Error: No student profile linked to your account. Please contact the school administration.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

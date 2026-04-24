@@ -32,6 +32,15 @@ class Student(models.Model):
     photo = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     date_left = models.DateField(null=True, blank=True)
+    
+    # Link to user account for student login
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='student_profile'
+    )
 
     def full_name(self):
         return f"{self.surname} {self.other_names}".strip()

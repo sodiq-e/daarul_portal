@@ -33,9 +33,8 @@
     <h1>Welcome to the official digital platform</h1>
     <p>{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone. We provide a balanced education that combines Western and Islamic studies, including modern fields such as STEM and Robotics." }}</p>
     <div class="hero-actions">
-      <a href="{% url 'login' %}" class="button">Sign In</a>
-      <a href="{% url 'signup' %}" class="button secondary">Create Account</a>
       <a href="{% url 'student_application' %}" class="button secondary">Apply for Admission</a>
+      <!-- Sign In and Create Account moved to dropdown menu -->
     </div>
   </div>
   <div class="hero-media">
@@ -118,16 +117,39 @@
         <p>Manage invoices, payments, and school expenses</p>
       </a>
     {% else %}
-      <!-- STUDENT NAVIGATION -->
+      <!-- STUDENT PORTAL -->
+      {% if user.student_profile %}
+      <a href="{% url 'student_portal_dashboard' %}" class="nav-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="nav-icon">🎓</div>
+        <h3>Student Portal</h3>
+        <p>Access your academic information</p>
+      </a>
+      <a href="{% url 'student_portal_profile' %}" class="nav-card">
+        <div class="nav-icon">👤</div>
+        <h3>My Profile</h3>
+        <p>View your personal information</p>
+      </a>
+      <a href="{% url 'student_portal_results' %}" class="nav-card">
+        <div class="nav-icon">📊</div>
+        <h3>My Results</h3>
+        <p>Check your grades and academic performance</p>
+      </a>
+      <a href="{% url 'student_portal_fees' %}" class="nav-card">
+        <div class="nav-icon">💰</div>
+        <h3>School Fees</h3>
+        <p>View invoices and payment history</p>
+      </a>
+      {% endif %}
+      <!-- OTHER NAVIGATION -->
       <a href="{% url 'school_classes:class_list' %}" class="nav-card">
         <div class="nav-icon">📚</div>
         <h3>Classes</h3>
         <p>View class schedules and details</p>
       </a>
       <a href="/results/" class="nav-card">
-        <div class="nav-icon">📊</div>
+        <div class="nav-icon">📋</div>
         <h3>Results</h3>
-        <p>Check your grades and reports</p>
+        <p>Check grades and reports</p>
       </a>
       <a href="{% url 'student_list' %}" class="nav-card">
         <div class="nav-icon">🎒</div>
@@ -150,9 +172,9 @@
         <p>Track attendance records</p>
       </a>
       <a href="{% url 'profile' %}" class="nav-card">
-        <div class="nav-icon">👤</div>
-        <h3>My Profile</h3>
-        <p>Manage your account settings</p>
+        <div class="nav-icon">⚙️</div>
+        <h3>Account Settings</h3>
+        <p>Manage your account and preferences</p>
       </a>
     {% endif %}
   </div>
@@ -193,24 +215,7 @@
   </div>
 </section>
 
-{% if not user.is_authenticated %}
-<section class="getting-started">
-  <h2>Getting Started</h2>
-  <p>To use this portal, you need an account.</p>
-  <div class="getting-started-cards">
-    <div class="getting-card">
-      <h3>Already have an account?</h3>
-      <p>Click the Sign In button and enter your login details to access your dashboard.</p>
-      <a href="{% url 'login' %}" class="button small">Sign In</a>
-    </div>
-    <div class="getting-card">
-      <h3>New here?</h3>
-      <p>Click the Create Account button to register. Use accurate school information during signup.</p>
-      <a href="{% url 'signup' %}" class="button small secondary">Create Account</a>
-    </div>
-  </div>
-</section>
-{% endif %}
+<!-- Getting Started section removed; login/signup now in dropdown menu -->
 
 <section class="important-notice">
   <h2>Important Notice</h2>
