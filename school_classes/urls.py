@@ -39,10 +39,10 @@ teacher_urlpatterns = [
 
     # Teacher: Scheme of Work
     path('schemes/', views.TeacherSchemeListView.as_view(), name='teacher_scheme_list'),
-    path('schemes/add/', views.TeacherSchemeCreateView.as_view(), name='teacher_scheme_add'),
+    path('schemes/add/', views.TeacherSchemeCreateView.as_view(), name='teacher_scheme_create'),
     path('schemes/<int:pk>/', views.TeacherSchemeDetailView.as_view(), name='teacher_scheme_detail'),
     path('schemes/<int:pk>/edit/', views.TeacherSchemeUpdateView.as_view(), name='teacher_scheme_edit'),
-    path('schemes/<int:scheme_id>/week/add/', views.SchemeWeekCreateView.as_view(), name='scheme_week_add'),
+    path('schemes/<int:scheme_id>/week/add/', views.SchemeWeekCreateView.as_view(), name='scheme_week_create'),
     path('schemes/week/<int:pk>/edit/', views.SchemeWeekUpdateView.as_view(), name='scheme_week_edit'),
     path('schemes/week/<int:week_id>/complete/', views.mark_week_complete, name='mark_week_complete'),
     path('schemes/week/<int:week_id>/incomplete/', views.mark_week_incomplete, name='mark_week_incomplete'),
