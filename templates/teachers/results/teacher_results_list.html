@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Results - Teacher{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Results Management</h2>
+            <hr>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <h5>Select Class and Term to View/Edit Results:</h5>
+                    
+                    {% if assigned_classes %}
+                        <form method="GET" action="{% url 'teacher_class_results' 0 0 %}" class="mb-3">
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <label for="class_select" class="form-label">Class:</label>
+                                    <select class="form-control" id="class_select" name="class_id">
+                                        <option value="">-- Select Class --</option>
+                                        {% for class in assigned_classes %}
+                                        <option value="{{ class.id }}">{{ class.class_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label for="term_select" class="form-label">Term:</label>
+                                    <select class="form-control" id="term_select" name="term_id">
+                                        <option value="">-- Select Term --</option>
+                                        {% for term in terms %}
+                                        <option value="{{ term.id }}">{{ term.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">View</button>
+                                </div>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-warning">You have not been assigned to any classes yet.</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6>Quick Links:</h6>
+                            <ul class="list-unstyled">
+                                <li><a href="#">Print Results</a></li>
+                                <li><a href="#">Edit Comments</a></li>
+                                <li><a href="#">Report</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

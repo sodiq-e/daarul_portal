@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Print Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Print Results</h2>
+                <button class="btn btn-primary" onclick="window.print()">Print</button>
+            </div>
+            <hr>
+            
+            <div class="print-content">
+                {% if school_class and term and class_subjects and broadsheet_data %}
+                    <h3 class="text-center">{{ school_class }} - {{ term }} Results</h3>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    {% for subject in class_subjects %}
+                                    <th>{{ subject.subject.name|truncatewords:2 }}</th>
+                                    {% endfor %}
+                                    <th>Total</th>
+                                    <th>Avg</th>
+                                    <th>Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for data in broadsheet_data %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ data.student.get_full_name }}</td>
+                                    {% for subject in class_subjects %}
+                                    <td class="text-center">
+                                        {% if data.subject_scores|get_item:subject.subject.name %}
+                                            {{ data.subject_scores|get_item:subject.subject.name.total_score }}
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-center font-weight-bold">
+                                        {% if data.term_result %}
+                                            {{ data.term_result.total_score }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if data.term_result %}
+                                            {{ data.term_result.average_score|floatformat:1 }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center font-weight-bold">
+                                        {% if data.term_result %}
+                                            {{ data.term_result.grade }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">No data available to print.</div>
+                {% endif %}
+            </div>
+            
+            <div class="mt-4 no-print">
+                <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .no-print { display: none; }
+        body { font-size: 12px; }
+        .table { font-size: 11px; }
+    }
+</style>
+{% endblock %}

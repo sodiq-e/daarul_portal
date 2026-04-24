@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Report Card Comments - {{ student.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4>Report Card Comments</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Student:</strong> {{ student.get_full_name }}</p>
+                            <p><strong>Admission No:</strong> {{ student.admission_no }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Class:</strong> {{ student.student_class }}</p>
+                            <p><strong>Term:</strong> {{ term }}</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="general_comment" class="form-label">General Comment:</label>
+                            <textarea class="form-control" id="general_comment" name="general_comment" rows="4" placeholder="General remarks about student's performance...">{{ comment.general_comment }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="conduct_comment" class="form-label">Conduct Comment:</label>
+                            <textarea class="form-control" id="conduct_comment" name="conduct_comment" rows="4" placeholder="Comments on student's behavior and conduct...">{{ comment.conduct_comment }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="recommendation" class="form-label">Recommendations:</label>
+                            <textarea class="form-control" id="recommendation" name="recommendation" rows="4" placeholder="Recommendations for improvement...">{{ comment.recommendation }}</textarea>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-success">Save Comments</button>
+                            <a href="{% url 'teacher_results_list' %}" class="btn btn-secondary">Back</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

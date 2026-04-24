@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}School Classes{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>School Classes</h1>
+
+    <!-- Dynamic Page Navigation for Classes -->
+    {% if navigation_pages_by_prefix.classes %}
+    <section class="page-navigation">
+        <h5>📖 Related Pages ({{ navigation_pages_by_prefix.classes|length }})</h5>
+        <div class="nav-links">
+            {% for page in navigation_pages_by_prefix.classes %}
+            <a href="{% url 'pages:page_detail' page.slug %}" class="nav-link">
+                {{ page.title }}
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <div class="mt-4">
+        {% if can_modify %}
+        <a href="{% url 'add_class' %}" class="btn btn-primary mb-3">+ Add New Class</a>
+        {% endif %}
+        
+        {% for c in classes %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title">
+                                <a href="#" class="text-decoration-none">{{ c.class_name }}</a>
+                            </h5>
+                            <p class="card-text"><strong>Level:</strong> {{ c.level }}</p>
+                            <p class="card-text text-muted">{{ c.description }}</p>
+                        </div>
+                        <div class="btn-group" role="group">
+                            {% if can_modify %}
+                            <a href="#" class="btn btn-sm btn-outline-primary">View</a>
+                            <a href="#" class="btn btn-sm btn-outline-warning">Edit</a>
+                            <a href="#" class="btn btn-sm btn-outline-danger">Delete</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">No classes yet. {% if can_modify %}<a href="{% url 'add_class' %}">Create one</a>{% endif %}</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

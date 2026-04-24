@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Report Card - {{ student.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3>Report Card</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Student Name:</strong> {{ student.get_full_name }}</p>
+                            <p><strong>Admission No:</strong> {{ student.admission_no }}</p>
+                            <p><strong>Class:</strong> {{ student.student_class }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Term:</strong> {{ term }}</p>
+                            <p><strong>Session:</strong> {% now 'Y' %}</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    {% if results %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Test Score</th>
+                                        <th>Exam Score</th>
+                                        <th>Total</th>
+                                        <th>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for result in results %}
+                                    <tr>
+                                        <td>{{ result.class_subject.subject.name }}</td>
+                                        <td>{{ result.test_score }}</td>
+                                        <td>{{ result.exam_score }}</td>
+                                        <td>{{ result.total_score }}</td>
+                                        <td>{{ result.grade }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {% if term_result %}
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <p><strong>Total Score:</strong> {{ term_result.total_score }}</p>
+                                <p><strong>Average Score:</strong> {{ term_result.average_score|floatformat:1 }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Grade:</strong> {{ term_result.grade }}</p>
+                                <p><strong>Position:</strong> {{ term_result.position }} out of {{ term_result.class_size }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-warning">No results recorded for this student in this term.</div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'results_home' %}" class="btn btn-secondary">Back</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

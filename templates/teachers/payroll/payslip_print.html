@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Payslip - {{ payslip.staff.teacher.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <h4>Payslip</h4>
+                    <button class="btn btn-light btn-sm" onclick="window.print()">Print</button>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Employee:</strong> {{ payslip.staff.teacher.user.get_full_name }}</p>
+                            <p><strong>Staff ID:</strong> {{ payslip.staff.staff_id }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Month:</strong> {{ payslip.month|date:"F Y" }}</p>
+                            <p><strong>Issue Date:</strong> {{ payslip.issued_date|date:"d M Y" }}</p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Earnings -->
+                    <h6>Earnings</h6>
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Basic Salary</strong></td>
+                            <td class="text-end">₦{{ payslip.basic|floatformat:2 }}</td>
+                        </tr>
+                        {% for allowance in allowances %}
+                        <tr>
+                            <td>{{ allowance.get_component_type_display }} - {{ allowance.description }}</td>
+                            <td class="text-end">₦{{ allowance.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="fw-bold border-top">
+                            <td>Total Earnings</td>
+                            <td class="text-end">₦{{ payslip.gross|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                    
+                    <hr>
+                    
+                    <!-- Deductions -->
+                    <h6>Deductions</h6>
+                    <table class="table table-sm table-borderless">
+                        {% for deduction in deductions %}
+                        <tr>
+                            <td>{{ deduction.description }}</td>
+                            <td class="text-end">₦{{ deduction.amount|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="text-muted">No deductions</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="fw-bold border-top">
+                            <td>Total Deductions</td>
+                            <td class="text-end">₦{{ payslip.total_deductions|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                    
+                    <hr>
+                    
+                    <!-- Net Pay -->
+                    <div class="row">
+                        <div class="col-md-6 offset-md-6">
+                            <table class="table table-sm">
+                                <tr class="table-success">
+                                    <td><strong>NET PAY</strong></td>
+                                    <td class="text-end"><strong>₦{{ payslip.net|floatformat:2 }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'teacher_payroll' %}" class="btn btn-secondary">Back</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .btn { display: none; }
+        body { font-size: 12px; }
+    }
+</style>
+{% endblock %}
