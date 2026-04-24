@@ -10,7 +10,7 @@
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h3 class="mb-0">My Teacher Profile</h3>
-                        <a href="{% url 'teacher_profile_edit' teacher.pk %}" class="btn btn-sm btn-light">Edit Profile</a>
+                        <a href="{% url 'teachers:teacher_profile_edit' teacher.pk %}" class="btn btn-sm btn-light">Edit Profile</a>
                     </div>
                 </div>
                 <div class="card-body">
@@ -59,6 +59,45 @@
                         <p>{{ teacher.bio }}</p>
                     </div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- Teacher Navigation Hub -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">📌 Quick Access</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <a href="{% url 'teachers:teacher_scheme_list' %}" class="btn btn-outline-primary w-100 py-3">
+                                <div style="font-size: 20px; margin-bottom: 5px;">📚</div>
+                                <strong>Scheme of Work</strong>
+                                <div style="font-size: 12px; color: #666;">Manage your schemes</div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'teacher_results_list' %}" class="btn btn-outline-info w-100 py-3">
+                                <div style="font-size: 20px; margin-bottom: 5px;">📊</div>
+                                <strong>Edit Results</strong>
+                                <div style="font-size: 12px; color: #666;">Update student grades</div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'teacher_attendance_list' %}" class="btn btn-outline-success w-100 py-3">
+                                <div style="font-size: 20px; margin-bottom: 5px;">✅</div>
+                                <strong>Attendance</strong>
+                                <div style="font-size: 12px; color: #666;">Mark attendance</div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'teacher_payroll' %}" class="btn btn-outline-warning w-100 py-3">
+                                <div style="font-size: 20px; margin-bottom: 5px;">💰</div>
+                                <strong>Payroll</strong>
+                                <div style="font-size: 12px; color: #666;">View payslips</div>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 

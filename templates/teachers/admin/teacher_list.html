@@ -9,6 +9,34 @@
         <div class="col-md-12">
             <h2>Teacher Management</h2>
             
+            <!-- Admin Navigation Hub -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <a href="{% url 'teachers:teacher_permissions' %}" class="btn btn-outline-primary w-100 py-3" style="text-align: center;">
+                        <div style="font-size: 18px; margin-bottom: 5px;">🔐</div>
+                        <strong style="font-size: 14px;">Permissions</strong>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'teachers:bulk_permissions' %}" class="btn btn-outline-info w-100 py-3" style="text-align: center;">
+                        <div style="font-size: 18px; margin-bottom: 5px;">📋</div>
+                        <strong style="font-size: 14px;">Bulk Assign</strong>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'teachers:admin_scheme_list' %}" class="btn btn-outline-success w-100 py-3" style="text-align: center;">
+                        <div style="font-size: 18px; margin-bottom: 5px;">✅</div>
+                        <strong style="font-size: 14px;">Schemes</strong>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'teachers:class_teacher_list' %}" class="btn btn-outline-warning w-100 py-3" style="text-align: center;">
+                        <div style="font-size: 18px; margin-bottom: 5px;">📚</div>
+                        <strong style="font-size: 14px;">Assignments</strong>
+                    </a>
+                </div>
+            </div>
+            
             <div class="row mb-4">
                 <div class="col-md-3">
                     <div class="card text-center">
@@ -35,7 +63,7 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <a href="{% url 'class_teacher_list' %}" class="btn btn-info w-100 h-100">
+                    <a href="{% url 'teachers:class_teacher_list' %}" class="btn btn-info w-100 h-100">
                         <div>View Assignments</div>
                     </a>
                 </div>
@@ -45,9 +73,9 @@
                 <div class="card-header">
                     <h5>Teachers</h5>
                     <div class="btn-group mt-2" role="group">
-                        <a href="{% url 'teacher_list' %}?status=all" class="btn btn-sm btn-outline-secondary {% if current_status == 'all' %}active{% endif %}">All</a>
-                        <a href="{% url 'teacher_list' %}?status=pending" class="btn btn-sm btn-outline-warning {% if current_status == 'pending' %}active{% endif %}">Pending</a>
-                        <a href="{% url 'teacher_list' %}?status=approved" class="btn btn-sm btn-outline-success {% if current_status == 'approved' %}active{% endif %}">Approved</a>
+                        <a href="{% url 'teachers:teacher_list' %}?status=all" class="btn btn-sm btn-outline-secondary {% if current_status == 'all' %}active{% endif %}">All</a>
+                        <a href="{% url 'teachers:teacher_list' %}?status=pending" class="btn btn-sm btn-outline-warning {% if current_status == 'pending' %}active{% endif %}">Pending</a>
+                        <a href="{% url 'teachers:teacher_list' %}?status=approved" class="btn btn-sm btn-outline-success {% if current_status == 'approved' %}active{% endif %}">Approved</a>
                     </div>
                 </div>
                 <div class="card-body">

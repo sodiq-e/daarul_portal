@@ -53,8 +53,8 @@
 
                         <div class="d-flex gap-2 mt-4">
                             <button type="submit" class="btn btn-success">Save Permissions</button>
-                            <a href="{% url 'bulk_permissions' %}" class="btn btn-secondary">Clear Selection</a>
-                            <a href="{% url 'teacher_list' %}" class="btn btn-outline-secondary">Back to Teachers</a>
+                            <a href="{% url 'teachers:bulk_permissions' %}" class="btn btn-secondary">Clear Selection</a>
+                            <a href="{% url 'teachers:teacher_list' %}" class="btn btn-outline-secondary">Back to Teachers</a>
                         </div>
                     </form>
                     {% else %}

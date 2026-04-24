@@ -10,9 +10,9 @@
                 <h3 class="mb-0">{{ scheme.school_class }} - {{ scheme.subject }}</h3>
                 <div>
                     {% if not scheme.is_submitted %}
-                    <a href="{% url 'teacher_scheme_edit' scheme.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    <a href="{% url 'teachers:teacher_scheme_edit' scheme.pk %}" class="btn btn-sm btn-warning">Edit</a>
                     {% endif %}
-                    <a href="{% url 'teacher_scheme_list' %}" class="btn btn-sm btn-light">Back</a>
+                    <a href="{% url 'teachers:teacher_scheme_list' %}" class="btn btn-sm btn-light">Back</a>
                 </div>
             </div>
         </div>
