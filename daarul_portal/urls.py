@@ -38,6 +38,8 @@ urlpatterns = [
     path('announcements/', include('announcements.urls')),
     path('payroll/', include('payroll.urls')),
     path('', include('pages.urls')),
+    path('teachers/', include('school_classes.urls')),
+
 ]
 
 if settings.DEBUG:
