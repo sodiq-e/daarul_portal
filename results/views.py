@@ -440,7 +440,7 @@ def teacher_class_results(request, class_id, term_id):
         'term': term,
         'result_template': result_template,
         'student_results': student_results,
-        'can_edit': teacher_has_permission(teacher, 'edit_results'),
+        'can_edit': True,  # Show bulk entry button if teacher is assigned to class
         'can_print': teacher_has_permission(teacher, 'print_results'),
     }
 

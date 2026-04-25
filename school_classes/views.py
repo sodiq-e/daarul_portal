@@ -6,7 +6,7 @@ from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
 from django.contrib import messages
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.http import HttpResponseForbidden
@@ -541,7 +541,7 @@ class BulkPermissionView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             request,
             f'Permissions updated for {teacher.user.get_full_name()}.'
         )
-        return redirect('bulk_permissions') + f'?teacher_id={teacher_id}'
+        return redirect(f"{reverse('bulk_permissions')}?teacher_id={teacher_id}")
 
 
 # ==================== TEACHER: SCHEME OF WORK ====================
