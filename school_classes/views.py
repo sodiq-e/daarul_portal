@@ -308,7 +308,7 @@ def approve_teacher(request, pk):
         )
 
     messages.success(request, f'{teacher.user.get_full_name()} has been approved.')
-    return redirect('teacher_detail', pk=pk)
+    return redirect('teachers:teacher_detail', pk=pk)
 
 
 @login_required

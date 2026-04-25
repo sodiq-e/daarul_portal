@@ -50,9 +50,9 @@
                             </td>
                             <td>
                                 {% if perm.is_granted %}
-                                <a href="{% url 'revoke_permission' perm.teacher.pk perm.permission %}" class="btn btn-sm btn-danger">Revoke</a>
+                                <a href="{% url 'teachers:revoke_permission' perm.teacher.pk perm.permission %}" class="btn btn-sm btn-danger">Revoke</a>
                                 {% else %}
-                                <a href="{% url 'grant_permission' perm.teacher.pk perm.permission %}" class="btn btn-sm btn-success">Grant</a>
+                                <a href="{% url 'teachers:grant_permission' perm.teacher.pk perm.permission %}" class="btn btn-sm btn-success">Grant</a>
                                 {% endif %}
                             </td>
                         </tr>

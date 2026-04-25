@@ -106,10 +106,10 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'teacher_detail' teacher.id %}" class="btn btn-sm btn-info">View</a>
+                                            <a href="{% url 'teachers:teacher_detail' teacher.id %}" class="btn btn-sm btn-info">View</a>
                                             {% if not teacher.is_approved %}
-                                                <a href="{% url 'approve_teacher' teacher.id %}" class="btn btn-sm btn-success">Approve</a>
-                                                <a href="{% url 'reject_teacher' teacher.id %}" class="btn btn-sm btn-danger">Reject</a>
+                                                <a href="{% url 'teachers:approve_teacher' teacher.id %}" class="btn btn-sm btn-success">Approve</a>
+                                                <a href="{% url 'teachers:reject_teacher' teacher.id %}" class="btn btn-sm btn-danger">Reject</a>
                                             {% endif %}
                                         </td>
                                     </tr>

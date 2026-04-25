@@ -37,7 +37,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'class_teacher_edit' assignment.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                                <a href="{% url 'teachers:class_teacher_edit' assignment.pk %}" class="btn btn-sm btn-warning">Edit</a>
                                 {% if assignment.is_active %}
                                 <a href="{% url 'deactivate_class_teacher' assignment.pk %}" class="btn btn-sm btn-danger">Deactivate</a>
                                 {% endif %}
