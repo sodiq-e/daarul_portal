@@ -286,3 +286,94 @@ class ReportCardComment(models.Model):
     def __str__(self):
         return f"Comment for {self.term_result.student} by {self.created_by}"
 
+
+class StudentConduct(models.Model):
+    """Student conduct, attendance, and behavioral traits for each term"""
+    
+    ATTENDANCE_CHOICES = [
+        ('Excellent', 'Excellent (95-100%)'),
+        ('Very Good', 'Very Good (85-94%)'),
+        ('Good', 'Good (75-84%)'),
+        ('Fair', 'Fair (65-74%)'),
+        ('Poor', 'Poor (<65%)'),
+    ]
+    
+    CONDUCT_CHOICES = [
+        ('Excellent', 'Excellent'),
+        ('Very Good', 'Very Good'),
+        ('Good', 'Good'),
+        ('Fair', 'Fair'),
+        ('Poor', 'Poor'),
+    ]
+    
+    PUNCTUALITY_CHOICES = [
+        ('Excellent', 'Always on time'),
+        ('Very Good', 'Usually on time'),
+        ('Good', 'Mostly on time'),
+        ('Fair', 'Often late'),
+        ('Poor', 'Frequently late'),
+    ]
+    
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='conduct_records'
+    )
+    term = models.ForeignKey(Term, on_delete=models.CASCADE)
+    
+    # Conduct traits
+    attendance = models.CharField(
+        max_length=20,
+        choices=ATTENDANCE_CHOICES,
+        default='Good',
+        help_text='Student attendance rating'
+    )
+    conduct = models.CharField(
+        max_length=20,
+        choices=CONDUCT_CHOICES,
+        default='Good',
+        help_text='Student general conduct'
+    )
+    punctuality = models.CharField(
+        max_length=20,
+        choices=PUNCTUALITY_CHOICES,
+        default='Good',
+        help_text='Student punctuality'
+    )
+    attentiveness = models.CharField(
+        max_length=20,
+        choices=CONDUCT_CHOICES,
+        default='Good',
+        help_text='Student attentiveness in class'
+    )
+    participation = models.CharField(
+        max_length=20,
+        choices=CONDUCT_CHOICES,
+        default='Good',
+        help_text='Student participation in class'
+    )
+    
+    # Notes
+    teacher_notes = models.TextField(
+        blank=True,
+        help_text='General teacher comments about student progress'
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    entered_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='entered_conduct_records'
+    )
+    
+    class Meta:
+        unique_together = ('student', 'term')
+        ordering = ['-term']
+    
+    def __str__(self):
+        return f"{self.student} - {self.term} Conduct"
+

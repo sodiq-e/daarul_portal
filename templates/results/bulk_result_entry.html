@@ -1,0 +1,568 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load form_filters %}
+
+{% block title %}Bulk Result Entry - {{ school_class }}{% endblock %}
+
+
+{% block extra_css %}
+<style>
+    .bulk-entry-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px 0;
+        margin-bottom: 30px;
+    }
+
+    .bulk-entry-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+
+    .bulk-entry-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+        padding: 15px;
+        backdrop-filter: blur(10px);
+    }
+
+    .info-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+
+    .info-value {
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+
+    /* Tabs for switching between Score Entry and Conduct */
+    .nav-tabs {
+        border-bottom: 3px solid #667eea;
+        margin-bottom: 30px;
+    }
+
+    .nav-link {
+        color: #666;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-weight: 600;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+    }
+
+    .nav-link:hover {
+        color: #667eea;
+        border-bottom-color: #667eea;
+    }
+
+    .nav-link.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: transparent;
+    }
+
+    /* Score Entry Grid */
+    .score-grid {
+        overflow-x: auto;
+        margin-bottom: 30px;
+    }
+
+    .score-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .score-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .score-table th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        border: none;
+    }
+
+    .score-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .score-table tbody tr:hover {
+        background: #f8f9ff;
+    }
+
+    .student-name-cell {
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+        min-width: 150px;
+    }
+
+    .subject-cell {
+        min-width: 80px;
+        text-align: center;
+    }
+
+    .score-inputs {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+    }
+
+    .score-input {
+        width: 60px;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+
+    .score-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .score-label {
+        font-size: 0.75rem;
+        color: #999;
+        font-weight: 600;
+        min-width: 35px;
+        text-align: center;
+    }
+
+    .grade-display {
+        min-width: 45px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: #f0f0f0;
+        color: #666;
+    }
+
+    /* Conduct Section */
+    .conduct-grid {
+        display: grid;
+        gap: 20px;
+    }
+
+    .student-conduct-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #667eea;
+    }
+
+    .student-conduct-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .conduct-traits-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .trait-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .trait-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .trait-select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .trait-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .teacher-notes-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .teacher-notes-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .teacher-notes-textarea {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        resize: vertical;
+        font-family: inherit;
+        transition: all 0.2s ease;
+    }
+
+    .teacher-notes-textarea:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    /* Form Actions */
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        justify-content: flex-end;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        color: #333;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #e0e0e0;
+    }
+
+    /* Messages */
+    .alert {
+        border-radius: 8px;
+        border: none;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+    }
+
+    .alert-danger {
+        background: #fee;
+        color: #c33;
+    }
+
+    /* Subject Group Headers */
+    .subject-group-header {
+        background: #f5f5f5;
+        padding: 10px 15px;
+        text-align: center;
+        font-weight: 600;
+        color: #667eea;
+        border-bottom: 2px solid #667eea;
+    }
+
+    /* Loading state */
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    @media (max-width: 1024px) {
+        .bulk-entry-header h1 {
+            font-size: 1.8rem;
+        }
+
+        .score-grid {
+            font-size: 0.9rem;
+        }
+
+        .score-input {
+            width: 50px;
+            padding: 4px 6px;
+            font-size: 0.85rem;
+        }
+    }
+
+    @media print {
+        .form-actions, .nav-tabs, .bulk-entry-container::before {
+            display: none;
+        }
+
+        .score-table {
+            page-break-inside: avoid;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bulk-entry-container">
+    <div class="container-fluid bulk-entry-header">
+        <h1>📊 Bulk Result Entry</h1>
+        <div class="bulk-entry-info">
+            <div class="info-card">
+                <div class="info-label">Class</div>
+                <div class="info-value">{{ school_class.class_name }}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Term</div>
+                <div class="info-value">{{ term.name }}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Students</div>
+                <div class="info-value">{{ students.count }}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Subjects</div>
+                <div class="info-value">{{ class_subjects.count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-5">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" id="bulk-entry-form">
+        {% csrf_token %}
+
+        <!-- Tabs for switching between sections -->
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="scores-tab" data-bs-toggle="tab" data-bs-target="#scores-section" type="button" role="tab">
+                    📝 Score Entry ({{ students.count }} students × {{ class_subjects.count }} subjects)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="conduct-tab" data-bs-toggle="tab" data-bs-target="#conduct-section" type="button" role="tab">
+                    ⭐ Conduct & Traits ({{ students.count }} students)
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Score Entry Tab -->
+            <div class="tab-pane fade show active" id="scores-section" role="tabpanel">
+                <div class="score-grid">
+                    <table class="score-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                {% for subject in class_subjects %}
+                                    <th colspan="2" class="subject-group-header">
+                                        {{ subject.subject.name|truncatewords:3 }}
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                <th></th>
+                                {% for subject in class_subjects %}
+                                    <th class="subject-cell">
+                                        <span class="score-label">Test</span>
+                                    </th>
+                                    <th class="subject-cell">
+                                        <span class="score-label">Exam</span>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                                <tr>
+                                    <td class="student-name-cell">
+                                        {{ student.get_full_name }}
+                                        <br>
+                                        <small style="font-weight: 400; color: #999;">{{ student.admission_no }}</small>
+                                    </td>
+                                    {% for subject in class_subjects %}
+                                        {% with test_field="test_"|add:student.pk|add:"_"|add:subject.pk exam_field="exam_"|add:student.pk|add:"_"|add:subject.pk %}
+                                            <td class="subject-cell">
+                                                <div class="score-inputs">
+                                                    {% if form|get_field:test_field %}
+                                                        {{ form|get_field:test_field }}
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                            <td class="subject-cell">
+                                                <div class="score-inputs">
+                                                    {% if form|get_field:exam_field %}
+                                                        {{ form|get_field:exam_field }}
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <strong>💡 Tip:</strong> Enter test and exam scores for each student and subject. Grades will be automatically calculated based on the result template.
+                </div>
+            </div>
+
+            <!-- Conduct Tab -->
+            <div class="tab-pane fade" id="conduct-section" role="tabpanel">
+                <div class="conduct-grid">
+                    {% for student in students %}
+                        {% with attendance_field="attendance_"|add:student.pk conduct_field="conduct_"|add:student.pk punctuality_field="punctuality_"|add:student.pk attentiveness_field="attentiveness_"|add:student.pk participation_field="participation_"|add:student.pk notes_field="teacher_notes_"|add:student.pk %}
+                            <div class="student-conduct-card">
+                                <div class="student-conduct-name">
+                                    👤 {{ student.get_full_name }}
+                                    <small style="font-weight: 400; color: #999;">{{ student.admission_no }}</small>
+                                </div>
+
+                                <div class="conduct-traits-grid">
+                                    <div class="trait-group">
+                                        <label class="trait-label">Attendance</label>
+                                        {{ form|get_field:attendance_field }}
+                                    </div>
+                                    <div class="trait-group">
+                                        <label class="trait-label">General Conduct</label>
+                                        {{ form|get_field:conduct_field }}
+                                    </div>
+                                    <div class="trait-group">
+                                        <label class="trait-label">Punctuality</label>
+                                        {{ form|get_field:punctuality_field }}
+                                    </div>
+                                    <div class="trait-group">
+                                        <label class="trait-label">Attentiveness</label>
+                                        {{ form|get_field:attentiveness_field }}
+                                    </div>
+                                    <div class="trait-group">
+                                        <label class="trait-label">Participation</label>
+                                        {{ form|get_field:participation_field }}
+                                    </div>
+                                </div>
+
+                                <div class="teacher-notes-group">
+                                    <label class="teacher-notes-label">Teacher Notes</label>
+                                    {{ form|get_field:notes_field }}
+                                </div>
+                            </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+
+                <div class="alert alert-info mt-3">
+                    <strong>💡 Tip:</strong> Rate each student's conduct, attendance, and other traits. Add any specific notes about their performance or behavior.
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-secondary">
+                Cancel
+            </a>
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+                💾 Save All Results & Conduct
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Custom template filter for getting form field
+    Django = {
+        getField: function(form, fieldName) {
+            // This will be handled by a custom template filter
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('bulk-entry-form');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Add click handler for submit button
+        submitBtn.addEventListener('click', function(e) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Saving...';
+        });
+
+        // Prevent double submission
+        form.addEventListener('submit', function(e) {
+            if (form.classList.contains('loading')) {
+                e.preventDefault();
+            }
+            form.classList.add('loading');
+        });
+
+        // Auto-focus on score inputs for better UX
+        const scoreInputs = document.querySelectorAll('.score-input');
+        scoreInputs.forEach(input => {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const nextInput = this.closest('tr').querySelector('.score-input:not([value])');
+                    if (nextInput) nextInput.focus();
+                }
+            });
+        });
+
+        console.log('Bulk entry form initialized');
+    });
+</script>
+{% endblock %}

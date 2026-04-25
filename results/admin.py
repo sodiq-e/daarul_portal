@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     GradeScale, ResultTemplate, StudentResult,
-    TermResult, Promotion, ReportCardComment
+    TermResult, Promotion, ReportCardComment, StudentConduct
 )
 
 
@@ -58,4 +58,27 @@ class ReportCardCommentAdmin(admin.ModelAdmin):
     list_filter = ('created_at', 'created_by')
     search_fields = ('term_result__student__admission_no', 'comment')
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(StudentConduct)
+class StudentConductAdmin(admin.ModelAdmin):
+    list_display = ('student', 'term', 'attendance', 'conduct', 'punctuality', 'entered_by')
+    list_filter = ('term', 'attendance', 'conduct', 'punctuality')
+    search_fields = ('student__admission_no', 'student__surname')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Student & Term', {
+            'fields': ('student', 'term', 'entered_by')
+        }),
+        ('Conduct Traits', {
+            'fields': ('attendance', 'conduct', 'punctuality', 'attentiveness', 'participation')
+        }),
+        ('Notes', {
+            'fields': ('teacher_notes',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 

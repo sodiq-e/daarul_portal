@@ -551,6 +551,158 @@ def teacher_print_results(request, student_id, term_id):
 
 
 @login_required
+def bulk_result_entry(request, class_id, term_id):
+    """Bulk entry for class results with modern report card UI"""
+    try:
+        teacher = request.user.teacher_profile
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not teacher_has_permission(teacher, 'edit_results'):
+        messages.error(request, 'You do not have permission to edit results.')
+        return redirect('home')
+
+    from .forms import BulkResultEntryForm
+    from .models import StudentConduct
+    
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Verify teacher is assigned to this class
+    from school_classes.models import ClassTeacher
+    if not ClassTeacher.objects.filter(teacher=teacher, school_class=school_class).exists():
+        messages.error(request, 'You are not authorized to manage results for this class.')
+        return redirect('home')
+
+    # Get result template
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=school_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.error(request, f'No result template found for {school_class} - {term}')
+        return redirect('teacher_results_list')
+
+    # Get students and subjects
+    students = Student.objects.filter(
+        student_class=school_class,
+        status='active'
+    ).order_by('surname', 'other_names')
+
+    class_subjects = ClassSubject.objects.filter(
+        school_class=school_class
+    ).select_related('subject').order_by('order')
+
+    if request.method == 'POST':
+        form = BulkResultEntryForm(
+            request.POST,
+            class_subjects=class_subjects,
+            students=students
+        )
+        
+        if form.is_valid():
+            # Process results
+            for student in students:
+                # Create/update student results
+                for class_subject in class_subjects:
+                    test_field_name = f"test_{student.pk}_{class_subject.pk}"
+                    exam_field_name = f"exam_{student.pk}_{class_subject.pk}"
+
+                    test_score = form.cleaned_data.get(test_field_name)
+                    exam_score = form.cleaned_data.get(exam_field_name)
+
+                    if test_score is not None or exam_score is not None:
+                        result, created = StudentResult.objects.get_or_create(
+                            student=student,
+                            class_subject=class_subject,
+                            term=term,
+                            result_template=result_template
+                        )
+                        
+                        if test_score is not None:
+                            result.test_score = test_score
+                        if exam_score is not None:
+                            result.exam_score = exam_score
+                        
+                        result.entered_by = request.user
+                        result.save()
+
+                # Create/update conduct records
+                attendance_field_name = f"attendance_{student.pk}"
+                conduct_field_name = f"conduct_{student.pk}"
+                punctuality_field_name = f"punctuality_{student.pk}"
+                attentiveness_field_name = f"attentiveness_{student.pk}"
+                participation_field_name = f"participation_{student.pk}"
+                teacher_notes_field_name = f"teacher_notes_{student.pk}"
+
+                conduct, created = StudentConduct.objects.get_or_create(
+                    student=student,
+                    term=term
+                )
+                
+                conduct.attendance = form.cleaned_data.get(attendance_field_name, 'Good')
+                conduct.conduct = form.cleaned_data.get(conduct_field_name, 'Good')
+                conduct.punctuality = form.cleaned_data.get(punctuality_field_name, 'Good')
+                conduct.attentiveness = form.cleaned_data.get(attentiveness_field_name, 'Good')
+                conduct.participation = form.cleaned_data.get(participation_field_name, 'Good')
+                conduct.teacher_notes = form.cleaned_data.get(teacher_notes_field_name, '')
+                conduct.entered_by = request.user
+                conduct.save()
+
+            messages.success(request, f'Results and conduct records saved successfully for {len(students)} students.')
+            return redirect('teacher_class_results', class_id=class_id, term_id=term_id)
+    else:
+        form = BulkResultEntryForm(
+            class_subjects=class_subjects,
+            students=students
+        )
+        
+        # Pre-fill form with existing data
+        for student in students:
+            for class_subject in class_subjects:
+                result = StudentResult.objects.filter(
+                    student=student,
+                    class_subject=class_subject,
+                    term=term,
+                    result_template=result_template
+                ).first()
+                
+                if result:
+                    test_field_name = f"test_{student.pk}_{class_subject.pk}"
+                    exam_field_name = f"exam_{student.pk}_{class_subject.pk}"
+                    form.initial[test_field_name] = result.test_score
+                    form.initial[exam_field_name] = result.exam_score
+            
+            # Pre-fill conduct data
+            conduct = StudentConduct.objects.filter(
+                student=student,
+                term=term
+            ).first()
+            
+            if conduct:
+                form.initial[f"attendance_{student.pk}"] = conduct.attendance
+                form.initial[f"conduct_{student.pk}"] = conduct.conduct
+                form.initial[f"punctuality_{student.pk}"] = conduct.punctuality
+                form.initial[f"attentiveness_{student.pk}"] = conduct.attentiveness
+                form.initial[f"participation_{student.pk}"] = conduct.participation
+                form.initial[f"teacher_notes_{student.pk}"] = conduct.teacher_notes
+
+    context = {
+        'form': form,
+        'school_class': school_class,
+        'term': term,
+        'result_template': result_template,
+        'students': students,
+        'class_subjects': class_subjects,
+    }
+
+    return render(request, 'results/bulk_result_entry.html', context)
+
+
+@login_required
 def teacher_print_broadsheet(request, class_id, term_id):
     """Print class broadsheet"""
     try:

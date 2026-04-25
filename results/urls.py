@@ -11,6 +11,7 @@ urlpatterns = [
     # Teacher results views
     path('teacher/results/', views.teacher_results_list, name='teacher_results_list'),
     path('teacher/class/<int:class_id>/<int:term_id>/', views.teacher_class_results, name='teacher_class_results'),
+    path('teacher/class/<int:class_id>/<int:term_id>/bulk-entry/', views.bulk_result_entry, name='bulk_result_entry'),
     path('teacher/edit/<int:result_id>/', views.teacher_edit_student_result, name='teacher_edit_result'),
     path('teacher/print/<int:student_id>/<int:term_id>/', views.teacher_print_results, name='teacher_print_results'),
     path('teacher/broadsheet/<int:class_id>/<int:term_id>/', views.teacher_print_broadsheet, name='teacher_print_broadsheet'),
