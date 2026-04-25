@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Application - {{ application.full_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #333;
+            line-height: 1.4;
+        }
+        .container {
+            width: 100%;
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #333;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .header p {
+            font-size: 11pt;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .section h2 {
+            font-size: 12pt;
+            background: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #333;
+            font-weight: bold;
+        }
+        .row {
+            display: flex;
+            margin-bottom: 12px;
+        }
+        .col {
+            flex: 1;
+            margin-right: 20px;
+        }
+        .col:last-child {
+            margin-right: 0;
+        }
+        .field-label {
+            font-weight: bold;
+            color: #333;
+            font-size: 10pt;
+        }
+        .field-value {
+            color: #666;
+            font-size: 10pt;
+            margin-top: 2px;
+            padding: 5px;
+            background: #f9f9f9;
+            border-left: 2px solid #ddd;
+            padding-left: 8px;
+        }
+        .meta-info {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 9pt;
+        }
+        .meta-info p {
+            margin-bottom: 5px;
+        }
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>STUDENT ADMISSION APPLICATION</h1>
+            <p>Application ID: #{{ application.id }} | Date: {{ application.application_date|date:"d/m/Y H:i" }}</p>
+        </div>
+
+        <!-- Student Information -->
+        <div class="section">
+            <h2>👤 STUDENT INFORMATION</h2>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Full Name</div>
+                    <div class="field-value">{{ application.full_name }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Date of Birth</div>
+                    <div class="field-value">{{ application.dob|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Gender</div>
+                    <div class="field-value">{{ application.get_gender_display }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Class Applying For</div>
+                    <div class="field-value">{{ application.desired_class }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Current/Previous School</div>
+                    <div class="field-value">{{ application.current_school|default:"Not provided" }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Student Phone</div>
+                    <div class="field-value">{{ application.student_phone|default:"Not provided" }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Student Email</div>
+                    <div class="field-value">{{ application.student_email|default:"Not provided" }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Student Address</div>
+                    <div class="field-value">{{ application.student_address|default:"Not provided" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Information -->
+        <div class="section">
+            <h2>📚 ADDITIONAL INFORMATION</h2>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Previous School</div>
+                    <div class="field-value">{{ application.previous_school|default:"Not provided" }}</div>
+                </div>
+            </div>
+            {% if application.medical_information %}
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Medical Information</div>
+                    <div class="field-value">{{ application.medical_information }}</div>
+                </div>
+            </div>
+            {% endif %}
+            {% if application.special_needs %}
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Special Needs</div>
+                    <div class="field-value">{{ application.special_needs }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Guardian Information -->
+        <div class="section">
+            <h2>👨‍👩‍👧 PARENT / GUARDIAN INFORMATION</h2>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Guardian Name</div>
+                    <div class="field-value">{{ application.guardian_name }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Relationship</div>
+                    <div class="field-value">{{ application.guardian_relationship|default:"Not specified" }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Guardian Phone</div>
+                    <div class="field-value">{{ application.guardian_phone|default:"Not provided" }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Guardian Email</div>
+                    <div class="field-value">{{ application.guardian_email|default:"Not provided" }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Occupation</div>
+                    <div class="field-value">{{ application.guardian_occupation|default:"Not provided" }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Employer</div>
+                    <div class="field-value">{{ application.guardian_employer|default:"Not provided" }}</div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Guardian Address</div>
+                    <div class="field-value">{{ application.guardian_address|default:"Not provided" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Contact -->
+        <div class="section">
+            <h2>📞 EMERGENCY CONTACT</h2>
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">Contact Name</div>
+                    <div class="field-value">{{ application.emergency_contact_name|default:"Not provided" }}</div>
+                </div>
+                <div class="col">
+                    <div class="field-label">Contact Phone</div>
+                    <div class="field-value">{{ application.emergency_contact_phone|default:"Not provided" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Form Fields -->
+        {% if form_responses %}
+        <div class="section">
+            <h2>📋 CUSTOM FIELDS</h2>
+            {% for response in form_responses %}
+            <div class="row">
+                <div class="col">
+                    <div class="field-label">{{ response.field.label }}</div>
+                    <div class="field-value">{{ response.value }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Application Metadata -->
+        <div class="meta-info">
+            <p><strong>Status:</strong> {{ application.get_status_display }}</p>
+            <p><strong>Submitted:</strong> {{ application.application_date|date:"d/m/Y H:i" }}</p>
+            {% if application.reviewed_by %}
+            <p><strong>Reviewed By:</strong> {{ application.reviewed_by.get_full_name }}</p>
+            <p><strong>Reviewer Notes:</strong> {{ application.reviewer_notes|default:"No notes" }}</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

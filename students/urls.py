@@ -13,6 +13,7 @@ urlpatterns = [
     path('applications/', views.StudentApplicationListView.as_view(), name='student_application_list'),
     path('applications/<int:pk>/', views.StudentApplicationDetailView.as_view(), name='student_application_detail'),
     path('applications/<int:pk>/edit/', views.StudentApplicationUpdateView.as_view(), name='student_application_edit'),
+    path('applications/<int:pk>/print/', views.print_admission_application, name='print_admission_application'),
     path('', views.StudentListView.as_view(), name='student_list'),
     path('<int:pk>/', views.StudentDetailView.as_view(), name='student_detail'),
     path('add/', views.StudentCreateView.as_view(), name='student_add'),

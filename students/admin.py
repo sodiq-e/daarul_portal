@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, StudentApplication
+from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse
 
 
 @admin.register(Student)
@@ -75,3 +75,28 @@ class StudentApplicationAdmin(admin.ModelAdmin):
             'fields': ('status', 'reviewer_notes', 'submitted_by', 'reviewed_by', 'application_date'),
         }),
     )
+
+
+@admin.register(AdmissionFormField)
+class AdmissionFormFieldAdmin(admin.ModelAdmin):
+    list_display = ('label', 'field_type', 'required', 'order', 'is_active')
+    list_filter = ('field_type', 'required', 'is_active')
+    search_fields = ('label', 'name')
+    ordering = ['order']
+    fieldsets = (
+        ('Field Information', {
+            'fields': ('name', 'label', 'field_type', 'order')
+        }),
+        ('Configuration', {
+            'fields': ('required', 'help_text', 'placeholder', 'choices', 'is_active'),
+            'description': 'For dropdown fields, enter comma-separated choices'
+        }),
+    )
+
+
+@admin.register(AdmissionFormResponse)
+class AdmissionFormResponseAdmin(admin.ModelAdmin):
+    list_display = ('application', 'field', 'value')
+    list_filter = ('field', 'application__status')
+    search_fields = ('application__first_name', 'application__last_name')
+    readonly_fields = ('application', 'field', 'value')

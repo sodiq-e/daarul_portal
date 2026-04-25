@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Admission Application{% endblock %}
+
+{% block content %}
+<div class="application-form-container" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 40px 0;">
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-5" style="color: white;">
+            <h1 class="fw-bold mb-2">🎓 Student Admission Application</h1>
+            <p class="lead">Complete this form to apply for admission to our school</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Main Form Card -->
+                <div class="card shadow-lg border-0" style="border-radius: 15px; overflow: hidden;">
+                    <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px;">
+                        <h4 class="mb-0">{% if form.instance.pk %}📝 Review Application{% else %}📋 Application Form{% endif %}</h4>
+                    </div>
+
+                    <div class="card-body" style="padding: 40px;">
+                        {% if messages %}
+                            {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <form method="post" id="admissionForm" novalidate>
+                            {% csrf_token %}
+
+                            <!-- Student Information Section -->
+                            <div class="form-section mb-5">
+                                <h5 class="section-title mb-4" style="border-bottom: 3px solid #667eea; padding-bottom: 10px; color: #333;">
+                                    👤 Student Information
+                                </h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.first_name.id_for_label }}" class="form-label fw-bold">
+                                            {{ form.first_name.label }} <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.first_name }}
+                                        {% if form.first_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.last_name.id_for_label }}" class="form-label fw-bold">
+                                            {{ form.last_name.label }} <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.last_name }}
+                                        {% if form.last_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.last_name.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.other_names.id_for_label }}" class="form-label">
+                                            {{ form.other_names.label }}
+                                        </label>
+                                        {{ form.other_names }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.dob.id_for_label }}" class="form-label fw-bold">
+                                            {{ form.dob.label }} <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.dob }}
+                                        {% if form.dob.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.dob.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.gender.id_for_label }}" class="form-label">
+                                            {{ form.gender.label }}
+                                        </label>
+                                        {{ form.gender }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.desired_class.id_for_label }}" class="form-label fw-bold">
+                                            {{ form.desired_class.label }} <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.desired_class }}
+                                        {% if form.desired_class.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.desired_class.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.current_school.id_for_label }}" class="form-label">
+                                            {{ form.current_school.label }}
+                                        </label>
+                                        {{ form.current_school }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.student_phone.id_for_label }}" class="form-label">
+                                            {{ form.student_phone.label }}
+                                        </label>
+                                        {{ form.student_phone }}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label for="{{ form.student_email.id_for_label }}" class="form-label">
+                                            {{ form.student_email.label }}
+                                        </label>
+                                        {{ form.student_email }}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label for="{{ form.student_address.id_for_label }}" class="form-label">
+                                            {{ form.student_address.label }}
+                                        </label>
+                                        {{ form.student_address }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Information -->
+                            <div class="form-section mb-5">
+                                <h5 class="section-title mb-4" style="border-bottom: 3px solid #667eea; padding-bottom: 10px; color: #333;">
+                                    📚 Additional Information
+                                </h5>
+                                <div class="mb-3">
+                                    <label for="{{ form.previous_school.id_for_label }}" class="form-label">
+                                        {{ form.previous_school.label }}
+                                    </label>
+                                    {{ form.previous_school }}
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.medical_information.id_for_label }}" class="form-label">
+                                        {{ form.medical_information.label }}
+                                    </label>
+                                    {{ form.medical_information }}
+                                    <small class="form-text text-muted">Allergies, medical conditions, etc.</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.special_needs.id_for_label }}" class="form-label">
+                                        {{ form.special_needs.label }}
+                                    </label>
+                                    {{ form.special_needs }}
+                                </div>
+                            </div>
+
+                            <!-- Guardian Information -->
+                            <div class="form-section mb-5">
+                                <h5 class="section-title mb-4" style="border-bottom: 3px solid #667eea; padding-bottom: 10px; color: #333;">
+                                    👨‍👩‍👧 Parent / Guardian Information
+                                </h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.guardian_name.id_for_label }}" class="form-label fw-bold">
+                                            {{ form.guardian_name.label }} <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.guardian_name }}
+                                        {% if form.guardian_name.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.guardian_name.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.guardian_relationship.id_for_label }}" class="form-label">
+                                            {{ form.guardian_relationship.label }}
+                                        </label>
+                                        {{ form.guardian_relationship }}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.guardian_phone.id_for_label }}" class="form-label">
+                                            {{ form.guardian_phone.label }}
+                                        </label>
+                                        {{ form.guardian_phone }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.guardian_email.id_for_label }}" class="form-label">
+                                            {{ form.guardian_email.label }}
+                                        </label>
+                                        {{ form.guardian_email }}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.guardian_occupation.id_for_label }}" class="form-label">
+                                            {{ form.guardian_occupation.label }}
+                                        </label>
+                                        {{ form.guardian_occupation }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.guardian_employer.id_for_label }}" class="form-label">
+                                            {{ form.guardian_employer.label }}
+                                        </label>
+                                        {{ form.guardian_employer }}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label for="{{ form.guardian_address.id_for_label }}" class="form-label">
+                                            {{ form.guardian_address.label }}
+                                        </label>
+                                        {{ form.guardian_address }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Emergency Contact -->
+                            <div class="form-section mb-5">
+                                <h5 class="section-title mb-4" style="border-bottom: 3px solid #667eea; padding-bottom: 10px; color: #333;">
+                                    📞 Emergency Contact
+                                </h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.emergency_contact_name.id_for_label }}" class="form-label">
+                                            {{ form.emergency_contact_name.label }}
+                                        </label>
+                                        {{ form.emergency_contact_name }}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.emergency_contact_phone.id_for_label }}" class="form-label">
+                                            {{ form.emergency_contact_phone.label }}
+                                        </label>
+                                        {{ form.emergency_contact_phone }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <hr class="my-5">
+                            <div class="form-actions d-flex gap-2 justify-content-center no-print">
+                                <a href="{% url 'home' %}" class="btn btn-lg btn-outline-secondary">← Back Home</a>
+                                <button type="reset" class="btn btn-lg btn-outline-secondary">🔄 Clear Form</button>
+                                <button type="submit" class="btn btn-lg btn-success">✓ Submit Application</button>
+                                <button type="button" onclick="window.print()" class="btn btn-lg btn-info">🖨️ Print Form</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Footer Info -->
+                <div class="text-center mt-5" style="color: white;">
+                    <p>Once submitted, your application will be reviewed by our admissions team.</p>
+                    <p>You will receive updates via the email address provided.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        padding: 12px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .form-label {
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+    }
+    
+    .section-title {
+        font-weight: 600;
+        color: #333;
+        font-size: 16px;
+    }
+    
+    .btn {
+        border-radius: 8px;
+        font-weight: 500;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 13px;
+        margin-top: 5px;
+    }
+    
+    @media print {
+        .no-print { display: none !important; }
+        .application-form-container { background: white !important; }
+        .card { box-shadow: none !important; }
+        body { background: white !important; }
+    }
+</style>
+{% endblock %}

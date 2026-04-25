@@ -6,70 +6,125 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>Student Applications</h1>
-            <p class="text-muted">Review submitted applications and update statuses.</p>
+            <h1>📋 Student Applications</h1>
+            <p class="text-muted">Review and manage submitted student applications.</p>
         </div>
-        <div>
-            <a href="{% url 'student_application' %}" class="btn btn-primary no-print">New Application</a>
-            <button onclick="window.print()" class="btn btn-secondary no-print">Print Applications</button>
+        <div class="no-print">
+            <a href="{% url 'student_application' %}" class="btn btn-primary">➕ New Application</a>
+            <button onclick="window.print()" class="btn btn-secondary">🖨️ Print</button>
         </div>
     </div>
 
+    <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card p-3 mb-3">
-                <h4>Pending</h4>
-                <p class="display-6">{{ pending_count }}</p>
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">⏳ Pending Review</h6>
+                    <h2 class="text-warning">{{ pending_count }}</h2>
+                </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3 mb-3">
-                <h4>Accepted</h4>
-                <p class="display-6">{{ accepted_count }}</p>
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">✓ Accepted</h6>
+                    <h2 class="text-success">{{ accepted_count }}</h2>
+                </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3 mb-3">
-                <h4>Rejected</h4>
-                <p class="display-6">{{ rejected_count }}</p>
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">✗ Rejected</h6>
+                    <h2 class="text-danger">{{ rejected_count }}</h2>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Applications Table -->
     {% if applications %}
     <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
+        <table class="table table-hover">
+            <thead class="table-dark">
                 <tr>
-                    <th>Name</th>
+                    <th>Student Name</th>
                     <th>Class Applied</th>
                     <th>Guardian</th>
                     <th>Status</th>
                     <th>Submitted</th>
-                    <th>Actions</th>
+                    <th class="text-end no-print">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for application in applications %}
                 <tr>
-                    <td>{{ application.full_name }}</td>
+                    <td><strong>{{ application.full_name }}</strong></td>
                     <td>{{ application.desired_class }}</td>
                     <td>{{ application.guardian_name }}</td>
-                    <td>{{ application.get_status_display }}</td>
-                    <td>{{ application.application_date|date:'M j, Y' }}</td>
                     <td>
-                        <a href="{% url 'student_application_detail' application.pk %}" class="btn btn-sm btn-info">View</a>
-                        <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-sm btn-warning">Update</a>
+                        {% if application.status == 'pending' %}
+                        <span class="badge bg-warning">⏳ Pending</span>
+                        {% elif application.status == 'accepted' %}
+                        <span class="badge bg-success">✓ Accepted</span>
+                        {% else %}
+                        <span class="badge bg-danger">✗ Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ application.application_date|date:'d/m/Y H:i' }}</td>
+                    <td class="text-end no-print">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'student_application_detail' application.pk %}" class="btn btn-sm btn-info" title="View Application">👁️</a>
+                            <a href="{% url 'print_admission_application' application.pk %}" class="btn btn-sm btn-success" title="Download PDF" target="_blank">📥</a>
+                            <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-sm btn-warning" title="Update Status">✏️</a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
     {% else %}
     <div class="alert alert-info">
-        No student applications have been submitted yet.
+        <strong>📭 No applications yet!</strong><br>
+        No student applications have been submitted. Once students submit applications, they will appear here.
     </div>
     {% endif %}
 </div>
+
+<style>
+    @media print {
+        .no-print { display: none !important; }
+    }
+</style>
 {% endblock %}

@@ -122,3 +122,53 @@ class StudentApplication(models.Model):
     @property
     def is_pending(self):
         return self.status == 'pending'
+
+
+class AdmissionFormField(models.Model):
+    """Dynamic fields for admission form that admin can customize"""
+    FIELD_TYPES = [
+        ('text', 'Text'),
+        ('email', 'Email'),
+        ('phone', 'Phone'),
+        ('textarea', 'Text Area'),
+        ('date', 'Date'),
+        ('select', 'Dropdown'),
+        ('checkbox', 'Checkbox'),
+        ('file', 'File Upload'),
+    ]
+    
+    name = models.CharField(max_length=100, unique=True)
+    label = models.CharField(max_length=200, help_text="Label shown on form")
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPES, default='text')
+    required = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    help_text = models.CharField(max_length=300, blank=True)
+    placeholder = models.CharField(max_length=150, blank=True)
+    choices = models.TextField(blank=True, help_text="For dropdown: comma-separated values")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['order']
+    
+    def __str__(self):
+        return f"{self.label} ({self.get_field_type_display()})"
+    
+    def get_choices_list(self):
+        if self.choices:
+            return [c.strip() for c in self.choices.split(',')]
+        return []
+
+
+class AdmissionFormResponse(models.Model):
+    """Store responses to dynamic admission form fields"""
+    application = models.ForeignKey(StudentApplication, on_delete=models.CASCADE, related_name='form_responses')
+    field = models.ForeignKey(AdmissionFormField, on_delete=models.CASCADE)
+    value = models.TextField()
+    
+    class Meta:
+        unique_together = ('application', 'field')
+    
+    def __str__(self):
+        return f"{self.application.full_name} - {self.field.label}"

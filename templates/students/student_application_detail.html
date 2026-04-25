@@ -6,67 +6,188 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>Application Detail</h1>
-            <p class="text-muted">Review the submitted student application.</p>
+            <h1>📋 Application Detail</h1>
+            <p class="text-muted">Submitted: {{ application.application_date|date:"d/m/Y H:i" }}</p>
         </div>
-        <div>
-            <a href="{% url 'student_application_list' %}" class="btn btn-secondary">Back to Applications</a>
-            <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-warning">Update Status</a>
-            <button onclick="window.print()" class="btn btn-primary no-print">Print Application</button>
-        </div>
-    </div>
-
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h4>Student Information</h4>
-            <p><strong>Name:</strong> {{ application.full_name }}</p>
-            <p><strong>Requested Admission No:</strong> {{ application.admission_number_requested }}</p>
-            <p><strong>Date of Birth:</strong> {{ application.dob|date:'F j, Y' }}</p>
-            <p><strong>Gender:</strong> {{ application.get_gender_display }}</p>
-            <p><strong>Class Applying For:</strong> {{ application.desired_class }}</p>
-            <p><strong>Current/Previous School:</strong> {{ application.current_school }}</p>
-            <p><strong>Student Phone:</strong> {{ application.student_phone }}</p>
-            <p><strong>Student Email:</strong> {{ application.student_email }}</p>
-            <p><strong>Medical Information:</strong> {{ application.medical_information|default:'None' }}</p>
-            <p><strong>Special Needs:</strong> {{ application.special_needs|default:'None' }}</p>
+        <div class="no-print">
+            <a href="{% url 'student_application_list' %}" class="btn btn-outline-secondary">← Back</a>
+            <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-warning">✏️ Update Status</a>
+            <a href="{% url 'print_admission_application' application.pk %}" class="btn btn-primary" target="_blank">📥 Download PDF</a>
+            <button onclick="window.print()" class="btn btn-info">🖨️ Print</button>
         </div>
     </div>
 
+    <!-- Student Information -->
     <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">👤 Student Information</h5>
+        </div>
         <div class="card-body">
-            <h4>Guardian / Emergency Contact</h4>
-            <p><strong>Guardian Name:</strong> {{ application.guardian_name }}</p>
-            <p><strong>Relationship:</strong> {{ application.guardian_relationship }}</p>
-            <p><strong>Guardian Phone:</strong> {{ application.guardian_phone }}</p>
-            <p><strong>Guardian Email:</strong> {{ application.guardian_email }}</p>
-            <p><strong>Guardian Address:</strong> {{ application.guardian_address }}</p>
-            <p><strong>Occupation:</strong> {{ application.guardian_occupation }}</p>
-            <p><strong>Employer:</strong> {{ application.guardian_employer }}</p>
-            <p><strong>Emergency Contact:</strong> {{ application.emergency_contact_name }} — {{ application.emergency_contact_phone }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Full Name:</strong> {{ application.full_name }}</p>
+                    <p><strong>Date of Birth:</strong> {{ application.dob|date:'d/m/Y' }}</p>
+                    <p><strong>Gender:</strong> {{ application.get_gender_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Class Applying For:</strong> {{ application.desired_class }}</p>
+                    <p><strong>Current/Previous School:</strong> {{ application.current_school|default:'Not provided' }}</p>
+                    <p><strong>Requested Admission No:</strong> {{ application.admission_number_requested|default:'Not specified' }}</p>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Student Phone:</strong> {{ application.student_phone|default:'Not provided' }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Student Email:</strong> {{ application.student_email|default:'Not provided' }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Address:</strong> {{ application.student_address|default:'Not provided' }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Additional Information -->
+    {% if application.previous_school or application.medical_information or application.special_needs %}
     <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">📚 Additional Information</h5>
+        </div>
         <div class="card-body">
-            <h4>Review</h4>
-            <p><strong>Status:</strong> {{ application.get_status_display }}</p>
-            <p><strong>Submitted By:</strong>
-                {% if application.submitted_by %}
-                    {{ application.submitted_by.get_full_name|default:application.submitted_by.username }}
-                {% else %}
-                    Visitor
-                {% endif %}
-            </p>
-            <p><strong>Submitted At:</strong> {{ application.application_date|date:'F j, Y g:i A' }}</p>
-            <p><strong>Reviewer Notes:</strong> {{ application.reviewer_notes|default:'No notes yet' }}</p>
-            <p><strong>Reviewed By:</strong>
-                {% if application.reviewed_by %}
-                    {{ application.reviewed_by.get_full_name|default:application.reviewed_by.username }}
-                {% else %}
-                    Not assigned
-                {% endif %}
-            </p>
+            {% if application.previous_school %}
+            <p><strong>Previous School:</strong> {{ application.previous_school }}</p>
+            {% endif %}
+            {% if application.medical_information %}
+            <p><strong>Medical Information:</strong></p>
+            <p>{{ application.medical_information }}</p>
+            {% endif %}
+            {% if application.special_needs %}
+            <p><strong>Special Needs:</strong></p>
+            <p>{{ application.special_needs }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Guardian Information -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">👨‍👩‍👧 Parent / Guardian Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Guardian Name:</strong> {{ application.guardian_name }}</p>
+                    <p><strong>Relationship:</strong> {{ application.guardian_relationship|default:'Not specified' }}</p>
+                    <p><strong>Occupation:</strong> {{ application.guardian_occupation|default:'Not provided' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Phone:</strong> {{ application.guardian_phone|default:'Not provided' }}</p>
+                    <p><strong>Email:</strong> {{ application.guardian_email|default:'Not provided' }}</p>
+                    <p><strong>Employer:</strong> {{ application.guardian_employer|default:'Not provided' }}</p>
+                </div>
+            </div>
+            <hr>
+            <p><strong>Address:</strong> {{ application.guardian_address|default:'Not provided' }}</p>
+        </div>
+    </div>
+
+    <!-- Emergency Contact -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">📞 Emergency Contact</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Contact Name:</strong> {{ application.emergency_contact_name|default:'Not provided' }}</p>
+            <p><strong>Contact Phone:</strong> {{ application.emergency_contact_phone|default:'Not provided' }}</p>
+        </div>
+    </div>
+
+    <!-- Custom Form Responses -->
+    {% if form_responses %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">📋 Additional Answers</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Field</th>
+                            <th>Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for response in form_responses %}
+                        <tr>
+                            <td><strong>{{ response.field.label }}</strong></td>
+                            <td>{{ response.value|truncatewords:20 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Review Information -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h5 class="mb-0">📝 Review Status</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Status:</strong></p>
+                    <p>
+                        {% if application.status == 'pending' %}
+                        <span class="badge bg-warning">⏳ Pending</span>
+                        {% elif application.status == 'accepted' %}
+                        <span class="badge bg-success">✓ Accepted</span>
+                        {% else %}
+                        <span class="badge bg-danger">✗ Rejected</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Submitted By:</strong></p>
+                    <p>
+                        {% if application.submitted_by %}
+                        {{ application.submitted_by.get_full_name|default:application.submitted_by.username }}
+                        {% else %}
+                        Visitor
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Reviewed By:</strong></p>
+                    <p>
+                        {% if application.reviewed_by %}
+                        {{ application.reviewed_by.get_full_name|default:application.reviewed_by.username }}
+                        {% else %}
+                        <span class="text-muted">Not assigned</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            {% if application.reviewer_notes %}
+            <hr>
+            <p><strong>Reviewer Notes:</strong></p>
+            <p>{{ application.reviewer_notes }}</p>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .btn, button { display: none !important; }
+    }
+</style>
 {% endblock %}

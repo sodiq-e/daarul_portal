@@ -4,9 +4,17 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 
-from .models import Student, StudentApplication
-from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
+
+from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse
+from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm, DynamicAdmissionForm
 
 
 def user_profile_approved(user):
@@ -128,13 +136,13 @@ def student_status_update(request, pk):
 class StudentApplicationCreateView(CreateView):
     model = StudentApplication
     form_class = StudentApplicationForm
-    template_name = 'students/student_application_form.html'
+    template_name = 'students/student_application_modern.html'
     success_url = reverse_lazy('student_application')
 
     def form_valid(self, form):
         if self.request.user.is_authenticated:
             form.instance.submitted_by = self.request.user
-        messages.success(self.request, 'Your application has been submitted successfully. The school will review it shortly.')
+        messages.success(self.request, '✓ Your application has been submitted successfully. The school will review it shortly.')
         return super().form_valid(form)
 
 
@@ -162,6 +170,41 @@ class StudentApplicationDetailView(LoginRequiredMixin, UserPassesTestMixin, Deta
 
     def test_func(self):
         return staff_can_edit(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form_responses'] = AdmissionFormResponse.objects.filter(
+            application=self.object
+        ).select_related('field')
+        return context
+
+
+@login_required
+def print_admission_application(request, pk):
+    """Print admission application in PDF format"""
+    if not request.user.is_staff:
+        return redirect('home')
+    
+    application = get_object_or_404(StudentApplication, pk=pk)
+    form_responses = AdmissionFormResponse.objects.filter(application=application).select_related('field')
+    
+    context = {
+        'application': application,
+        'form_responses': form_responses,
+    }
+    
+    html_string = render_to_string('students/admission_application_print.html', context)
+    
+    # Try to generate PDF, fallback to HTML if weasyprint not available
+    try:
+        html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
+        pdf = html.write_pdf()
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="Application_{application.id}.pdf"'
+        return response
+    except:
+        # Fallback: return HTML for printing
+        return HttpResponse(html_string)
 
 
 class StudentApplicationUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):

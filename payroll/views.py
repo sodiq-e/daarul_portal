@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.db.models import Sum
 from django.urls import reverse_lazy
-from django.views.generic import TemplateView, ListView, CreateView, DetailView
+from django.views.generic import TemplateView, ListView, CreateView, DetailView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
@@ -122,6 +122,33 @@ class SchoolFeeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     def form_valid(self, form):
         messages.success(self.request, 'School fee type saved successfully.')
         return super().form_valid(form)
+
+
+class SchoolFeeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = SchoolFee
+    form_class = SchoolFeeForm
+    template_name = 'payroll/fee_form.html'
+    success_url = reverse_lazy('fee_list')
+
+    def test_func(self):
+        return staff_can_manage(self.request.user)
+
+    def form_valid(self, form):
+        messages.success(self.request, 'School fee type updated successfully.')
+        return super().form_valid(form)
+
+
+class SchoolFeeDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = SchoolFee
+    template_name = 'payroll/fee_confirm_delete.html'
+    success_url = reverse_lazy('fee_list')
+
+    def test_func(self):
+        return staff_can_manage(self.request.user)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, 'School fee type deleted successfully.')
+        return super().delete(request, *args, **kwargs)
 
 
 class StudentInvoiceListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
