@@ -14,6 +14,11 @@
             {% if result_template %}
                 <div class="alert alert-info">
                     <strong>Result Template:</strong> {{ result_template }}
+                    {% if can_edit %}
+                        <a href="{% url 'bulk_result_entry' class_id=school_class.id term_id=term.id %}" class="btn btn-primary btn-sm float-end">
+                            📊 Bulk Entry for All Students
+                        </a>
+                    {% endif %}
                 </div>
                 
                 {% if student_results %}

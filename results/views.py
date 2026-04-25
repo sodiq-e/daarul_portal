@@ -559,10 +559,6 @@ def bulk_result_entry(request, class_id, term_id):
         messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
 
-    if not teacher_has_permission(teacher, 'edit_results'):
-        messages.error(request, 'You do not have permission to edit results.')
-        return redirect('home')
-
     from .forms import BulkResultEntryForm
     from .models import StudentConduct
     
