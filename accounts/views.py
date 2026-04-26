@@ -117,3 +117,7 @@ class CustomLoginView(FormView):
         else:
             messages.error(self.request, 'Invalid username or password.')
             return self.form_invalid(form)
+
+    def form_invalid(self, form):
+        """Render form with error messages"""
+        return self.render_to_response(self.get_context_data(form=form))
