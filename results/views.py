@@ -164,12 +164,19 @@ def student_report_card(request, student_id, term_id):
     if results.exists() and not term_result.is_complete:
         term_result.calculate_aggregates()
 
+    # Get student conduct record
+    student_conduct = StudentConduct.objects.filter(
+        student=student,
+        term=term
+    ).first()
+
     context = {
         'student': student,
         'term': term,
         'result_template': result_template,
         'results': results,
         'term_result': term_result,
+        'student_conduct': student_conduct,
     }
 
     return render(request, 'results/student_report_card.html', context)

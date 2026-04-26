@@ -38,6 +38,17 @@ def dict_lookup(dictionary, key):
     return ""
 
 
+@register.filter(name='get_item')
+def get_item(dictionary, key):
+    """
+    Get an item from a dictionary.
+    Usage: {{ dict|get_item:key }}
+    """
+    if isinstance(dictionary, dict):
+        return dictionary.get(key)
+    return None
+
+
 @register.filter(name='mul')
 def mul(value, arg):
     """
