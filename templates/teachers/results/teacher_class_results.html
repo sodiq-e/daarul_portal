@@ -53,7 +53,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'teacher_edit_result' item.student.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                        <a href="{% url 'bulk_result_entry' class_id=school_class.id term_id=term.id %}" class="btn btn-sm btn-info">View Details</a>
                                     </td>
                                 </tr>
                                 {% endfor %}

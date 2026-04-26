@@ -47,7 +47,7 @@
                                 const termId = document.getElementById('term_select').value;
                                 
                                 if (classId && termId) {
-                                    window.location.href = "{% url 'bulk_result_entry' '0' '0' %}".replace('/0/0/', '/' + classId + '/' + termId + '/');
+                                    window.location.href = '/results/teacher/class/' + classId + '/' + termId + '/bulk-entry/';
                                 }
                             });
                         </script>
