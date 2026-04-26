@@ -36,3 +36,15 @@ def dict_lookup(dictionary, key):
     if isinstance(dictionary, dict):
         return dictionary.get(key, "")
     return ""
+
+
+@register.filter(name='mul')
+def mul(value, arg):
+    """
+    Multiply the value by the argument.
+    Usage: {{ value|mul:arg }}
+    """
+    try:
+        return int(value) * int(arg)
+    except (ValueError, TypeError):
+        return 0

@@ -634,107 +634,64 @@ def bulk_result_entry(request, class_id, term_id):
         school_class=school_class
     ).select_related('subject').order_by('order')
 
-    if request.method == 'POST':
-        form = BulkResultEntryForm(
-            request.POST,
-            class_subjects=class_subjects,
-            students=students
-        )
-        
-        if form.is_valid():
-            # Process results
-            for student in students:
-                # Create/update student results
-                for class_subject in class_subjects:
-                    test_field_name = f"test_{student.pk}_{class_subject.pk}"
-                    exam_field_name = f"exam_{student.pk}_{class_subject.pk}"
-
-                    test_score = form.cleaned_data.get(test_field_name)
-                    exam_score = form.cleaned_data.get(exam_field_name)
-
-                    if test_score is not None or exam_score is not None:
-                        result, created = StudentResult.objects.get_or_create(
-                            student=student,
-                            class_subject=class_subject,
-                            term=term,
-                            result_template=result_template
-                        )
-                        
-                        if test_score is not None:
-                            result.test_score = test_score
-                        if exam_score is not None:
-                            result.exam_score = exam_score
-                        
-                        result.entered_by = request.user
-                        result.save()
-
-                # Create/update conduct records
-                attendance_field_name = f"attendance_{student.pk}"
-                conduct_field_name = f"conduct_{student.pk}"
-                punctuality_field_name = f"punctuality_{student.pk}"
-                attentiveness_field_name = f"attentiveness_{student.pk}"
-                participation_field_name = f"participation_{student.pk}"
-                teacher_notes_field_name = f"teacher_notes_{student.pk}"
-
-                conduct, created = StudentConduct.objects.get_or_create(
-                    student=student,
-                    term=term
-                )
-                
-                conduct.attendance = form.cleaned_data.get(attendance_field_name, 'Good')
-                conduct.conduct = form.cleaned_data.get(conduct_field_name, 'Good')
-                conduct.punctuality = form.cleaned_data.get(punctuality_field_name, 'Good')
-                conduct.attentiveness = form.cleaned_data.get(attentiveness_field_name, 'Good')
-                conduct.participation = form.cleaned_data.get(participation_field_name, 'Good')
-                conduct.teacher_notes = form.cleaned_data.get(teacher_notes_field_name, '')
-                conduct.entered_by = request.user
-                conduct.save()
-
-            messages.success(request, f'Results and conduct records saved successfully for {len(students)} students.')
-            return redirect('teacher_class_results', class_id=class_id, term_id=term_id)
-    else:
-        form = BulkResultEntryForm(
-            class_subjects=class_subjects,
-            students=students
-        )
-        
-        # Pre-fill form with existing data
-        for student in students:
-            for class_subject in class_subjects:
-                result = StudentResult.objects.filter(
-                    student=student,
-                    class_subject=class_subject,
-                    term=term,
-                    result_template=result_template
-                ).first()
-                
-                if result:
-                    test_field_name = f"test_{student.pk}_{class_subject.pk}"
-                    exam_field_name = f"exam_{student.pk}_{class_subject.pk}"
-                    form.initial[test_field_name] = result.test_score
-                    form.initial[exam_field_name] = result.exam_score
-            
-            # Pre-fill conduct data
-            conduct = StudentConduct.objects.filter(
+    # Build result data dictionary for template
+    result_data = {}
+    for student in students:
+        result_data[student.id] = {}
+        for class_subject in class_subjects:
+            result = StudentResult.objects.filter(
                 student=student,
-                term=term
+                class_subject=class_subject,
+                term=term,
+                result_template=result_template
             ).first()
             
-            if conduct:
-                form.initial[f"attendance_{student.pk}"] = conduct.attendance
-                form.initial[f"conduct_{student.pk}"] = conduct.conduct
-                form.initial[f"punctuality_{student.pk}"] = conduct.punctuality
-                form.initial[f"attentiveness_{student.pk}"] = conduct.attentiveness
-                form.initial[f"participation_{student.pk}"] = conduct.participation
-                form.initial[f"teacher_notes_{student.pk}"] = conduct.teacher_notes
+            result_data[student.id][class_subject.id] = {
+                'test_score': result.test_score if result else None,
+                'exam_score': result.exam_score if result else None,
+                'result_id': result.id if result else None,
+            }
+
+    if request.method == 'POST':
+        # Process POST data and save results
+        for student in students:
+            for class_subject in class_subjects:
+                test_field_name = f"test_{student.id}_{class_subject.id}"
+                exam_field_name = f"exam_{student.id}_{class_subject.id}"
+
+                test_score = request.POST.get(test_field_name, '').strip()
+                exam_score = request.POST.get(exam_field_name, '').strip()
+
+                # Convert to float if not empty
+                test_score = float(test_score) if test_score else None
+                exam_score = float(exam_score) if exam_score else None
+
+                if test_score is not None or exam_score is not None:
+                    result, created = StudentResult.objects.get_or_create(
+                        student=student,
+                        class_subject=class_subject,
+                        term=term,
+                        result_template=result_template
+                    )
+                    
+                    if test_score is not None:
+                        result.test_score = test_score
+                    if exam_score is not None:
+                        result.exam_score = exam_score
+                    
+                    result.entered_by = request.user
+                    result.save()
+
+        messages.success(request, f'✓ Results saved successfully for {len(students)} students!')
+        return redirect('teacher_class_results', class_id=class_id, term_id=term_id)
 
     context = {
-        'form': form,
         'school_class': school_class,
         'term': term,
         'result_template': result_template,
         'students': students,
         'class_subjects': class_subjects,
+        'result_data': result_data,
     }
 
     return render(request, 'results/bulk_result_entry.html', context)
