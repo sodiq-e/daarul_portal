@@ -5,7 +5,7 @@
 {% block title %}📊 Result Entry - {{ school_class }} - {{ term }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 mb-5" style="max-width: 1400px;">
+<div class="container-fluid mt-4 mb-5" style="max-width: 1600px;">
     <!-- Header -->
     <div class="mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -29,109 +29,246 @@
         {% endfor %}
     {% endif %}
 
-    <!-- Excel-Like Input Table -->
-    <div class="card shadow-sm" style="border-top: 4px solid #007bff; border-radius: 0;">
-        <div class="card-body p-0">
-            <form method="POST" id="resultForm">
-                {% csrf_token %}
-                
-                <!-- Horizontal Scrollable Table -->
-                <div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">
-                    <table class="table table-bordered mb-0" style="min-width: 1200px; background: white;">
-                        <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 100;">
-                            <tr style="border-top: 2px solid #007bff; border-bottom: 2px solid #007bff;">
-                                <!-- Student Info Column -->
-                                <th style="width: 180px; padding: 12px; background: #007bff; color: white; font-weight: 600; text-align: left; position: sticky; left: 0; z-index: 101;">
-                                    👤 Student Name
-                                </th>
-                                <th style="width: 100px; padding: 12px; background: #007bff; color: white; font-weight: 600; text-align: center; position: sticky; left: 180px; z-index: 101;">
-                                    Admission
-                                </th>
-                                
-                                <!-- Subject Columns -->
-                                {% for subject in class_subjects %}
-                                    <th colspan="2" style="padding: 12px; background: #e7f3ff; color: #0066cc; font-weight: 600; text-align: center; border-left: 2px solid #007bff;">
-                                        {{ subject.subject.name }}
-                                    </th>
-                                {% endfor %}
-                            </tr>
-                            
-                            <!-- Score Type Headers (Test/Exam) -->
-                            <tr style="background: #f0f7ff;">
-                                <th colspan="2" style="padding: 8px; text-align: left;"></th>
-                                {% for subject in class_subjects %}
-                                    <th style="padding: 8px; text-align: center; background: #fff8e1; font-weight: 600; font-size: 0.85rem; border-right: 1px solid #ccc;">Test</th>
-                                    <th style="padding: 8px; text-align: center; background: #e8f5e9; font-weight: 600; font-size: 0.85rem;">Exam</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-3" id="resultTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="scores-tab" data-bs-toggle="tab" data-bs-target="#scores-pane" type="button" role="tab" aria-controls="scores-pane" aria-selected="true">
+                📝 Test & Exam Scores
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="conduct-tab" data-bs-toggle="tab" data-bs-target="#conduct-pane" type="button" role="tab" aria-controls="conduct-pane" aria-selected="false">
+                ⭐ Conduct & Behavior
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="resultTabContent">
+        <!-- Scores Tab -->
+        <div class="tab-pane fade show active" id="scores-pane" role="tabpanel" aria-labelledby="scores-tab">
+            <div class="card shadow-sm" style="border-top: 4px solid #007bff; border-radius: 0;">
+                <div class="card-body p-0">
+                    <form method="POST" id="resultForm">
+                        {% csrf_token %}
                         
-                        <tbody>
-                            {% for student in students %}
-                            <tr style="border-bottom: 1px solid #e0e0e0; transition: background 0.2s;">
-                                <!-- Student Info -->
-                                <td style="padding: 12px; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 10;">
-                                    {{ student.get_full_name }}
-                                </td>
-                                <td style="padding: 12px; text-align: center; background: #f8f9fa; position: sticky; left: 180px; z-index: 10; font-size: 0.9rem; color: #666;">
-                                    {{ student.admission_no }}
-                                </td>
+                        <!-- Horizontal Scrollable Table -->
+                        <div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">
+                            <table class="table table-bordered mb-0" style="min-width: 1200px; background: white;">
+                                <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 100;">
+                                    <tr style="border-top: 2px solid #007bff; border-bottom: 2px solid #007bff;">
+                                        <!-- Student Info Column -->
+                                        <th style="width: 180px; padding: 12px; background: #007bff; color: white; font-weight: 600; text-align: left; position: sticky; left: 0; z-index: 101;">
+                                            👤 Student Name
+                                        </th>
+                                        <th style="width: 100px; padding: 12px; background: #007bff; color: white; font-weight: 600; text-align: center; position: sticky; left: 180px; z-index: 101;">
+                                            Admission
+                                        </th>
+                                        
+                                        <!-- Subject Columns -->
+                                        {% for subject in class_subjects %}
+                                            <th colspan="2" style="padding: 12px; background: #e7f3ff; color: #0066cc; font-weight: 600; text-align: center; border-left: 2px solid #007bff;">
+                                                {{ subject.subject.name }}
+                                            </th>
+                                        {% endfor %}
+                                    </tr>
+                                    
+                                    <!-- Score Type Headers (Test/Exam) -->
+                                    <tr style="background: #f0f7ff;">
+                                        <th colspan="2" style="padding: 8px; text-align: left;"></th>
+                                        {% for subject in class_subjects %}
+                                            <th style="padding: 8px; text-align: center; background: #fff8e1; font-weight: 600; font-size: 0.85rem; border-right: 1px solid #ccc;">Test</th>
+                                            <th style="padding: 8px; text-align: center; background: #e8f5e9; font-weight: 600; font-size: 0.85rem;">Exam</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
                                 
-                                <!-- Score Inputs -->
-                                {% for subject in class_subjects %}
-                                    {% with result=results_by_student_subject|dict_lookup:student.id|dict_lookup:subject.id %}
-                                        <td style="padding: 8px; text-align: center; background: #fffacd;">
-                                            <input 
-                                                type="number" 
-                                                name="test_{{ student.id }}_{{ subject.id }}"
-                                                value="{% if result and result.test_score %}{{ result.test_score }}{% endif %}"
-                                                min="0"
-                                                max="{{ result_template.test_max_score }}"
-                                                step="0.5"
-                                                placeholder="—"
-                                                class="form-control form-control-sm text-center score-input"
-                                                style="font-size: 0.9rem; border: 1px solid #ccc; padding: 6px;"
-                                                data-student="{{ student.id }}"
-                                                data-subject="{{ subject.id }}"
-                                                data-type="test"
-                                            >
+                                <tbody>
+                                    {% for student in students %}
+                                    <tr style="border-bottom: 1px solid #e0e0e0; transition: background 0.2s;">
+                                        <!-- Student Info -->
+                                        <td style="padding: 12px; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 10;">
+                                            {{ student.get_full_name }}
+                                        </td>
+                                        <td style="padding: 12px; text-align: center; background: #f8f9fa; position: sticky; left: 180px; z-index: 10; font-size: 0.9rem; color: #666;">
+                                            {{ student.admission_no }}
                                         </td>
                                         
-                                        <td style="padding: 8px; text-align: center; background: #e8f5e9;">
-                                            <input 
-                                                type="number" 
-                                                name="exam_{{ student.id }}_{{ subject.id }}"
-                                                value="{% if result and result.exam_score %}{{ result.exam_score }}{% endif %}"
-                                                min="0"
-                                                max="{{ result_template.exam_max_score }}"
-                                                step="0.5"
-                                                placeholder="—"
-                                                class="form-control form-control-sm text-center score-input"
-                                                style="font-size: 0.9rem; border: 1px solid #ccc; padding: 6px;"
-                                                data-student="{{ student.id }}"
-                                                data-subject="{{ subject.id }}"
-                                                data-type="exam"
-                                            >
-                                        </td>
-                                    {% endwith %}
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Submit Button -->
-                <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: right;">
-                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="padding: 0.75rem 2rem; font-weight: 600;">
-                        💾 Save All Scores
-                    </button>
-                    <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-secondary btn-lg ms-2" style="padding: 0.75rem 2rem;">
-                        Cancel
-                    </a>
-                </div>
-            </form>
+                                        <!-- Score Inputs -->
+                                        {% for subject in class_subjects %}
+                                            {% with result=results_by_student_subject|dict_lookup:student.id|dict_lookup:subject.id %}
+                                                <td style="padding: 8px; text-align: center; background: #fffacd;">
+                                                    <input 
+                                                        type="number" 
+                                                        name="test_{{ student.id }}_{{ subject.id }}"
+                                                        value="{% if result and result.test_score %}{{ result.test_score }}{% endif %}"
+                                                        min="0"
+                                                        max="{{ result_template.test_max_score }}"
+                                                        step="0.5"
+                                                        placeholder="—"
+                                                        class="form-control form-control-sm text-center score-input"
+                                                        style="font-size: 0.9rem; border: 1px solid #ccc; padding: 6px;"
+                                                        data-student="{{ student.id }}"
+                                                        data-subject="{{ subject.id }}"
+                                                        data-type="test"
+                                                    >
+                                                </td>
+                                                
+                                                <td style="padding: 8px; text-align: center; background: #e8f5e9;">
+                                                    <input 
+                                                        type="number" 
+                                                        name="exam_{{ student.id }}_{{ subject.id }}"
+                                                        value="{% if result and result.exam_score %}{{ result.exam_score }}{% endif %}"
+                                                        min="0"
+                                                        max="{{ result_template.exam_max_score }}"
+                                                        step="0.5"
+                                                        placeholder="—"
+                                                        class="form-control form-control-sm text-center score-input"
+                                                        style="font-size: 0.9rem; border: 1px solid #ccc; padding: 6px;"
+                                                        data-student="{{ student.id }}"
+                                                        data-subject="{{ subject.id }}"
+                                                        data-type="exam"
+                                                    >
+                                                </td>
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
         </div>
+        </div>
+
+        <!-- Conduct Tab -->
+        <div class="tab-pane fade" id="conduct-pane" role="tabpanel" aria-labelledby="conduct-tab">
+            <div class="card shadow-sm" style="border-top: 4px solid #17a2b8; border-radius: 0;">
+                <div class="card-body p-0">
+                    <!-- Conduct Assessment Table -->
+                    <div style="overflow-x: auto; max-height: 800px; overflow-y: auto;">
+                        <table class="table table-bordered mb-0" style="min-width: 1200px; background: white;">
+                            <thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 100;">
+                                <tr style="border-top: 2px solid #17a2b8; border-bottom: 2px solid #17a2b8;">
+                                    <th style="width: 180px; padding: 12px; background: #17a2b8; color: white; font-weight: 600; text-align: left; position: sticky; left: 0; z-index: 101;">
+                                        👤 Student Name
+                                    </th>
+                                    <th style="width: 110px; padding: 12px; background: #e8f4f8; font-weight: 600; text-align: center;">
+                                        Attendance
+                                    </th>
+                                    <th style="width: 110px; padding: 12px; background: #e8f4f8; font-weight: 600; text-align: center;">
+                                        Conduct
+                                    </th>
+                                    <th style="width: 110px; padding: 12px; background: #e8f4f8; font-weight: 600; text-align: center;">
+                                        Punctuality
+                                    </th>
+                                    <th style="width: 110px; padding: 12px; background: #e8f4f8; font-weight: 600; text-align: center;">
+                                        Attentiveness
+                                    </th>
+                                    <th style="width: 110px; padding: 12px; background: #e8f4f8; font-weight: 600; text-align: center;">
+                                        Participation
+                                    </th>
+                                    <th style="width: 250px; padding: 12px; background: #e8f4f8; font-weight: 600; text-align: left;">
+                                        Teacher Notes
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr style="border-bottom: 1px solid #e0e0e0;">
+                                    <td style="padding: 12px; font-weight: 600; background: #f8f9fa; position: sticky; left: 0; z-index: 10;">
+                                        {{ student.get_full_name }}
+                                    </td>
+                                    
+                                    <!-- Attendance -->
+                                    <td style="padding: 8px; text-align: center;">
+                                        <select name="attendance_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
+                                            <option value="">—</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good" selected>Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Poor">Poor</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <!-- Conduct -->
+                                    <td style="padding: 8px; text-align: center;">
+                                        <select name="conduct_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
+                                            <option value="">—</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good" selected>Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Poor">Poor</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <!-- Punctuality -->
+                                    <td style="padding: 8px; text-align: center;">
+                                        <select name="punctuality_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
+                                            <option value="">—</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good" selected>Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Poor">Poor</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <!-- Attentiveness -->
+                                    <td style="padding: 8px; text-align: center;">
+                                        <select name="attentiveness_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
+                                            <option value="">—</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good" selected>Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Poor">Poor</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <!-- Participation -->
+                                    <td style="padding: 8px; text-align: center;">
+                                        <select name="participation_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
+                                            <option value="">—</option>
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Very Good">Very Good</option>
+                                            <option value="Good" selected>Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Poor">Poor</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <!-- Teacher Notes -->
+                                    <td style="padding: 8px;">
+                                        <textarea 
+                                            name="teacher_notes_{{ student.id }}" 
+                                            class="form-control form-control-sm"
+                                            rows="2"
+                                            placeholder="Comments about student progress"
+                                            style="font-size: 0.9rem;"
+                                        ></textarea>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Button Section -->
+    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: right; margin-top: 20px;">
+        <form method="POST" id="resultForm" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="padding: 0.75rem 2rem; font-weight: 600;">
+                💾 Save All Results & Conduct
+            </button>
+            <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-secondary btn-lg ms-2" style="padding: 0.75rem 2rem;">
+                Cancel
+            </a>
+        </form>
     </div>
 
     <!-- Info Section -->
@@ -139,13 +276,13 @@
         <div class="col-lg-6">
             <div class="card shadow-sm" style="border-left: 4px solid #28a745;">
                 <div class="card-body">
-                    <h5 style="font-weight: 600;">💡 How to Use</h5>
+                    <h5 style="font-weight: 600;">💡 Test & Exam Scores</h5>
                     <ul class="small mb-0">
                         <li>Click on any cell to enter a score</li>
                         <li>Use Tab to move to the next cell</li>
-                        <li>Scores are saved when you click <strong>Save All Scores</strong></li>
                         <li>Leave blank for no score</li>
-                        <li>Max Test: {{ result_template.test_max_score }}, Max Exam: {{ result_template.exam_max_score }}</li>
+                        <li>Max Test: <strong>{{ result_template.test_max_score }}</strong></li>
+                        <li>Max Exam: <strong>{{ result_template.exam_max_score }}</strong></li>
                     </ul>
                 </div>
             </div>
@@ -153,12 +290,13 @@
         <div class="col-lg-6">
             <div class="card shadow-sm" style="border-left: 4px solid #ffc107;">
                 <div class="card-body">
-                    <h5 style="font-weight: 600;">📊 Summary</h5>
+                    <h5 style="font-weight: 600;">⭐ Conduct Assessment</h5>
                     <ul class="small mb-0">
-                        <li><strong>Total Students:</strong> {{ students.count }}</li>
-                        <li><strong>Total Subjects:</strong> {{ class_subjects.count }}</li>
-                        <li><strong>Class:</strong> {{ school_class.class_name }}</li>
-                        <li><strong>Term:</strong> {{ term.name }}</li>
+                        <li><strong>Attendance:</strong> Overall attendance percentage</li>
+                        <li><strong>Conduct:</strong> General behavior & discipline</li>
+                        <li><strong>Punctuality:</strong> Arrival on time</li>
+                        <li><strong>Attentiveness:</strong> Focus in class</li>
+                        <li><strong>Participation:</strong> Active involvement</li>
                     </ul>
                 </div>
             </div>
@@ -179,9 +317,26 @@
         box-shadow: 0 0 5px rgba(0, 123, 255, 0.3) !important;
     }
 
+    .conduct-select:focus {
+        border-color: #17a2b8 !important;
+        box-shadow: 0 0 5px rgba(23, 162, 184, 0.3) !important;
+    }
+
     /* Hover effect on rows */
     tbody tr:hover {
         background-color: #f5f5f5 !important;
+    }
+
+    /* Tab styling */
+    .nav-tabs .nav-link {
+        color: #666;
+        font-weight: 500;
+    }
+
+    .nav-tabs .nav-link.active {
+        background-color: transparent;
+        border-bottom-color: #007bff;
+        color: #007bff;
     }
 
     /* Table responsive scrolling */
@@ -266,7 +421,7 @@ document.querySelectorAll('.score-input').forEach(input => {
 // Form submission
 document.getElementById('resultForm').addEventListener('submit', function(e) {
     // Show confirmation
-    if (!confirm('Save all scores? This cannot be undone.')) {
+    if (!confirm('Save all results and conduct records? This cannot be undone.')) {
         e.preventDefault();
     }
 });

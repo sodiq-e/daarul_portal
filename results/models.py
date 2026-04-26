@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Sum, Avg, F
 from django.utils import timezone
+from decimal import Decimal
 from students.models import Student
 from exams.models import Exam, Subject, ClassSubject, Term
 from school_classes.models import SchoolClasses
@@ -125,11 +126,15 @@ class StudentResult(models.Model):
     def save(self, *args, **kwargs):
         """Auto-calculate total, percentage, grade, and remark"""
         if self.test_score is not None and self.exam_score is not None:
+            # Convert scores to Decimal to ensure type compatibility
+            test_score = Decimal(str(self.test_score))
+            exam_score = Decimal(str(self.exam_score))
+            
             # Calculate total score
             test_weight = self.result_template.test_max_score / (self.result_template.test_max_score + self.result_template.exam_max_score)
             exam_weight = self.result_template.exam_max_score / (self.result_template.test_max_score + self.result_template.exam_max_score)
 
-            self.total_score = (self.test_score * test_weight) + (self.exam_score * exam_weight)
+            self.total_score = (test_score * test_weight) + (exam_score * exam_weight)
 
             # Calculate percentage
             max_total = self.result_template.test_max_score + self.result_template.exam_max_score

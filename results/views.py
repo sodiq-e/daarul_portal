@@ -9,7 +9,7 @@ from exams.models import Term, ClassSubject
 from school_classes.models import SchoolClasses
 from .models import (
     StudentResult, TermResult, ResultTemplate,
-    GradeScale, Promotion, ReportCardComment
+    GradeScale, Promotion, ReportCardComment, StudentConduct
 )
 
 
@@ -677,7 +677,38 @@ def bulk_result_entry(request, class_id, term_id):
                     result.entered_by = request.user
                     result.save()
 
-        messages.success(request, f'✓ Results saved successfully for {len(students)} students!')
+            # Save conduct data for each student
+            attendance = request.POST.get(f'attendance_{student.id}', '').strip()
+            conduct = request.POST.get(f'conduct_{student.id}', '').strip()
+            punctuality = request.POST.get(f'punctuality_{student.id}', '').strip()
+            attentiveness = request.POST.get(f'attentiveness_{student.id}', '').strip()
+            participation = request.POST.get(f'participation_{student.id}', '').strip()
+            teacher_notes = request.POST.get(f'teacher_notes_{student.id}', '').strip()
+
+            # Only save if at least one conduct field has data
+            if any([attendance, conduct, punctuality, attentiveness, participation, teacher_notes]):
+                student_conduct, created = StudentConduct.objects.get_or_create(
+                    student=student,
+                    term=term
+                )
+                
+                if attendance:
+                    student_conduct.attendance = attendance
+                if conduct:
+                    student_conduct.conduct = conduct
+                if punctuality:
+                    student_conduct.punctuality = punctuality
+                if attentiveness:
+                    student_conduct.attentiveness = attentiveness
+                if participation:
+                    student_conduct.participation = participation
+                if teacher_notes:
+                    student_conduct.teacher_notes = teacher_notes
+                
+                student_conduct.entered_by = request.user
+                student_conduct.save()
+
+        messages.success(request, f'✓ Results and conduct records saved successfully for {len(students)} students!')
         return redirect('teacher_class_results', class_id=class_id, term_id=term_id)
 
     context = {
