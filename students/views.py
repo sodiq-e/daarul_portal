@@ -273,7 +273,7 @@ class StudentResultsView(LoginRequiredMixin, TemplateView):
             from results.models import StudentResult
             student = self.request.user.student_profile
             context['student'] = student
-            context['results'] = StudentResult.objects.filter(student=student).select_related('exam', 'subject').order_by('-exam__date')
+            context['results'] = StudentResult.objects.filter(student=student).select_related('class_subject__subject', 'term').order_by('-term__date_end')
         except Student.DoesNotExist:
             context['student'] = None
             context['results'] = []

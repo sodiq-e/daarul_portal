@@ -43,14 +43,14 @@
         </li>
     </ul>
 
-    <div class="tab-content" id="resultTabContent">
-        <!-- Scores Tab -->
-        <div class="tab-pane fade show active" id="scores-pane" role="tabpanel" aria-labelledby="scores-tab">
-            <div class="card shadow-sm" style="border-top: 4px solid #007bff; border-radius: 0;">
-                <div class="card-body p-0">
-                    <form method="POST" id="resultForm">
-                        {% csrf_token %}
-                        
+    <!-- Main Form Wrapping All Tabs -->
+    <form method="POST" id="resultForm">
+        {% csrf_token %}
+        <div class="tab-content" id="resultTabContent">
+            <!-- Scores Tab -->
+            <div class="tab-pane fade show active" id="scores-pane" role="tabpanel" aria-labelledby="scores-tab">
+                <div class="card shadow-sm" style="border-top: 4px solid #007bff; border-radius: 0;">
+                    <div class="card-body p-0">
                         <!-- Horizontal Scrollable Table -->
                         <div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">
                             <table class="table table-bordered mb-0" style="min-width: 1200px; background: white;">
@@ -136,8 +136,9 @@
                                 </tbody>
                             </table>
                         </div>
-        </div>
-        </div>
+                    </div>
+                </div>
+            </div>
 
         <!-- Conduct Tab -->
         <div class="tab-pane fade" id="conduct-pane" role="tabpanel" aria-labelledby="conduct-tab">
@@ -260,16 +261,14 @@
 
     <!-- Submit Button Section -->
     <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e0e0e0; text-align: right; margin-top: 20px;">
-        <form method="POST" id="resultForm" style="display: inline;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="padding: 0.75rem 2rem; font-weight: 600;">
-                💾 Save All Results & Conduct
-            </button>
-            <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-secondary btn-lg ms-2" style="padding: 0.75rem 2rem;">
-                Cancel
-            </a>
-        </form>
+        <button type="submit" form="resultForm" class="btn btn-primary btn-lg" id="submitBtn" style="padding: 0.75rem 2rem; font-weight: 600;">
+            💾 Save All Results & Conduct
+        </button>
+        <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-secondary btn-lg ms-2" style="padding: 0.75rem 2rem;">
+            Cancel
+        </a>
     </div>
+    </form>
 
     <!-- Info Section -->
     <div class="row mt-4">
