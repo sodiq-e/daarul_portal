@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Class Subjects - {{ school_class.class_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 style="font-weight: 600; color: #2c3e50;">📚 Manage Subjects</h2>
+                    <p class="text-muted mb-0">{{ school_class.class_name }}</p>
+                </div>
+                <a href="{% url 'add_class_subject' school_class.id %}" class="btn btn-primary btn-lg">
+                    ➕ Add Subject
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Subjects List -->
+    <div class="row">
+        <div class="col-lg-8">
+            {% if subjects %}
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light py-3">
+                        <h5 class="mb-0">Assigned Subjects ({{ subjects.count }})</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Order</th>
+                                        <th>Subject Name</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for subject in subjects %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-info">{{ subject.order }}</span>
+                                        </td>
+                                        <td>
+                                            <strong>{{ subject.subject.name }}</strong>
+                                            {% if subject.subject.code %}
+                                                <small class="text-muted d-block">{{ subject.subject.code }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if subject.is_compulsory %}
+                                                <span class="badge bg-success">Compulsory</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Optional</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'edit_class_subject' subject.id %}" class="btn btn-sm btn-outline-primary">
+                                                ✏️ Edit
+                                            </a>
+                                            <a href="{% url 'delete_class_subject' subject.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this subject?');">
+                                                🗑️ Remove
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <p class="text-muted mb-3">📭 No subjects assigned to this class yet.</p>
+                        <a href="{% url 'add_class_subject' school_class.id %}" class="btn btn-primary">
+                            ➕ Add First Subject
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Available Subjects Info -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm" style="border-top: 4px solid #28a745;">
+                <div class="card-header bg-light py-3">
+                    <h5 class="mb-0">📋 Available Subjects</h5>
+                </div>
+                <div class="card-body">
+                    {% if available_subjects %}
+                        <p class="text-muted">{{ available_subjects.count }} more subjects can be added:</p>
+                        <div class="list-group">
+                            {% for subject in available_subjects %}
+                                <span class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ subject.name }}</strong>
+                                        {% if subject.code %}
+                                            <small class="text-muted d-block">{{ subject.code }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{% url 'add_class_subject' school_class.id %}?subject={{ subject.id }}" class="btn btn-sm btn-outline-success">
+                                        Add
+                                    </a>
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">✅ All available subjects have been assigned.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="card shadow-sm mt-3" style="border-left: 4px solid #007bff;">
+                <div class="card-header bg-light py-3">
+                    <h5 class="mb-0">💡 Help</h5>
+                </div>
+                <div class="card-body">
+                    <small class="text-muted">
+                        <strong>Compulsory Subjects:</strong> All students must take these subjects.<br><br>
+                        <strong>Optional Subjects:</strong> Students can choose to take or skip.<br><br>
+                        <strong>Display Order:</strong> Determines the order subjects appear on report cards.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="mt-4">
+        <a href="{% url 'class_detail' school_class.id %}" class="btn btn-secondary">
+            ← Back to Class
+        </a>
+    </div>
+</div>
+{% endblock %}

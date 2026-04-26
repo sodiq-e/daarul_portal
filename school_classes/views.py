@@ -18,7 +18,8 @@ from .forms import (
     SchemeOfWorkForm, SchemeWeekForm, TeacherPermissionForm,
     BulkTeacherPermissionForm
 )
-from exams.models import Subject
+from exams.models import Subject, ClassSubject
+from exams.forms import ClassSubjectForm
 from students.models import Student
 
 
@@ -131,6 +132,111 @@ class ClassDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
             is_active=True
         ).select_related('teacher__user', 'subject')
         return context
+
+
+# ==================== CLASS SUBJECT MANAGEMENT ====================
+
+@login_required
+def class_subjects_list(request, class_id):
+    """List and manage subjects for a class"""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage class subjects.')
+        return redirect('home')
+    
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    subjects = ClassSubject.objects.filter(school_class=school_class).select_related('subject').order_by('order')
+    available_subjects = Subject.objects.exclude(
+        pk__in=subjects.values_list('subject_id', flat=True)
+    ).filter(is_active=True)
+    
+    context = {
+        'school_class': school_class,
+        'subjects': subjects,
+        'available_subjects': available_subjects,
+    }
+    return render(request, 'classes/class_subjects_list.html', context)
+
+
+@login_required
+def add_class_subject(request, class_id):
+    """Add a subject to a class"""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage class subjects.')
+        return redirect('home')
+    
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    
+    if request.method == 'POST':
+        form = ClassSubjectForm(request.POST)
+        if form.is_valid():
+            class_subject = form.save(commit=False)
+            class_subject.school_class = school_class
+            try:
+                class_subject.save()
+                messages.success(request, f'{class_subject.subject.name} added to {school_class.class_name} successfully.')
+                return redirect('class_subjects_list', class_id=class_id)
+            except Exception as e:
+                messages.error(request, f'Error: {str(e)}')
+    else:
+        form = ClassSubjectForm()
+        # Filter to only show subjects not already assigned to this class
+        existing = ClassSubject.objects.filter(school_class=school_class).values_list('subject_id', flat=True)
+        form.fields['subject'].queryset = Subject.objects.exclude(pk__in=existing).filter(is_active=True)
+        form.fields['school_class'].initial = school_class
+        form.fields['school_class'].disabled = True
+    
+    context = {
+        'form': form,
+        'school_class': school_class,
+        'action': 'Add',
+    }
+    return render(request, 'classes/class_subject_form.html', context)
+
+
+@login_required
+def edit_class_subject(request, subject_id):
+    """Edit a class subject"""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage class subjects.')
+        return redirect('home')
+    
+    class_subject = get_object_or_404(ClassSubject, pk=subject_id)
+    
+    if request.method == 'POST':
+        form = ClassSubjectForm(request.POST, instance=class_subject)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'{class_subject.subject.name} updated successfully.')
+            return redirect('class_subjects_list', class_id=class_subject.school_class.id)
+    else:
+        form = ClassSubjectForm(instance=class_subject)
+        form.fields['school_class'].disabled = True
+        form.fields['subject'].disabled = True
+    
+    context = {
+        'form': form,
+        'school_class': class_subject.school_class,
+        'class_subject': class_subject,
+        'action': 'Edit',
+    }
+    return render(request, 'classes/class_subject_form.html', context)
+
+
+@login_required
+def delete_class_subject(request, subject_id):
+    """Delete a subject from a class"""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to manage class subjects.')
+        return redirect('home')
+    
+    class_subject = get_object_or_404(ClassSubject, pk=subject_id)
+    class_id = class_subject.school_class.id
+    subject_name = class_subject.subject.name
+    class_name = class_subject.school_class.class_name
+    
+    class_subject.delete()
+    messages.success(request, f'{subject_name} removed from {class_name}.')
+    return redirect('class_subjects_list', class_id=class_id)
 
 
 # ==================== TEACHER PROFILE VIEWS ====================

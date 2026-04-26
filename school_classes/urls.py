@@ -6,6 +6,10 @@ class_urlpatterns = [
     path('', views.ClassListView.as_view(), name='class_list'),
     path('add/', views.add_class, name='add_class'),
     path('<int:pk>/', views.ClassDetailView.as_view(), name='class_detail'),
+    path('<int:class_id>/subjects/', views.class_subjects_list, name='class_subjects_list'),
+    path('<int:class_id>/subjects/add/', views.add_class_subject, name='add_class_subject'),
+    path('subject/<int:subject_id>/edit/', views.edit_class_subject, name='edit_class_subject'),
+    path('subject/<int:subject_id>/delete/', views.delete_class_subject, name='delete_class_subject'),
 ]
 
 # Teacher URLs
