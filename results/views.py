@@ -594,16 +594,13 @@ def teacher_print_results(request, student_id, term_id):
 
 @login_required
 def bulk_result_entry(request, class_id, term_id):
-    """Bulk entry for class results with modern report card UI"""
+    """Bulk entry for class results with spreadsheet UI"""
     try:
         teacher = request.user.teacher_profile
     except:
         messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
 
-    from .forms import BulkResultEntryForm
-    from .models import StudentConduct
-    
     school_class = get_object_or_404(SchoolClasses, pk=class_id)
     term = get_object_or_404(Term, pk=term_id)
 
@@ -634,10 +631,10 @@ def bulk_result_entry(request, class_id, term_id):
         school_class=school_class
     ).select_related('subject').order_by('order')
 
-    # Build result data dictionary for template
-    result_data = {}
+    # Build results lookup: {student_id: {subject_id: result_obj}}
+    results_by_student_subject = {}
     for student in students:
-        result_data[student.id] = {}
+        results_by_student_subject[student.id] = {}
         for class_subject in class_subjects:
             result = StudentResult.objects.filter(
                 student=student,
@@ -645,12 +642,7 @@ def bulk_result_entry(request, class_id, term_id):
                 term=term,
                 result_template=result_template
             ).first()
-            
-            result_data[student.id][class_subject.id] = {
-                'test_score': result.test_score if result else None,
-                'exam_score': result.exam_score if result else None,
-                'result_id': result.id if result else None,
-            }
+            results_by_student_subject[student.id][class_subject.id] = result
 
     if request.method == 'POST':
         # Process POST data and save results
@@ -663,8 +655,11 @@ def bulk_result_entry(request, class_id, term_id):
                 exam_score = request.POST.get(exam_field_name, '').strip()
 
                 # Convert to float if not empty
-                test_score = float(test_score) if test_score else None
-                exam_score = float(exam_score) if exam_score else None
+                try:
+                    test_score = float(test_score) if test_score else None
+                    exam_score = float(exam_score) if exam_score else None
+                except ValueError:
+                    continue
 
                 if test_score is not None or exam_score is not None:
                     result, created = StudentResult.objects.get_or_create(
@@ -691,7 +686,7 @@ def bulk_result_entry(request, class_id, term_id):
         'result_template': result_template,
         'students': students,
         'class_subjects': class_subjects,
-        'result_data': result_data,
+        'results_by_student_subject': results_by_student_subject,
     }
 
     return render(request, 'results/bulk_result_entry.html', context)
