@@ -15,11 +15,11 @@
                     <h5>Select Class and Term to View/Edit Results:</h5>
                     
                     {% if assigned_classes %}
-                        <form method="GET" action="{% url 'teacher_class_results' 0 0 %}" class="mb-3">
+                        <form method="GET" id="resultForm" class="mb-3">
                             <div class="row">
                                 <div class="col-md-5">
                                     <label for="class_select" class="form-label">Class:</label>
-                                    <select class="form-control" id="class_select" name="class_id">
+                                    <select class="form-control" id="class_select" name="class_id" required>
                                         <option value="">-- Select Class --</option>
                                         {% for class in assigned_classes %}
                                         <option value="{{ class.id }}">{{ class.class_name }}</option>
@@ -28,7 +28,7 @@
                                 </div>
                                 <div class="col-md-5">
                                     <label for="term_select" class="form-label">Term:</label>
-                                    <select class="form-control" id="term_select" name="term_id">
+                                    <select class="form-control" id="term_select" name="term_id" required>
                                         <option value="">-- Select Term --</option>
                                         {% for term in terms %}
                                         <option value="{{ term.id }}">{{ term.name }}</option>
@@ -40,6 +40,17 @@
                                 </div>
                             </div>
                         </form>
+                        <script>
+                            document.getElementById('resultForm').addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                const classId = document.getElementById('class_select').value;
+                                const termId = document.getElementById('term_select').value;
+                                
+                                if (classId && termId) {
+                                    window.location.href = "{% url 'bulk_result_entry' '0' '0' %}".replace('/0/0/', '/' + classId + '/' + termId + '/');
+                                }
+                            });
+                        </script>
                     {% else %}
                         <div class="alert alert-warning">You have not been assigned to any classes yet.</div>
                     {% endif %}
