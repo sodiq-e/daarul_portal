@@ -449,7 +449,7 @@ def teacher_class_results(request, class_id, term_id):
 
 @login_required
 def teacher_edit_student_result(request, result_id):
-    """Teachers edit student result scores"""
+    """Teachers edit student result scores with modern interface"""
     try:
         teacher = request.user.teacher_profile
     except:
@@ -472,22 +472,64 @@ def teacher_edit_student_result(request, result_id):
         return redirect('home')
 
     if request.method == 'POST':
-        test_score = request.POST.get('test_score')
-        exam_score = request.POST.get('exam_score')
+        try:
+            test_score = request.POST.get('test_score')
+            exam_score = request.POST.get('exam_score')
+            
+            # Validate scores
+            if test_score:
+                test_score = float(test_score)
+                if test_score < 0 or test_score > result.result_template.test_max_score:
+                    messages.error(request, f'Test score must be between 0 and {result.result_template.test_max_score}')
+                    return render(request, 'teachers/results/edit_student_result.html', get_result_context(result))
+                result.test_score = test_score
+            
+            if exam_score:
+                exam_score = float(exam_score)
+                if exam_score < 0 or exam_score > result.result_template.exam_max_score:
+                    messages.error(request, f'Exam score must be between 0 and {result.result_template.exam_max_score}')
+                    return render(request, 'teachers/results/edit_student_result.html', get_result_context(result))
+                result.exam_score = exam_score
+            
+            result.entered_by = request.user
+            result.save()
+            
+            # Calculate aggregates
+            result.calculate_aggregates()
 
-        if test_score:
-            result.test_score = float(test_score)
-        if exam_score:
-            result.exam_score = float(exam_score)
+            messages.success(request, f'Result for {result.student.get_full_name} in {result.class_subject.subject.name} updated successfully.')
+            return redirect('teacher_class_results', class_id=result.class_subject.school_class.id, term_id=result.term.id)
+        
+        except ValueError:
+            messages.error(request, 'Invalid score value. Please enter numeric values.')
+            return render(request, 'teachers/results/edit_student_result.html', get_result_context(result))
+        except Exception as e:
+            messages.error(request, f'Error saving result: {str(e)}')
+            return render(request, 'teachers/results/edit_student_result.html', get_result_context(result))
 
-        result.entered_by = request.user
-        result.save()
-
-        messages.success(request, 'Result updated successfully.')
-        return redirect('teacher_class_results', class_id=result.class_subject.school_class.id, term_id=result.term.id)
-
-    context = {'result': result}
+    context = get_result_context(result)
     return render(request, 'teachers/results/edit_student_result.html', context)
+
+
+def get_result_context(result):
+    """Helper function to build result editing context"""
+    return {
+        'result': result,
+        'student': result.student,
+        'subject': result.class_subject.subject,
+        'class': result.class_subject.school_class,
+        'term': result.term,
+        'template': result.result_template,
+        'grade_scale': result.result_template.grade_scale,
+        'max_test_score': float(result.result_template.test_max_score),
+        'max_exam_score': float(result.result_template.exam_max_score),
+        'test_weight': 100 * float(result.result_template.test_max_score) / (
+            float(result.result_template.test_max_score) + float(result.result_template.exam_max_score)
+        ),
+        'exam_weight': 100 * float(result.result_template.exam_max_score) / (
+            float(result.result_template.test_max_score) + float(result.result_template.exam_max_score)
+        ),
+    }
 
 
 @login_required
