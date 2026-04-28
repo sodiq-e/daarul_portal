@@ -74,9 +74,10 @@ class ClassTeacherForm(forms.ModelForm):
         model = ClassTeacher
         fields = ['teacher', 'school_class', 'subject', 'is_class_teacher']
         widgets = {
-            'teacher': forms.Select(attrs={'class': 'form-select'}),
-            'school_class': forms.Select(attrs={'class': 'form-select'}),
-            'subject': forms.Select(attrs={'class': 'form-select'}),
+            'teacher': forms.Select(attrs={'class': 'form-select form-control'}),
+            'school_class': forms.Select(attrs={'class': 'form-select form-control'}),
+            'subject': forms.Select(attrs={'class': 'form-select form-control'}),
+            'is_class_teacher': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

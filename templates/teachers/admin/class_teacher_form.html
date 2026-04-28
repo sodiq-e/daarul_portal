@@ -23,6 +23,21 @@
                         {% endif %}
 
                         {% for field in form %}
+                            {% if field.field.widget.input_type == "checkbox" %}
+                            <div class="mb-3 form-check">
+                                {{ field }}
+                                <label for="{{ field.id_for_label }}" class="form-check-label">
+                                    {{ field.label }}
+                                </label>
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in field.errors %}
+                                            <p>{{ error }}</p>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
                             <div class="mb-3">
                                 <label for="{{ field.id_for_label }}" class="form-label">
                                     {{ field.label }}
@@ -37,6 +52,7 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            {% endif %}
                         {% endfor %}
 
                         <div class="d-flex gap-2 mt-4">

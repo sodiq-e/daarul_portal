@@ -1,0 +1,32 @@
+NEW APPLICATION RECEIVED
+{{ school_name }}
+
+Hello Admin,
+
+A new application or form submission has been received. Please review the details:
+
+APPLICATION DETAILS:
+{% if application.name %}
+- Applicant Name: {{ application.name }}
+{% endif %}
+{% if application.email %}
+- Email: {{ application.email }}
+{% endif %}
+{% if application.phone %}
+- Phone: {{ application.phone }}
+{% endif %}
+{% if application.status %}
+- Status: {{ application.status }}
+{% endif %}
+{% if application.submitted_at %}
+- Submitted: {{ application.submitted_at|date:"Y-m-d H:i" }}
+{% endif %}
+{% if application.notes %}
+- Notes: {{ application.notes }}
+{% endif %}
+
+Please log in to the admin panel to review this application in detail.
+
+---
+This is an automated notification. Please do not reply to this email.
+© {{ school_name }} - Daarul Portal

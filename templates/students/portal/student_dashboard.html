@@ -61,18 +61,25 @@
         <div class="col-md-12">
             <h4 class="mb-3">Portal Menu</h4>
             <div class="list-group">
+                {# View Profile - shown by default #}
                 <a href="{% url 'student_portal_profile' %}" class="list-group-item list-group-item-action">
-                    <h5 class="mb-1">📋 View Profile</h5>
+                    <h5 class="mb-1">👤 View Profile</h5>
                     <p class="mb-0">View your personal information</p>
                 </a>
+                
+                {# View Results - shown by default #}
                 <a href="{% url 'student_portal_results' %}" class="list-group-item list-group-item-action">
                     <h5 class="mb-1">📊 View Results</h5>
                     <p class="mb-0">Check your academic results and grades</p>
                 </a>
+                
+                {# School Fees - show only if student has invoices or admin enabled it #}
+                {% if pending_invoices or total_owing %}
                 <a href="{% url 'student_portal_fees' %}" class="list-group-item list-group-item-action">
                     <h5 class="mb-1">💰 School Fees</h5>
                     <p class="mb-0">View invoices and payment history</p>
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>

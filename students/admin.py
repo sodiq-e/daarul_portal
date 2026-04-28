@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse
+from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse, StudentPermission
 
 
 @admin.register(Student)
@@ -100,3 +100,25 @@ class AdmissionFormResponseAdmin(admin.ModelAdmin):
     list_filter = ('field', 'application__status')
     search_fields = ('application__first_name', 'application__last_name')
     readonly_fields = ('application', 'field', 'value')
+
+
+@admin.register(StudentPermission)
+class StudentPermissionAdmin(admin.ModelAdmin):
+    list_display = ('student', 'permission', 'is_granted', 'granted_at')
+    list_filter = ('permission', 'is_granted', 'granted_at')
+    search_fields = ('student__user__username', 'student__surname', 'student__admission_no')
+    readonly_fields = ('granted_at', 'granted_by')
+    autocomplete_fields = ('student',)
+    
+    fieldsets = (
+        ('Permission', {
+            'fields': ('student', 'permission', 'is_granted')
+        }),
+        ('Audit', {
+            'fields': ('granted_at', 'granted_by', 'notes'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('student__user', 'granted_by')

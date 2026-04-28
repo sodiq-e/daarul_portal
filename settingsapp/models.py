@@ -98,6 +98,52 @@ class SchoolSettings(models.Model):
         blank=True,
         null=True
     )
+
+    # Email Notification Settings
+    admin_email = models.EmailField(
+        default='daarulbayaanis@gmail.com',
+        help_text="Primary email address for receiving notifications (account creation, contact messages, etc.)"
+    )
+
+    admin_email_cc = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Additional email addresses to CC on notifications (comma-separated)"
+    )
+
+    send_account_creation_email = models.BooleanField(
+        default=True,
+        help_text="Send email notification when new accounts are created"
+    )
+
+    send_contact_message_email = models.BooleanField(
+        default=True,
+        help_text="Send email notification when contact form messages are submitted"
+    )
+
+    send_application_email = models.BooleanField(
+        default=True,
+        help_text="Send email notification when applications/forms are submitted"
+    )
+
+    account_creation_email_subject = models.CharField(
+        max_length=200,
+        default="New Account Created - {school_name}",
+        help_text="Email subject for account creation. Use {school_name} as placeholder"
+    )
+
+    contact_message_email_subject = models.CharField(
+        max_length=200,
+        default="New Contact Message - {school_name}",
+        help_text="Email subject for contact messages. Use {school_name} as placeholder"
+    )
+
+    application_email_subject = models.CharField(
+        max_length=200,
+        default="New Application Received - {school_name}",
+        help_text="Email subject for applications. Use {school_name} as placeholder"
+    )
+
     def __str__(self):
         return self.school_name or "School Settings"
 

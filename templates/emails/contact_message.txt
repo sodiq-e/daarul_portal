@@ -1,0 +1,21 @@
+NEW CONTACT MESSAGE
+{{ school_name }}
+
+Hello Admin,
+
+You have received a new message from the contact form:
+
+SENDER DETAILS:
+- From: {{ sender_name }}
+- Email: {{ sender_email }}
+- Phone: {{ sender_phone }}
+- Submitted: {{ submitted_at|date:"Y-m-d H:i" }}
+
+MESSAGE:
+{{ message_content }}
+
+Please respond to the sender at your earliest convenience.
+
+---
+This is an automated notification. Please do not reply to this email.
+© {{ school_name }} - Daarul Portal

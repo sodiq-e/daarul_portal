@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Permissions to Student{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h3 class="mb-0">Assign Permissions to Student</h3>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="mb-4">
+                        <div class="input-group">
+                            <label class="input-group-text" for="student_select">Select Student:</label>
+                            <select class="form-select" id="student_select" name="student_id" onchange="this.form.submit();">
+                                <option value="">-- Choose a student --</option>
+                                {% for student in students %}
+                                <option value="{{ student.pk }}" {% if selected_student.pk == student.pk %}selected{% endif %}>
+                                    {{ student.full_name }} ({{ student.admission_no }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+
+                    {% if selected_student %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="student_id" value="{{ selected_student.pk }}">
+
+                        <div class="mb-4">
+                            <h5>{{ selected_student.full_name }}</h5>
+                            <p class="text-muted">Admission No: {{ selected_student.admission_no }}</p>
+                            {% if selected_student.student_class %}
+                                <p class="text-muted">Class: {{ selected_student.student_class }}</p>
+                            {% endif %}
+                            <hr>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6><strong>Permissions</strong></h6>
+                            <p class="text-muted small">Check the permissions you want to grant to this student. Unchecked permissions will be revoked.</p>
+                            <div class="border p-3 rounded">
+                                {% for code, name in permission_choices %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="permissions" value="{{ code }}" id="perm_{{ code }}" {% if code in granted_permissions %}checked{% endif %}>
+                                    <label class="form-check-label" for="perm_{{ code }}">
+                                        {{ name }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-success">Save Permissions</button>
+                            <a href="{% url 'bulk_student_permissions' %}" class="btn btn-secondary">Clear Selection</a>
+                            <a href="{% url 'student_list' %}" class="btn btn-outline-secondary">Back to Students</a>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i> Select a student from the dropdown above to manage their permissions.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-check {
+        padding-left: 0;
+    }
+    .form-check-input {
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}

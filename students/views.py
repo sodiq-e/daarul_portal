@@ -302,3 +302,170 @@ class StudentFeesView(LoginRequiredMixin, TemplateView):
         except Student.DoesNotExist:
             context['student'] = None
         return context
+
+
+# ==================== ADMIN: STUDENT PERMISSIONS ====================
+
+def user_is_admin(user):
+    """Check if user is admin/staff"""
+    try:
+        return user.is_staff or user.groups.filter(name__in=['Admin', 'Staff']).exists()
+    except:
+        return False
+
+
+@login_required
+def grant_student_permission(request, student_id, permission_code):
+    """Admin grants a permission to a student"""
+    from .models import StudentPermission
+    
+    if not user_is_admin(request.user):
+        return HttpResponseForbidden('You do not have permission.')
+    
+    student = get_object_or_404(Student, pk=student_id)
+    perm, _ = StudentPermission.objects.get_or_create(
+        student=student,
+        permission=permission_code
+    )
+    perm.is_granted = True
+    perm.granted_by = request.user
+    perm.save()
+
+    perm_display = dict(StudentPermission.PERMISSION_CHOICES).get(permission_code)
+    messages.success(
+        request,
+        f'Permission "{perm_display}" granted to {student.full_name()}.'
+    )
+    return redirect('student_permissions', student_id=student_id)
+
+
+@login_required
+def revoke_student_permission(request, student_id, permission_code):
+    """Admin revokes a permission from a student"""
+    from .models import StudentPermission
+    
+    if not user_is_admin(request.user):
+        return HttpResponseForbidden('You do not have permission.')
+
+    student = get_object_or_404(Student, pk=student_id)
+    perm, _ = StudentPermission.objects.get_or_create(
+        student=student,
+        permission=permission_code
+    )
+    perm.is_granted = False
+    perm.save()
+
+    perm_display = dict(StudentPermission.PERMISSION_CHOICES).get(permission_code)
+    messages.success(
+        request,
+        f'Permission "{perm_display}" revoked from {student.full_name()}.'
+    )
+    return redirect('student_permissions', student_id=student_id)
+
+
+class StudentPermissionsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    """Admin manages student permissions"""
+    from .models import StudentPermission
+    
+    template_name = 'students/admin/permissions_list.html'
+    context_object_name = 'permissions'
+    paginate_by = 50
+
+    def test_func(self):
+        return user_is_admin(self.request.user)
+
+    def get_queryset(self):
+        from .models import StudentPermission
+        student_id = self.kwargs.get('student_id')
+        if student_id:
+            return StudentPermission.objects.filter(
+                student_id=student_id
+            ).select_related('student__user', 'granted_by')
+        return StudentPermission.objects.select_related(
+            'student__user', 'granted_by'
+        ).order_by('-granted_at')
+
+    def get_context_data(self, **kwargs):
+        from .models import StudentPermission
+        context = super().get_context_data(**kwargs)
+        
+        student_id = self.kwargs.get('student_id')
+        if student_id:
+            try:
+                student = Student.objects.get(pk=student_id)
+                context['student'] = student
+                context['all_permissions'] = StudentPermission.PERMISSION_CHOICES
+            except Student.DoesNotExist:
+                pass
+        
+        context['students'] = Student.objects.filter(
+            user__is_active=True
+        ).select_related('user', 'student_class').order_by('surname', 'other_names')
+        
+        return context
+
+
+class BulkStudentPermissionView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Admin bulk assign/revoke permissions for students"""
+    template_name = 'students/admin/bulk_permissions.html'
+
+    def test_func(self):
+        return user_is_admin(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        from .models import StudentPermission
+        context = super().get_context_data(**kwargs)
+        context['students'] = Student.objects.filter(
+            user__is_active=True
+        ).select_related('user').order_by('surname', 'other_names')
+        context['permission_choices'] = StudentPermission.PERMISSION_CHOICES
+        
+        # If a student is selected, show their current permissions
+        student_id = self.request.GET.get('student_id')
+        if student_id:
+            try:
+                student = Student.objects.get(pk=student_id)
+                context['selected_student'] = student
+                
+                # Get all permissions with their current granted status for this student
+                from .models import StudentPermission
+                granted_perms = StudentPermission.objects.filter(
+                    student=student,
+                    is_granted=True
+                ).values_list('permission', flat=True)
+                context['granted_permissions'] = list(granted_perms)
+            except Student.DoesNotExist:
+                pass
+        
+        return context
+
+    def post(self, request, *args, **kwargs):
+        from .models import StudentPermission
+        from django.http import HttpResponseForbidden
+        
+        student_id = request.POST.get('student_id')
+        if not student_id:
+            messages.error(request, 'Please select a student.')
+            return redirect('bulk_student_permissions')
+        
+        student = get_object_or_404(Student, pk=student_id)
+        
+        # Get all selected permissions from the form
+        selected_permissions = request.POST.getlist('permissions')
+        
+        # Grant/Revoke all permissions based on checkbox state
+        for code, name in StudentPermission.PERMISSION_CHOICES:
+            perm_obj, _ = StudentPermission.objects.get_or_create(
+                student=student,
+                permission=code
+            )
+            is_granted = code in selected_permissions
+            perm_obj.is_granted = is_granted
+            perm_obj.granted_by = request.user
+            perm_obj.save()
+
+        messages.success(
+            request,
+            f'Permissions updated for {student.full_name()}.'
+        )
+        return redirect('student_permissions', student_id=student_id)

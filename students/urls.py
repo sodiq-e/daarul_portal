@@ -20,4 +20,11 @@ urlpatterns = [
     path('<int:pk>/edit/', views.StudentUpdateView.as_view(), name='student_edit'),
     path('<int:pk>/delete/', views.StudentDeleteView.as_view(), name='student_delete'),
     path('<int:pk>/status/', views.student_status_update, name='student_status_update'),
+    
+    # Admin: Student Permissions
+    path('admin/permissions/', views.StudentPermissionsView.as_view(), name='student_permissions'),
+    path('admin/permissions/<int:student_id>/', views.StudentPermissionsView.as_view(), name='student_permissions_detail'),
+    path('admin/permissions/<int:student_id>/grant/<str:permission_code>/', views.grant_student_permission, name='grant_student_permission'),
+    path('admin/permissions/<int:student_id>/revoke/<str:permission_code>/', views.revoke_student_permission, name='revoke_student_permission'),
+    path('admin/permissions/bulk/', views.BulkStudentPermissionView.as_view(), name='bulk_student_permissions'),
 ]

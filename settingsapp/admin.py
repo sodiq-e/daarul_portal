@@ -35,6 +35,25 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
             ),
             'description': 'These are the default colors used across all pages. Each page can have its own custom theme.'
         }),
+        ('Email Notifications', {
+            'fields': (
+                'admin_email',
+                'admin_email_cc',
+                'send_account_creation_email',
+                'send_contact_message_email',
+                'send_application_email',
+            ),
+            'description': 'Configure email notifications for various events'
+        }),
+        ('Email Templates & Subjects', {
+            'fields': (
+                'account_creation_email_subject',
+                'contact_message_email_subject',
+                'application_email_subject',
+            ),
+            'description': 'Customize email subjects. Use {school_name} as placeholder',
+            'classes': ('collapse',)
+        }),
     )
 
     inlines = [GalleryImageInline]

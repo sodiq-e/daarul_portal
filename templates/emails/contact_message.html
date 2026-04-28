@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .header {
+            background-color: #4b2e83;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: white;
+            padding: 20px;
+        }
+        .footer {
+            background-color: #f0f0f0;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-radius: 0 0 5px 5px;
+        }
+        .sender-info {
+            background-color: #f5f5ff;
+            padding: 15px;
+            border-left: 4px solid #7f5af0;
+            margin: 15px 0;
+        }
+        .message-box {
+            background-color: #fafafa;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .sender-info p {
+            margin: 8px 0;
+        }
+        strong {
+            color: #4b2e83;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📨 New Contact Message</h1>
+            <p>{{ school_name }}</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello Admin,</p>
+            
+            <p>You have received a new message from the contact form:</p>
+            
+            <div class="sender-info">
+                <p><strong>From:</strong> {{ sender_name }}</p>
+                <p><strong>Email:</strong> {{ sender_email }}</p>
+                <p><strong>Phone:</strong> {{ sender_phone }}</p>
+                <p><strong>Submitted:</strong> {{ submitted_at|date:"Y-m-d H:i" }}</p>
+            </div>
+            
+            <h3>Message:</h3>
+            <div class="message-box">{{ message_content }}</div>
+            
+            <p style="margin-top: 30px;">Please respond to the sender at your earliest convenience.</p>
+            
+            <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                <em>This is an automated email notification. Please do not reply to this email.</em>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ school_name }} - Daarul Portal</p>
+            <p>This is an automated notification. Do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

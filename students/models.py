@@ -172,3 +172,46 @@ class AdmissionFormResponse(models.Model):
     
     def __str__(self):
         return f"{self.application.full_name} - {self.field.label}"
+
+
+class StudentPermission(models.Model):
+    """Permissions for students to access specific features"""
+    PERMISSION_CHOICES = [
+        ('view_own_profile', 'View Own Profile'),
+        ('view_own_results', 'View Own Results'),
+        ('download_report_card', 'Download Report Card'),
+        ('view_own_fees', 'View School Fees'),
+        ('view_class_timetable', 'View Class Timetable'),
+        ('view_class_announcements', 'View Class Announcements'),
+        ('submit_assignments', 'Submit Assignments'),
+        ('view_attendance', 'View Own Attendance'),
+        ('contact_teacher', 'Contact Teachers'),
+        ('access_portal', 'Access Student Portal'),
+    ]
+    
+    student = models.OneToOneField(Student, on_delete=models.CASCADE, related_name='permissions')
+    permission = models.CharField(max_length=50, choices=PERMISSION_CHOICES)
+    is_granted = models.BooleanField(default=True, help_text="Whether this permission is granted to the student")
+    granted_at = models.DateTimeField(auto_now_add=True)
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='granted_student_permissions'
+    )
+    notes = models.TextField(blank=True, help_text="Notes about this permission")
+    
+    class Meta:
+        unique_together = ('student', 'permission')
+        verbose_name_plural = "Student Permissions"
+    
+    def __str__(self):
+        status = "✓" if self.is_granted else "✗"
+        return f"{status} {self.student} - {self.get_permission_display()}"
+    
+    def get_permission_display(self):
+        for code, name in self.PERMISSION_CHOICES:
+            if code == self.permission:
+                return name
+        return self.permission
