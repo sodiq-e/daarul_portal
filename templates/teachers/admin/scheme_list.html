@@ -58,7 +58,7 @@
                             </td>
                             <td>{{ scheme.submitted_at|date:"M d, Y" }}</td>
                             <td>
-                                <a href="{% url 'admin_scheme_detail' scheme.pk %}" class="btn btn-sm btn-info">Review</a>
+                                <a href="{% url 'teachers:admin_scheme_detail' scheme.pk %}" class="btn btn-sm btn-info">Review</a>
                             </td>
                         </tr>
                         {% empty %}
