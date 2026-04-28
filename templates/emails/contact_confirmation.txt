@@ -1,0 +1,21 @@
+MESSAGE RECEIVED
+{{ school_name }}
+
+Dear {{ sender_name }},
+
+Thank you for taking the time to contact us! We have received your message and appreciate you reaching out.
+
+MESSAGE DETAILS:
+- Reference ID: #{{ message.id }}
+- Received: {{ submitted_at|date:"d/m/Y H:i" }}
+
+Our administration team will review your message carefully and respond to you as soon as possible. We typically respond within 1-2 business days.
+
+If your message requires immediate attention, please contact the school directly at:
+- Phone: School Administration
+- Email: admin@school.com
+
+---
+This is an automated confirmation email. Your message has been recorded in our system.
+This is an automated notification. Do not reply to this email.
+© {{ school_name }} - Daarul Portal

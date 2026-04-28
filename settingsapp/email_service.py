@@ -341,3 +341,157 @@ def send_custom_email(email_type, recipient_list, subject, message=None,
     except Exception as e:
         logger.error(f"Failed to send custom email ({email_type}): {e}")
         return False
+
+
+def send_account_approval_email(user, template_context=None):
+    """
+    Send email notification when a user account is approved.
+    
+    Args:
+        user: User object whose account has been approved
+        template_context: Additional context for email template (dict)
+    """
+    try:
+        # Prepare email context
+        context = {
+            'user': user,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'school_name': 'Daarul Bayaan Islamic School',
+        }
+        if template_context:
+            context.update(template_context)
+        
+        # Format subject
+        subject = f"Account Approved - Welcome to {context['school_name']}"
+        
+        # Try to use HTML template, fall back to plain text
+        try:
+            html_content = render_to_string('emails/account_approval.html', context)
+            text_content = render_to_string('emails/account_approval.txt', context)
+        except Exception as e:
+            logger.warning(f"Email template not found: {e}, using plain text")
+            text_content = f"""
+Welcome to {context['school_name']}!
+
+Dear {user.first_name} {user.last_name},
+
+Your account has been approved! You can now log in to the portal using your credentials:
+
+- Username: {user.username}
+- Email: {user.email}
+
+Log in here: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'https://daarulbayaan.pythonanywhere.com'}/login/
+
+If you have any issues, please contact the school administration.
+
+Best regards,
+{context['school_name']} Administration
+            """
+            html_content = None
+        
+        # Send email to user
+        if html_content:
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email]
+            )
+            email.attach_alternative(html_content, "text/html")
+            email.send()
+        else:
+            send_mail(
+                subject=subject,
+                message=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False
+            )
+        
+        logger.info(f"Account approval email sent to {user.username}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send account approval email for {user.username}: {e}")
+        return False
+
+
+def send_contact_message_confirmation_email(message_obj, template_context=None):
+    """
+    Send confirmation email to the message sender.
+    
+    Args:
+        message_obj: Message object with sender contact info
+        template_context: Additional context for email template (dict)
+    """
+    if not message_obj.email:
+        logger.warning(f"No email for message sender: {message_obj.name}")
+        return False
+    
+    try:
+        # Prepare email context
+        context = {
+            'message': message_obj,
+            'school_name': 'Daarul Bayaan Islamic School',
+            'sender_name': message_obj.name or 'Valued Visitor',
+            'message_id': message_obj.id,
+            'submitted_at': message_obj.created_at,
+        }
+        if template_context:
+            context.update(template_context)
+        
+        # Format subject
+        subject = f"Message Received - Thank You for Contacting {context['school_name']}"
+        
+        # Try to use HTML template, fall back to plain text
+        try:
+            html_content = render_to_string('emails/contact_confirmation.html', context)
+            text_content = render_to_string('emails/contact_confirmation.txt', context)
+        except Exception as e:
+            logger.warning(f"Email template not found: {e}, using plain text")
+            text_content = f"""
+Thank you for contacting {context['school_name']}!
+
+Dear {message_obj.name or 'Valued Visitor'},
+
+We have received your message and appreciate you taking the time to get in touch with us.
+
+Message Details:
+- Submitted: {message_obj.created_at}
+- Reference ID: #{message_obj.id}
+
+Our administration team will review your message and respond as soon as possible.
+
+Best regards,
+{context['school_name']} Administration
+            """
+            html_content = None
+        
+        # Send email to message sender
+        if html_content:
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[message_obj.email]
+            )
+            email.attach_alternative(html_content, "text/html")
+            email.send()
+        else:
+            send_mail(
+                subject=subject,
+                message=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[message_obj.email],
+                fail_silently=False
+            )
+        
+        logger.info(f"Contact confirmation email sent to {message_obj.email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send contact confirmation email: {e}")
+        return False

@@ -1,0 +1,28 @@
+ACCOUNT APPROVED
+{{ school_name }}
+
+Dear {{ first_name }} {{ last_name }},
+
+Great news! Your account has been APPROVED and is now active.
+
+You can now log in to the student portal and access all available features.
+
+YOUR LOGIN CREDENTIALS:
+- Username: {{ username }}
+- Email: {{ email }}
+
+Keep these credentials safe. Do not share them with anyone.
+
+You can now access the student portal to:
+- View your personal profile and class information
+- Check your academic results and grades
+- View school fees and payment status
+- Access class announcements and communications
+
+Login to Portal: https://daarulbayaan.pythonanywhere.com/login/
+
+If you have any questions or encounter any issues, please contact the school administration.
+
+---
+This is an automated notification. Please do not reply to this email.
+© {{ school_name }} - Daarul Portal

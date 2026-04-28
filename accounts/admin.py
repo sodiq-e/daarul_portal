@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import User
 from django.utils import timezone
+from settingsapp.email_service import send_account_approval_email
 
 from .models import Profile
 
@@ -38,6 +39,12 @@ class ProfileAdmin(admin.ModelAdmin):
             profile.approved_at = timezone.now()
             profile.approved_by = request.user
             profile.save()
+            
+            # Send approval email to user
+            send_account_approval_email(
+                profile.user,
+                template_context={'requested_group': profile.requested_group}
+            )
 
 
 admin.site.unregister(User)

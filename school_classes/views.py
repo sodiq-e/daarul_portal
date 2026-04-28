@@ -531,8 +531,8 @@ class TeacherPermissionsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         if teacher_id:
             return TeacherPermission.objects.filter(
                 teacher_id=teacher_id
-            )
-        return TeacherPermission.objects.all().select_related('teacher__user')
+            ).select_related('teacher__user').order_by('teacher__user__last_name', 'permission')
+        return TeacherPermission.objects.all().select_related('teacher__user').order_by('teacher__user__last_name', 'permission')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

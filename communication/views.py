@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from .forms import MessageForm
-from settingsapp.email_service import send_contact_message_email
+from settingsapp.email_service import send_contact_message_email, send_contact_message_confirmation_email
 
 
 def contact_view(request):
@@ -8,8 +8,10 @@ def contact_view(request):
         form = MessageForm(request.POST)
         if form.is_valid():
             message = form.save()
-            # Send email notification
+            # Send email notification to admin
             send_contact_message_email(message)
+            # Send confirmation email to sender
+            send_contact_message_confirmation_email(message)
             return redirect('contact_success')
     else:
         form = MessageForm()

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: white;
+            padding: 20px;
+        }
+        .footer {
+            background-color: #f0f0f0;
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-radius: 0 0 5px 5px;
+        }
+        .info-box {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            margin: 15px 0;
+        }
+        .info-box p {
+            margin: 8px 0;
+        }
+        strong {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📨 Message Received</h1>
+            <p>Thank you for contacting {{ school_name }}</p>
+        </div>
+        
+        <div class="content">
+            <p>Dear {{ sender_name }},</p>
+            
+            <p>Thank you for taking the time to contact us! We have received your message and appreciate you reaching out.</p>
+            
+            <div class="info-box">
+                <p><strong>Message Details:</strong></p>
+                <p><strong>Reference ID:</strong> #{{ message.id }}</p>
+                <p><strong>Received:</strong> {{ submitted_at|date:"d/m/Y H:i" }}</p>
+            </div>
+            
+            <p>Our administration team will review your message carefully and respond to you as soon as possible. We typically respond within 1-2 business days.</p>
+            
+            <p>If your message requires immediate attention, please contact the school directly at:</p>
+            <ul>
+                <li><strong>Phone:</strong> School Administration</li>
+                <li><strong>Email:</strong> {{ school_email|default:"admin@school.com" }}</li>
+            </ul>
+            
+            <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                <em>This is an automated confirmation email. Your message has been recorded in our system.</em>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; {{ school_name }} - Daarul Portal</p>
+            <p>This is an automated notification. Do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
