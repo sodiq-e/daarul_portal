@@ -12,7 +12,7 @@
                     <h2 style="font-weight: 600; color: #2c3e50;">📚 Manage Subjects</h2>
                     <p class="text-muted mb-0">{{ school_class.class_name }}</p>
                 </div>
-                <a href="{% url 'add_class_subject' school_class.id %}" class="btn btn-primary btn-lg">
+                <a href="{% url 'school_classes:add_class_subject' school_class.id %}" class="btn btn-primary btn-lg">
                     ➕ Add Subject
                 </a>
             </div>
@@ -68,10 +68,10 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'edit_class_subject' subject.id %}" class="btn btn-sm btn-outline-primary">
+                                            <a href="{% url 'school_classes:edit_class_subject' subject.id %}" class="btn btn-sm btn-outline-primary">
                                                 ✏️ Edit
                                             </a>
-                                            <a href="{% url 'delete_class_subject' subject.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this subject?');">
+                                            <a href="{% url 'school_classes:delete_class_subject' subject.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this subject?');">
                                                 🗑️ Remove
                                             </a>
                                         </td>
@@ -86,7 +86,7 @@
                 <div class="card shadow-sm">
                     <div class="card-body text-center py-5">
                         <p class="text-muted mb-3">📭 No subjects assigned to this class yet.</p>
-                        <a href="{% url 'add_class_subject' school_class.id %}" class="btn btn-primary">
+                        <a href="{% url 'school_classes:add_class_subject' school_class.id %}" class="btn btn-primary">
                             ➕ Add First Subject
                         </a>
                     </div>
@@ -112,7 +112,7 @@
                                             <small class="text-muted d-block">{{ subject.code }}</small>
                                         {% endif %}
                                     </div>
-                                    <a href="{% url 'add_class_subject' school_class.id %}?subject={{ subject.id }}" class="btn btn-sm btn-outline-success">
+                                    <a href="{% url 'school_classes:add_class_subject' school_class.id %}?subject={{ subject.id }}" class="btn btn-sm btn-outline-success">
                                         Add
                                     </a>
                                 </span>

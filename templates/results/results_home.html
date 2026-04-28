@@ -55,7 +55,8 @@
     <h3>Broadsheets</h3>
     <div class="list-group">
         {% for exam in exams %}
-        <a href="{% url 'broadsheet' exam.id %}" class="list-group-item list-group-item-action">{{ exam.name }}</a>
+        <!-- TODO: Broadsheet URL requires class_id and term_id, which are not available in this context -->
+        <!-- <a href="{% url 'broadsheet' class_id=class.id term_id=exam.term.id %}" class="list-group-item list-group-item-action">{{ exam.name }}</a> -->
         {% endfor %}
     </div>
     {% endif %}
