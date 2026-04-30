@@ -343,3 +343,49 @@ class TeacherAttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, Templ
                 pass
 
         return context
+
+
+@method_decorator(login_required, name='dispatch')
+class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
+    """Students view their own attendance history"""
+    template_name = 'students/attendance_history.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get the student
+        try:
+            student = Student.objects.get(user=self.request.user)
+            context['student'] = student
+            
+            # Get all attendance records for this student
+            attendance_records = AttendanceRecord.objects.filter(
+                student=student
+            ).select_related('school_class', 'marked_by').order_by('-date')
+            
+            context['attendance_records'] = attendance_records
+            
+            # Calculate statistics
+            total_records = attendance_records.count()
+            present_count = attendance_records.filter(present=True).count()
+            absent_count = total_records - present_count
+            attendance_percentage = (present_count / total_records * 100) if total_records > 0 else 0
+            
+            context['total_records'] = total_records
+            context['present_count'] = present_count
+            context['absent_count'] = absent_count
+            context['attendance_percentage'] = round(attendance_percentage, 2)
+            
+            # Get stats by class
+            classes = student.school_class
+            if classes:
+                class_records = attendance_records.filter(school_class=classes)
+                context['class_total'] = class_records.count()
+                context['class_present'] = class_records.filter(present=True).count()
+                class_percentage = (context['class_present'] / context['class_total'] * 100) if context['class_total'] > 0 else 0
+                context['class_percentage'] = round(class_percentage, 2)
+            
+        except Student.DoesNotExist:
+            context['error'] = 'Student profile not found.'
+            
+        return context

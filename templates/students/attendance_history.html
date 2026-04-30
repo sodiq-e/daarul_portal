@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}My Attendance History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="mb-4">
+                <i class="fas fa-calendar-check"></i> My Attendance History
+            </h2>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% else %}
+
+    <!-- Overall Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Total Records</h6>
+                    <h3 class="text-primary">{{ total_records }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Days Present</h6>
+                    <h3 class="text-success">{{ present_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Days Absent</h6>
+                    <h3 class="text-danger">{{ absent_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Attendance %</h6>
+                    <h3 class="{% if attendance_percentage >= 75 %}text-success{% elif attendance_percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ attendance_percentage }}%
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Class Statistics -->
+    {% if class_total %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">{{ student.student_class }} - Attendance Statistics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <p class="text-muted mb-1">Total Records</p>
+                    <h4 class="text-primary">{{ class_total }}</h4>
+                </div>
+                <div class="col-md-3">
+                    <p class="text-muted mb-1">Present</p>
+                    <h4 class="text-success">{{ class_present }}</h4>
+                </div>
+                <div class="col-md-3">
+                    <p class="text-muted mb-1">Absent</p>
+                    <h4 class="text-danger">{{ class_total|add:class_present|add:class_present|add:class_total|add:class_present|add:-1 }}</h4>
+                </div>
+                <div class="col-md-3">
+                    <p class="text-muted mb-1">Percentage</p>
+                    <h4 class="{% if class_percentage >= 75 %}text-success{% elif class_percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ class_percentage }}%
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Attendance Records Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Detailed Attendance Records</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if attendance_records %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Class</th>
+                            <th>Status</th>
+                            <th>Marked By</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td>
+                                <small class="text-muted">
+                                    {{ record.date|date:"D, M d, Y" }}
+                                </small>
+                            </td>
+                            <td>{{ record.school_class }}</td>
+                            <td>
+                                {% if record.present %}
+                                <span class="badge bg-success">Present</span>
+                                {% else %}
+                                <span class="badge bg-danger">Absent</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.marked_by %}
+                                <small>{{ record.marked_by.first_name }} {{ record.marked_by.last_name }}</small>
+                                {% else %}
+                                <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.notes %}
+                                <small class="text-muted">{{ record.notes|truncatewords:5 }}</small>
+                                {% else %}
+                                <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                No attendance records found.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+
+<style>
+    .card {
+        border-radius: 8px;
+    }
+    .card-header {
+        border-radius: 8px 8px 0 0 !important;
+    }
+    .table {
+        font-size: 0.95rem;
+    }
+    .badge {
+        padding: 0.5rem 0.75rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
