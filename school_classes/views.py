@@ -210,7 +210,7 @@ def add_class_subject(request, class_id):
         
         if not subject_ids:
             messages.error(request, 'Please select at least one subject.')
-            return redirect('add_class_subject', class_id=class_id)
+            return redirect('school_classes:add_class_subject', class_id=class_id)
         
         added_count = 0
         skipped_count = 0
@@ -238,7 +238,7 @@ def add_class_subject(request, class_id):
         if skipped_count > 0:
             messages.warning(request, f'{skipped_count} subject(s) already assigned.')
         
-        return redirect('class_subjects_list', class_id=class_id)
+        return redirect('school_classes:class_subjects_list', class_id=class_id)
     
     # GET request - show available subjects for selection
     existing = ClassSubject.objects.filter(school_class=school_class).values_list('subject_id', flat=True)
