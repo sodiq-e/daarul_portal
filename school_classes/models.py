@@ -110,6 +110,20 @@ class SchemeWeek(models.Model):
     is_completed = models.BooleanField(default=False)
     completed_date = models.DateField(null=True, blank=True)
     completion_notes = models.TextField(blank=True)
+    
+    # Admin acknowledgement workflow
+    is_acknowledged = models.BooleanField(default=False, help_text="Teacher reported completion for this week")
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    is_approved = models.BooleanField(default=False, help_text="Admin acknowledged the completion")
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_scheme_weeks'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    admin_notes = models.TextField(blank=True)
 
     class Meta:
         unique_together = ('scheme', 'week_number')

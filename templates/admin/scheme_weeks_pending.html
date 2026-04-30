@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Pending Scheme Week Approvals{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <i class="fas fa-hourglass"></i> Pending Week Approvals
+                </h3>
+                <span class="badge bg-light text-danger" style="font-size: 1rem;">
+                    {{ pending_weeks.count }} Pending
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {% if pending_weeks %}
+    <div class="row">
+        {% for week in pending_weeks %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-left border-danger">
+                <div class="card-header bg-light border-bottom">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title mb-1">
+                                <i class="fas fa-calendar-week text-danger"></i>
+                                {{ week.scheme.school_class }} - {{ week.scheme.subject }}
+                            </h5>
+                            <p class="text-muted small mb-0">
+                                Week {{ week.week_number }}: {{ week.topic }}
+                            </p>
+                        </div>
+                        <span class="badge bg-warning">
+                            {{ week.scheme.term }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Teacher Info -->
+                    <div class="mb-3 pb-3 border-bottom">
+                        <p class="small text-muted mb-1">Teacher:</p>
+                        <p class="mb-0">
+                            <strong>{{ week.scheme.teacher.user.get_full_name }}</strong>
+                            ({{ week.scheme.teacher.employee_id }})
+                        </p>
+                    </div>
+
+                    <!-- Week Details -->
+                    <div class="mb-3">
+                        <p class="small text-muted mb-1"><strong>Objectives:</strong></p>
+                        <p class="small mb-2">{{ week.objectives|truncatewords:30 }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <p class="small text-muted mb-1"><strong>Teaching Methods:</strong></p>
+                        <p class="small mb-2">{{ week.teaching_methods|truncatewords:20 }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <p class="small text-muted mb-1"><strong>Assessment:</strong></p>
+                        <p class="small mb-2">{{ week.assessment|truncatewords:20 }}</p>
+                    </div>
+
+                    {% if week.completion_notes %}
+                    <div class="alert alert-light small p-2 mb-3">
+                        <strong>Teacher's Notes:</strong> {{ week.completion_notes }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Dates -->
+                    <div class="row text-center mb-3 pb-3 border-bottom">
+                        <div class="col-6">
+                            <p class="small text-muted mb-1">Completed:</p>
+                            <p class="small mb-0">
+                                <strong>{{ week.completed_date|date:"M d, Y" }}</strong>
+                            </p>
+                        </div>
+                        <div class="col-6">
+                            <p class="small text-muted mb-1">Reported to Admin:</p>
+                            <p class="small mb-0">
+                                <strong>{{ week.acknowledged_at|date:"M d, Y H:i" }}</strong>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Approval Form -->
+                    <form method="post" action="{% url 'teachers:approve_week_completion' week.pk %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="notes-{{ week.pk }}" class="form-label small">
+                                <strong>Admin Notes (Optional)</strong>
+                            </label>
+                            <textarea 
+                                name="admin_notes" 
+                                id="notes-{{ week.pk }}" 
+                                class="form-control form-control-sm" 
+                                rows="2"
+                                placeholder="Add your feedback or notes..."
+                            ></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-success w-100">
+                            <i class="fas fa-thumbs-up"></i> Approve Week
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i> <strong>All caught up!</strong> No pending week approvals at this time.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <!-- Recently Approved Weeks -->
+    {% if approved_weeks %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-check-circle"></i> Recently Approved Weeks
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Teacher</th>
+                        <th>Class</th>
+                        <th>Week</th>
+                        <th>Topic</th>
+                        <th>Approved</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in approved_weeks %}
+                    <tr>
+                        <td>
+                            <small>{{ week.scheme.teacher.user.first_name }} {{ week.scheme.teacher.user.last_name }}</small>
+                        </td>
+                        <td>
+                            <small>{{ week.scheme.school_class }}</small>
+                        </td>
+                        <td>
+                            <small><strong>Week {{ week.week_number }}</strong></small>
+                        </td>
+                        <td>
+                            <small>{{ week.topic|truncatewords:5 }}</small>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ week.approved_at|date:"M d, Y" }}</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .border-left {
+        border-left: 4px solid !important;
+    }
+    .border-danger {
+        border-left-color: #dc3545 !important;
+    }
+    .card {
+        transition: box-shadow 0.3s;
+    }
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    }
+</style>
+{% endblock %}

@@ -673,13 +673,52 @@ class TeacherSchemeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Get assigned classes for new scheme creation
+        # Get classes where teacher is class teacher (for quick scheme creation)
         teacher = self.request.user.teacher_profile
-        context['assigned_classes'] = ClassTeacher.objects.filter(
+        context['class_teacher_classes'] = ClassTeacher.objects.filter(
+            teacher=teacher,
+            is_active=True,
+            is_class_teacher=True
+        ).select_related('school_class').values_list('school_class', flat=True).distinct()
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherSchemeSelectClassView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Teachers select a class before creating a scheme"""
+    template_name = 'teachers/scheme/select_class.html'
+
+    def test_func(self):
+        try:
+            teacher = self.request.user.teacher_profile
+            return teacher_has_permission(teacher, 'create_scheme')
+        except:
+            return False
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        teacher = self.request.user.teacher_profile
+        
+        # Get classes where this teacher is assigned
+        assigned_classes = ClassTeacher.objects.filter(
             teacher=teacher,
             is_active=True
-        ).select_related('school_class', 'subject').values('school_class', 'subject').distinct()
+        ).select_related('school_class').values_list('school_class_id', 'school_class').distinct()
+        
+        context['assigned_classes'] = [{'id': cls_id, 'name': cls_name} for cls_id, cls_name in assigned_classes]
+        context['terms'] = __import__('exams.models', fromlist=['Term']).Term.objects.filter(is_active=True)
+        
         return context
+
+    def post(self, request, *args, **kwargs):
+        class_id = request.POST.get('school_class')
+        term_id = request.POST.get('term')
+        
+        if class_id and term_id:
+            return redirect('teachers:teacher_scheme_create_with_class', class_id=class_id, term_id=term_id)
+        else:
+            messages.error(request, 'Please select both class and term.')
+            return redirect('teachers:teacher_scheme_select_class')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -701,14 +740,36 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
         context = super().get_context_data(**kwargs)
         teacher = self.request.user.teacher_profile
         
-        # Get available classes and subjects for this teacher
-        assignments = ClassTeacher.objects.filter(
-            teacher=teacher,
-            is_active=True
-        ).select_related('school_class', 'subject')
+        # Get class and term from URL parameters
+        class_id = self.kwargs.get('class_id')
+        term_id = self.kwargs.get('term_id')
         
-        context['class_teacher_assignments'] = assignments
-        context['terms'] = __import__('exams.models', fromlist=['Term']).Term.objects.filter(is_active=True)
+        if class_id:
+            try:
+                school_class = SchoolClasses.objects.get(pk=class_id)
+                context['selected_class'] = school_class
+                
+                # Get subjects offered by this class
+                from exams.models import ClassSubject
+                class_subjects = ClassSubject.objects.filter(
+                    school_class=school_class
+                ).select_related('subject')
+                context['class_subjects'] = class_subjects
+                
+            except SchoolClasses.DoesNotExist:
+                pass
+        
+        if term_id:
+            try:
+                from exams.models import Term
+                term = Term.objects.get(pk=term_id)
+                context['selected_term'] = term
+            except:
+                pass
+        
+        # Get all active terms as fallback
+        from exams.models import Term
+        context['terms'] = Term.objects.filter(is_active=True)
         
         return context
 
@@ -716,9 +777,9 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
         form.instance.teacher = self.request.user.teacher_profile
         
         # Get form data for class, subject, and term
-        class_id = self.request.POST.get('school_class')
+        class_id = self.request.POST.get('school_class') or self.kwargs.get('class_id')
         subject_id = self.request.POST.get('subject')
-        term_id = self.request.POST.get('term')
+        term_id = self.request.POST.get('term') or self.kwargs.get('term_id')
         
         if class_id and subject_id and term_id:
             form.instance.school_class_id = class_id
@@ -887,6 +948,91 @@ def mark_week_incomplete(request, week_id):
 
     messages.success(request, f'Week {week.week_number} marked as not completed.')
     return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+
+
+@login_required
+def acknowledge_week_completion(request, week_id):
+    """Teacher acknowledges week completion (reports it to admin)"""
+    week = get_object_or_404(SchemeWeek, pk=week_id)
+    
+    try:
+        teacher = request.user.teacher_profile
+        if week.scheme.teacher != teacher:
+            messages.error(request, 'You do not have permission.')
+            return redirect('home')
+        
+        if not teacher_has_permission(teacher, 'edit_scheme'):
+            messages.error(request, 'You do not have permission.')
+            return redirect('home')
+    except:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    if not week.is_completed:
+        messages.error(request, 'Please mark the week as completed before acknowledging.')
+        return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+
+    week.is_acknowledged = True
+    week.acknowledged_at = timezone.now()
+    week.save()
+
+    messages.success(request, f'Week {week.week_number} acknowledged. Waiting for admin approval.')
+    return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+
+
+@login_required
+def approve_week_completion(request, week_id):
+    """Admin approves week completion"""
+    week = get_object_or_404(SchemeWeek, pk=week_id)
+    
+    try:
+        if not user_is_admin(request.user):
+            messages.error(request, 'You do not have permission to approve weeks.')
+            return redirect('home')
+    except:
+        messages.error(request, 'You do not have permission.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        admin_notes = request.POST.get('admin_notes', '').strip()
+        
+        week.is_approved = True
+        week.approved_by = request.user
+        week.approved_at = timezone.now()
+        week.admin_notes = admin_notes
+        week.save()
+
+        messages.success(request, f'Week {week.week_number} approved successfully.')
+    
+    return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+
+
+@method_decorator(login_required, name='dispatch')
+class AdminSchemeWeeksListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Admin view pending week acknowledgements"""
+    template_name = 'admin/scheme_weeks_pending.html'
+
+    def test_func(self):
+        return user_is_admin(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get pending weeks (acknowledged but not approved)
+        pending_weeks = SchemeWeek.objects.filter(
+            is_acknowledged=True,
+            is_approved=False
+        ).select_related('scheme__teacher__user', 'scheme__school_class', 'scheme__subject').order_by('-acknowledged_at')
+        
+        # Get approved weeks
+        approved_weeks = SchemeWeek.objects.filter(
+            is_approved=True
+        ).select_related('scheme__teacher__user', 'scheme__school_class', 'scheme__subject').order_by('-approved_at')[:20]
+        
+        context['pending_weeks'] = pending_weeks
+        context['approved_weeks'] = approved_weeks
+        
+        return context
 
 
 @login_required

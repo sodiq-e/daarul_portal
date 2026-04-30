@@ -11,7 +11,7 @@
                     <h3 class="mb-0">{% if form.instance.pk %}Edit{% else %}Create{% endif %} Scheme of Work</h3>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="scheme-form">
                         {% csrf_token %}
                         
                         {% if form.non_field_errors %}
@@ -22,33 +22,47 @@
                             </div>
                         {% endif %}
 
+                        <!-- Class Selection -->
                         <div class="mb-3">
                             <label class="form-label"><strong>Class <span class="text-danger">*</span></strong></label>
-                            <select name="school_class" class="form-select" required>
+                            <select name="school_class" id="class-select" class="form-select" required>
                                 <option value="">-- Select Class --</option>
-                                {% for assignment in class_teacher_assignments %}
-                                <option value="{{ assignment.school_class.pk }}">{{ assignment.school_class }}</option>
+                                {% if selected_class %}
+                                <option value="{{ selected_class.pk }}" selected>{{ selected_class }}</option>
+                                {% else %}
+                                {% for subject in class_subjects %}
+                                <option value="{{ subject.school_class.pk }}">{{ subject.school_class }}</option>
                                 {% endfor %}
+                                {% endif %}
                             </select>
                         </div>
 
+                        <!-- Subject Selection -->
                         <div class="mb-3">
                             <label class="form-label"><strong>Subject <span class="text-danger">*</span></strong></label>
-                            <select name="subject" class="form-select" required>
+                            <select name="subject" id="subject-select" class="form-select" required>
                                 <option value="">-- Select Subject --</option>
-                                {% for assignment in class_teacher_assignments %}
-                                <option value="{{ assignment.subject.pk }}">{{ assignment.subject }}</option>
-                                {% endfor %}
+                                {% if class_subjects %}
+                                    {% for class_subject in class_subjects %}
+                                    <option value="{{ class_subject.subject.pk }}">{{ class_subject.subject }}</option>
+                                    {% endfor %}
+                                {% endif %}
                             </select>
+                            <small class="text-muted d-block mt-2">Only subjects offered by the selected class are shown</small>
                         </div>
 
+                        <!-- Term Selection -->
                         <div class="mb-3">
                             <label class="form-label"><strong>Term <span class="text-danger">*</span></strong></label>
-                            <select name="term" class="form-select" required>
+                            <select name="term" id="term-select" class="form-select" required>
                                 <option value="">-- Select Term --</option>
+                                {% if selected_term %}
+                                <option value="{{ selected_term.pk }}" selected>{{ selected_term }}</option>
+                                {% else %}
                                 {% for term in terms %}
                                 <option value="{{ term.pk }}">{{ term }}</option>
                                 {% endfor %}
+                                {% endif %}
                             </select>
                         </div>
 
@@ -81,4 +95,52 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const classSelect = document.getElementById('class-select');
+    const subjectSelect = document.getElementById('subject-select');
+    
+    // Data structure to store subjects by class
+    const subjectsByClass = {
+        {% for class_subject in class_subjects %}
+            '{{ class_subject.school_class.pk }}': {
+                '{{ class_subject.subject.pk }}': '{{ class_subject.subject }}'
+            },
+        {% endfor %}
+    };
+    
+    // Build subjects map
+    const subjectsMap = {};
+    {% for class_subject in class_subjects %}
+        if (!subjectsMap['{{ class_subject.school_class.pk }}']) {
+            subjectsMap['{{ class_subject.school_class.pk }}'] = [];
+        }
+        subjectsMap['{{ class_subject.school_class.pk }}'].push({
+            id: '{{ class_subject.subject.pk }}',
+            name: '{{ class_subject.subject }}'
+        });
+    {% endfor %}
+    
+    classSelect.addEventListener('change', function() {
+        const selectedClassId = this.value;
+        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        
+        if (selectedClassId && subjectsMap[selectedClassId]) {
+            subjectsMap[selectedClassId].forEach(function(subject) {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = subject.name;
+                subjectSelect.appendChild(option);
+            });
+        }
+    });
+});
+</script>
+
+<style>
+    .form-select {
+        font-size: 0.95rem;
+    }
+</style>
 {% endblock %}

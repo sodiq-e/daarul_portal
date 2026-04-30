@@ -43,6 +43,8 @@ teacher_urlpatterns = [
 
     # Teacher: Scheme of Work
     path('schemes/', views.TeacherSchemeListView.as_view(), name='teacher_scheme_list'),
+    path('schemes/select-class/', views.TeacherSchemeSelectClassView.as_view(), name='teacher_scheme_select_class'),
+    path('schemes/add/<int:class_id>/<int:term_id>/', views.TeacherSchemeCreateView.as_view(), name='teacher_scheme_create_with_class'),
     path('schemes/add/', views.TeacherSchemeCreateView.as_view(), name='teacher_scheme_create'),
     path('schemes/<int:pk>/', views.TeacherSchemeDetailView.as_view(), name='teacher_scheme_detail'),
     path('schemes/<int:pk>/edit/', views.TeacherSchemeUpdateView.as_view(), name='teacher_scheme_edit'),
@@ -50,6 +52,8 @@ teacher_urlpatterns = [
     path('schemes/week/<int:pk>/edit/', views.SchemeWeekUpdateView.as_view(), name='scheme_week_edit'),
     path('schemes/week/<int:week_id>/complete/', views.mark_week_complete, name='mark_week_complete'),
     path('schemes/week/<int:week_id>/incomplete/', views.mark_week_incomplete, name='mark_week_incomplete'),
+    path('schemes/week/<int:week_id>/acknowledge/', views.acknowledge_week_completion, name='acknowledge_week_completion'),
+    path('schemes/week/<int:week_id>/approve/', views.approve_week_completion, name='approve_week_completion'),
     path('schemes/<int:scheme_id>/submit/', views.submit_scheme_for_approval, name='submit_scheme'),
 
     # Admin: Scheme Approval
@@ -57,6 +61,7 @@ teacher_urlpatterns = [
     path('admin/schemes/<int:pk>/', views.AdminSchemeDetailView.as_view(), name='admin_scheme_detail'),
     path('admin/schemes/<int:scheme_id>/approve/', views.approve_scheme, name='approve_scheme'),
     path('admin/schemes/<int:scheme_id>/reject/', views.reject_scheme, name='reject_scheme'),
+    path('admin/schemes/weeks/pending/', views.AdminSchemeWeeksListView.as_view(), name='admin_weeks_pending'),
 ]
 
 urlpatterns = class_urlpatterns + teacher_urlpatterns
