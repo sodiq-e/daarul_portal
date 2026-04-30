@@ -83,6 +83,7 @@ class SubjectListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     template_name = 'exams/subject_list.html'
     context_object_name = 'subjects'
     paginate_by = 20
+    ordering = ['name']
 
     def test_func(self):
         return user_profile_approved(self.request.user)

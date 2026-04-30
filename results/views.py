@@ -8,7 +8,7 @@ from django.views.generic import TemplateView, ListView
 from django.utils.decorators import method_decorator
 from students.models import Student
 from exams.models import Term, ClassSubject
-from school_classes.models import SchoolClasses, ClassTeacher
+from school_classes.models import SchoolClasses, ClassTeacher, Teacher
 from .models import (
     StudentResult, TermResult, ResultTemplate,
     GradeScale, Promotion, ReportCardComment, StudentConduct
@@ -77,8 +77,13 @@ def select_class_for_report_card(request):
     # Get available classes
     if user_is_staff(request.user):
         # Teachers see only assigned classes
-        teacher = ClassTeacher.objects.filter(teacher=request.user).values_list('school_class_id', flat=True)
-        classes = SchoolClasses.objects.filter(id__in=teacher).order_by('class_name')
+        try:
+            teacher_instance = request.user.teacher_profile
+            classes = SchoolClasses.objects.filter(
+                class_assignments__teacher=teacher_instance
+            ).distinct().order_by('class_name')
+        except Teacher.DoesNotExist:
+            classes = SchoolClasses.objects.none()
     else:
         # Non-staff users can access their own class if they're a student
         if hasattr(request.user, 'student'):
@@ -109,7 +114,16 @@ def report_card_student_list(request, class_id, term_id):
 
     # Check permission - teachers can only view their assigned classes
     if user_is_staff(request.user):
-        if not ClassTeacher.objects.filter(teacher=request.user, school_class=school_class).exists():
+        try:
+            teacher_instance = request.user.teacher_profile
+            has_permission = ClassTeacher.objects.filter(
+                teacher=teacher_instance, 
+                school_class=school_class
+            ).exists()
+            if not has_permission:
+                messages.error(request, 'You do not have permission to view this class.')
+                return redirect('select_class_for_report_card')
+        except Teacher.DoesNotExist:
             messages.error(request, 'You do not have permission to view this class.')
             return redirect('select_class_for_report_card')
     else:

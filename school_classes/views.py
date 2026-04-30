@@ -137,17 +137,37 @@ class ClassDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 # ==================== CLASS SUBJECT MANAGEMENT ====================
 
 @login_required
+@login_required
 def class_subjects_list(request, class_id):
     """List and manage subjects for a class"""
-    if not user_is_admin(request.user):
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    
+    # Check if user is admin or teacher assigned to this class
+    if user_is_admin(request.user):
+        # Admin can manage any class
+        pass
+    elif user_is_staff(request.user):
+        # Teacher can only manage classes they're assigned to
+        try:
+            teacher_instance = request.user.teacher_profile
+            has_permission = ClassTeacher.objects.filter(
+                teacher=teacher_instance,
+                school_class=school_class
+            ).exists()
+            if not has_permission:
+                messages.error(request, 'You do not have permission to manage this class.')
+                return redirect('home')
+        except Teacher.DoesNotExist:
+            messages.error(request, 'You do not have permission to manage class subjects.')
+            return redirect('home')
+    else:
         messages.error(request, 'You do not have permission to manage class subjects.')
         return redirect('home')
     
-    school_class = get_object_or_404(SchoolClasses, pk=class_id)
     subjects = ClassSubject.objects.filter(school_class=school_class).select_related('subject').order_by('order')
     available_subjects = Subject.objects.exclude(
         pk__in=subjects.values_list('subject_id', flat=True)
-    ).filter(is_active=True)
+    ).filter(is_active=True).order_by('name')
     
     context = {
         'school_class': school_class,
