@@ -255,7 +255,27 @@ def add_class_subject(request, class_id):
 @login_required
 def edit_class_subject(request, subject_id):
     """Edit a class subject"""
-    if not user_is_admin(request.user):
+    class_subject = get_object_or_404(ClassSubject, pk=subject_id)
+    
+    # Check permission
+    if user_is_admin(request.user):
+        # Admin can manage any class
+        pass
+    elif user_is_staff(request.user):
+        # Teacher can only manage classes they're assigned to
+        try:
+            teacher_instance = request.user.teacher_profile
+            has_permission = ClassTeacher.objects.filter(
+                teacher=teacher_instance,
+                school_class=class_subject.school_class
+            ).exists()
+            if not has_permission:
+                messages.error(request, 'You do not have permission to manage this class.')
+                return redirect('home')
+        except Teacher.DoesNotExist:
+            messages.error(request, 'You do not have permission to manage class subjects.')
+            return redirect('home')
+    else:
         messages.error(request, 'You do not have permission to manage class subjects.')
         return redirect('home')
     
@@ -266,7 +286,7 @@ def edit_class_subject(request, subject_id):
         if form.is_valid():
             form.save()
             messages.success(request, f'{class_subject.subject.name} updated successfully.')
-            return redirect('class_subjects_list', class_id=class_subject.school_class.id)
+            return redirect('school_classes:class_subjects_list', class_id=class_subject.school_class.id)
     else:
         form = ClassSubjectForm(instance=class_subject)
         form.fields['school_class'].disabled = True
@@ -284,18 +304,36 @@ def edit_class_subject(request, subject_id):
 @login_required
 def delete_class_subject(request, subject_id):
     """Delete a subject from a class"""
-    if not user_is_admin(request.user):
+    class_subject = get_object_or_404(ClassSubject, pk=subject_id)
+    
+    # Check permission
+    if user_is_admin(request.user):
+        # Admin can manage any class
+        pass
+    elif user_is_staff(request.user):
+        # Teacher can only manage classes they're assigned to
+        try:
+            teacher_instance = request.user.teacher_profile
+            has_permission = ClassTeacher.objects.filter(
+                teacher=teacher_instance,
+                school_class=class_subject.school_class
+            ).exists()
+            if not has_permission:
+                messages.error(request, 'You do not have permission to manage this class.')
+                return redirect('home')
+        except Teacher.DoesNotExist:
+            messages.error(request, 'You do not have permission to manage class subjects.')
+            return redirect('home')
+    else:
         messages.error(request, 'You do not have permission to manage class subjects.')
         return redirect('home')
-    
-    class_subject = get_object_or_404(ClassSubject, pk=subject_id)
     class_id = class_subject.school_class.id
     subject_name = class_subject.subject.name
     class_name = class_subject.school_class.class_name
     
     class_subject.delete()
     messages.success(request, f'{subject_name} removed from {class_name}.')
-    return redirect('class_subjects_list', class_id=class_id)
+    return redirect('school_classes:class_subjects_list', class_id=class_id)
 
 
 # ==================== TEACHER PROFILE VIEWS ====================
@@ -720,15 +758,11 @@ class TeacherSchemeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     paginate_by = 20
 
     def test_func(self):
-        try:
-            teacher = self.request.user.teacher_profile
-            return teacher_has_permission(teacher, 'create_scheme')
-        except:
-            return False
+        return user_is_staff(self.request.user)
 
     def get_queryset(self):
         teacher = self.request.user.teacher_profile
-        return SchemeOfWork.objects.filter(teacher=teacher).order_by('-created_at')
+        return SchemeOfWork.objects.filter(teacher=teacher).order_by('-id')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -748,15 +782,14 @@ class TeacherSchemeSelectClassView(LoginRequiredMixin, UserPassesTestMixin, Temp
     template_name = 'teachers/scheme/select_class.html'
 
     def test_func(self):
-        try:
-            teacher = self.request.user.teacher_profile
-            return teacher_has_permission(teacher, 'create_scheme')
-        except:
-            return False
+        return user_is_staff(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        teacher = self.request.user.teacher_profile
+        try:
+            teacher = self.request.user.teacher_profile
+        except:
+            return context
         
         # Get classes where this teacher is assigned
         assigned_classes = ClassTeacher.objects.filter(
@@ -789,11 +822,7 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
     success_url = reverse_lazy('teacher_scheme_list')
 
     def test_func(self):
-        try:
-            teacher = self.request.user.teacher_profile
-            return teacher_has_permission(teacher, 'create_scheme')
-        except:
-            return False
+        return user_is_staff(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

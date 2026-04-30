@@ -461,16 +461,17 @@ def teacher_has_permission(teacher, permission_code):
 
 
 @login_required
+@login_required
 def teacher_results_list(request):
     """Teachers view results for their classes"""
+    if not user_is_staff(request.user):
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
     try:
         teacher = request.user.teacher_profile
     except:
         messages.error(request, 'You must be a teacher to access this page.')
-        return redirect('home')
-
-    if not teacher_has_permission(teacher, 'view_results'):
-        messages.error(request, 'You do not have permission to view results.')
         return redirect('home')
 
     # Get classes assigned to this teacher
@@ -481,7 +482,7 @@ def teacher_results_list(request):
     ).values_list('school_class_id', flat=True).distinct()
 
     # Get terms
-    terms = Term.objects.filter(is_active=True)
+    terms = Term.objects.filter(is_active=True).order_by('academic_year')
 
     context = {
         'assigned_classes': SchoolClasses.objects.filter(id__in=assigned_classes),
