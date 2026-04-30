@@ -2,10 +2,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.utils.decorators import method_decorator
 from .models import Subject, Exam
 from .forms import SubjectForm, ExamForm
+from school_classes.models import SchoolClasses, ClassTeacher
 
 
 def user_profile_approved(user):
@@ -25,6 +27,54 @@ def user_is_staff(user):
         )
     except AttributeError:
         return False
+
+
+def user_is_admin(user):
+    """Check if user is admin"""
+    try:
+        return (
+            user.profile.is_approved and
+            user.is_staff
+        )
+    except AttributeError:
+        return False
+
+
+@method_decorator(login_required, name='dispatch')
+class SelectClassForSubjectsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Teachers/admins select a class to add subjects to"""
+    template_name = 'exams/select_class_for_subjects.html'
+
+    def test_func(self):
+        return user_is_staff(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        # Get classes based on user role
+        if user_is_admin(user):
+            # Admins can see all classes
+            classes = SchoolClasses.objects.all().order_by('class_name')
+        else:
+            # Teachers can only see classes they're assigned to
+            assigned_class_ids = ClassTeacher.objects.filter(
+                teacher=user.teacher_profile,
+                is_active=True
+            ).values_list('school_class_id', flat=True).distinct()
+            classes = SchoolClasses.objects.filter(id__in=assigned_class_ids).order_by('class_name')
+        
+        context['classes'] = classes
+        return context
+
+    def post(self, request, *args, **kwargs):
+        class_id = request.POST.get('school_class')
+        
+        if class_id:
+            return redirect('school_classes:class_subjects_list', class_id=class_id)
+        else:
+            messages.error(request, 'Please select a class.')
+            return redirect('select_class_for_subjects')
 
 
 # Subject Views

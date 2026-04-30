@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     # Subjects
     path('subjects/', views.SubjectListView.as_view(), name='subject_list'),
+    path('subjects/select-class/', views.SelectClassForSubjectsView.as_view(), name='select_class_for_subjects'),
     path('subjects/<int:pk>/', views.SubjectDetailView.as_view(), name='subject_detail'),
     path('subjects/add/', views.SubjectCreateView.as_view(), name='subject_add'),
     path('subjects/<int:pk>/edit/', views.SubjectUpdateView.as_view(), name='subject_edit'),

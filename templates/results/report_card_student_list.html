@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Cards - {{ school_class }} - {{ term.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-file-pdf"></i> Report Cards
+            </h2>
+            <p class="text-muted mb-0">
+                <strong>{{ school_class }}</strong> • {{ term.name }} • {{ students|length }} Students
+            </p>
+        </div>
+        <a href="{% url 'select_class_for_report_card' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Selection
+        </a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Students Grid -->
+    <div class="row g-3">
+        {% for student in students %}
+        <div class="col-md-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm h-100 hover-card" style="transition: transform 0.2s, box-shadow 0.2s;">
+                <div class="card-body">
+                    <!-- Student Info -->
+                    <h5 class="card-title mb-2">
+                        {{ student.get_full_name|upper }}
+                    </h5>
+                    <div class="student-info small text-muted">
+                        <p class="mb-2">
+                            <strong>Admission:</strong> {{ student.admission_no }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Gender:</strong> {{ student.get_gender_display }}
+                        </p>
+                        <p class="mb-3">
+                            <strong>Class:</strong> {{ student.student_class.class_name }}
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'student_report_card' student.id term.id %}" class="btn btn-primary btn-sm" target="_blank">
+                            <i class="fas fa-eye"></i> View Report Card
+                        </a>
+                        <a href="{% url 'student_report_card' student.id term.id %}" class="btn btn-outline-primary btn-sm" onclick="window.open('{% url 'student_report_card' student.id term.id %}', 'report', 'width=900,height=700'); return false;">
+                            <i class="fas fa-print"></i> Print
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle"></i>
+                No students found in this class for the selected term.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Info Section -->
+    <div class="row mt-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h6 class="card-title text-info">
+                        <i class="fas fa-lightbulb"></i> Tips for Printing
+                    </h6>
+                    <ul class="small mb-0">
+                        <li>Click "View Report Card" to open and review before printing</li>
+                        <li>Use the "Print" button to open the print dialog</li>
+                        <li>Set paper size to A4 Portrait for best results</li>
+                        <li>Include background graphics if available (browser dependent)</li>
+                        <li>Save as PDF for archiving or email distribution</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card {
+        cursor: pointer;
+    }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+    }
+    .student-info p {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

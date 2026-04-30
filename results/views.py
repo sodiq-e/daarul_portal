@@ -4,9 +4,11 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.template.loader import get_template
 from django.db.models import Avg, Count, Sum, Q
+from django.views.generic import TemplateView, ListView
+from django.utils.decorators import method_decorator
 from students.models import Student
 from exams.models import Term, ClassSubject
-from school_classes.models import SchoolClasses
+from school_classes.models import SchoolClasses, ClassTeacher
 from .models import (
     StudentResult, TermResult, ResultTemplate,
     GradeScale, Promotion, ReportCardComment, StudentConduct
@@ -54,6 +56,103 @@ def results_home(request):
     }
 
     return render(request, 'results/results_home.html', context)
+
+
+@login_required
+def select_class_for_report_card(request):
+    """Select class and term to view report cards"""
+    if not user_profile_approved(request.user):
+        messages.error(request, 'Your account is not approved yet.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        class_id = request.POST.get('school_class')
+        term_id = request.POST.get('term')
+        
+        if class_id and term_id:
+            return redirect('report_card_student_list', class_id=class_id, term_id=term_id)
+        else:
+            messages.error(request, 'Please select both class and term.')
+
+    # Get available classes
+    if user_is_staff(request.user):
+        # Teachers see only assigned classes
+        teacher = ClassTeacher.objects.filter(teacher=request.user).values_list('school_class_id', flat=True)
+        classes = SchoolClasses.objects.filter(id__in=teacher).order_by('class_name')
+    else:
+        # Non-staff users can access their own class if they're a student
+        if hasattr(request.user, 'student'):
+            classes = SchoolClasses.objects.filter(id=request.user.student.student_class_id)
+        else:
+            classes = SchoolClasses.objects.none()
+
+    # Get active terms
+    terms = Term.objects.filter(is_active=True).order_by('-created_at')
+
+    context = {
+        'classes': classes,
+        'terms': terms,
+    }
+
+    return render(request, 'results/select_class_for_report_card.html', context)
+
+
+@login_required
+def report_card_student_list(request, class_id, term_id):
+    """List students in a class for viewing their report cards"""
+    if not user_profile_approved(request.user):
+        messages.error(request, 'Your account is not approved yet.')
+        return redirect('home')
+
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    # Check permission - teachers can only view their assigned classes
+    if user_is_staff(request.user):
+        if not ClassTeacher.objects.filter(teacher=request.user, school_class=school_class).exists():
+            messages.error(request, 'You do not have permission to view this class.')
+            return redirect('select_class_for_report_card')
+    else:
+        # Students can view their own class
+        if not (hasattr(request.user, 'student') and request.user.student.student_class == school_class):
+            messages.error(request, 'You do not have permission to view this class.')
+            return redirect('select_class_for_report_card')
+
+    # Get all active students in this class
+    students = Student.objects.filter(
+        student_class=school_class,
+        status='active'
+    ).order_by('surname', 'other_names')
+
+    # Check if result template exists
+    try:
+        result_template = ResultTemplate.objects.get(
+            school_class=school_class,
+            term=term,
+            is_active=True
+        )
+    except ResultTemplate.DoesNotExist:
+        messages.warning(request, 'No result template found for this class and term.')
+        result_template = None
+
+    # Filter students who have results
+    students_with_results = []
+    for student in students:
+        has_results = StudentResult.objects.filter(
+            student=student,
+            term=term
+        ).exists()
+        if has_results or result_template:
+            students_with_results.append(student)
+
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'students': students_with_results if students_with_results else students,
+        'result_template': result_template,
+    }
+
+    return render(request, 'results/report_card_student_list.html', context)
 
 
 @login_required
