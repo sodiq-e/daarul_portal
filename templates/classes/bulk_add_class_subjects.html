@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Subjects to {{ school_class.class_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-book"></i> Add Subjects
+                    </h2>
+                    <p class="text-muted mb-0">{{ school_class.class_name }}</p>
+                </div>
+                <a href="{% url 'school_classes:class_subjects_list' school_class.id %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Form -->
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+
+                <!-- Card with Subjects -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-square"></i> Select Subjects to Add
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if available_subjects %}
+                        <div class="row">
+                            {% for subject in available_subjects %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input subject-checkbox" 
+                                           type="checkbox" 
+                                           name="subjects" 
+                                           value="{{ subject.id }}"
+                                           id="subject_{{ subject.id }}">
+                                    <label class="form-check-label" for="subject_{{ subject.id }}">
+                                        <strong>{{ subject.name }}</strong>
+                                        {% if subject.code %}
+                                        <br><small class="text-muted">{{ subject.code }}</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Selection Summary -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <strong>Selected: <span id="selected-count">0</span> / {{ available_subjects|length }} subjects</strong>
+                        </div>
+
+                        {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> All available subjects are already assigned to this class.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" {% if not available_subjects %}disabled{% endif %}>
+                        <i class="fas fa-plus"></i> Add Selected Subjects
+                    </button>
+                    <a href="{% url 'school_classes:class_subjects_list' school_class.id %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+
+            <!-- Info Card -->
+            <div class="card mt-4 border-info">
+                <div class="card-body">
+                    <h6 class="card-title text-info">
+                        <i class="fas fa-lightbulb"></i> Tips
+                    </h6>
+                    <ul class="small mb-0">
+                        <li>Check the subjects you want to add to this class</li>
+                        <li>Click "Add Selected Subjects" to save your selection</li>
+                        <li>You can add or remove subjects later from the subjects list</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Update selected count
+document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const selected = document.querySelectorAll('.subject-checkbox:checked').length;
+        document.getElementById('selected-count').textContent = selected;
+        
+        // Enable/disable submit button
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = selected === 0;
+    });
+});
+
+// Initial count
+const initialSelected = document.querySelectorAll('.subject-checkbox:checked').length;
+document.getElementById('selected-count').textContent = initialSelected;
+</script>
+
+<style>
+    .form-check {
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #e0e0e0;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .form-check:hover {
+        background-color: #f8f9fa;
+        border-color: #0d6efd;
+    }
+    
+    .form-check-input:checked ~ .form-check-label {
+        color: #0d6efd;
+    }
+    
+    .form-check-input {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

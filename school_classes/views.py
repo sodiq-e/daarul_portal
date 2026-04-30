@@ -178,39 +178,78 @@ def class_subjects_list(request, class_id):
 
 
 @login_required
+@login_required
 def add_class_subject(request, class_id):
-    """Add a subject to a class"""
-    if not user_is_admin(request.user):
+    """Add subjects to a class (can select multiple)"""
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    
+    # Check permission
+    if user_is_admin(request.user):
+        # Admin can manage any class
+        pass
+    elif user_is_staff(request.user):
+        # Teacher can only manage classes they're assigned to
+        try:
+            teacher_instance = request.user.teacher_profile
+            has_permission = ClassTeacher.objects.filter(
+                teacher=teacher_instance,
+                school_class=school_class
+            ).exists()
+            if not has_permission:
+                messages.error(request, 'You do not have permission to manage this class.')
+                return redirect('home')
+        except Teacher.DoesNotExist:
+            messages.error(request, 'You do not have permission to manage class subjects.')
+            return redirect('home')
+    else:
         messages.error(request, 'You do not have permission to manage class subjects.')
         return redirect('home')
     
-    school_class = get_object_or_404(SchoolClasses, pk=class_id)
-    
     if request.method == 'POST':
-        form = ClassSubjectForm(request.POST)
-        if form.is_valid():
-            class_subject = form.save(commit=False)
-            class_subject.school_class = school_class
+        subject_ids = request.POST.getlist('subjects')
+        
+        if not subject_ids:
+            messages.error(request, 'Please select at least one subject.')
+            return redirect('add_class_subject', class_id=class_id)
+        
+        added_count = 0
+        skipped_count = 0
+        
+        for subject_id in subject_ids:
             try:
-                class_subject.save()
-                messages.success(request, f'{class_subject.subject.name} added to {school_class.class_name} successfully.')
-                return redirect('class_subjects_list', class_id=class_id)
-            except Exception as e:
-                messages.error(request, f'Error: {str(e)}')
-    else:
-        form = ClassSubjectForm()
-        # Filter to only show subjects not already assigned to this class
-        existing = ClassSubject.objects.filter(school_class=school_class).values_list('subject_id', flat=True)
-        form.fields['subject'].queryset = Subject.objects.exclude(pk__in=existing).filter(is_active=True)
-        form.fields['school_class'].initial = school_class
-        form.fields['school_class'].disabled = True
+                subject = Subject.objects.get(pk=subject_id)
+                # Check if already exists
+                if ClassSubject.objects.filter(school_class=school_class, subject=subject).exists():
+                    skipped_count += 1
+                    continue
+                
+                ClassSubject.objects.create(
+                    school_class=school_class,
+                    subject=subject,
+                    is_compulsory=True,
+                    order=ClassSubject.objects.filter(school_class=school_class).count() + 1
+                )
+                added_count += 1
+            except Subject.DoesNotExist:
+                continue
+        
+        if added_count > 0:
+            messages.success(request, f'{added_count} subject(s) added successfully.')
+        if skipped_count > 0:
+            messages.warning(request, f'{skipped_count} subject(s) already assigned.')
+        
+        return redirect('class_subjects_list', class_id=class_id)
+    
+    # GET request - show available subjects for selection
+    existing = ClassSubject.objects.filter(school_class=school_class).values_list('subject_id', flat=True)
+    available_subjects = Subject.objects.exclude(pk__in=existing).filter(is_active=True).order_by('name')
     
     context = {
-        'form': form,
         'school_class': school_class,
-        'action': 'Add',
+        'available_subjects': available_subjects,
     }
-    return render(request, 'classes/class_subject_form.html', context)
+    return render(request, 'classes/bulk_add_class_subjects.html', context)
+
 
 
 @login_required

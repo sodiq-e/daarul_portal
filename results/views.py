@@ -92,7 +92,7 @@ def select_class_for_report_card(request):
             classes = SchoolClasses.objects.none()
 
     # Get active terms
-    terms = Term.objects.filter(is_active=True).order_by('-created_at')
+    terms = Term.objects.filter(is_active=True).order_by('academic_year')
 
     context = {
         'classes': classes,
