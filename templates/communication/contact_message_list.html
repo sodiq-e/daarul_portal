@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Messages{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-10 offset-lg-1">
+            <h1 class="mb-4">Contact Messages</h1>
+            <p class="text-muted">Only teachers and administrators can view messages sent through the contact form.</p>
+
+            {% if messages %}
+            <div class="message-list">
+                {% for message in messages %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h5 class="card-title mb-1">{{ message.name|default:'Anonymous' }}</h5>
+                                {% if message.email %}<p class="mb-1"><strong>Email:</strong> {{ message.email }}</p>{% endif %}
+                                {% if message.phone %}<p class="mb-1"><strong>Phone:</strong> {{ message.phone }}</p>{% endif %}
+                            </div>
+                            <small class="text-muted">{{ message.created_at|date:"M d, Y H:i" }}</small>
+                        </div>
+                        <p class="card-text">{{ message.message|linebreaksbr }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                No contact messages have been received yet.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

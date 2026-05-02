@@ -45,6 +45,14 @@
                     {% endif %}
                 {% endif %}
                 
+                {% if page.page_type == 'messages' and user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{% url 'communication:contact_message_list' %}" class="btn btn-outline-primary btn-sm">
+                        View contact messages
+                    </a>
+                </div>
+                {% endif %}
+                
                 <!-- Messages section - rendered if page_type is "messages" -->
                 {% if messages %}
                 <section class="messages-section mt-5">
