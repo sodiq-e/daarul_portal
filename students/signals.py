@@ -9,7 +9,7 @@ def create_student_on_approval(sender, instance, created, **kwargs):
     if not created and instance.status == 'accepted':
         # Check if student already exists
         if not Student.objects.filter(admission_no=instance.admission_number_requested).exists():
-            # Create the student record
+            # Create the student record with guardian information
             student = Student.objects.create(
                 admission_no=instance.admission_number_requested,
                 surname=instance.last_name,
@@ -17,7 +17,17 @@ def create_student_on_approval(sender, instance, created, **kwargs):
                 dob=instance.dob,
                 gender=instance.gender,
                 student_class=instance.desired_class,
-                status='active'
+                status='active',
+                # Guardian information
+                guardian_name=instance.guardian_name,
+                guardian_relationship=instance.guardian_relationship,
+                guardian_phone=instance.guardian_phone,
+                guardian_email=instance.guardian_email,
+                guardian_address=instance.guardian_address,
+                guardian_occupation=instance.guardian_occupation,
+                guardian_employer=instance.guardian_employer,
+                emergency_contact_name=instance.emergency_contact_name,
+                emergency_contact_phone=instance.emergency_contact_phone
             )
             print(f"✓ Created student record: {student}")
         else:
