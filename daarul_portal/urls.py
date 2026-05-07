@@ -22,13 +22,14 @@ def home(request):
 
 
 urlpatterns = [
+    path('', include('communication.urls')),
+
     path('admin/', admin.site.urls),
 
     path('login/', CustomLoginView.as_view(), name='login'),
 
     path('', home, name='home'),
 
-    path('', include('communication.urls')),
     path('accounts/', include('accounts.urls')),
     path('results/', include('results.urls')),
     path('settings/', include('settingsapp.urls')),
