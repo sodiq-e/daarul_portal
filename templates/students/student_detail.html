@@ -42,6 +42,46 @@
                     {% endif %}
                 </div>
             </div>
+            
+            {% if is_class_teacher %}
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="card-title text-primary">Guardian Information</h5>
+                    {% if student.guardian_name %}
+                    <p><strong>Guardian Name:</strong> {{ student.guardian_name }}</p>
+                    {% endif %}
+                    {% if student.guardian_relationship %}
+                    <p><strong>Relationship:</strong> {{ student.guardian_relationship }}</p>
+                    {% endif %}
+                    {% if student.guardian_phone %}
+                    <p><strong>Phone:</strong> <a href="tel:{{ student.guardian_phone }}">{{ student.guardian_phone }}</a></p>
+                    {% endif %}
+                    {% if student.guardian_email %}
+                    <p><strong>Email:</strong> <a href="mailto:{{ student.guardian_email }}">{{ student.guardian_email }}</a></p>
+                    {% endif %}
+                    {% if student.guardian_occupation %}
+                    <p><strong>Occupation:</strong> {{ student.guardian_occupation }}</p>
+                    {% endif %}
+                    {% if student.guardian_employer %}
+                    <p><strong>Employer:</strong> {{ student.guardian_employer }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <h5 class="card-title text-primary">Emergency Contact</h5>
+                    {% if student.emergency_contact_name %}
+                    <p><strong>Emergency Contact:</strong> {{ student.emergency_contact_name }}</p>
+                    {% endif %}
+                    {% if student.emergency_contact_phone %}
+                    <p><strong>Emergency Phone:</strong> <a href="tel:{{ student.emergency_contact_phone }}">{{ student.emergency_contact_phone }}</a></p>
+                    {% endif %}
+                    {% if student.guardian_address %}
+                    <p><strong>Address:</strong></p>
+                    <p class="text-muted">{{ student.guardian_address|linebreaks }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -5,7 +5,12 @@ from .models import Student, StudentApplication, AdmissionFormField, AdmissionFo
 class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
-        fields = ['admission_no', 'surname', 'other_names', 'dob', 'gender', 'student_class', 'photo']
+        fields = [
+            'admission_no', 'surname', 'other_names', 'dob', 'gender', 'student_class', 'photo',
+            'guardian_name', 'guardian_relationship', 'guardian_phone', 'guardian_email',
+            'guardian_address', 'guardian_occupation', 'guardian_employer',
+            'emergency_contact_name', 'emergency_contact_phone'
+        ]
         widgets = {
             'dob': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'admission_no': forms.TextInput(attrs={'class': 'form-control'}),
@@ -14,6 +19,15 @@ class StudentForm(forms.ModelForm):
             'gender': forms.Select(attrs={'class': 'form-select'}),
             'student_class': forms.Select(attrs={'class': 'form-select'}),
             'photo': forms.FileInput(attrs={'class': 'form-control'}),
+            'guardian_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'guardian_relationship': forms.TextInput(attrs={'class': 'form-control'}),
+            'guardian_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'guardian_email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'guardian_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'guardian_occupation': forms.TextInput(attrs={'class': 'form-control'}),
+            'guardian_employer': forms.TextInput(attrs={'class': 'form-control'}),
+            'emergency_contact_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'emergency_contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
 

@@ -15,6 +15,7 @@ except ImportError:
 
 from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse
 from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm, DynamicAdmissionForm
+from school_classes.models import ClassTeacher
 
 
 def user_profile_approved(user):
@@ -71,6 +72,19 @@ class StudentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['can_modify'] = staff_can_edit(self.request.user)
+        
+        # Check if user is class teacher for this student
+        student = self.get_object()
+        is_class_teacher = False
+        if hasattr(self.request.user, 'teacher_profile') and student.student_class:
+            is_class_teacher = ClassTeacher.objects.filter(
+                teacher=self.request.user.teacher_profile,
+                school_class=student.student_class,
+                is_class_teacher=True,
+                is_active=True
+            ).exists()
+        
+        context['is_class_teacher'] = is_class_teacher
         return context
 
 
