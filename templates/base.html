@@ -468,6 +468,11 @@ html, body {
       <i class="fas fa-tasks"></i> Scheme Approval
     </a>
 
+    <a href="{% url 'admin_messages_list' %}"
+       class="{% if request.resolver_match.url_name == 'admin_messages_list' %}active{% endif %}">
+      <i class="fas fa-envelope"></i> Contact Messages
+    </a>
+
     <a href="/admin/">
       <i class="fas fa-cog"></i> Django Admin
     </a>

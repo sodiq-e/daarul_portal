@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <div>
+            <h1 style="margin: 0; font-size: 32px;">Contact Messages</h1>
+            <p style="margin: 5px 0 0 0; color: #666;">Manage messages from contact form submissions</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div style="background: #f0f0f0; padding: 15px 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #d9534f;">{{ unreplied_count }}</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">Unreplied</div>
+            </div>
+            <div style="background: #f0f0f0; padding: 15px 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: bold; color: #5cb85c;">{{ replied_count }}</div>
+                <div style="font-size: 12px; color: #666; margin-top: 5px;">Replied</div>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        <div style="margin-bottom: 20px;">
+            {% for message in messages %}
+                <div style="background: white; border-left: 4px solid {% if message.is_replied %}#5cb85c{% else %}#d9534f{% endif %}; 
+                            padding: 15px; margin-bottom: 10px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 8px 0; font-size: 18px;">
+                                <a href="{% url 'admin_message_detail' message.pk %}" style="color: #333; text-decoration: none;">
+                                    {{ message.name|default:"Anonymous" }}
+                                </a>
+                            </h3>
+                            <p style="margin: 5px 0; font-size: 14px; color: #666;">
+                                <strong>Email:</strong> {{ message.email|default:"Not provided" }}
+                                {% if message.user %}
+                                    <span style="background: #e3f2fd; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-left: 10px;">
+                                        Has Account
+                                    </span>
+                                {% endif %}
+                            </p>
+                            <p style="margin: 5px 0; font-size: 14px; color: #666;">
+                                <strong>Phone:</strong> {{ message.phone|default:"Not provided" }}
+                            </p>
+                            <p style="margin: 10px 0 0 0; font-size: 14px; color: #333; line-height: 1.5;">
+                                {{ message.message|truncatewords:30 }}
+                            </p>
+                            <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">
+                                Sent: {{ message.created_at|date:"M d, Y H:i" }}
+                            </p>
+                        </div>
+                        <div style="text-align: right; margin-left: 20px;">
+                            <span style="display: inline-block; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: bold;
+                                        background: {% if message.is_replied %}#d4edda; color: #155724;{% else %}#f8d7da; color: #721c24;{% endif %}">
+                                {% if message.is_replied %}✓ Replied{% else %}Pending{% endif %}
+                            </span>
+                            <div style="margin-top: 10px;">
+                                <a href="{% url 'admin_message_detail' message.pk %}" style="display: inline-block; padding: 8px 12px; 
+                                        background: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 13px;">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <div style="text-align: center; margin-top: 30px; padding: 20px;">
+                <div style="display: flex; justify-content: center; gap: 5px;">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1" style="padding: 8px 12px; background: #f0f0f0; text-decoration: none; border-radius: 4px;">« First</a>
+                        <a href="?page={{ page_obj.previous_page_number }}" style="padding: 8px 12px; background: #f0f0f0; text-decoration: none; border-radius: 4px;">‹ Previous</a>
+                    {% endif %}
+                    
+                    <span style="padding: 8px 12px; background: #007bff; color: white; border-radius: 4px;">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                    
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" style="padding: 8px 12px; background: #f0f0f0; text-decoration: none; border-radius: 4px;">Next ›</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}" style="padding: 8px 12px; background: #f0f0f0; text-decoration: none; border-radius: 4px;">Last »</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div style="background: #f8f9fa; padding: 40px; text-align: center; border-radius: 8px;">
+            <p style="font-size: 16px; color: #666;">No messages found.</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    h1, h3 {
+        color: var(--heading-text-color);
+    }
+    a {
+        color: #007bff;
+        text-decoration: none;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
