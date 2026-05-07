@@ -148,6 +148,25 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
     def get_queryset(self):
         return get_active_accounts()
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        users_with_counts = []
+        for user in context['users']:
+            thread = getattr(user, 'portal_thread', None)
+            unread_count = 0
+            total_messages = 0
+            if thread:
+                total_messages = thread.messages.count()
+                unread_count = thread.messages.exclude(sender=user).filter(is_read=False).count()
+            users_with_counts.append({
+                'user': user,
+                'thread': thread,
+                'total_messages': total_messages,
+                'unread_count': unread_count,
+            })
+        context['users_with_counts'] = users_with_counts
+        return context
+
 
 class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'communication/admin_portal_thread_detail.html'

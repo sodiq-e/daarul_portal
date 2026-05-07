@@ -62,6 +62,7 @@ TEMPLATES = [
                 'settingsapp.context_processors.school_settings',
                 'settingsapp.context_processors.announcements_context',
                 'pages.context_processors.navigation_pages',
+                'communication.context_processors.portal_messages_context',
             ],
         },
     },

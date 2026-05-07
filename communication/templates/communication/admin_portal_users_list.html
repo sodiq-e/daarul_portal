@@ -13,22 +13,22 @@
         </div>
     </div>
 
-    {% if users %}
+    {% if users_with_counts %}
         <div style="display: grid; gap: 14px;">
-            {% for user in users %}
+            {% for user_data in users_with_counts %}
                 <div style="background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;">
                     <div>
-                        <p style="margin: 0 0 8px 0; font-size: 15px; color: #666; text-transform: uppercase; letter-spacing: 0.05em;">{{ user.profile.requested_group|default:'Account' }}</p>
-                        <h2 style="margin: 0 0 6px 0; font-size: 20px;">{{ user.get_full_name|default:user.username }}</h2>
-                        <p style="margin: 0; color: #555; font-size: 14px;">@{{ user.username }}{% if user.email %} · {{ user.email }}{% endif %}</p>
-                        {% if user.portal_thread %}
-                            <p style="margin: 10px 0 0 0; color: #666; font-size: 13px;">Messages: {{ user.portal_thread.messages.count }} · Unread for user: {{ user.portal_thread.messages.exclude(sender=user).filter(is_read=False).count }}</p>
+                        <p style="margin: 0 0 8px 0; font-size: 15px; color: #666; text-transform: uppercase; letter-spacing: 0.05em;">{{ user_data.user.profile.requested_group|default:'Account' }}</p>
+                        <h2 style="margin: 0 0 6px 0; font-size: 20px;">{{ user_data.user.get_full_name|default:user_data.user.username }}</h2>
+                        <p style="margin: 0; color: #555; font-size: 14px;">@{{ user_data.user.username }}{% if user_data.user.email %} · {{ user_data.user.email }}{% endif %}</p>
+                        {% if user_data.thread %}
+                            <p style="margin: 10px 0 0 0; color: #666; font-size: 13px;">Messages: {{ user_data.total_messages }} · Unread for user: {{ user_data.unread_count }}</p>
                         {% else %}
                             <p style="margin: 10px 0 0 0; color: #666; font-size: 13px;">No conversation yet. Click to start a thread.</p>
                         {% endif %}
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
-                        <a href="{% url 'admin_portal_thread_detail' user.id %}" style="padding: 10px 16px; background: #198754; color: white; text-decoration: none; border-radius: 8px;">Open Chat</a>
+                        <a href="{% url 'admin_portal_thread_detail' user_data.user.id %}" style="padding: 10px 16px; background: #198754; color: white; text-decoration: none; border-radius: 8px;">Open Chat</a>
                         <span style="font-size: 12px; color: #999;">Active account</span>
                     </div>
                 </div>
