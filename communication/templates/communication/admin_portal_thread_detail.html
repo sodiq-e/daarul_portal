@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 12px; flex-wrap: wrap;">
+        <div>
+            <h1 style="margin: 0; font-size: 30px;">Conversation with {{ thread.user.get_full_name|default:thread.user.username }}</h1>
+            <p style="margin: 8px 0 0 0; color: #666;">Send a portal reply directly to this account.</p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{% url 'admin_portal_users_list' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Back to Accounts</a>
+            <a href="{% url 'admin_messages_list' %}" style="padding: 12px 18px; background: #6c757d; color: white; text-decoration: none; border-radius: 8px;">Contact Messages</a>
+        </div>
+    </div>
+
+    <div style="background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.05); overflow: hidden;">
+        <div style="padding: 20px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div>
+                <p style="margin: 0; color: #6c757d; font-size: 14px;">Thread created</p>
+                <p style="margin: 6px 0 0 0; font-size: 16px; color: #212529;">{{ thread.created_at|date:"M d, Y H:i" }}</p>
+            </div>
+            <div>
+                <p style="margin: 0; color: #6c757d; font-size: 14px;">Last updated</p>
+                <p style="margin: 6px 0 0 0; font-size: 16px; color: #212529;">{{ thread.updated_at|date:"M d, Y H:i" }}</p>
+            </div>
+        </div>
+
+        <div id="chat-window" style="padding: 20px; max-height: 560px; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 14px;">
+            {% if messages %}
+                {% for message in messages %}
+                    {% if message.sender == request.user %}
+                        <div style="align-self: flex-end; max-width: 75%; background: #198754; color: white; padding: 16px; border-radius: 20px 20px 4px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                            <div style="font-size: 14px; margin-bottom: 8px; font-weight: 600;">You</div>
+                            <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
+                            <div style="font-size: 12px; margin-top: 10px; opacity: 0.8; text-align: right;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                    {% else %}
+                        <div style="align-self: flex-start; max-width: 75%; background: #ffffff; color: #212529; padding: 16px; border-radius: 20px 20px 20px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
+                            <div style="font-size: 14px; margin-bottom: 8px; font-weight: 600;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
+                            <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
+                            <div style="font-size: 12px; margin-top: 10px; opacity: 0.8;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div style="width: 100%; background: #ffffff; padding: 24px; border-radius: 16px; text-align: center; color: #6c757d; border: 1px dashed #ced4da;">
+                    <p style="margin: 0;">No messages yet. Use the form below to send the first portal reply.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div style="padding: 20px; border-top: 1px solid #e9ecef; background: #ffffff;">
+            <form method="post" style="display: grid; gap: 14px;">
+                {% csrf_token %}
+                <textarea name="content" rows="5" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 14px; font-size: 14px; resize: vertical;" required></textarea>
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <button type="submit" style="padding: 12px 20px; background: #0d6efd; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">Send Reply</button>
+                    <span style="color: #6c757d; font-size: 13px;">Your reply is delivered directly into the user's portal inbox.</span>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('load', function() {
+        var chat = document.getElementById('chat-window');
+        if (chat) {
+            chat.scrollTop = chat.scrollHeight;
+        }
+    });
+</script>
+
+<style>
+    h1 {
+        color: var(--heading-text-color);
+    }
+    a {
+        text-decoration: none;
+    }
+</style>
+{% endblock %}

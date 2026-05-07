@@ -40,3 +40,44 @@ class Message(models.Model):
 
     def __str__(self):
         return self.name if self.name else "Anonymous Message"
+
+
+class PortalThread(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='portal_thread'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f'Portal thread for {self.user.get_full_name() or self.user.username}'
+
+
+class PortalMessage(models.Model):
+    thread = models.ForeignKey(
+        PortalThread,
+        on_delete=models.CASCADE,
+        related_name='messages'
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sent_portal_messages'
+    )
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        sender_label = self.sender.get_full_name() if self.sender else 'System'
+        return f'{sender_label} • {self.created_at:%Y-%m-%d %H:%M}'

@@ -8,7 +8,8 @@
             <h1 style="margin: 0; font-size: 32px;">Contact Messages</h1>
             <p style="margin: 5px 0 0 0; color: #666;">Manage messages from contact form submissions</p>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="{% url 'admin_portal_users_list' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Portal Accounts</a>
             <div style="background: #f0f0f0; padding: 15px 20px; border-radius: 8px; text-align: center;">
                 <div style="font-size: 24px; font-weight: bold; color: #d9534f;">{{ unreplied_count }}</div>
                 <div style="font-size: 12px; color: #666; margin-top: 5px;">Unreplied</div>

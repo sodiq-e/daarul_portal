@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h1 style="margin: 0; font-size: 32px;">My Portal Messages</h1>
+            <p style="margin: 8px 0 0 0; color: #666;">Messages between you and school administrators.</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'portal_thread_detail' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Open Thread</a>
+        </div>
+    </div>
+
+    {% if thread %}
+        <div style="background: white; padding: 24px; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.05);">
+            <p style="margin: 0 0 10px 0; color: #6c757d;">You have {{ unread_count }} unread {{ unread_count|pluralize:'message,messages' }}.</p>
+            <div style="padding: 16px; background: #f8f9fa; border-radius: 12px; display: grid; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <p style="margin: 0; font-weight: 700;">Thread with {{ thread.user.get_full_name|default:thread.user.username }}</p>
+                        <p style="margin: 4px 0 0 0; color: #6c757d; font-size: 14px;">Last update {{ thread.updated_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                            <a href="{% url 'portal_thread_detail' %}" style="padding: 10px 16px; background: #198754; color: white; border-radius: 10px; text-decoration: none;">Open Conversation</a>
+                </div>
+                <p style="margin: 0; color: #555;">Latest: {{ latest_message|default:'Start a new conversation by opening the thread.' }}</p>
+            </div>
+        </div>
+    {% else %}
+        <div style="background: #f8f9fa; padding: 40px; text-align: center; border-radius: 12px; color: #666;">
+            <p style="margin: 0 0 16px 0; font-size: 18px;">No portal conversation exists yet.</p>
+            <p style="margin: 0 0 20px 0;">Start one by sending a message to your administrator.</p>
+            <a href="{% url 'portal_thread_detail' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Open Conversation</a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    h1 {
+        color: var(--heading-text-color);
+    }
+</style>
+{% endblock %}
