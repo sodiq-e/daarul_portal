@@ -336,7 +336,7 @@ def grant_student_permission(request, student_id, permission_code):
         request,
         f'Permission "{perm_display}" granted to {student.full_name()}.'
     )
-    return redirect('student_permissions', student_id=student_id)
+    return redirect('student_permissions_detail', student_id=student_id)
 
 
 @login_required
@@ -360,7 +360,7 @@ def revoke_student_permission(request, student_id, permission_code):
         request,
         f'Permission "{perm_display}" revoked from {student.full_name()}.'
     )
-    return redirect('student_permissions', student_id=student_id)
+    return redirect('student_permissions_detail', student_id=student_id)
 
 
 class StudentPermissionsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -468,4 +468,4 @@ class BulkStudentPermissionView(LoginRequiredMixin, UserPassesTestMixin, Templat
             request,
             f'Permissions updated for {student.full_name()}.'
         )
-        return redirect('student_permissions', student_id=student_id)
+        return redirect('student_permissions_detail', student_id=student_id)
