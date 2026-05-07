@@ -19,7 +19,7 @@
                             <div class="card text-center bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title">Total Due</h6>
-                                    <h4 class="text-primary">KES {{ total_due }}</h4>
+                                    <h4 class="text-primary">₦ {{ total_due }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -27,7 +27,7 @@
                             <div class="card text-center bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title">Total Paid</h6>
-                                    <h4 class="text-success">KES {{ total_paid }}</h4>
+                                    <h4 class="text-success">₦ {{ total_paid }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -35,7 +35,7 @@
                             <div class="card text-center bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title">Balance Owing</h6>
-                                    <h4 class="text-danger">KES {{ total_owing }}</h4>
+                                    <h4 class="text-danger">₦ {{ total_owing }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -67,9 +67,9 @@
                                 <tr>
                                     <td>#{{ invoice.id }}</td>
                                     <td>{{ invoice.fee.name|default:"General Fee" }}</td>
-                                    <td>KES {{ invoice.amount_due }}</td>
-                                    <td>KES {{ invoice.total_paid }}</td>
-                                    <td>KES {{ invoice.balance }}</td>
+                                    <td>₦ {{ invoice.amount_due }}</td>
+                                    <td>₦ {{ invoice.total_paid }}</td>
+                                    <td>₦ {{ invoice.balance }}</td>
                                     <td>
                                         {% if invoice.status == 'paid' %}
                                             <span class="badge bg-success">Paid</span>
@@ -113,7 +113,7 @@
                                 {% for payment in payments %}
                                 <tr>
                                     <td>{{ payment.payment_date|date:"d/m/Y" }}</td>
-                                    <td>KES {{ payment.amount }}</td>
+                                    <td>₦ {{ payment.amount }}</td>
                                     <td>{{ payment.payment_method|default:"Not specified" }}</td>
                                     <td>{{ payment.reference|default:"-" }}</td>
                                 </tr>
