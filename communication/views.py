@@ -165,7 +165,44 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
                 'unread_count': unread_count,
             })
         context['users_with_counts'] = users_with_counts
+        context['form'] = PortalMessageForm()
         return context
+
+    def post(self, request, *args, **kwargs):
+        """Handle bulk message sending"""
+        selected_users = request.POST.getlist('selected_users')
+        bulk_message = request.POST.get('bulk_message', '').strip()
+
+        if not selected_users:
+            django_messages.error(request, 'Please select at least one user to send the message to.')
+            return redirect('admin_portal_users_list')
+
+        if not bulk_message:
+            django_messages.error(request, 'Please enter a message to send.')
+            return redirect('admin_portal_users_list')
+
+        sent_count = 0
+        for user_id in selected_users:
+            try:
+                user = User.objects.get(id=user_id, is_active=True)
+                thread, _ = PortalThread.objects.get_or_create(user=user)
+                PortalMessage.objects.create(
+                    thread=thread,
+                    sender=request.user,
+                    content=bulk_message
+                )
+                thread.updated_at = timezone.now()
+                thread.save()
+                sent_count += 1
+            except User.DoesNotExist:
+                continue
+
+        if sent_count > 0:
+            django_messages.success(request, f'Bulk message sent to {sent_count} user(s).')
+        else:
+            django_messages.error(request, 'No messages were sent. Please check your selections.')
+
+        return redirect('admin_portal_users_list')
 
 
 class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
