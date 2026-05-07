@@ -189,7 +189,7 @@ class StudentPermission(models.Model):
         ('access_portal', 'Access Student Portal'),
     ]
     
-    student = models.OneToOneField(Student, on_delete=models.CASCADE, related_name='permissions')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='permissions')
     permission = models.CharField(max_length=50, choices=PERMISSION_CHOICES)
     is_granted = models.BooleanField(default=True, help_text="Whether this permission is granted to the student")
     granted_at = models.DateTimeField(auto_now_add=True)
