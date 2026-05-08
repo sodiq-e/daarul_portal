@@ -75,7 +75,10 @@ def select_class_for_report_card(request):
             messages.error(request, 'Please select both class and term.')
 
     # Get available classes
-    if user_is_staff(request.user):
+    if request.user.is_staff or request.user.is_superuser:
+        # Admins see all classes
+        classes = SchoolClasses.objects.all().order_by('class_name')
+    elif user_is_staff(request.user):
         # Teachers see only assigned classes
         try:
             teacher_instance = request.user.teacher_profile
@@ -112,8 +115,11 @@ def report_card_student_list(request, class_id, term_id):
     school_class = get_object_or_404(SchoolClasses, pk=class_id)
     term = get_object_or_404(Term, pk=term_id)
 
-    # Check permission - teachers can only view their assigned classes
-    if user_is_staff(request.user):
+    # Check permission - teachers can only view their assigned classes, admins can view all
+    if request.user.is_staff or request.user.is_superuser:
+        # Admins have access to all classes
+        pass
+    elif user_is_staff(request.user):
         try:
             teacher_instance = request.user.teacher_profile
             has_permission = ClassTeacher.objects.filter(
@@ -244,7 +250,7 @@ def student_report_card(request, student_id, term_id):
     term = get_object_or_404(Term, pk=term_id)
 
     # Check if user can view this student's results
-    if not user_is_staff(request.user) and student.admission_no != request.user.username:
+    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user) or student.admission_no == request.user.username):
         messages.error(request, 'You do not have permission to view this report card.')
         return redirect('home')
 
@@ -298,7 +304,7 @@ def student_report_card(request, student_id, term_id):
 @login_required
 def broadsheet(request, class_id, term_id):
     """Generate printable broadsheet for a class"""
-    if not user_is_staff(request.user):
+    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user)):
         messages.error(request, 'You do not have permission to view broadsheets.')
         return redirect('home')
 
@@ -419,7 +425,7 @@ def report_card(request, student_id, exam_id):
 
 @login_required
 def promotions_list(request):
-    if not user_is_staff(request.user):
+    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user)):
         messages.error(request, 'You do not have permission to view promotions.')
         return redirect('home')
 
@@ -432,7 +438,7 @@ def promotions_list(request):
 
 @login_required
 def promote_student(request, student_id, exam_id):
-    if not user_is_staff(request.user):
+    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user)):
         messages.error(request, 'You do not have permission to promote students.')
         return redirect('home')
 
