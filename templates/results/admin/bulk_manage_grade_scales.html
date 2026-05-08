@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Grade Scales{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="fas fa-star"></i> Grade Scales Management</h1>
+
+    <!-- Add Grade -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">+ Add New Grade</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group mb-2">
+                            <label for="scale_name">Scale Name *</label>
+                            <input type="text" class="form-control" id="scale_name" name="scale_name" 
+                                   placeholder="e.g., Standard, WAEC" required>
+                            <small class="form-text text-muted">All grades with same name form one scale</small>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6 mb-2">
+                                <label for="min_score">Min Score *</label>
+                                <input type="number" class="form-control" id="min_score" name="min_score" 
+                                       placeholder="0" step="0.01" required>
+                            </div>
+                            <div class="form-group col-md-6 mb-2">
+                                <label for="max_score">Max Score *</label>
+                                <input type="number" class="form-control" id="max_score" name="max_score" 
+                                       placeholder="100" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-4 mb-2">
+                                <label for="grade">Grade *</label>
+                                <input type="text" class="form-control" id="grade" name="grade" 
+                                       placeholder="A, B, C..." required>
+                            </div>
+                            <div class="form-group col-md-4 mb-2">
+                                <label for="grade_point">Grade Point</label>
+                                <input type="number" class="form-control" id="grade_point" name="grade_point" 
+                                       placeholder="4.0" step="0.01">
+                            </div>
+                            <div class="form-group col-md-4 mb-2">
+                                <label for="remark">Remark *</label>
+                                <input type="text" class="form-control" id="remark" name="remark" 
+                                       placeholder="Excellent" required>
+                            </div>
+                        </div>
+                        <button type="submit" name="action" value="add_grade" class="btn btn-primary btn-block">
+                            <i class="fas fa-plus"></i> Add Grade
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card bg-light">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Available Scales</h5>
+                </div>
+                <div class="card-body">
+                    {% if unique_scales %}
+                        <div class="list-group">
+                            {% for scale in unique_scales %}
+                                <a href="#scale_{{ scale }}" class="list-group-item list-group-item-action">
+                                    <strong>{{ scale }}</strong>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No grade scales created yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <!-- Grade Scales Table -->
+    {% for scale_name in unique_scales %}
+    <div class="card mb-4" id="scale_{{ scale_name }}">
+        <div class="card-header">
+            <h5 class="mb-0">{{ scale_name }} Scale</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Grade</th>
+                            <th>Score Range</th>
+                            <th>Remark</th>
+                            <th>Grade Point</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gs in grade_scales %}
+                            {% if gs.name == scale_name %}
+                            <tr>
+                                <td><strong>{{ gs.grade }}</strong></td>
+                                <td>{{ gs.min_score }} - {{ gs.max_score }}</td>
+                                <td>{{ gs.remark }}</td>
+                                <td>{{ gs.grade_point }}</td>
+                                <td>
+                                    <form method="post" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_grade">
+                                        <input type="hidden" name="grade_id" value="{{ gs.id }}">
+                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Delete this grade?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Help Section -->
+    <div class="card bg-light">
+        <div class="card-header">
+            <h5 class="mb-0">📖 Example Grade Scales</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Standard A-F Scale:</strong></p>
+            <ul class="small">
+                <li>A: 80-100 (Excellent)</li>
+                <li>B: 70-79 (Very Good)</li>
+                <li>C: 60-69 (Good)</li>
+                <li>D: 50-59 (Fair)</li>
+                <li>E: 40-49 (Pass)</li>
+                <li>F: 0-39 (Fail)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+    .list-group-item {
+        padding: 0.75rem 1.25rem;
+    }
+</style>
+{% endblock %}

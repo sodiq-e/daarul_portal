@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Result Templates{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="fas fa-file"></i> Result Templates</h1>
+
+    <!-- Create Templates -->
+    <div class="card mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">+ Create Templates for Classes</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group mb-3">
+                    <label for="term">Select Active Term *</label>
+                    <select class="form-control" id="term" name="term" required>
+                        <option value="">-- Choose Term --</option>
+                        {% for term in active_terms %}
+                        <option value="{{ term.id }}">{{ term }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label>Select Classes * (Hold Ctrl/Cmd to select multiple)</label>
+                    <select class="form-control" id="classes" name="classes" multiple required size="8">
+                        {% for cls in classes %}
+                        <option value="{{ cls.id }}">{{ cls.class_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label for="scale_name">Grade Scale *</label>
+                    <select class="form-control" id="scale_name" name="scale_name" required>
+                        <option value="">-- Choose Grade Scale --</option>
+                        {% for scale in grade_scales %}
+                        <option value="{{ scale.name }}">{{ scale.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6 mb-3">
+                        <label for="test_max_score">Test Max Score</label>
+                        <input type="number" class="form-control" id="test_max_score" name="test_max_score" 
+                               value="40" step="0.01">
+                    </div>
+                    <div class="form-group col-md-6 mb-3">
+                        <label for="exam_max_score">Exam Max Score</label>
+                        <input type="number" class="form-control" id="exam_max_score" name="exam_max_score" 
+                               value="60" step="0.01">
+                    </div>
+                </div>
+
+                <button type="submit" name="action" value="create_template" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-plus"></i> Create Templates
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <!-- Active Templates Count -->
+    <div class="alert alert-info mb-4">
+        <h5><i class="fas fa-check-circle"></i> Active Templates: {{ active_templates }}</h5>
+        <p class="mb-0">These templates are ready for result entry.</p>
+    </div>
+
+    <!-- All Templates -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">All Templates</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Class</th>
+                            <th>Term</th>
+                            <th>Grade Scale</th>
+                            <th>Test/Exam</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for template in templates %}
+                        <tr>
+                            <td><strong>{{ template.school_class.class_name }}</strong></td>
+                            <td>{{ template.term }}</td>
+                            <td>
+                                <span class="badge badge-info">{{ template.grade_scale.name }}</span>
+                            </td>
+                            <td>
+                                <small>{{ template.test_max_score }}/{{ template.exam_max_score }}</small>
+                            </td>
+                            <td>
+                                {% if template.is_active %}
+                                    <span class="badge badge-success"><i class="fas fa-check"></i> Active</span>
+                                {% else %}
+                                    <span class="badge badge-secondary"><i class="fas fa-times"></i> Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not template.is_active %}
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="activate_template">
+                                    <input type="hidden" name="template_id" value="{{ template.id }}">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Activate">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="deactivate_template">
+                                    <input type="hidden" name="template_id" value="{{ template.id }}">
+                                    <button type="submit" class="btn btn-sm btn-warning" title="Deactivate">
+                                        <i class="fas fa-pause"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No templates created yet</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="card mt-4 bg-light">
+        <div class="card-header">
+            <h5 class="mb-0">📖 How to Use</h5>
+        </div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Select Multiple Classes:</strong> Hold Ctrl (Windows) or Cmd (Mac) and click classes</li>
+                <li><strong>Test/Exam Scores:</strong> Default is 40 for test, 60 for exam (total = 100)</li>
+                <li><strong>Active Templates:</strong> Only active templates are used for result entry</li>
+                <li><strong>Grade Scale:</strong> Choose the same grading system for all selected classes, or create templates for each separately</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+    select[multiple] {
+        min-height: 200px;
+    }
+</style>
+{% endblock %}

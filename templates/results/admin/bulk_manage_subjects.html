@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Subjects{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="fas fa-book"></i> Subjects Management</h1>
+
+    <div class="row">
+        <!-- Add Single Subject -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">+ Add Single Subject</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="name">Subject Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   placeholder="e.g., English Language" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="code">Subject Code (Optional)</label>
+                            <input type="text" class="form-control" id="code" name="code" 
+                                   placeholder="e.g., ENG">
+                        </div>
+                        <button type="submit" name="action" value="add_subject" class="btn btn-primary btn-block">
+                            <i class="fas fa-plus"></i> Add Subject
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Add Subjects -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📋 Bulk Add Subjects</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="subjects_text">Enter subjects (one per line)</label>
+                            <textarea class="form-control" id="subjects_text" name="subjects_text" 
+                                    rows="6" placeholder="English Language&#10;Mathematics&#10;Science | SCI" required></textarea>
+                            <small class="form-text text-muted">Format: Subject Name or Subject Name | Code</small>
+                        </div>
+                        <button type="submit" name="action" value="bulk_add_subjects" class="btn btn-success btn-block">
+                            <i class="fas fa-arrow-down"></i> Add All
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <!-- All Subjects -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">All Subjects 
+                <span class="badge badge-primary float-right">{{ active_subjects }} Active</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Subject Name</th>
+                            <th>Code</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in subjects %}
+                        <tr>
+                            <td><strong>{{ subject.name }}</strong></td>
+                            <td>
+                                {% if subject.code %}
+                                    <span class="badge badge-info">{{ subject.code }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if subject.is_active %}
+                                    <span class="badge badge-success"><i class="fas fa-check"></i> Active</span>
+                                {% else %}
+                                    <span class="badge badge-secondary"><i class="fas fa-times"></i> Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="toggle_subject">
+                                    <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                    <button type="submit" class="btn btn-sm {% if subject.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                                        <i class="fas fa-toggle-{% if subject.is_active %}off{% else %}on{% endif %}"></i>
+                                        {% if subject.is_active %}Deactivate{% else %}Activate{% endif %}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">No subjects found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="card mt-4 bg-light">
+        <div class="card-header">
+            <h5 class="mb-0">📖 Tips</h5>
+        </div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Codes are optional:</strong> Use them for short references (e.g., ENG, MATH, SCI)</li>
+                <li><strong>Bulk format:</strong> One subject per line. Use pipe (|) to separate name and code</li>
+                <li><strong>Toggle status:</strong> Inactive subjects won't appear in class assignments</li>
+                <li><strong>Once created:</strong> Subjects can be assigned to classes in the "Class-Subject Assignment" section</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+</style>
+{% endblock %}

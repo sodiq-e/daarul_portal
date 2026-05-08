@@ -32,6 +32,7 @@ urlpatterns = [
 
     path('accounts/', include('accounts.urls')),
     path('results/', include('results.urls')),
+    path('results-admin/', include('results.admin_urls')),
     path('settings/', include('settingsapp.urls')),
     path('classes/', include((class_urlpatterns, 'school_classes'))),
     path('students/', include('students.urls')),

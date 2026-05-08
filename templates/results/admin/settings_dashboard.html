@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Results Settings Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">📊 Results & Grading Settings</h1>
+
+    <!-- Status Cards -->
+    <div class="row mb-5">
+        <div class="col-md-2">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Active Terms</h5>
+                    <h2>{{ active_terms }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Terms</h5>
+                    <h2>{{ all_terms }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Subjects</h5>
+                    <h2>{{ subjects }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Grade Scales</h5>
+                    <h2>{{ grade_scales }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Templates</h5>
+                    <h2>{{ result_templates }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Classes</h5>
+                    <h2>{{ classes }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Grid -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-calendar"></i> Academic Sessions
+                </div>
+                <div class="card-body">
+                    <p>Manage academic years and activate/deactivate terms</p>
+                    <ul class="small mb-3">
+                        <li>Create new academic sessions (2024/2025, 2025/2026, etc.)</li>
+                        <li>Keep multiple sessions active for access</li>
+                        <li>Activate one term at a time per session</li>
+                    </ul>
+                    <a href="{% url 'results_admin:academic_sessions' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-arrow-right"></i> Manage Sessions
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-book"></i> Subjects
+                </div>
+                <div class="card-body">
+                    <p>Add subjects that will be taught across all classes</p>
+                    <ul class="small mb-3">
+                        <li>Add individual subjects</li>
+                        <li>Bulk add from formatted text</li>
+                        <li>Toggle subject status (active/inactive)</li>
+                    </ul>
+                    <a href="{% url 'results_admin:bulk_subjects' %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-arrow-right"></i> Manage Subjects
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-white">
+                    <i class="fas fa-star"></i> Grade Scales
+                </div>
+                <div class="card-body">
+                    <p>Configure grading system (A, B, C, etc.)</p>
+                    <ul class="small mb-3">
+                        <li>Create multiple grade scales</li>
+                        <li>Set score ranges for each grade</li>
+                        <li>Assign grade points and remarks</li>
+                    </ul>
+                    <a href="{% url 'results_admin:bulk_grade_scales' %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-arrow-right"></i> Manage Grades
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-file"></i> Result Templates
+                </div>
+                <div class="card-body">
+                    <p>Create templates for report cards by class/term</p>
+                    <ul class="small mb-3">
+                        <li>Bulk create for all classes</li>
+                        <li>Configure test/exam scores</li>
+                        <li>Assign grade scales</li>
+                    </ul>
+                    <a href="{% url 'results_admin:bulk_templates' %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-arrow-right"></i> Manage Templates
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-link"></i> Class-Subject Assignment
+                </div>
+                <div class="card-body">
+                    <p>Assign subjects to specific classes</p>
+                    <ul class="small mb-3">
+                        <li>Bulk assign subjects to a class</li>
+                        <li>Mark subjects as compulsory/optional</li>
+                        <li>Set subject display order</li>
+                    </ul>
+                    <a href="{% url 'results_admin:bulk_class_subjects' %}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-arrow-right"></i> Assign Subjects
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-cog"></i> Django Admin
+                </div>
+                <div class="card-body">
+                    <p>Traditional admin interface for advanced settings</p>
+                    <ul class="small mb-3">
+                        <li>Fine-grained control over all settings</li>
+                        <li>Direct database access</li>
+                        <li>Custom filters and searches</li>
+                    </ul>
+                    <a href="/admin/" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-right"></i> Go to Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Reference -->
+    <div class="card mt-5 bg-light">
+        <div class="card-header">
+            <h5 class="mb-0">📖 Setup Workflow</h5>
+        </div>
+        <div class="card-body">
+            <ol>
+                <li><strong>Create Academic Sessions</strong> - Set up years like 2024/2025 with three terms each</li>
+                <li><strong>Add Subjects</strong> - Create all subjects that will be taught in your school</li>
+                <li><strong>Configure Grade Scales</strong> - Define how students will be graded (A=90-100, etc.)</li>
+                <li><strong>Assign Subjects to Classes</strong> - Link subjects to specific classes</li>
+                <li><strong>Create Result Templates</strong> - Set up templates for each class-term combination</li>
+                <li><strong>Activate Terms</strong> - When ready, activate the current term for entry</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 8px;
+    }
+    .card-header {
+        border-radius: 8px 8px 0 0;
+        padding: 12px 15px;
+        font-weight: 600;
+    }
+    .card-body {
+        padding: 15px;
+    }
+</style>
+{% endblock %}

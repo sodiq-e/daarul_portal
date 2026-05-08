@@ -478,6 +478,11 @@ html, body {
       <i class="fas fa-comments"></i> Portal Conversations
     </a>
 
+    <a href="{% url 'results_admin:dashboard' %}"
+       class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <i class="fas fa-chart-bar"></i> Results Settings
+    </a>
+
     <a href="/admin/">
       <i class="fas fa-cog"></i> Django Admin
     </a>

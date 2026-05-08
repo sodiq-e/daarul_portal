@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Academic Sessions{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4"><i class="fas fa-calendar"></i> Academic Sessions Management</h1>
+
+    <!-- Create New Session -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">+ Create New Academic Session</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="academic_year">Academic Year</label>
+                            <input type="text" class="form-control" id="academic_year" name="academic_year" 
+                                   placeholder="e.g., 2025/2026" required>
+                            <small class="form-text text-muted">Format: YYYY/YYYY (e.g., 2024/2025)</small>
+                        </div>
+                        <button type="submit" name="action" value="create_session" class="btn btn-primary btn-block">
+                            <i class="fas fa-plus"></i> Create Session with 3 Terms
+                        </button>
+                    </form>
+                    <hr>
+                    <p class="small text-muted">✓ Creates First, Second, and Third Term automatically</p>
+                    <p class="small text-muted">✓ All terms start as inactive - you activate them as needed</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card bg-light">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Available Academic Years</h5>
+                </div>
+                <div class="card-body">
+                    {% if academic_years %}
+                        <div class="list-group">
+                            {% for year in academic_years %}
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <strong>{{ year }}</strong>
+                                    <span class="badge badge-info float-right">
+                                        {{ terms|dictsort:"academic_year"|length }}
+                                    </span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No academic sessions created yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5">
+
+    <!-- Active Terms Section -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <h3>Currently Active Terms</h3>
+            {% if active_terms %}
+                <div class="alert alert-success">
+                    <strong>✓ Active Terms:</strong>
+                    {% for term in active_terms %}
+                        <span class="badge badge-success">{{ term }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <strong>⚠ No active terms:</strong> Students and teachers cannot enter results until you activate a term.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- All Terms Table -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">All Terms</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Term</th>
+                            <th>Academic Year</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for term in terms %}
+                        <tr>
+                            <td>
+                                <strong>{{ term.display_name }}</strong>
+                                <br><small class="text-muted">{{ term.get_name_display }}</small>
+                            </td>
+                            <td>{{ term.academic_year }}</td>
+                            <td>
+                                {% if term.is_active %}
+                                    <span class="badge badge-success"><i class="fas fa-check"></i> Active</span>
+                                {% else %}
+                                    <span class="badge badge-secondary"><i class="fas fa-times"></i> Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not term.is_active %}
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="activate_term">
+                                    <input type="hidden" name="term_id" value="{{ term.id }}">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Activate this term">
+                                        <i class="fas fa-play"></i> Activate
+                                    </button>
+                                </form>
+                                {% else %}
+                                    <span class="text-muted">Currently active</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deactivate All -->
+    <div class="card bg-warning mb-4">
+        <div class="card-body">
+            <h5>⚠ Deactivate All Current Terms</h5>
+            <p class="text-muted mb-3">Use this if you need to deactivate all active terms at once. Teachers and students won't be able to work with results until you activate a new term.</p>
+            <form method="post" onsubmit="return confirm('Are you sure? This will deactivate ALL active terms.');">
+                {% csrf_token %}
+                <button type="submit" name="action" value="deactivate_all_current" class="btn btn-warning">
+                    <i class="fas fa-times"></i> Deactivate All Current Terms
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="card bg-light">
+        <div class="card-header">
+            <h5 class="mb-0">📖 How to Use</h5>
+        </div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Create Sessions:</strong> Create new academic years (e.g., 2024/2025, 2025/2026) with three terms each</li>
+                <li><strong>Keep Multiple Sessions Active:</strong> All created sessions remain accessible, allowing historical data viewing</li>
+                <li><strong>Activate One Term at a Time:</strong> Only ONE term should be active at any time for data entry</li>
+                <li><strong>Switch Terms:</strong> When moving to the next term, activate the new one (old data remains accessible)</li>
+                <li><strong>Historical Access:</strong> Old sessions stay in the system; deactivate only when needed</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+    .list-group-item {
+        padding: 0.75rem 1.25rem;
+    }
+</style>
+{% endblock %}
