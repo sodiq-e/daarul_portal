@@ -4588,7 +4588,10 @@ document.addEventListener('click', (e) => {
   }
 });
 
-document.addEventListener('click', () => {
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.dropdown')) {
+    return;
+  }
   document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
   document.querySelectorAll('.dropdown-toggle.active').forEach(t => t.classList.remove('active'));
 });
