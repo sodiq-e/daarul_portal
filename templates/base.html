@@ -958,6 +958,429 @@ html, body {
       margin-top: 8px;
     }
 
+    /* ===== DARK MODE ===== */
+    :root[data-theme="dark"] {
+      --background-color: #1e1e1e;
+      --text-color: #e0e0e0;
+      --heading-text-color: #f5f5f5;
+      --icon-plate-color: #2d2d2d;
+    }
+
+    body[data-theme="dark"] {
+      background: var(--background-color);
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] h1, body[data-theme="dark"] h2, body[data-theme="dark"] h3, body[data-theme="dark"] h4, body[data-theme="dark"] h5, body[data-theme="dark"] h6 {
+      color: var(--heading-text-color);
+    }
+
+    body[data-theme="dark"] .sidebar {
+      background: var(--icon-plate-color);
+      border-right: 1px solid #333;
+    }
+
+    body[data-theme="dark"] .sidebar a {
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme="dark"] .menu-header {
+      color: var(--text-color);
+      border-bottom: 1px solid #333;
+    }
+
+    body[data-theme="dark"] .content {
+      background: var(--background-color);
+    }
+
+    body[data-theme="dark"] table {
+      background: var(--icon-plate-color);
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] thead {
+      background: var(--primary-color);
+    }
+
+    body[data-theme="dark"] tbody tr:nth-child(odd) {
+      background: #252525;
+    }
+
+    body[data-theme="dark"] tbody tr:hover {
+      background: #2a2a2a;
+    }
+
+    body[data-theme="dark"] tbody td {
+      border-color: #333;
+    }
+
+    body[data-theme="dark"] input, body[data-theme="dark"] textarea, body[data-theme="dark"] select {
+      background: var(--icon-plate-color);
+      color: var(--text-color);
+      border-color: #333;
+    }
+
+    body[data-theme="dark"] input:focus, body[data-theme="dark"] textarea:focus, body[data-theme="dark"] select:focus {
+      border-color: var(--primary-color);
+    }
+
+    body[data-theme="dark"] .card, body[data-theme="dark"] .widget {
+      background: var(--icon-plate-color);
+      border: 1px solid #333;
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] .stat-card {
+      background: var(--icon-plate-color);
+      border-color: var(--primary-color);
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] .toast {
+      background: var(--icon-plate-color);
+      border-left-color: var(--primary-color);
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] .mobile-bottom-nav {
+      background: var(--icon-plate-color);
+      border-top: 1px solid #333;
+    }
+
+    body[data-theme="dark"] .nav-item {
+      color: #999;
+    }
+
+    body[data-theme="dark"] .nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--primary-color);
+    }
+
+    body[data-theme="dark"] .breadcrumb {
+      background: var(--icon-plate-color);
+      border-bottom: 1px solid #333;
+      color: var(--text-color);
+    }
+
+    body[data-theme="dark"] .breadcrumb a {
+      color: var(--primary-color);
+    }
+
+    /* ===== DARK MODE TOGGLE ===== */
+    .theme-toggle {
+      position: fixed;
+      bottom: 90px;
+      right: 30px;
+      width: 50px;
+      height: 50px;
+      background: var(--primary-color);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+
+    .theme-toggle:hover {
+      background: var(--secondary-color);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      transform: scale(1.1);
+    }
+
+    .theme-toggle:active {
+      transform: scale(0.95);
+    }
+
+    @media (max-width: 1024px) {
+      .theme-toggle {
+        bottom: 80px;
+      }
+    }
+
+    /* ===== THEME CUSTOMIZER PANEL ===== */
+    .theme-customizer {
+      position: fixed;
+      right: -350px;
+      top: 0;
+      width: 350px;
+      height: 100vh;
+      background: white;
+      border-left: 1px solid #ddd;
+      z-index: 9997;
+      overflow-y: auto;
+      transition: right 0.3s ease;
+      box-shadow: -2px 0 12px rgba(0,0,0,0.1);
+    }
+
+    .theme-customizer.show {
+      right: 0;
+    }
+
+    body[data-theme="dark"] .theme-customizer {
+      background: var(--icon-plate-color);
+      border-left-color: #333;
+      color: var(--text-color);
+    }
+
+    .theme-customizer-header {
+      padding: 20px;
+      border-bottom: 1px solid #e0e0e0;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    body[data-theme="dark"] .theme-customizer-header {
+      border-bottom-color: #333;
+    }
+
+    .theme-customizer-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .theme-customizer-section {
+      padding: 20px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    body[data-theme="dark"] .theme-customizer-section {
+      border-bottom-color: #333;
+    }
+
+    .theme-customizer-section-title {
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .color-palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+      gap: 8px;
+    }
+
+    .color-option {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .color-option:hover {
+      transform: scale(1.1);
+    }
+
+    .color-option.active {
+      border-color: #333;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    }
+
+    body[data-theme="dark"] .color-option.active {
+      border-color: #fff;
+    }
+
+    .theme-preset {
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    body[data-theme="dark"] .theme-preset {
+      border-color: #333;
+    }
+
+    .theme-preset:hover {
+      background: #f5f5f5;
+      border-color: var(--primary-color);
+    }
+
+    body[data-theme="dark"] .theme-preset:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .theme-preset.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    /* ===== KEYBOARD SHORTCUTS REFERENCE ===== */
+    .shortcuts-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 90%;
+      z-index: 9999;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-height: 80vh;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .shortcuts-panel.show {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    body[data-theme="dark"] .shortcuts-panel {
+      background: var(--icon-plate-color);
+      color: var(--text-color);
+    }
+
+    .shortcuts-panel-header {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .shortcuts-panel-close {
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: inherit;
+    }
+
+    .shortcuts-group {
+      margin-bottom: 20px;
+    }
+
+    .shortcuts-group-title {
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #999;
+      margin-bottom: 12px;
+    }
+
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    body[data-theme="dark"] .shortcut-item {
+      border-bottom-color: #333;
+    }
+
+    .shortcut-key {
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+    }
+
+    body[data-theme="dark"] .shortcut-key {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+    }
+
+    .shortcuts-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9998;
+      display: none;
+    }
+
+    .shortcuts-overlay.show {
+      display: block;
+    }
+
+    /* ===== ACCESSIBILITY CONTROLS ===== */
+    .accessibility-toggle {
+      position: fixed;
+      bottom: 90px;
+      right: 100px;
+      width: 50px;
+      height: 50px;
+      background: var(--secondary-color);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+
+    .accessibility-toggle:hover {
+      background: var(--primary-color);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      transform: scale(1.1);
+    }
+
+    @media (max-width: 1024px) {
+      .accessibility-toggle {
+        display: none;
+      }
+    }
+
+    /* High contrast mode */
+    body[data-accessibility="high-contrast"] {
+      --primary-color: #000;
+      --secondary-color: #333;
+      --text-color: #000;
+      --background-color: #fff;
+    }
+
+    body[data-accessibility="high-contrast"] a {
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    /* Reduced motion */
+    body[data-accessibility="reduced-motion"] * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
     /* ===== LAYOUT ===== */
     .layout {
         display: block;
@@ -1701,6 +2124,88 @@ html, body {
 
   <!-- ✅ BACK TO TOP BUTTON -->
   <button id="scrollTopBtn" title="Back to top">↑</button>
+
+  <!-- ✅ THEME TOGGLE BUTTON -->
+  <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
+
+  <!-- ✅ ACCESSIBILITY TOGGLE BUTTON -->
+  <button id="accessibilityToggle" class="accessibility-toggle" title="Accessibility options">♿</button>
+
+  <!-- ✅ THEME CUSTOMIZER PANEL -->
+  <div class="theme-customizer" id="themeCustomizer">
+    <div class="theme-customizer-header">
+      <span>Theme Settings</span>
+      <button class="theme-customizer-close" onclick="document.getElementById('themeCustomizer').classList.remove('show')">✕</button>
+    </div>
+    
+    <div class="theme-customizer-section">
+      <div class="theme-customizer-section-title">Preset Themes</div>
+      <div id="themePresets"></div>
+    </div>
+
+    <div class="theme-customizer-section">
+      <div class="theme-customizer-section-title">Primary Color</div>
+      <div class="color-palette" id="colorPalette"></div>
+    </div>
+
+    <div class="theme-customizer-section">
+      <div class="theme-customizer-section-title">Accessibility</div>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+        <input type="checkbox" id="highContrastToggle"> High Contrast
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; margin-top: 8px;">
+        <input type="checkbox" id="reducedMotionToggle"> Reduce Motion
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; margin-top: 8px;">
+        <input type="checkbox" id="largerTextToggle"> Larger Text
+      </label>
+    </div>
+  </div>
+
+  <!-- ✅ KEYBOARD SHORTCUTS PANEL -->
+  <div class="shortcuts-overlay" id="shortcutsOverlay"></div>
+  <div class="shortcuts-panel" id="shortcutsPanel">
+    <div class="shortcuts-panel-header">
+      <span>⌨️ Keyboard Shortcuts</span>
+      <button class="shortcuts-panel-close" onclick="document.getElementById('shortcutsPanel').classList.remove('show'); document.getElementById('shortcutsOverlay').classList.remove('show')">✕</button>
+    </div>
+    
+    <div class="shortcuts-group">
+      <div class="shortcuts-group-title">Navigation</div>
+      <div class="shortcut-item">
+        <span>Close Menu</span>
+        <span class="shortcut-key">Esc</span>
+      </div>
+      <div class="shortcut-item">
+        <span>Home</span>
+        <span class="shortcut-key">Shift + H</span>
+      </div>
+      <div class="shortcut-item">
+        <span>Back to Top</span>
+        <span class="shortcut-key">Shift + T</span>
+      </div>
+    </div>
+
+    <div class="shortcuts-group">
+      <div class="shortcuts-group-title">Features</div>
+      <div class="shortcut-item">
+        <span>Quick Search</span>
+        <span class="shortcut-key">Ctrl + K</span>
+      </div>
+      <div class="shortcut-item">
+        <span>Help / Shortcuts</span>
+        <span class="shortcut-key">Ctrl + /</span>
+      </div>
+      <div class="shortcut-item">
+        <span>Toggle Dark Mode</span>
+        <span class="shortcut-key">Ctrl + Shift + D</span>
+      </div>
+      <div class="shortcut-item">
+        <span>Accessibility Menu</span>
+        <span class="shortcut-key">Ctrl + Shift + A</span>
+      </div>
+    </div>
+  </div>
 
   <!-- ✅ ANNOUNCEMENT TICKER -->
   <div class="announcement-ticker" id="announcementTicker"></div>
@@ -2621,6 +3126,289 @@ class DataTable {
 
 // Export for use in Django templates
 window.DataTable = DataTable;
+
+// ===== DARK MODE SYSTEM =====
+class ThemeManager {
+  constructor() {
+    this.storageKey = 'portal_theme';
+    this.presets = {
+      'default': { name: 'Default', primary: '#4CAF50', secondary: '#45a049', accent: '#FFC107' },
+      'blue': { name: 'Blue', primary: '#2196F3', secondary: '#1976D2', accent: '#03A9F4' },
+      'purple': { name: 'Purple', primary: '#9C27B0', secondary: '#7B1FA2', accent: '#E91E63' },
+      'orange': { name: 'Orange', primary: '#FF9800', secondary: '#F57C00', accent: '#FF5722' },
+      'teal': { name: 'Teal', primary: '#009688', secondary: '#00796B', accent: '#00BCD4' },
+      'indigo': { name: 'Indigo', primary: '#3F51B5', secondary: '#303F9F', accent: '#5C6BC0' }
+    };
+
+    this.colors = [
+      '#4CAF50', '#2196F3', '#9C27B0', '#FF9800', '#F44336',
+      '#00BCD4', '#673AB7', '#3F51B5', '#009688', '#FF5722'
+    ];
+
+    this.init();
+  }
+
+  init() {
+    this.loadTheme();
+    this.setupToggle();
+    this.setupCustomizer();
+    this.setupAccessibility();
+  }
+
+  loadTheme() {
+    const saved = localStorage.getItem(this.storageKey);
+    if (saved) {
+      const theme = JSON.parse(saved);
+      this.applyTheme(theme);
+    }
+  }
+
+  applyTheme(theme) {
+    if (theme.mode === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      document.body.removeAttribute('data-theme');
+    }
+
+    if (theme.primaryColor) {
+      document.documentElement.style.setProperty('--primary-color', theme.primaryColor);
+    }
+    if (theme.secondaryColor) {
+      document.documentElement.style.setProperty('--secondary-color', theme.secondaryColor);
+    }
+    if (theme.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', theme.accentColor);
+    }
+
+    // Update toggle button text
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) {
+      toggle.textContent = theme.mode === 'dark' ? '☀️' : '🌙';
+    }
+
+    localStorage.setItem(this.storageKey, JSON.stringify(theme));
+  }
+
+  setupToggle() {
+    const toggle = document.getElementById('themeToggle');
+    if (!toggle) return;
+
+    toggle.addEventListener('click', () => {
+      const isDark = document.body.hasAttribute('data-theme');
+      const theme = {
+        mode: isDark ? 'light' : 'dark',
+        primaryColor: document.documentElement.style.getPropertyValue('--primary-color').trim(),
+        secondaryColor: document.documentElement.style.getPropertyValue('--secondary-color').trim(),
+        accentColor: document.documentElement.style.getPropertyValue('--accent-color').trim()
+      };
+      this.applyTheme(theme);
+      showToast(theme.mode === 'dark' ? 'Dark Mode' : 'Light Mode', 'Theme updated!', 'success', 2000);
+    });
+  }
+
+  setupCustomizer() {
+    const customizer = document.getElementById('themeCustomizer');
+    if (!customizer) return;
+
+    // Build preset buttons
+    const presetsContainer = document.getElementById('themePresets');
+    Object.entries(this.presets).forEach(([key, preset]) => {
+      const btn = document.createElement('button');
+      btn.className = 'theme-preset';
+      btn.textContent = preset.name;
+      btn.addEventListener('click', () => {
+        const theme = {
+          mode: document.body.hasAttribute('data-theme') ? 'dark' : 'light',
+          primaryColor: preset.primary,
+          secondaryColor: preset.secondary,
+          accentColor: preset.accent
+        };
+        this.applyTheme(theme);
+        this.updatePresetsUI();
+        showToast('Theme', `${preset.name} theme applied!`, 'success', 2000);
+      });
+      presetsContainer.appendChild(btn);
+    });
+
+    // Build color palette
+    const colorPalette = document.getElementById('colorPalette');
+    this.colors.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'color-option';
+      btn.style.background = color;
+      btn.setAttribute('data-color', color);
+      btn.addEventListener('click', () => {
+        const current = localStorage.getItem(this.storageKey);
+        const theme = current ? JSON.parse(current) : {
+          mode: 'light',
+          primaryColor: '#4CAF50',
+          secondaryColor: '#45a049',
+          accentColor: '#FFC107'
+        };
+        theme.primaryColor = color;
+        this.applyTheme(theme);
+        this.updateColorUI();
+        showToast('Color', 'Primary color updated!', 'success', 2000);
+      });
+      colorPalette.appendChild(btn);
+    });
+
+    this.updateColorUI();
+
+    // Accessibility toggles
+    const highContrastToggle = document.getElementById('highContrastToggle');
+    const reducedMotionToggle = document.getElementById('reducedMotionToggle');
+    const largerTextToggle = document.getElementById('largerTextToggle');
+
+    const accessibilityKey = 'portal_accessibility';
+    const saved = localStorage.getItem(accessibilityKey);
+    const accessibility = saved ? JSON.parse(saved) : {};
+
+    highContrastToggle.checked = accessibility.highContrast || false;
+    reducedMotionToggle.checked = accessibility.reducedMotion || false;
+    largerTextToggle.checked = accessibility.largerText || false;
+
+    highContrastToggle.addEventListener('change', () => {
+      accessibility.highContrast = highContrastToggle.checked;
+      this.applyAccessibility(accessibility);
+    });
+
+    reducedMotionToggle.addEventListener('change', () => {
+      accessibility.reducedMotion = reducedMotionToggle.checked;
+      this.applyAccessibility(accessibility);
+    });
+
+    largerTextToggle.addEventListener('change', () => {
+      accessibility.largerText = largerTextToggle.checked;
+      this.applyAccessibility(accessibility);
+    });
+  }
+
+  updateColorUI() {
+    const currentColor = document.documentElement.style.getPropertyValue('--primary-color').trim();
+    document.querySelectorAll('.color-option').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-color') === currentColor) {
+        btn.classList.add('active');
+      }
+    });
+  }
+
+  updatePresetsUI() {
+    // Could add active state to matching preset
+  }
+
+  setupAccessibility() {
+    const toggle = document.getElementById('accessibilityToggle');
+    if (!toggle) return;
+
+    toggle.addEventListener('click', () => {
+      const customizer = document.getElementById('themeCustomizer');
+      customizer.classList.toggle('show');
+    });
+  }
+
+  applyAccessibility(settings) {
+    const body = document.body;
+    
+    if (settings.highContrast) {
+      body.setAttribute('data-accessibility', 'high-contrast');
+    } else {
+      body.removeAttribute('data-accessibility');
+    }
+
+    if (settings.reducedMotion) {
+      body.setAttribute('data-accessibility', 'reduced-motion');
+    }
+
+    if (settings.largerText) {
+      document.documentElement.style.fontSize = '18px';
+    } else {
+      document.documentElement.style.fontSize = '16px';
+    }
+
+    localStorage.setItem('portal_accessibility', JSON.stringify(settings));
+  }
+}
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', (e) => {
+  // Escape to close menus
+  if (e.key === 'Escape') {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const customizer = document.getElementById('themeCustomizer');
+    const shortcutsPanel = document.getElementById('shortcutsPanel');
+
+    if (sidebar && sidebar.classList.contains('active')) {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('show');
+      document.body.classList.remove('no-scroll');
+    }
+    if (customizer && customizer.classList.contains('show')) {
+      customizer.classList.remove('show');
+    }
+    if (shortcutsPanel && shortcutsPanel.classList.contains('show')) {
+      shortcutsPanel.classList.remove('show');
+      document.getElementById('shortcutsOverlay').classList.remove('show');
+    }
+  }
+
+  // Ctrl+K for quick search (command palette ready)
+  if (e.ctrlKey && e.key === 'k') {
+    e.preventDefault();
+    showToast('Quick Search', 'Search feature coming soon!', 'info', 2000);
+  }
+
+  // Ctrl+/ for shortcuts help
+  if (e.ctrlKey && e.key === '/') {
+    e.preventDefault();
+    const panel = document.getElementById('shortcutsPanel');
+    const overlay = document.getElementById('shortcutsOverlay');
+    panel.classList.toggle('show');
+    overlay.classList.toggle('show');
+  }
+
+  // Ctrl+Shift+D for dark mode toggle
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    e.preventDefault();
+    document.getElementById('themeToggle').click();
+  }
+
+  // Ctrl+Shift+A for accessibility menu
+  if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+    e.preventDefault();
+    document.getElementById('accessibilityToggle').click();
+  }
+
+  // Shift+H for home
+  if (e.shiftKey && e.key === 'H') {
+    e.preventDefault();
+    window.location.href = '/';
+  }
+
+  // Shift+T for back to top
+  if (e.shiftKey && e.key === 'T') {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+// Initialize theme manager on page load
+document.addEventListener('DOMContentLoaded', function() {
+  window.themeManager = new ThemeManager();
+});
+
+// Handle overlay click to close shortcuts
+const shortcutsOverlay = document.getElementById('shortcutsOverlay');
+if (shortcutsOverlay) {
+  shortcutsOverlay.addEventListener('click', () => {
+    document.getElementById('shortcutsPanel').classList.remove('show');
+    shortcutsOverlay.classList.remove('show');
+  });
+}
 
 </script>
 
