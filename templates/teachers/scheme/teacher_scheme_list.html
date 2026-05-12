@@ -22,10 +22,10 @@
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Quick Add</h6></li>
-                        {% for class_id in class_teacher_classes %}
+                        {% for class_teacher in class_teacher_classes %}
                         <li>
                             <a class="dropdown-item" href="{% url 'teachers:teacher_scheme_select_class' %}">
-                                Add for class
+                                <i class="fas fa-plus-circle"></i> {{ class_teacher.school_class }}
                             </a>
                         </li>
                         {% empty %}

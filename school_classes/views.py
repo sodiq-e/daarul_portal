@@ -772,7 +772,7 @@ class TeacherSchemeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             teacher=teacher,
             is_active=True,
             is_class_teacher=True
-        ).select_related('school_class').values_list('school_class', flat=True).distinct()
+        ).select_related('school_class__class_level').distinct()
         return context
 
 
