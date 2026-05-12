@@ -263,6 +263,28 @@ html, body {
   display: none !important;
 }
 
+/* ===== SIDEBAR COLLAPSE ===== */
+.sidebar.collapsed {
+  width: 70px;
+  padding: 16px 0;
+}
+
+/* Hide user profile when collapsed */
+.sidebar.collapsed > div:first-of-type {
+  display: none !important;
+}
+
+/* Hide section headers when collapsed */
+.sidebar.collapsed .menu-header {
+  display: none !important;
+}
+
+/* Hide section dividers when collapsed */
+.sidebar.collapsed .menu-section {
+  border-bottom: none;
+  margin-bottom: 2px;
+}
+
 /* Icon-only links in collapsed state */
 .sidebar.collapsed a {
   width: 54px;
@@ -326,9 +348,53 @@ html, body {
   visibility: visible;
 }
 
-.sidebar a {
+/* Hide logout form text in collapsed mode */
+.sidebar.collapsed form button {
+  width: 54px !important;
+  height: 54px;
+  padding: 0 !important;
+  margin: 6px auto;
   display: flex;
   align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: white;
+  border-radius: 12px;
+  font-size: 0;
+  position: relative;
+}
+
+.sidebar.collapsed form button i {
+  font-size: 20px;
+  display: inline;
+}
+
+.sidebar.collapsed form button::after {
+  content: "Logout";
+  position: absolute;
+  left: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  pointer-events: none;
+  z-index: 1000;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.sidebar.collapsed form button:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
   gap: 12px;
   padding: 12px 14px;
   color: white;
@@ -390,6 +456,16 @@ html, body {
     margin: 0 !important;
     flex: none !important;
     padding: 16px;
+  }
+
+  /* Show user profile on mobile */
+  .sidebar > div:first-of-type {
+    display: block !important;
+  }
+
+  /* Show headers on mobile */
+  .sidebar .menu-header {
+    display: flex !important;
   }
 
   /* SIDEBAR LINKS (clean UI) */
@@ -584,7 +660,7 @@ html, body {
     width: 100% !important;
   }
 
-  input, textarea, select, button {
+  .content input, .content textarea, .content select, .content button {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
