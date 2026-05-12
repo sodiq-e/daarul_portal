@@ -2864,6 +2864,9 @@ html, body {
   .header-center div[style*="font-size:11px"] {
     font-size: 10px !important;
     color: #333 !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    overflow: visible !important;
   }
 
   .header-right {
@@ -2878,19 +2881,21 @@ html, body {
   }
 
   /* Logo watermark for document background */
-  body::before {
-    content: '';
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(1.2);
-    width: 400px;
-    height: 400px;
-    background: url('{{ school_logo }}') no-repeat center;
-    background-size: contain;
-    opacity: 0.08;
-    z-index: -1;
-    pointer-events: none;
+  @page {
+    background-image: url('{{ school_logo }}');
+    background-position: center;
+    background-attachment: fixed;
+    background-size: 400px 400px;
+    background-repeat: no-repeat;
+  }
+
+  body {
+    background-image: url('{{ school_logo }}');
+    background-position: center;
+    background-attachment: fixed;
+    background-size: 400px 400px;
+    background-repeat: no-repeat;
+    background-color: white;
   }
 
   /* Tables styling for print */
@@ -3155,17 +3160,17 @@ html, body {
         <div style="font-size:24px; font-weight:bold;">{{ school_name }}</div>
       </a>
       <div style="font-size:14px;">{{ motto }}</div>
-      <!-- School Contact Information -->
+      <!-- School Contact Information - Single Line -->
       {% if school_address or school_phone or school_email %}
-      <div style="font-size:11px; margin-top:6px; line-height:1.3; color: var(--header-heading-color); opacity: 0.95;">
+      <div style="font-size:11px; margin-top:6px; color: var(--header-heading-color); opacity: 0.95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
         {% if school_address %}
-          <div>📍 {{ school_address }}</div>
+          📍 {{ school_address }}
         {% endif %}
         {% if school_phone %}
-          <div>📞 {{ school_phone }}</div>
+          | 📞 {{ school_phone }}
         {% endif %}
         {% if school_email %}
-          <div>📧 {{ school_email }}</div>
+          | 📧 {{ school_email }}
         {% endif %}
       </div>
       {% endif %}

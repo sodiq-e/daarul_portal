@@ -5,10 +5,17 @@
 {% block title %}Report Card - {{ student.get_full_name }}{% endblock %}
 
 {% block content %}
+<style>
+    /* Hide the report card's custom header */
+    .report-card > div:first-child {
+        display: block;
+    }
+</style>
+
 <style media="print">
     @page {
         size: A4 portrait;
-        margin: 0.5cm;
+        margin: 1cm;
     }
     * {
         margin: 0;
@@ -17,34 +24,31 @@
     }
     body {
         font-family: Arial, sans-serif;
-        background: white;
+        background: white !important;
         color: #000;
     }
     .no-print {
-        display: none;
+        display: none !important;
     }
     
     /* Hide the report card's custom header - base header will show instead */
     .report-card > div:first-child {
-        display: none;
+        display: none !important;
     }
     
     .report-card {
         page-break-after: always;
-        padding: 10mm;
-        background: white;
+        padding: 0;
+        background: transparent !important;
+        border: none !important;
+        max-width: 100% !important;
+        margin: 0 !important;
     }
     
-    /* Add page title in print */
-    .report-card::before {
-        content: 'REPORT CARD';
-        display: block;
-        text-align: center;
-        font-weight: bold;
-        font-size: 18px;
-        color: #2c3e50;
-        margin-bottom: 20px;
-        page-break-after: avoid;
+    .report-card table,
+    .report-card div {
+        display: block !important;
+        page-break-inside: avoid !important;
     }
 </style>
 
