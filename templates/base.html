@@ -1381,6 +1381,643 @@ html, body {
       transition-duration: 0.01ms !important;
     }
 
+    /* ===== COMMAND PALETTE ===== */
+    .command-palette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 100px;
+    }
+
+    .command-palette.show {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .command-palette-input {
+      width: 90%;
+      max-width: 600px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body[data-theme="dark"] .command-palette-input {
+      background: var(--icon-plate-color);
+      color: var(--text-color);
+    }
+
+    .command-palette-search {
+      padding: 16px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    body[data-theme="dark"] .command-palette-search {
+      border-bottom-color: #333;
+    }
+
+    .command-palette-search input {
+      flex: 1;
+      border: none;
+      background: none;
+      font-size: 18px;
+      color: inherit;
+      outline: none;
+    }
+
+    .command-palette-search input::placeholder {
+      color: #999;
+    }
+
+    .command-palette-results {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .command-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    body[data-theme="dark"] .command-item {
+      border-bottom-color: #333;
+    }
+
+    .command-item:hover, .command-item.selected {
+      background: #f5f5f5;
+    }
+
+    body[data-theme="dark"] .command-item:hover, body[data-theme="dark"] .command-item.selected {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .command-item-label {
+      flex: 1;
+    }
+
+    .command-item-title {
+      font-weight: 600;
+      color: var(--text-color);
+      margin-bottom: 2px;
+    }
+
+    .command-item-description {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .command-item-key {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: #666;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+
+    body[data-theme="dark"] .command-item-key {
+      background: rgba(255,255,255,0.1);
+      color: #999;
+    }
+
+    /* ===== MODALS ===== */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal.show {
+      display: flex;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      max-width: 500px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    body[data-theme="dark"] .modal-content {
+      background: var(--icon-plate-color);
+      color: var(--text-color);
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    body[data-theme="dark"] .modal-header {
+      border-bottom-color: #333;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+      transition: color 0.3s ease;
+    }
+
+    .modal-close:hover {
+      color: #333;
+    }
+
+    body[data-theme="dark"] .modal-close:hover {
+      color: #e0e0e0;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    body[data-theme="dark"] .modal-footer {
+      border-top-color: #333;
+    }
+
+    .modal-footer button {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      background: white;
+      color: #333;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    body[data-theme="dark"] .modal-footer button {
+      background: #333;
+      color: white;
+      border-color: #444;
+    }
+
+    .modal-footer button:hover {
+      background: #f5f5f5;
+      border-color: #999;
+    }
+
+    .modal-footer .modal-primary {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .modal-footer .modal-primary:hover {
+      opacity: 0.9;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* ===== DROPDOWNS ===== */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-toggle {
+      background: white;
+      border: 1px solid #ddd;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    body[data-theme="dark"] .dropdown-toggle {
+      background: var(--icon-plate-color);
+      border-color: #333;
+      color: var(--text-color);
+    }
+
+    .dropdown-toggle:hover {
+      border-color: var(--primary-color);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .dropdown-toggle.active {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .dropdown-toggle::after {
+      content: '▼';
+      font-size: 10px;
+      transition: transform 0.3s ease;
+    }
+
+    .dropdown-toggle.active::after {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      min-width: 200px;
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      margin-top: 8px;
+      overflow: hidden;
+      animation: slideDown 0.2s ease-out;
+    }
+
+    .dropdown-menu.show {
+      display: flex;
+    }
+
+    body[data-theme="dark"] .dropdown-menu {
+      background: var(--icon-plate-color);
+      border-color: #333;
+    }
+
+    .dropdown-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      color: #333;
+      text-decoration: none;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    body[data-theme="dark"] .dropdown-item {
+      color: var(--text-color);
+      border-bottom-color: #333;
+    }
+
+    .dropdown-item:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-item:hover {
+      background: #f5f5f5;
+    }
+
+    body[data-theme="dark"] .dropdown-item:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .dropdown-item i {
+      width: 16px;
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 4px 0;
+    }
+
+    body[data-theme="dark"] .dropdown-divider {
+      background: #333;
+    }
+
+    /* ===== FILE UPLOAD ===== */
+    .file-upload {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #f9f9f9;
+    }
+
+    body[data-theme="dark"] .file-upload {
+      background: rgba(255,255,255,0.05);
+      border-color: #333;
+    }
+
+    .file-upload:hover {
+      border-color: var(--primary-color);
+      background: #f5f5f5;
+    }
+
+    body[data-theme="dark"] .file-upload:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .file-upload.dragging {
+      border-color: var(--primary-color);
+      background: linear-gradient(135deg, rgba(var(--primary-color), 0.1), rgba(var(--accent-color), 0.1));
+    }
+
+    .file-upload-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: var(--primary-color);
+    }
+
+    .file-upload-text {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-color);
+    }
+
+    .file-upload-hint {
+      font-size: 13px;
+      color: #999;
+    }
+
+    .file-upload input[type="file"] {
+      display: none;
+    }
+
+    .file-list {
+      margin-top: 20px;
+    }
+
+    .file-item {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.3s ease;
+    }
+
+    body[data-theme="dark"] .file-item {
+      background: var(--icon-plate-color);
+      border-color: #333;
+    }
+
+    .file-item:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .file-item-icon {
+      font-size: 24px;
+      width: 32px;
+      text-align: center;
+    }
+
+    .file-item-info {
+      flex: 1;
+    }
+
+    .file-item-name {
+      font-weight: 500;
+      color: var(--text-color);
+      word-break: break-word;
+    }
+
+    .file-item-size {
+      font-size: 12px;
+      color: #999;
+      margin-top: 2px;
+    }
+
+    .file-item-progress {
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .file-item-progress-bar {
+      height: 100%;
+      background: var(--primary-color);
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .file-item-remove {
+      background: none;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 8px;
+      transition: color 0.3s ease;
+    }
+
+    .file-item-remove:hover {
+      color: #f44336;
+    }
+
+    /* ===== FORM VALIDATION ===== */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-color);
+      font-size: 14px;
+    }
+
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    body[data-theme="dark"] .form-group input, body[data-theme="dark"] .form-group textarea, body[data-theme="dark"] .form-group select {
+      background: var(--icon-plate-color);
+      color: var(--text-color);
+      border-color: #333;
+    }
+
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(var(--primary-color), 0.1);
+      outline: none;
+    }
+
+    .form-group.error input, .form-group.error textarea, .form-group.error select {
+      border-color: #f44336;
+    }
+
+    .form-group.error input:focus, .form-group.error textarea:focus, .form-group.error select:focus {
+      box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+    }
+
+    .form-group.success input, .form-group.success textarea, .form-group.success select {
+      border-color: #4CAF50;
+    }
+
+    .form-group.success input:focus, .form-group.success textarea:focus, .form-group.success select:focus {
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+    }
+
+    .form-message {
+      font-size: 12px;
+      margin-top: 6px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-group.error .form-message {
+      display: flex;
+      color: #f44336;
+    }
+
+    .form-group.success .form-message {
+      display: flex;
+      color: #4CAF50;
+    }
+
+    .form-message i {
+      font-size: 14px;
+    }
+
+    /* ===== NOTIFICATIONS (REAL-TIME) ===== */
+    .notification {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      min-width: 300px;
+      z-index: 9900;
+      animation: slideInRight 0.3s ease-out;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    body[data-theme="dark"] .notification {
+      background: var(--icon-plate-color);
+      border-color: #333;
+      color: var(--text-color);
+    }
+
+    .notification.removing {
+      animation: slideOutRight 0.3s ease-out forwards;
+    }
+
+    .notification-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+
+    .notification.info .notification-dot {
+      background: #2196F3;
+    }
+
+    .notification.success .notification-dot {
+      background: #4CAF50;
+    }
+
+    .notification.warning .notification-dot {
+      background: #FFC107;
+    }
+
+    .notification.error .notification-dot {
+      background: #f44336;
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .notification-message {
+      font-size: 13px;
+      color: #666;
+    }
+
+    body[data-theme="dark"] .notification-message {
+      color: #999;
+    }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
     /* ===== LAYOUT ===== */
     .layout {
         display: block;
@@ -2204,6 +2841,32 @@ html, body {
         <span>Accessibility Menu</span>
         <span class="shortcut-key">Ctrl + Shift + A</span>
       </div>
+    </div>
+  </div>
+
+  <!-- ✅ COMMAND PALETTE -->
+  <div class="command-palette" id="commandPalette">
+    <div class="command-palette-input">
+      <div class="command-palette-search">
+        <i class="fas fa-search"></i>
+        <input type="text" id="commandPaletteSearch" placeholder="Type a command or search...">
+      </div>
+      <div class="command-palette-results" id="commandPaletteResults"></div>
+    </div>
+  </div>
+
+  <!-- ✅ NOTIFICATIONS CONTAINER -->
+  <div id="notificationsContainer"></div>
+
+  <!-- ✅ MODAL TEMPLATE -->
+  <div class="modal" id="modalTemplate">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Dialog</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer" id="modalFooter"></div>
     </div>
   </div>
 
@@ -3409,6 +4072,412 @@ if (shortcutsOverlay) {
     shortcutsOverlay.classList.remove('show');
   });
 }
+
+// ===== COMMAND PALETTE =====
+class CommandPalette {
+  constructor() {
+    this.element = document.getElementById('commandPalette');
+    this.input = document.getElementById('commandPaletteSearch');
+    this.resultsContainer = document.getElementById('commandPaletteResults');
+    this.selectedIndex = -1;
+    this.commands = [];
+
+    this.registerDefaultCommands();
+    this.setupListeners();
+  }
+
+  registerDefaultCommands() {
+    this.commands = [
+      { title: 'Go to Home', description: 'Navigate to home page', key: 'Shift+H', action: () => window.location.href = '/' },
+      { title: 'Dark Mode', description: 'Toggle dark mode', key: 'Ctrl+Shift+D', action: () => document.getElementById('themeToggle').click() },
+      { title: 'Accessibility', description: 'Open accessibility settings', key: 'Ctrl+Shift+A', action: () => document.getElementById('accessibilityToggle').click() },
+      { title: 'Help', description: 'Show keyboard shortcuts', key: 'Ctrl+/', action: () => { this.close(); document.getElementById('shortcutsPanel').classList.add('show'); } },
+      { title: 'Close', description: 'Close command palette', key: 'Esc', action: () => this.close() }
+    ];
+  }
+
+  registerCommand(title, description, key, action) {
+    this.commands.push({ title, description, key, action });
+  }
+
+  setupListeners() {
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        this.open();
+      }
+    });
+
+    this.input.addEventListener('input', () => this.filter());
+    this.input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.selectedIndex++;
+        this.updateSelection();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.selectedIndex--;
+        this.updateSelection();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        this.executeSelected();
+      }
+    });
+
+    this.element.addEventListener('click', (e) => {
+      if (e.target === this.element) {
+        this.close();
+      }
+    });
+  }
+
+  open() {
+    this.element.classList.add('show');
+    this.input.focus();
+    this.input.value = '';
+    this.selectedIndex = -1;
+    this.filter();
+  }
+
+  close() {
+    this.element.classList.remove('show');
+    this.input.value = '';
+  }
+
+  filter() {
+    const query = this.input.value.toLowerCase();
+    const filtered = this.commands.filter(cmd => 
+      cmd.title.toLowerCase().includes(query) || 
+      cmd.description.toLowerCase().includes(query)
+    );
+
+    this.selectedIndex = -1;
+    this.resultsContainer.innerHTML = '';
+
+    filtered.forEach((cmd, idx) => {
+      const item = document.createElement('div');
+      item.className = 'command-item';
+      item.innerHTML = `
+        <div class="command-item-label">
+          <div class="command-item-title">${cmd.title}</div>
+          <div class="command-item-description">${cmd.description}</div>
+        </div>
+        <span class="command-item-key">${cmd.key}</span>
+      `;
+      item.addEventListener('click', () => {
+        this.selectedIndex = idx;
+        this.executeSelected();
+      });
+      this.resultsContainer.appendChild(item);
+    });
+  }
+
+  updateSelection() {
+    const items = this.resultsContainer.querySelectorAll('.command-item');
+    this.selectedIndex = Math.max(0, Math.min(this.selectedIndex, items.length - 1));
+    
+    items.forEach((item, idx) => {
+      item.classList.toggle('selected', idx === this.selectedIndex);
+    });
+
+    if (items[this.selectedIndex]) {
+      items[this.selectedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  executeSelected() {
+    const items = this.resultsContainer.querySelectorAll('.command-item');
+    if (this.selectedIndex >= 0 && items[this.selectedIndex]) {
+      const text = items[this.selectedIndex].querySelector('.command-item-title').textContent;
+      const cmd = this.commands.find(c => c.title === text);
+      if (cmd) {
+        this.close();
+        cmd.action();
+      }
+    }
+  }
+}
+
+window.commandPalette = new CommandPalette();
+
+// ===== MODAL SYSTEM =====
+window.showModal = function(title, content, buttons = []) {
+  const modal = document.getElementById('modalTemplate');
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = content;
+
+  const footer = document.getElementById('modalFooter');
+  footer.innerHTML = '';
+
+  buttons.forEach(btn => {
+    const button = document.createElement('button');
+    button.textContent = btn.label;
+    button.className = btn.className || '';
+    if (btn.isPrimary) button.classList.add('modal-primary');
+    button.addEventListener('click', () => {
+      if (btn.action) btn.action();
+      if (btn.closeAfter) closeModal();
+    });
+    footer.appendChild(button);
+  });
+
+  modal.classList.add('show');
+};
+
+window.closeModal = function() {
+  document.getElementById('modalTemplate').classList.remove('show');
+};
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('modalTemplate');
+    if (modal.classList.contains('show')) {
+      closeModal();
+    }
+  }
+});
+
+document.getElementById('modalTemplate')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modalTemplate') {
+    closeModal();
+  }
+});
+
+// ===== DROPDOWN MENU SYSTEM =====
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.dropdown-toggle');
+  if (toggle) {
+    e.stopPropagation();
+    const dropdown = toggle.closest('.dropdown');
+    const menu = dropdown.querySelector('.dropdown-menu');
+    
+    document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+      if (m !== menu) m.classList.remove('show');
+    });
+    document.querySelectorAll('.dropdown-toggle.active').forEach(t => {
+      if (t !== toggle) t.classList.remove('active');
+    });
+
+    menu.classList.toggle('show');
+    toggle.classList.toggle('active');
+  }
+
+  const item = e.target.closest('.dropdown-item');
+  if (item && !item.classList.contains('dropdown-divider')) {
+    const dropdown = item.closest('.dropdown');
+    dropdown.querySelector('.dropdown-menu').classList.remove('show');
+    dropdown.querySelector('.dropdown-toggle').classList.remove('active');
+  }
+});
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+  document.querySelectorAll('.dropdown-toggle.active').forEach(t => t.classList.remove('active'));
+});
+
+// ===== FILE UPLOAD SYSTEM =====
+window.setupFileUpload = function(selector) {
+  const upload = document.querySelector(selector);
+  if (!upload) return;
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.multiple = true;
+  upload.appendChild(fileInput);
+
+  const fileList = document.querySelector(`${selector} ~ .file-list`) || document.createElement('div');
+  if (!fileList.classList.contains('file-list')) {
+    fileList.className = 'file-list';
+    upload.parentElement.insertBefore(fileList, upload.nextSibling);
+  }
+
+  upload.addEventListener('click', () => fileInput.click());
+
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    upload.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    upload.addEventListener(eventName, () => upload.classList.add('dragging'), false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    upload.addEventListener(eventName, () => upload.classList.remove('dragging'), false);
+  });
+
+  upload.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    fileInput.files = files;
+    handleFiles(files);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+  });
+
+  function handleFiles(files) {
+    Array.from(files).forEach(file => addFileItem(file));
+  }
+
+  function addFileItem(file) {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    const icon = getFileIcon(file.type);
+    item.innerHTML = `
+      <div class="file-item-icon">${icon}</div>
+      <div class="file-item-info">
+        <div class="file-item-name">${file.name}</div>
+        <div class="file-item-size">${formatFileSize(file.size)}</div>
+        <div class="file-item-progress">
+          <div class="file-item-progress-bar"></div>
+        </div>
+      </div>
+      <button class="file-item-remove" onclick="this.closest('.file-item').remove()">✕</button>
+    `;
+    fileList.appendChild(item);
+
+    // Simulate upload progress
+    const progressBar = item.querySelector('.file-item-progress-bar');
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 30;
+      if (progress > 100) {
+        progress = 100;
+        clearInterval(interval);
+      }
+      progressBar.style.width = progress + '%';
+    }, 200);
+  }
+
+  function getFileIcon(type) {
+    if (type.includes('image')) return '🖼️';
+    if (type.includes('pdf')) return '📄';
+    if (type.includes('word') || type.includes('document')) return '📝';
+    if (type.includes('sheet') || type.includes('excel')) return '📊';
+    if (type.includes('audio')) return '🎵';
+    if (type.includes('video')) return '🎬';
+    return '📦';
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+};
+
+// ===== FORM VALIDATION =====
+window.setupFormValidation = function(formSelector) {
+  const form = document.querySelector(formSelector);
+  if (!form) return;
+
+  const rules = {};
+  form.querySelectorAll('[data-validate]').forEach(field => {
+    rules[field.name] = field.dataset.validate.split('|');
+  });
+
+  form.addEventListener('blur', (e) => {
+    if (e.target.name && rules[e.target.name]) {
+      validateField(e.target);
+    }
+  }, true);
+
+  form.addEventListener('submit', (e) => {
+    let isValid = true;
+    form.querySelectorAll('[data-validate]').forEach(field => {
+      if (!validateField(field)) isValid = false;
+    });
+    if (!isValid) e.preventDefault();
+  });
+
+  function validateField(field) {
+    const group = field.closest('.form-group');
+    const rules = field.dataset.validate.split('|');
+    let isValid = true;
+
+    rules.forEach(rule => {
+      if (rule === 'required' && !field.value.trim()) {
+        isValid = false;
+      }
+      if (rule.startsWith('min:')) {
+        const min = parseInt(rule.split(':')[1]);
+        if (field.value.length < min) isValid = false;
+      }
+      if (rule.startsWith('max:')) {
+        const max = parseInt(rule.split(':')[1]);
+        if (field.value.length > max) isValid = false;
+      }
+      if (rule === 'email' && field.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value)) {
+        isValid = false;
+      }
+    });
+
+    group.classList.remove('error', 'success');
+    if (!field.value.trim()) {
+      group.classList.remove('success');
+    } else if (isValid) {
+      group.classList.add('success');
+    } else {
+      group.classList.add('error');
+    }
+
+    return isValid;
+  }
+};
+
+// ===== REAL-TIME NOTIFICATIONS =====
+class Notification {
+  constructor(title, message, type = 'info', duration = 5000) {
+    this.title = title;
+    this.message = message;
+    this.type = type;
+    this.duration = duration;
+    this.element = null;
+    this.show();
+  }
+
+  show() {
+    const container = document.getElementById('notificationsContainer');
+    this.element = document.createElement('div');
+    this.element.className = `notification ${this.type}`;
+    this.element.innerHTML = `
+      <div class="notification-dot"></div>
+      <div class="notification-content">
+        <div class="notification-title">${this.title}</div>
+        <div class="notification-message">${this.message}</div>
+      </div>
+      <button class="notification-close">&times;</button>
+    `;
+
+    container.appendChild(this.element);
+
+    const closeBtn = this.element.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => this.remove());
+
+    if (this.duration) {
+      setTimeout(() => this.remove(), this.duration);
+    }
+  }
+
+  remove() {
+    if (this.element) {
+      this.element.classList.add('removing');
+      setTimeout(() => this.element.remove(), 300);
+    }
+  }
+}
+
+window.showNotification = (title, message, type = 'info', duration = 5000) => {
+  return new Notification(title, message, type, duration);
+};
 
 </script>
 
