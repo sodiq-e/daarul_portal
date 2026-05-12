@@ -167,6 +167,20 @@ class SchoolSettings(models.Model):
         help_text="School general contact email address"
     )
 
+    # Footer Copyright
+    footer_copyright_text = models.CharField(
+        max_length=500,
+        default="© 2026 Daarul Bayaan Islamic School. All Rights Reserved.",
+        blank=True,
+        help_text="Copyright text displayed in footer"
+    )
+
+    footer_copyright_link = models.URLField(
+        blank=True,
+        null=True,
+        help_text="Optional link for copyright (e.g., privacy policy URL)"
+    )
+
     def __str__(self):
         return self.school_name or "School Settings"
 

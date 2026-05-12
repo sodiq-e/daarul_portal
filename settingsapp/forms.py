@@ -33,7 +33,8 @@ class SchoolSettingsForm(forms.ModelForm):
             'homepage_video',
             'homepage_video_url',
             'homepage_video_description',
-
+            'footer_copyright_text',
+            'footer_copyright_link',
         ]
 
 
