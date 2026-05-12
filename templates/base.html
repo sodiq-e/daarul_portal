@@ -237,28 +237,74 @@ html, body {
 /* ===== SIDEBAR COLLAPSE ===== */
 .sidebar.collapsed {
   width: 70px;
+  padding: 16px 0;
 }
 
+/* Hide section headers and menus when collapsed */
 .sidebar.collapsed .menu-header {
-  padding: 12px 4px;
-  overflow: hidden;
-  text-indent: -9999px;
-  justify-content: center;
-}
-
-.sidebar.collapsed .menu-header .arrow {
   display: none;
 }
 
 .sidebar.collapsed .menu-content {
-  display: none;
+  display: none !important;
 }
 
+/* Icon-only links in collapsed state */
 .sidebar.collapsed a {
-  font-size: 12px;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  margin: 6px auto;
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 12px 4px;
+  font-size: 0;
+  border-radius: 12px;
+  position: relative;
+  background: transparent;
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+
+.sidebar.collapsed a i {
+  font-size: 20px;
+  width: auto;
+  text-align: center;
+}
+
+/* Active icon highlight */
+.sidebar.collapsed a.active {
+  background: rgba(255,255,255,0.25);
+  color: white;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4);
+}
+
+/* Tooltip styling */
+.sidebar.collapsed a::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  pointer-events: none;
+  z-index: 1000;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.sidebar.collapsed a:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 .sidebar a {
@@ -500,51 +546,51 @@ html, body {
         <span class="arrow">›</span>
       </div>
       <div class="menu-content">
-        <a href="{% url 'teachers:teacher_list' %}"
+        <a href="{% url 'teachers:teacher_list' %}" data-tooltip="Teachers"
            class="{% if request.resolver_match.url_name == 'teacher_list' %}active{% endif %}">
-          <i class="fas fa-users"></i> Teachers Management
+          <i class="fas fa-users"></i>
         </a>
 
-        <a href="{% url 'teachers:class_teacher_list' %}"
+        <a href="{% url 'teachers:class_teacher_list' %}" data-tooltip="Classes"
            class="{% if request.resolver_match.url_name == 'class_teacher_list' %}active{% endif %}">
-          <i class="fas fa-chalkboard-teacher"></i> Class-Teacher Assign
+          <i class="fas fa-chalkboard-teacher"></i>
         </a>
 
-        <a href="{% url 'teachers:teacher_permissions' %}"
+        <a href="{% url 'teachers:teacher_permissions' %}" data-tooltip="Permissions"
            class="{% if request.resolver_match.url_name == 'teacher_permissions' %}active{% endif %}">
-          <i class="fas fa-user-shield"></i> Teacher Permissions
+          <i class="fas fa-user-shield"></i>
         </a>
 
-        <a href="{% url 'teachers:admin_scheme_list' %}"
+        <a href="{% url 'teachers:admin_scheme_list' %}" data-tooltip="Scheme"
            class="{% if request.resolver_match.url_name == 'admin_scheme_list' %}active{% endif %}">
-          <i class="fas fa-tasks"></i> Scheme Approval
+          <i class="fas fa-tasks"></i>
         </a>
 
-        <a href="{% url 'admin_messages_list' %}"
+        <a href="{% url 'admin_messages_list' %}" data-tooltip="Messages"
            class="{% if request.resolver_match.url_name == 'admin_messages_list' %}active{% endif %}">
-          <i class="fas fa-envelope"></i> Contact Messages
+          <i class="fas fa-envelope"></i>
         </a>
 
-        <a href="{% url 'admin_portal_users_list' %}"
+        <a href="{% url 'admin_portal_users_list' %}" data-tooltip="Portal"
            class="{% if request.resolver_match.url_name == 'admin_portal_users_list' %}active{% endif %}">
-          <i class="fas fa-comments"></i> Portal Conversations
+          <i class="fas fa-comments"></i>
         </a>
 
-        <a href="{% url 'results_admin:dashboard' %}"
+        <a href="{% url 'results_admin:dashboard' %}" data-tooltip="Results"
            class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-          <i class="fas fa-chart-bar"></i> Results Settings
+          <i class="fas fa-chart-bar"></i>
         </a>
 
-        <a href="/admin/">
-          <i class="fas fa-cog"></i> Django Admin
+        <a href="/admin/" data-tooltip="Django Admin">
+          <i class="fas fa-cog"></i>
         </a>
 
-        <a href="{% url 'bulk_student_permissions' %}">
-          <i class="fas fa-broom"></i> Clear Selection
+        <a href="{% url 'bulk_student_permissions' %}" data-tooltip="Clear">
+          <i class="fas fa-broom"></i>
         </a>
 
-        <a href="{% url 'student_list' %}">
-          <i class="fas fa-arrow-left"></i> Back to Students
+        <a href="{% url 'student_list' %}" data-tooltip="Back">
+          <i class="fas fa-arrow-left"></i>
         </a>
       </div>
     </div>
@@ -556,37 +602,34 @@ html, body {
         <span class="arrow">›</span>
       </div>
       <div class="menu-content">
-        <a href="{% url 'teachers:teacher_profile' %}"
+        <a href="{% url 'teachers:teacher_profile' %}" data-tooltip="Profile"
            class="{% if request.resolver_match.url_name == 'teacher_profile' %}active{% endif %}">
-          <i class="fas fa-id-badge"></i> My Profile
+          <i class="fas fa-id-badge"></i>
         </a>
 
-        <a href="{% url 'teachers:teacher_scheme_list' %}"
+        <a href="{% url 'teachers:teacher_scheme_list' %}" data-tooltip="Schemes"
            class="{% if request.resolver_match.url_name == 'teacher_scheme_list' %}active{% endif %}">
-          <i class="fas fa-book"></i> Scheme of Work
+          <i class="fas fa-book"></i>
         </a>
 
-        <a href="{% url 'teacher_results_list' %}"
+        <a href="{% url 'teacher_results_list' %}" data-tooltip="Results"
            class="{% if request.resolver_match.url_name == 'teacher_results_list' %}active{% endif %}">
-          <i class="fas fa-edit"></i> Edit Results
+          <i class="fas fa-edit"></i>
         </a>
 
-        <a href="{% url 'teacher_payroll' %}"
+        <a href="{% url 'teacher_payroll' %}" data-tooltip="Payroll"
            class="{% if request.resolver_match.url_name == 'teacher_payroll' %}active{% endif %}">
-          <i class="fas fa-money-check"></i> My Payroll
+          <i class="fas fa-money-check"></i>
         </a>
 
-        <a href="{% url 'teacher_attendance_list' %}"
+        <a href="{% url 'teacher_attendance_list' %}" data-tooltip="Attendance"
            class="{% if request.resolver_match.url_name == 'teacher_attendance_list' %}active{% endif %}">
-          <i class="fas fa-calendar-check"></i> Attendance
+          <i class="fas fa-calendar-check"></i>
         </a>
 
-        <a href="{% url 'portal_messages_list' %}"
+        <a href="{% url 'portal_messages_list' %}" data-tooltip="Messages"
            class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
-          <i class="fas fa-comments"></i> Portal Messages
-          {% if portal_unread_count > 0 %}
-            <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
-          {% endif %}
+          <i class="fas fa-comments"></i>
         </a>
       </div>
     </div>
@@ -598,32 +641,29 @@ html, body {
         <span class="arrow">›</span>
       </div>
       <div class="menu-content">
-        <a href="{% url 'student_portal_dashboard' %}"
+        <a href="{% url 'student_portal_dashboard' %}" data-tooltip="Dashboard"
            class="{% if request.resolver_match.url_name == 'student_portal_dashboard' %}active{% endif %}">
-          <i class="fas fa-home"></i> My Dashboard
+          <i class="fas fa-home"></i>
         </a>
 
-        <a href="{% url 'student_portal_profile' %}"
+        <a href="{% url 'student_portal_profile' %}" data-tooltip="Profile"
            class="{% if request.resolver_match.url_name == 'student_portal_profile' %}active{% endif %}">
-          <i class="fas fa-user"></i> My Profile
+          <i class="fas fa-user"></i>
         </a>
 
-        <a href="{% url 'student_portal_results' %}"
+        <a href="{% url 'student_portal_results' %}" data-tooltip="Results"
            class="{% if request.resolver_match.url_name == 'student_portal_results' %}active{% endif %}">
-          <i class="fas fa-chart-line"></i> My Results
+          <i class="fas fa-chart-line"></i>
         </a>
 
-        <a href="{% url 'student_portal_fees' %}"
+        <a href="{% url 'student_portal_fees' %}" data-tooltip="Fees"
            class="{% if request.resolver_match.url_name == 'student_portal_fees' %}active{% endif %}">
-          <i class="fas fa-wallet"></i> School Fees
+          <i class="fas fa-wallet"></i>
         </a>
 
-        <a href="{% url 'portal_messages_list' %}"
+        <a href="{% url 'portal_messages_list' %}" data-tooltip="Messages"
            class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
-          <i class="fas fa-comments"></i> Portal Messages
-          {% if portal_unread_count > 0 %}
-            <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
-          {% endif %}
+          <i class="fas fa-comments"></i>
         </a>
       </div>
     </div>
@@ -636,23 +676,23 @@ html, body {
       <span class="arrow">›</span>
     </div>
     <div class="menu-content">
-      <a href="{% url 'school_classes:class_list' %}"
+      <a href="{% url 'school_classes:class_list' %}" data-tooltip="Classes"
          class="{% if request.resolver_match.url_name == 'class_list' %}active{% endif %}">
-        <i class="fas fa-chalkboard"></i> Classes
+        <i class="fas fa-chalkboard"></i>
       </a>
 
-      <a href="{% url 'announcement_list' %}"
+      <a href="{% url 'announcement_list' %}" data-tooltip="Announcements"
          class="{% if request.resolver_match.url_name == 'announcement_list' %}active{% endif %}">
-        <i class="fas fa-bullhorn"></i> Announcements
+        <i class="fas fa-bullhorn"></i>
       </a>
 
-      <a href="/results/">
-        <i class="fas fa-poll"></i> Results
+      <a href="/results/" data-tooltip="Results">
+        <i class="fas fa-poll"></i>
       </a>
 
-      <a href="{% url 'profile' %}"
+      <a href="{% url 'profile' %}" data-tooltip="Settings"
          class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
-        <i class="fas fa-cog"></i> Account Settings
+        <i class="fas fa-cog"></i>
       </a>
     </div>
   </div>
@@ -676,12 +716,12 @@ html, body {
       <span class="arrow">›</span>
     </div>
     <div class="menu-content">
-      <a href="{% url 'login' %}">
-        <i class="fas fa-sign-in-alt"></i> Sign In
+      <a href="{% url 'login' %}" data-tooltip="Sign In">
+        <i class="fas fa-sign-in-alt"></i>
       </a>
 
-      <a href="{% url 'signup' %}">
-        <i class="fas fa-user-plus"></i> Create Account
+      <a href="{% url 'signup' %}" data-tooltip="Sign Up">
+        <i class="fas fa-user-plus"></i>
       </a>
     </div>
   </div>
@@ -692,16 +732,16 @@ html, body {
       <span class="arrow">›</span>
     </div>
     <div class="menu-content">
-      <a href="{% url 'student_application' %}">
-        <i class="fas fa-file-alt"></i> Apply for Admission
+      <a href="{% url 'student_application' %}" data-tooltip="Apply Student">
+        <i class="fas fa-file-alt"></i>
       </a>
 
-      <a href="{% url 'teachers:teacher_apply' %}">
-        <i class="fas fa-chalkboard-teacher"></i> Apply as Teacher
+      <a href="{% url 'teachers:teacher_apply' %}" data-tooltip="Apply Teacher">
+        <i class="fas fa-chalkboard-teacher"></i>
       </a>
 
-      <a href="{% url 'announcement_list' %}">
-        <i class="fas fa-bullhorn"></i> Announcements
+      <a href="{% url 'announcement_list' %}" data-tooltip="News">
+        <i class="fas fa-bullhorn"></i>
       </a>
     </div>
   </div>
