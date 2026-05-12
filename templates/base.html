@@ -464,7 +464,6 @@ html, body {
   font-size: 18px;
 }
 
-/* ===== MOBILE ===== */
 @media (max-width: 768px) {
 
   .header-center div:first-child {
@@ -478,6 +477,122 @@ html, body {
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
+
+  /* ===== MOBILE CONTENT FIXES ===== */
+  
+  /* Remove text truncation */
+  * {
+    text-overflow: unset !important;
+  }
+
+  /* Text wrapping on mobile */
+  p, span, div, a, li, td, th {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  /* Ensure full width */
+  .content {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Fix containers */
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    overflow-x: hidden;
+  }
+
+  /* Responsive tables */
+  table {
+    width: 100% !important;
+    font-size: 14px;
+    display: block;
+    overflow-x: auto;
+    white-space: normal;
+  }
+
+  thead, tbody, th, td, tr {
+    display: block;
+    width: 100%;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tr {
+    margin-bottom: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+  }
+
+  td {
+    padding: 8px !important;
+    text-align: left !important;
+    border: none;
+    display: block;
+    word-wrap: break-word;
+  }
+
+  td:before {
+    content: attr(data-label);
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* Forms responsive */
+  form {
+    width: 100% !important;
+  }
+
+  input, textarea, select, button {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Cards and boxes */
+  .card, .box, [class*="card"], [class*="box"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Flex containers wrap */
+  .flex, [style*="display: flex"] {
+    flex-wrap: wrap !important;
+  }
+
+  /* Hero sections */
+  .hero {
+    padding: 30px 16px !important;
+  }
+
+  .hero h1 {
+    font-size: 1.8rem !important;
+  }
+
+  .hero p {
+    font-size: 0.95rem !important;
+  }
+
+  /* Headings responsive */
+  h1, h2, h3, h4, h5, h6 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.3rem !important; }
+  h3 { font-size: 1.1rem !important; }
 }
   </style>
 
