@@ -342,6 +342,174 @@
       outline-offset: 2px;
     }
 
+    /* ===== ANNOUNCEMENT TICKER ===== */
+    .announcement-ticker {
+      background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+      color: white;
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      display: none;
+      animation: slideDown 0.4s ease-out;
+      position: relative;
+      z-index: 100;
+    }
+
+    .announcement-ticker.show {
+      display: block;
+    }
+
+    .announcement-ticker.hide {
+      animation: slideUp 0.4s ease-out forwards;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(-100%);
+        opacity: 0;
+      }
+    }
+
+    /* ===== BREADCRUMB NAVIGATION ===== */
+    .breadcrumb {
+      background: white;
+      padding: 12px 20px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid #e0e0e0;
+      overflow-x: auto;
+    }
+
+    .breadcrumb a {
+      color: var(--primary-color);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .breadcrumb a:hover {
+      color: var(--secondary-color);
+      text-decoration: underline;
+    }
+
+    .breadcrumb-separator {
+      color: #999;
+      margin: 0 4px;
+    }
+
+    .breadcrumb-current {
+      color: var(--text-color);
+      font-weight: 600;
+    }
+
+    /* Hide breadcrumb on mobile if too long */
+    @media (max-width: 600px) {
+      .breadcrumb {
+        font-size: 12px;
+        padding: 8px 12px;
+      }
+
+      .breadcrumb-separator {
+        margin: 0 2px;
+      }
+    }
+
+    /* ===== MOBILE BOTTOM NAVIGATION ===== */
+    .mobile-bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      display: none;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1000;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 1024px) {
+      .mobile-bottom-nav {
+        display: flex;
+      }
+
+      .content {
+        padding-bottom: 70px !important;
+      }
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      text-decoration: none;
+      color: #666;
+      font-size: 12px;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+    }
+
+    .nav-item i {
+      font-size: 20px;
+      margin-bottom: 4px;
+      transition: transform 0.3s ease;
+    }
+
+    .nav-item:hover {
+      color: var(--primary-color);
+      background: #f9f9f9;
+    }
+
+    .nav-item:hover i {
+      transform: scale(1.2);
+    }
+
+    .nav-item.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    /* Active state styling */
+    .nav-item.active i {
+      color: var(--primary-color);
+      animation: bounce 0.3s ease;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    /* ===== BREADCRUMB RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .breadcrumb {
+        display: none;
+      }
+    }
+
     header{
       background:var(--primary-color);
       color:white;
@@ -1192,6 +1360,12 @@ html, body {
   <!-- ✅ BACK TO TOP BUTTON -->
   <button id="scrollTopBtn" title="Back to top">↑</button>
 
+  <!-- ✅ ANNOUNCEMENT TICKER -->
+  <div class="announcement-ticker" id="announcementTicker"></div>
+
+  <!-- ✅ BREADCRUMB NAVIGATION -->
+  <nav class="breadcrumb" id="breadcrumb"></nav>
+
   <!-- ✅ ONLY HEADER (kept your original design) -->
 <header>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -1230,6 +1404,32 @@ html, body {
 
         </header>
               <div class="overlay" id="overlay"></div>
+
+<!-- ✅ MOBILE BOTTOM NAVIGATION -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+  <a href="{% url 'home' %}" class="nav-item" title="Home">
+    <i class="fas fa-home"></i>
+    <span>Home</span>
+  </a>
+  <a href="#" class="nav-item" title="Search" onclick="showToast('Search', 'Coming soon!', 'info', 2000); return false;">
+    <i class="fas fa-search"></i>
+    <span>Search</span>
+  </a>
+  <a href="#" class="nav-item" title="Messages" onclick="showToast('Messages', 'New message feature coming soon!', 'info', 2000); return false;">
+    <i class="fas fa-envelope"></i>
+    <span>Messages</span>
+  </a>
+  <a href="#" class="nav-item" title="Notifications" onclick="showToast('Notifications', 'Notification center coming soon!', 'info', 2000); return false;">
+    <i class="fas fa-bell"></i>
+    <span>Alerts</span>
+  </a>
+  {% if user.is_authenticated %}
+  <a href="{% url 'logout' %}" class="nav-item" title="Logout">
+    <i class="fas fa-sign-out-alt"></i>
+    <span>Logout</span>
+  </a>
+  {% endif %}
+</nav>
 
 <!-- ✅ NOW your page layout starts -->
 
@@ -1692,6 +1892,138 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+
+// ===== SWIPE DETECTION FOR MOBILE SIDEBAR =====
+let touchStartX = 0;
+let touchEndX = 0;
+
+document.addEventListener('touchstart', (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchend', (e) => {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}, false);
+
+function handleSwipe() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const threshold = 50;
+
+  // Swipe left (close sidebar)
+  if (touchStartX - touchEndX > threshold) {
+    if (sidebar.classList.contains('active')) {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('show');
+      document.body.classList.remove('no-scroll');
+    }
+  }
+}
+
+// ===== MOBILE BOTTOM NAVIGATION ACTIVE STATE =====
+function updateActiveNavItem() {
+  const currentPath = window.location.pathname;
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const href = item.getAttribute('href');
+    if (href && currentPath.startsWith(href) && href !== '#') {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
+
+updateActiveNavItem();
+
+// Update on navigation
+window.addEventListener('load', updateActiveNavItem);
+document.addEventListener('click', (e) => {
+  setTimeout(updateActiveNavItem, 100);
+});
+
+// ===== BREADCRUMB GENERATION =====
+function generateBreadcrumbs() {
+  const breadcrumbNav = document.getElementById('breadcrumb');
+  if (!breadcrumbNav) return;
+
+  const path = window.location.pathname;
+  const segments = path.split('/').filter(s => s);
+
+  // Build breadcrumb items
+  let html = '<a href="/" class="breadcrumb-link"><i class="fas fa-home"></i> Home</a>';
+
+  let currentPath = '';
+  segments.forEach((segment, index) => {
+    currentPath += '/' + segment;
+    const isLast = index === segments.length - 1;
+    const title = segment.replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
+    if (isLast) {
+      html += '<span class="breadcrumb-separator">/</span>';
+      html += `<span class="breadcrumb-current">${title}</span>`;
+    } else {
+      html += '<span class="breadcrumb-separator">/</span>';
+      html += `<a href="${currentPath}" class="breadcrumb-link">${title}</a>`;
+    }
+  });
+
+  breadcrumbNav.innerHTML = html;
+}
+
+// Generate breadcrumbs on page load
+window.addEventListener('load', generateBreadcrumbs);
+
+// ===== ANNOUNCEMENT TICKER =====
+class AnnouncementTicker {
+  constructor() {
+    this.element = document.getElementById('announcementTicker');
+    this.messages = [];
+    this.currentIndex = 0;
+  }
+
+  addMessage(message) {
+    this.messages.push(message);
+    if (this.messages.length === 1) {
+      this.show();
+    }
+  }
+
+  show() {
+    if (this.messages.length === 0) return;
+
+    const message = this.messages[this.currentIndex];
+    this.element.textContent = message;
+    this.element.classList.add('show');
+
+    // Auto-rotate if multiple messages
+    if (this.messages.length > 1) {
+      setTimeout(() => {
+        this.element.classList.add('hide');
+        setTimeout(() => {
+          this.element.classList.remove('hide');
+          this.currentIndex = (this.currentIndex + 1) % this.messages.length;
+          this.show();
+        }, 400);
+      }, 5000);
+    }
+  }
+
+  close() {
+    this.element.classList.add('hide');
+    setTimeout(() => {
+      this.element.classList.remove('show', 'hide');
+      this.messages = [];
+      this.currentIndex = 0;
+    }, 400);
+  }
+}
+
+window.announcementTicker = new AnnouncementTicker();
+
+// Example usage (will be populated from Django context):
+// announcementTicker.addMessage('📢 Important: Exam results will be released on May 15');
+
 </script>
 
 
