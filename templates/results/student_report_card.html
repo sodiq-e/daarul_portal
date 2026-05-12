@@ -15,18 +15,21 @@
 <style media="print">
     @page {
         size: A4 portrait;
-        margin: 1cm;
+        margin: 0.3cm;
     }
+    
     * {
-        margin: 0;
-        padding: 0;
+        margin: 0 !important;
+        padding: 0 !important;
         box-sizing: border-box;
     }
+    
     body {
         font-family: Arial, sans-serif;
-        background: white !important;
+        background: transparent !important;
         color: #000;
     }
+    
     .no-print {
         display: none !important;
     }
@@ -37,22 +40,69 @@
     }
     
     .report-card {
-        page-break-after: always;
-        padding: 0;
+        page-break-after: avoid !important;
+        padding: 0 !important;
         background: transparent !important;
         border: none !important;
         max-width: 100% !important;
         margin: 0 !important;
+        font-size: 10px;
     }
     
-    .report-card table,
+    .report-card h3 {
+        font-size: 11px !important;
+        margin: 8px 0 6px 0 !important;
+        padding: 0 !important;
+    }
+    
     .report-card div {
-        display: block !important;
         page-break-inside: avoid !important;
+    }
+    
+    .report-card table {
+        page-break-inside: avoid !important;
+        font-size: 9px !important;
+        margin: 5px 0 !important;
+    }
+    
+    .report-card th,
+    .report-card td {
+        padding: 3px !important;
+        border: 0.5px solid #999 !important;
+    }
+    
+    .report-card hr {
+        margin: 5px 0 !important;
+        border: 0.5px solid #ddd !important;
+    }
+    
+    .container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Watermark positioning for print */
+    .print-watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 300px;
+        height: 300px;
+        transform: translate(-50%, -50%);
+        z-index: 0;
+        opacity: 0.08;
+        background-image: url('{{ school_logo }}');
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        pointer-events: none;
     }
 </style>
 
 <div class="container-fluid mt-3 mb-5">
+    <!-- Print Watermark -->
+    <div class="print-watermark"></div>
+    
     <!-- Control Buttons -->
     <div class="no-print mb-3">
         <div class="d-flex gap-2">
@@ -66,72 +116,72 @@
     </div>
 
     <!-- Report Card Container -->
-    <div class="report-card" style="max-width: 800px; margin: 0 auto; background: white; border: 1px solid #ddd; padding: 20px; font-family: Arial, sans-serif;">
+    <div class="report-card" style="max-width: 800px; margin: 0 auto; background: white; border: 1px solid #ddd; padding: 15px; font-family: Arial, sans-serif;">
         
         <!-- School Header (Hidden in Print) -->
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 3px solid #2c3e50; padding-bottom: 15px;">
-            <h2 style="margin: 0; color: #2c3e50; font-size: 24px; font-weight: bold;">DAARUL BAYAAN SCHOOL</h2>
-            <p style="margin: 5px 0; color: #666; font-size: 12px;">Dedicated to Islamic & Academic Excellence</p>
-            <p style="margin: 0; color: #666; font-size: 11px;">📞 +234 XXX XXXX XXX | 📧 info@daarulbayaan.edu.ng</p>
+        <div style="text-align: center; margin-bottom: 12px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px;">
+            <h2 style="margin: 0; color: #2c3e50; font-size: 18px; font-weight: bold;">DAARUL BAYAAN SCHOOL</h2>
+            <p style="margin: 2px 0; color: #666; font-size: 11px;">Dedicated to Islamic & Academic Excellence</p>
+            <p style="margin: 0; color: #666; font-size: 10px;">📞 +234 XXX XXXX XXX | 📧 info@daarulbayaan.edu.ng</p>
         </div>
 
         <!-- Student Information -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; font-size: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; font-size: 11px;">
             <div>
-                <p style="margin: 3px 0;"><strong>Student Name:</strong> {{ student.get_full_name|upper }}</p>
-                <p style="margin: 3px 0;"><strong>Admission No:</strong> {{ student.admission_no }}</p>
-                <p style="margin: 3px 0;"><strong>Gender:</strong> {{ student.get_gender_display }}</p>
+                <p style="margin: 2px 0;"><strong>Student Name:</strong> {{ student.get_full_name|upper }}</p>
+                <p style="margin: 2px 0;"><strong>Admission No:</strong> {{ student.admission_no }}</p>
+                <p style="margin: 2px 0;"><strong>Gender:</strong> {{ student.get_gender_display }}</p>
             </div>
             <div>
-                <p style="margin: 3px 0;"><strong>Class:</strong> {{ student.student_class }}</p>
-                <p style="margin: 3px 0;"><strong>Term:</strong> {{ term.name }}</p>
-                <p style="margin: 3px 0;"><strong>Session:</strong> {% now 'Y' %}</p>
+                <p style="margin: 2px 0;"><strong>Class:</strong> {{ student.student_class }}</p>
+                <p style="margin: 2px 0;"><strong>Term:</strong> {{ term.name }}</p>
+                <p style="margin: 2px 0;"><strong>Session:</strong> {% now 'Y' %}</p>
             </div>
         </div>
 
-        <hr style="border: 1px solid #ddd; margin: 15px 0;">
+        <hr style="border: 0.5px solid #ddd; margin: 8px 0;">
 
         <!-- Academic Performance -->
-        <h3 style="font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">📚 ACADEMIC PERFORMANCE</h3>
+        <h3 style="font-size: 12px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📚 ACADEMIC PERFORMANCE</h3>
         
         {% if results %}
-            <div style="overflow-x: auto; margin-bottom: 20px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <div style="overflow-x: auto; margin-bottom: 12px;\">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px;\">
                     <thead>
-                        <tr style="background: #2c3e50; color: white;">
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: left; font-weight: bold;">Subject</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">Test</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">Exam</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">Total</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">%</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">Grade</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">Remark</th>
-                            <th style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">Position</th>
+                        <tr style="background: #2c3e50; color: white;\">
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: left; font-weight: bold; font-size: 9px;\">Subject</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Test</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Exam</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Total</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">%</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Grade</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Remark</th>
+                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Pos</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for result in results %}
-                        <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9f9f9;{% endif %}">
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: left;">{{ result.class_subject.subject.name }}</td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{{ result.test_score|default:"-" }}</td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{{ result.exam_score|default:"-" }}</td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">
+                        <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9f9f9;{% endif %}\">
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: left; font-size: 9px;\">{{ result.class_subject.subject.name }}</td>
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 9px;\">{{ result.test_score|default:"-" }}</td>
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 9px;\">{{ result.exam_score|default:"-" }}</td>
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 9px;\">
                                 {% if result.total_score %}{{ result.total_score|floatformat:1 }}{% else %}-{% endif %}
                             </td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-weight: bold;">
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 9px;\">
                                 {% if result.percentage %}{{ result.percentage|floatformat:1 }}%{% else %}-{% endif %}
                             </td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; background: 
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; background: 
                                 {% if result.grade == 'A' %}#d4edda
                                 {% elif result.grade == 'B' %}#d1ecf1
                                 {% elif result.grade == 'C' %}#fff3cd
                                 {% elif result.grade == 'D' %}#f8d7da
                                 {% else %}#e2e3e5{% endif %};
-                                font-weight: bold;">
+                                font-weight: bold; font-size: 9px;\">
                                 {{ result.grade|default:"-" }}
                             </td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">{{ result.remark|default:"-" }}</td>
-                            <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 8px;\">{{ result.remark|default:"-" }}</td>
+                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 9px;\">
                                 {% if result.subject_position %}{{ result.subject_position }}{% else %}-{% endif %}
                             </td>
                         </tr>
@@ -142,68 +192,68 @@
 
             <!-- Term Summary -->
             {% if term_result %}
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <div style="border: 1px solid #ddd; padding: 10px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 10px; margin: 0; color: #666;">Total Score</p>
-                    <p style="font-size: 16px; font-weight: bold; margin: 5px 0; color: #2c3e50;">{{ term_result.total_score|floatformat:1 }}</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
+                    <p style="font-size: 8px; margin: 0; color: #666;">Total Score</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.total_score|floatformat:1 }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 10px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 10px; margin: 0; color: #666;">Average Score</p>
-                    <p style="font-size: 16px; font-weight: bold; margin: 5px 0; color: #2c3e50;">{{ term_result.average_score|floatformat:1 }}</p>
+                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
+                    <p style="font-size: 8px; margin: 0; color: #666;">Average Score</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.average_score|floatformat:1 }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 10px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 10px; margin: 0; color: #666;">Grade</p>
-                    <p style="font-size: 16px; font-weight: bold; margin: 5px 0; color: #2c3e50;">{{ term_result.grade }}</p>
+                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
+                    <p style="font-size: 8px; margin: 0; color: #666;">Grade</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.grade }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 10px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 10px; margin: 0; color: #666;">Class Position</p>
-                    <p style="font-size: 16px; font-weight: bold; margin: 5px 0; color: #2c3e50;">{{ term_result.position }}/{{ term_result.class_size }}</p>
+                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
+                    <p style="font-size: 8px; margin: 0; color: #666;">Class Position</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.position }}/{{ term_result.class_size }}</p>
                 </div>
             </div>
             {% endif %}
         {% else %}
-            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin-bottom: 20px; font-size: 12px; border-radius: 4px;">
+            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 6px 8px; margin-bottom: 10px; font-size: 10px; border-radius: 3px;">
                 <p style="margin: 0;">⚠️ No academic results recorded for this term.</p>
             </div>
         {% endif %}
 
-        <hr style="border: 1px solid #ddd; margin: 15px 0;">
+        <hr style="border: 0.5px solid #ddd; margin: 6px 0;">
 
         <!-- Conduct & Behavior Assessment -->
-        <h3 style="font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">⭐ CONDUCT & BEHAVIOR ASSESSMENT</h3>
+        <h3 style="font-size: 11px; font-weight: bold; color: #2c3e50; margin-bottom: 6px;">⭐ CONDUCT & BEHAVIOR ASSESSMENT</h3>
         
         {% if student_conduct %}
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 11px; margin-bottom: 20px;">
-                <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9;">
-                    <p style="font-weight: bold; margin: 0 0 3px 0;">Attendance</p>
-                    <p style="margin: 0; color: #2c3e50; font-weight: bold;">{{ student_conduct.get_attendance_display }}</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 9px; margin-bottom: 10px;">
+                <div style="border: 1px solid #ddd; padding: 4px 6px; background: #f9f9f9;">
+                    <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 8px;">Attendance</p>
+                    <p style="margin: 0; color: #2c3e50; font-weight: bold; font-size: 9px;">{{ student_conduct.get_attendance_display }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9;">
-                    <p style="font-weight: bold; margin: 0 0 3px 0;">Conduct</p>
-                    <p style="margin: 0; color: #2c3e50; font-weight: bold;">{{ student_conduct.get_conduct_display }}</p>
+                <div style="border: 1px solid #ddd; padding: 4px 6px; background: #f9f9f9;">
+                    <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 8px;">Conduct</p>
+                    <p style="margin: 0; color: #2c3e50; font-weight: bold; font-size: 9px;">{{ student_conduct.get_conduct_display }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9;">
-                    <p style="font-weight: bold; margin: 0 0 3px 0;">Punctuality</p>
-                    <p style="margin: 0; color: #2c3e50; font-weight: bold;">{{ student_conduct.get_punctuality_display }}</p>
+                <div style="border: 1px solid #ddd; padding: 4px 6px; background: #f9f9f9;">
+                    <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 8px;">Punctuality</p>
+                    <p style="margin: 0; color: #2c3e50; font-weight: bold; font-size: 9px;">{{ student_conduct.get_punctuality_display }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9;">
-                    <p style="font-weight: bold; margin: 0 0 3px 0;">Attentiveness</p>
-                    <p style="margin: 0; color: #2c3e50; font-weight: bold;">{{ student_conduct.get_attentiveness_display }}</p>
+                <div style="border: 1px solid #ddd; padding: 4px 6px; background: #f9f9f9;">
+                    <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 8px;">Attentiveness</p>
+                    <p style="margin: 0; color: #2c3e50; font-weight: bold; font-size: 9px;">{{ student_conduct.get_attentiveness_display }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 8px; background: #f9f9f9;">
-                    <p style="font-weight: bold; margin: 0 0 3px 0;">Participation</p>
-                    <p style="margin: 0; color: #2c3e50; font-weight: bold;">{{ student_conduct.get_participation_display }}</p>
+                <div style="border: 1px solid #ddd; padding: 4px 6px; background: #f9f9f9;">
+                    <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 8px;">Participation</p>
+                    <p style="margin: 0; color: #2c3e50; font-weight: bold; font-size: 9px;">{{ student_conduct.get_participation_display }}</p>
                 </div>
             </div>
 
             {% if student_conduct.teacher_notes %}
-            <div style="border: 1px solid #ddd; padding: 10px; background: #f9f9f9; margin-bottom: 15px; font-size: 11px;">
-                <p style="font-weight: bold; margin: 0 0 5px 0;">📝 Teacher's Comments:</p>
-                <p style="margin: 0; line-height: 1.4;">{{ student_conduct.teacher_notes }}</p>
+            <div style="border: 1px solid #ddd; padding: 6px 8px; background: #f9f9f9; margin-bottom: 8px; font-size: 9px;">
+                <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 8px;">📝 Teacher's Comments:</p>
+                <p style="margin: 0; line-height: 1.3; font-size: 8px;">{{ student_conduct.teacher_notes }}</p>
             </div>
             {% endif %}
         {% else %}
-            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin-bottom: 20px; font-size: 12px; border-radius: 4px;">
+            <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 6px 8px; margin-bottom: 10px; font-size: 9px; border-radius: 3px;">
                 <p style="margin: 0;">⚠️ No conduct record available for this term.</p>
             </div>
         {% endif %}

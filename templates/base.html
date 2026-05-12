@@ -2880,22 +2880,26 @@ html, body {
     margin: 0 !important;
   }
 
-  /* Logo watermark for document background */
-  @page {
-    background-image: url('{{ school_logo }}');
-    background-position: center;
-    background-attachment: fixed;
-    background-size: 400px 400px;
-    background-repeat: no-repeat;
+  /* Logo watermark for document background - Print only */
+  body {
+    position: relative;
   }
 
-  body {
+  body::after {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 350px;
+    height: 350px;
     background-image: url('{{ school_logo }}');
-    background-position: center;
-    background-attachment: fixed;
-    background-size: 400px 400px;
+    background-size: contain;
     background-repeat: no-repeat;
-    background-color: white;
+    background-position: center;
+    opacity: 0.08;
+    z-index: -1;
+    pointer-events: none;
   }
 
   /* Tables styling for print */
