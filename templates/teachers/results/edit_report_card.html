@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Edit Report Card - {{ student.get_full_name }}{% endblock %}
+{% block title %}Edit Report Card - {{ student.full_name }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -9,12 +9,12 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header bg-warning">
-                    <h4>Edit Report Card - {{ student.get_full_name }}</h4>
+                    <h4>Edit Report Card - {{ student.full_name }}</h4>
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <p><strong>Student:</strong> {{ student.get_full_name }}</p>
+                            <p><strong>Student:</strong> {{ student.full_name }}</p>
                         </div>
                         <div class="col-md-4">
                             <p><strong>Admission:</strong> {{ student.admission_no }}</p>

@@ -329,7 +329,7 @@
                             {% for student in students %}
                                 <tr>
                                     <td class="student-name-cell">
-                                        <strong>{{ student.get_full_name }}</strong><br>
+                                        <strong>{{ student.full_name }}</strong><br>
                                         <small style="color: #999;">{{ student.admission_no }}</small>
                                     </td>
                                     {% for subject in class_subjects %}
@@ -361,7 +361,7 @@
                     {% for student in students %}
                         <div class="student-conduct-card">
                             <div class="student-conduct-name">
-                                👤 {{ student.get_full_name }} <small>({{ student.admission_no }})</small>
+                                👤 {{ student.full_name }} <small>({{ student.admission_no }})</small>
                             </div>
                             <div class="conduct-traits-grid">
                                 <div class="trait-group">

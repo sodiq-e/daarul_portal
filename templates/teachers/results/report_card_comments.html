@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Report Card Comments - {{ student.get_full_name }}{% endblock %}
+{% block title %}Report Card Comments - {{ student.full_name }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -14,7 +14,7 @@
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <p><strong>Student:</strong> {{ student.get_full_name }}</p>
+                            <p><strong>Student:</strong> {{ student.full_name }}</p>
                             <p><strong>Admission No:</strong> {{ student.admission_no }}</p>
                         </div>
                         <div class="col-md-6">

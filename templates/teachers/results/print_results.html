@@ -42,7 +42,7 @@
                                 {% for data in broadsheet_data %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ data.student.get_full_name }}</td>
+                                    <td>{{ data.student.full_name }}</td>
                                     {% for subject in class_subjects %}
                                     <td class="text-center">
                                         {% if data.subject_scores|get_item:subject.subject.name %}

@@ -36,7 +36,7 @@
                             <tbody>
                                 {% for item in student_results %}
                                 <tr>
-                                    <td>{{ item.student.get_full_name }}</td>
+                                    <td>{{ item.student.full_name }}</td>
                                     <td>{{ item.student.admission_no }}</td>
                                     <td>
                                         {% if item.term_result %}

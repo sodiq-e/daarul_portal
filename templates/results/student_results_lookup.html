@@ -13,7 +13,7 @@
                 </div>
                 <div class="card-body">
                     {% if student %}
-                        <h5>{{ student.get_full_name }}</h5>
+                        <h5>{{ student.full_name }}</h5>
                         <p class="text-muted">Admission: {{ student.admission_no }}</p>
                         
                         {% if active_terms %}

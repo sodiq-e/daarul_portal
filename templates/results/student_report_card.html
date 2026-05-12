@@ -2,7 +2,7 @@
 {% load static %}
 {% load form_filters %}
 
-{% block title %}Report Card - {{ student.get_full_name }}{% endblock %}
+{% block title %}Report Card - {{ student.full_name }}{% endblock %}
 
 {% block content %}
 <style>
@@ -128,7 +128,7 @@
         <!-- Student Information -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; font-size: 12px;">
             <div>
-                <p style="margin: 3px 0;"><strong>Student Name:</strong> {{ student.get_full_name|upper }}</p>
+                <p style="margin: 3px 0;"><strong>Student Name:</strong> {{ student.full_name|upper }}</p>
                 <p style="margin: 3px 0;"><strong>Admission No:</strong> {{ student.admission_no }}</p>
                 <p style="margin: 3px 0;"><strong>Gender:</strong> {{ student.get_gender_display }}</p>
             </div>
