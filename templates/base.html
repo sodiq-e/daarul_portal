@@ -161,17 +161,25 @@ html, body {
  .sidebar {
   position: relative;
   left: 0;
-  transform: translateX(0); /* ✅ ADD THIS LINE */
+  transform: translateX(0);
   height: auto;
   width: 300px;
 }
 
-  /* Non-collapsed sidebar - show all text */
+  /* Expanded sidebar on desktop - show full links */
+  .sidebar:not(.collapsed) .menu-content {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
   .sidebar:not(.collapsed) a {
     width: auto;
     height: auto;
     padding: 12px 14px;
     gap: 12px;
+    display: flex;
+    align-items: center;
   }
 
   .sidebar:not(.collapsed) a span {
@@ -180,6 +188,16 @@ html, body {
 
   .sidebar:not(.collapsed) a i {
     font-size: 16px;
+  }
+
+  /* Show menu headers on desktop when expanded */
+  .sidebar:not(.collapsed) .menu-header {
+    display: flex !important;
+  }
+
+  /* Show user profile on desktop when expanded */
+  .sidebar:not(.collapsed) > div:first-of-type {
+    display: block !important;
   }
 
   .content {
@@ -204,6 +222,11 @@ html, body {
 .menu-section {
   border-bottom: 1px solid rgba(255,255,255,0.1);
   margin-bottom: 8px;
+}
+
+.sidebar.collapsed .menu-section {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .menu-header {
@@ -254,21 +277,6 @@ html, body {
   padding: 16px 0;
 }
 
-/* Hide section headers and menus when collapsed */
-.sidebar.collapsed .menu-header {
-  display: none;
-}
-
-.sidebar.collapsed .menu-content {
-  display: none !important;
-}
-
-/* ===== SIDEBAR COLLAPSE ===== */
-.sidebar.collapsed {
-  width: 70px;
-  padding: 16px 0;
-}
-
 /* Hide user profile when collapsed */
 .sidebar.collapsed > div:first-of-type {
   display: none !important;
@@ -279,13 +287,14 @@ html, body {
   display: none !important;
 }
 
-/* Hide section dividers when collapsed */
-.sidebar.collapsed .menu-section {
-  border-bottom: none;
-  margin-bottom: 2px;
+/* Show menu content in collapsed state (but hide text) */
+.sidebar.collapsed .menu-content {
+  display: block !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
-/* Icon-only links in collapsed state */
+/* Collapsed links styling */
 .sidebar.collapsed a {
   width: 54px;
   height: 54px;
@@ -299,7 +308,7 @@ html, body {
   position: relative;
   background: transparent;
   transition: background 0.25s ease, transform 0.15s ease;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .sidebar.collapsed a i {
@@ -395,6 +404,10 @@ html, body {
   opacity: 1;
   visibility: visible;
 }
+
+.sidebar a {
+  display: flex;
+  align-items: center;
   gap: 12px;
   padding: 12px 14px;
   color: white;
