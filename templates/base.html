@@ -158,13 +158,20 @@ html, body {
     display: flex;
   }
 
- .sidebar {
-  position: relative;
-  left: 0;
-  transform: translateX(0);
-  height: auto;
-  width: 300px;
-}
+  .sidebar {
+    position: relative;
+    left: 0;
+    transform: translateX(0);
+    height: auto;
+    width: 300px;
+    transition: width 0.3s ease;
+  }
+
+  /* COLLAPSED STATE ON DESKTOP */
+  .sidebar.collapsed {
+    width: 70px;
+    padding: 16px 0;
+  }
 
   /* Expanded sidebar on desktop - show full links */
   .sidebar:not(.collapsed) .menu-content {
@@ -198,6 +205,37 @@ html, body {
   /* Show user profile on desktop when expanded */
   .sidebar:not(.collapsed) > div:first-of-type {
     display: block !important;
+  }
+
+  /* Collapsed state - hide profile and headers */
+  .sidebar.collapsed > div:first-of-type {
+    display: none !important;
+  }
+
+  .sidebar.collapsed .menu-header {
+    display: none !important;
+  }
+
+  .sidebar.collapsed .menu-content {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .sidebar.collapsed a {
+    width: 54px !important;
+    height: 54px;
+    padding: 0 !important;
+    margin: 6px auto;
+    gap: 0 !important;
+  }
+
+  .sidebar.collapsed a span {
+    display: none !important;
+  }
+
+  .sidebar.collapsed a i {
+    font-size: 20px;
   }
 
   .content {
