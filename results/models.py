@@ -130,13 +130,10 @@ class StudentResult(models.Model):
             test_score = Decimal(str(self.test_score))
             exam_score = Decimal(str(self.exam_score))
             
-            # Calculate total score
-            test_weight = self.result_template.test_max_score / (self.result_template.test_max_score + self.result_template.exam_max_score)
-            exam_weight = self.result_template.exam_max_score / (self.result_template.test_max_score + self.result_template.exam_max_score)
+            # Calculate total score (simple sum, not weighted)
+            self.total_score = test_score + exam_score
 
-            self.total_score = (test_score * test_weight) + (exam_score * exam_weight)
-
-            # Calculate percentage
+            # Calculate percentage based on actual total possible score
             max_total = self.result_template.test_max_score + self.result_template.exam_max_score
             self.percentage = (self.total_score / max_total) * 100
 

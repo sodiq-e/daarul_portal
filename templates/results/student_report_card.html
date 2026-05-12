@@ -6,7 +6,7 @@
 
 {% block content %}
 <style>
-    /* Hide the report card's custom header */
+    /* Keep header visible on screen */
     .report-card > div:first-child {
         display: block;
     }
@@ -15,7 +15,7 @@
 <style media="print">
     @page {
         size: A4 portrait;
-        margin: 0.3cm;
+        margin: 1cm;
     }
     
     * {
@@ -46,12 +46,12 @@
         border: none !important;
         max-width: 100% !important;
         margin: 0 !important;
-        font-size: 10px;
+        font-size: 11px;
     }
     
     .report-card h3 {
-        font-size: 11px !important;
-        margin: 8px 0 6px 0 !important;
+        font-size: 13px !important;
+        margin: 10px 0 8px 0 !important;
         padding: 0 !important;
     }
     
@@ -61,19 +61,19 @@
     
     .report-card table {
         page-break-inside: avoid !important;
-        font-size: 9px !important;
-        margin: 5px 0 !important;
+        font-size: 11px !important;
+        margin: 8px 0 !important;
     }
     
     .report-card th,
     .report-card td {
-        padding: 3px !important;
-        border: 0.5px solid #999 !important;
+        padding: 6px !important;
+        border: 1px solid #999 !important;
     }
     
     .report-card hr {
-        margin: 5px 0 !important;
-        border: 0.5px solid #ddd !important;
+        margin: 8px 0 !important;
+        border: 1px solid #ddd !important;
     }
     
     .container-fluid {
@@ -116,72 +116,72 @@
     </div>
 
     <!-- Report Card Container -->
-    <div class="report-card" style="max-width: 800px; margin: 0 auto; background: white; border: 1px solid #ddd; padding: 15px; font-family: Arial, sans-serif;">
+    <div class="report-card" style="max-width: 900px; margin: 0 auto; background: white; border: 1px solid #ddd; padding: 20px; font-family: Arial, sans-serif;">
         
         <!-- School Header (Hidden in Print) -->
-        <div style="text-align: center; margin-bottom: 12px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px;">
-            <h2 style="margin: 0; color: #2c3e50; font-size: 18px; font-weight: bold;">DAARUL BAYAAN SCHOOL</h2>
-            <p style="margin: 2px 0; color: #666; font-size: 11px;">Dedicated to Islamic & Academic Excellence</p>
-            <p style="margin: 0; color: #666; font-size: 10px;">📞 +234 XXX XXXX XXX | 📧 info@daarulbayaan.edu.ng</p>
+        <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 12px;">
+            <h2 style="margin: 0; color: #2c3e50; font-size: 20px; font-weight: bold;">DAARUL BAYAAN SCHOOL</h2>
+            <p style="margin: 2px 0; color: #666; font-size: 12px;">Dedicated to Islamic & Academic Excellence</p>
+            <p style="margin: 0; color: #666; font-size: 11px;">📞 +234 XXX XXXX XXX | 📧 info@daarulbayaan.edu.ng</p>
         </div>
 
         <!-- Student Information -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; font-size: 11px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; font-size: 12px;">
             <div>
-                <p style="margin: 2px 0;"><strong>Student Name:</strong> {{ student.get_full_name|upper }}</p>
-                <p style="margin: 2px 0;"><strong>Admission No:</strong> {{ student.admission_no }}</p>
-                <p style="margin: 2px 0;"><strong>Gender:</strong> {{ student.get_gender_display }}</p>
+                <p style="margin: 3px 0;"><strong>Student Name:</strong> {{ student.get_full_name|upper }}</p>
+                <p style="margin: 3px 0;"><strong>Admission No:</strong> {{ student.admission_no }}</p>
+                <p style="margin: 3px 0;"><strong>Gender:</strong> {{ student.get_gender_display }}</p>
             </div>
             <div>
-                <p style="margin: 2px 0;"><strong>Class:</strong> {{ student.student_class }}</p>
-                <p style="margin: 2px 0;"><strong>Term:</strong> {{ term.name }}</p>
-                <p style="margin: 2px 0;"><strong>Session:</strong> {% now 'Y' %}</p>
+                <p style="margin: 3px 0;"><strong>Class:</strong> {{ student.student_class }}</p>
+                <p style="margin: 3px 0;"><strong>Term:</strong> {{ term.name }}</p>
+                <p style="margin: 3px 0;"><strong>Session:</strong> {% now 'Y' %}</p>
             </div>
         </div>
 
-        <hr style="border: 0.5px solid #ddd; margin: 8px 0;">
+        <hr style="border: 1px solid #ddd; margin: 12px 0;">
 
         <!-- Academic Performance -->
-        <h3 style="font-size: 12px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📚 ACADEMIC PERFORMANCE</h3>
+        <h3 style="font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">📚 ACADEMIC PERFORMANCE</h3>
         
         {% if results %}
-            <div style="overflow-x: auto; margin-bottom: 12px;\">
-                <table style="width: 100%; border-collapse: collapse; font-size: 10px;\">
+            <div style="overflow-x: auto; margin-bottom: 15px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                     <thead>
-                        <tr style="background: #2c3e50; color: white;\">
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: left; font-weight: bold; font-size: 9px;\">Subject</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Test</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Exam</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Total</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">%</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Grade</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Remark</th>
-                            <th style="border: 1px solid #999; padding: 3px 4px; text-align: center; font-weight: bold; font-size: 9px;\">Pos</th>
+                        <tr style="background: #2c3e50; color: white;">
+                            <th style="border: 1px solid #999; padding: 8px; text-align: left; font-weight: bold; font-size: 11px;">Subject</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">Test</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">Exam</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">Total</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">%</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">Grade</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">Remark</th>
+                            <th style="border: 1px solid #999; padding: 8px; text-align: center; font-weight: bold; font-size: 11px;">Pos</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for result in results %}
-                        <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9f9f9;{% endif %}\">
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: left; font-size: 9px;\">{{ result.class_subject.subject.name }}</td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 9px;\">{{ result.test_score|default:"-" }}</td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 9px;\">{{ result.exam_score|default:"-" }}</td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 9px;\">
+                        <tr style="{% if forloop.counter|divisibleby:2 %}background: #f9f9f9;{% endif %}">
+                            <td style="border: 1px solid #999; padding: 6px; text-align: left; font-size: 11px;">{{ result.class_subject.subject.name }}</td>
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; font-size: 11px;">{{ result.test_score|default:"-" }}</td>
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; font-size: 11px;">{{ result.exam_score|default:"-" }}</td>
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; font-weight: bold; font-size: 11px;">
                                 {% if result.total_score %}{{ result.total_score|floatformat:1 }}{% else %}-{% endif %}
                             </td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-weight: bold; font-size: 9px;\">
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; font-weight: bold; font-size: 11px;">
                                 {% if result.percentage %}{{ result.percentage|floatformat:1 }}%{% else %}-{% endif %}
                             </td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; background: 
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; background: 
                                 {% if result.grade == 'A' %}#d4edda
                                 {% elif result.grade == 'B' %}#d1ecf1
                                 {% elif result.grade == 'C' %}#fff3cd
                                 {% elif result.grade == 'D' %}#f8d7da
                                 {% else %}#e2e3e5{% endif %};
-                                font-weight: bold; font-size: 9px;\">
+                                font-weight: bold; font-size: 11px;">
                                 {{ result.grade|default:"-" }}
                             </td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 8px;\">{{ result.remark|default:"-" }}</td>
-                            <td style="border: 1px solid #999; padding: 2px 4px; text-align: center; font-size: 9px;\">
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; font-size: 10px;">{{ result.remark|default:"-" }}</td>
+                            <td style="border: 1px solid #999; padding: 6px; text-align: center; font-size: 11px;">
                                 {% if result.subject_position %}{{ result.subject_position }}{% else %}-{% endif %}
                             </td>
                         </tr>
@@ -192,24 +192,31 @@
 
             <!-- Term Summary -->
             {% if term_result %}
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px;">
-                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 8px; margin: 0; color: #666;">Total Score</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.total_score|floatformat:1 }}</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+                <div style="border: 1px solid #ddd; padding: 12px; text-align: center; background: #f0f0f0; border-radius: 4px;">
+                    <p style="font-size: 11px; margin: 0; color: #666; font-weight: bold;">Total Score</p>
+                    <p style="font-size: 18px; font-weight: bold; margin: 6px 0; color: #2c3e50;">{{ term_result.total_score|floatformat:1 }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 8px; margin: 0; color: #666;">Average Score</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.average_score|floatformat:1 }}</p>
+                <div style="border: 1px solid #ddd; padding: 12px; text-align: center; background: #f0f0f0; border-radius: 4px;">
+                    <p style="font-size: 11px; margin: 0; color: #666; font-weight: bold;">Average %</p>
+                    <p style="font-size: 18px; font-weight: bold; margin: 6px 0; color: #2c3e50;">{{ term_result.average_percentage|floatformat:1 }}%</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 8px; margin: 0; color: #666;">Grade</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.grade }}</p>
+                <div style="border: 1px solid #ddd; padding: 12px; text-align: center; background: #f0f0f0; border-radius: 4px;">
+                    <p style="font-size: 11px; margin: 0; color: #666; font-weight: bold;">Overall Grade</p>
+                    <p style="font-size: 18px; font-weight: bold; margin: 6px 0; color: #2c3e50;">{{ term_result.overall_grade|default:"N/A" }}</p>
                 </div>
-                <div style="border: 1px solid #ddd; padding: 6px 4px; text-align: center; background: #f0f0f0;">
-                    <p style="font-size: 8px; margin: 0; color: #666;">Class Position</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0; color: #2c3e50;">{{ term_result.position }}/{{ term_result.class_size }}</p>
+                <div style="border: 1px solid #ddd; padding: 12px; text-align: center; background: #f0f0f0; border-radius: 4px;">
+                    <p style="font-size: 11px; margin: 0; color: #666; font-weight: bold;">Class Position</p>
+                    <p style="font-size: 18px; font-weight: bold; margin: 6px 0; color: #2c3e50;">{{ term_result.class_position|default:"N/A" }}</p>
                 </div>
             </div>
+            
+            {% if term_result.overall_remark %}
+            <div style="border: 1px solid #2c3e50; padding: 12px; background: #f9f9f9; margin-bottom: 15px; border-radius: 4px;">
+                <p style="font-size: 11px; margin: 0 0 6px 0; color: #2c3e50; font-weight: bold;">📌 Overall Remark:</p>
+                <p style="font-size: 12px; margin: 0; color: #333;">{{ term_result.overall_remark }}</p>
+            </div>
+            {% endif %}
             {% endif %}
         {% else %}
             <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 6px 8px; margin-bottom: 10px; font-size: 10px; border-radius: 3px;">
