@@ -188,38 +188,50 @@ html, body {
     }
     /* ===== COLLAPSIBLE MENU ===== */
 .menu-section {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 8px;
 }
 
 .menu-header {
   font-size: 12px;
   text-transform: uppercase;
-  opacity: 0.6;
-  padding: 18px 12px 8px;
+  opacity: 0.7;
+  padding: 12px 12px;
   letter-spacing: 1px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: opacity 0.2s ease;
+  border-radius: 6px;
 }
 
 .menu-header:hover {
-  background: #eaeaea;
+  opacity: 1;
+  background: rgba(255,255,255,0.08);
+}
+
+.menu-header .arrow {
+  font-size: 14px;
+  transition: transform 0.3s ease;
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+}
+
+.menu-header.active .arrow {
+  transform: rotate(90deg);
 }
 
 .menu-content {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-}
-
-.menu-content.open {
   max-height: 500px;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Arrow rotation */
-.menu-header span {
-  transition: transform 0.3s ease;
-}
-
-.menu-header.active span {
-  transform: rotate(90deg);
+.menu-content.collapsed {
+  max-height: 0;
 }
 
 /* ===== SIDEBAR COLLAPSE ===== */
@@ -227,8 +239,26 @@ html, body {
   width: 70px;
 }
 
+.sidebar.collapsed .menu-header {
+  padding: 12px 4px;
+  overflow: hidden;
+  text-indent: -9999px;
+  justify-content: center;
+}
+
+.sidebar.collapsed .menu-header .arrow {
+  display: none;
+}
+
+.sidebar.collapsed .menu-content {
+  display: none;
+}
+
 .sidebar.collapsed a {
-  font-size: 12px; /* keep text visible */
+  font-size: 12px;
+  justify-content: center;
+  gap: 0;
+  padding: 12px 4px;
 }
 
 .sidebar a {
@@ -274,6 +304,8 @@ html, body {
     transform: translateX(-100%);
     z-index: 2000;
     box-shadow: 6px 0 25px rgba(0,0,0,0.25);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .sidebar.active {
@@ -318,6 +350,24 @@ html, body {
   overflow-x: hidden;
 }
 
+  /* Mobile menu sections */
+  .menu-section {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 4px;
+  }
+
+  .menu-header {
+    padding: 14px 12px;
+    font-size: 13px;
+  }
+
+  .menu-content {
+    max-height: 500px;
+  }
+
+  .menu-content.collapsed {
+    max-height: 0;
+  }
 }
 
 /* ===== FINAL HEADER (STABLE) ===== */
@@ -337,13 +387,18 @@ html, body {
 .header-center {
   text-align: center;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
 }
 
 /* prevent overflow */
 .header-center div {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* RIGHT */
@@ -368,22 +423,15 @@ html, body {
 
   .header-center div:first-child {
     font-size: 16px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .header-center div:last-child {
-    font-size: 12px;
+    font-size: 11px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
-  .header-center div:first-child {
-  font-size: 16px;        /* reduce title size */
-  white-space: nowrap;    /* keep in one line */
-  overflow: hidden;
-  text-overflow: ellipsis; /* adds "..." */
-}
-
-.header-center div:last-child {
-  font-size: 12px;
-}
-
 }
   </style>
 
@@ -440,183 +488,223 @@ html, body {
 
 {% if user.is_authenticated %}
 
-  <div style="padding:16px; font-weight:bold;">
+  <div style="padding:16px; font-weight:bold; color: white;">
     <i class="fas fa-user-circle"></i>
     {{ user.get_full_name|default:user.username }}
   </div>
 
   {% if user.is_staff %}
-    <div class="menu-header">👨‍💼 ADMIN</div>
+    <div class="menu-section">
+      <div class="menu-header active" onclick="toggleMenu(this)">
+        <span>👨‍💼 ADMIN</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="menu-content">
+        <a href="{% url 'teachers:teacher_list' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_list' %}active{% endif %}">
+          <i class="fas fa-users"></i> Teachers Management
+        </a>
 
-    <a href="{% url 'teachers:teacher_list' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_list' %}active{% endif %}">
-      <i class="fas fa-users"></i> Teachers Management
-    </a>
+        <a href="{% url 'teachers:class_teacher_list' %}"
+           class="{% if request.resolver_match.url_name == 'class_teacher_list' %}active{% endif %}">
+          <i class="fas fa-chalkboard-teacher"></i> Class-Teacher Assign
+        </a>
 
-    <a href="{% url 'teachers:class_teacher_list' %}"
-       class="{% if request.resolver_match.url_name == 'class_teacher_list' %}active{% endif %}">
-      <i class="fas fa-chalkboard-teacher"></i> Class-Teacher Assign
-    </a>
+        <a href="{% url 'teachers:teacher_permissions' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_permissions' %}active{% endif %}">
+          <i class="fas fa-user-shield"></i> Teacher Permissions
+        </a>
 
-    <a href="{% url 'teachers:teacher_permissions' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_permissions' %}active{% endif %}">
-      <i class="fas fa-user-shield"></i> Teacher Permissions
-    </a>
+        <a href="{% url 'teachers:admin_scheme_list' %}"
+           class="{% if request.resolver_match.url_name == 'admin_scheme_list' %}active{% endif %}">
+          <i class="fas fa-tasks"></i> Scheme Approval
+        </a>
 
-    <a href="{% url 'teachers:admin_scheme_list' %}"
-       class="{% if request.resolver_match.url_name == 'admin_scheme_list' %}active{% endif %}">
-      <i class="fas fa-tasks"></i> Scheme Approval
-    </a>
+        <a href="{% url 'admin_messages_list' %}"
+           class="{% if request.resolver_match.url_name == 'admin_messages_list' %}active{% endif %}">
+          <i class="fas fa-envelope"></i> Contact Messages
+        </a>
 
-    <a href="{% url 'admin_messages_list' %}"
-       class="{% if request.resolver_match.url_name == 'admin_messages_list' %}active{% endif %}">
-      <i class="fas fa-envelope"></i> Contact Messages
-    </a>
+        <a href="{% url 'admin_portal_users_list' %}"
+           class="{% if request.resolver_match.url_name == 'admin_portal_users_list' %}active{% endif %}">
+          <i class="fas fa-comments"></i> Portal Conversations
+        </a>
 
-    <a href="{% url 'admin_portal_users_list' %}"
-       class="{% if request.resolver_match.url_name == 'admin_portal_users_list' %}active{% endif %}">
-      <i class="fas fa-comments"></i> Portal Conversations
-    </a>
+        <a href="{% url 'results_admin:dashboard' %}"
+           class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+          <i class="fas fa-chart-bar"></i> Results Settings
+        </a>
 
-    <a href="{% url 'results_admin:dashboard' %}"
-       class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-      <i class="fas fa-chart-bar"></i> Results Settings
-    </a>
+        <a href="/admin/">
+          <i class="fas fa-cog"></i> Django Admin
+        </a>
 
-    <a href="/admin/">
-      <i class="fas fa-cog"></i> Django Admin
-    </a>
+        <a href="{% url 'bulk_student_permissions' %}">
+          <i class="fas fa-broom"></i> Clear Selection
+        </a>
 
-    <a href="{% url 'bulk_student_permissions' %}">
-      <i class="fas fa-broom"></i> Clear Selection
-    </a>
-
-    <a href="{% url 'student_list' %}">
-      <i class="fas fa-arrow-left"></i> Back to Students
-    </a>
+        <a href="{% url 'student_list' %}">
+          <i class="fas fa-arrow-left"></i> Back to Students
+        </a>
+      </div>
+    </div>
 
   {% elif user.teacher_profile %}
-    <div class="menu-header">👨‍🏫 TEACHER</div>
+    <div class="menu-section">
+      <div class="menu-header active" onclick="toggleMenu(this)">
+        <span>👨‍🏫 TEACHER</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="menu-content">
+        <a href="{% url 'teachers:teacher_profile' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_profile' %}active{% endif %}">
+          <i class="fas fa-id-badge"></i> My Profile
+        </a>
 
-    <a href="{% url 'teachers:teacher_profile' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_profile' %}active{% endif %}">
-      <i class="fas fa-id-badge"></i> My Profile
-    </a>
+        <a href="{% url 'teachers:teacher_scheme_list' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_scheme_list' %}active{% endif %}">
+          <i class="fas fa-book"></i> Scheme of Work
+        </a>
 
-    <a href="{% url 'teachers:teacher_scheme_list' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_scheme_list' %}active{% endif %}">
-      <i class="fas fa-book"></i> Scheme of Work
-    </a>
+        <a href="{% url 'teacher_results_list' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_results_list' %}active{% endif %}">
+          <i class="fas fa-edit"></i> Edit Results
+        </a>
 
-    <a href="{% url 'teacher_results_list' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_results_list' %}active{% endif %}">
-      <i class="fas fa-edit"></i> Edit Results
-    </a>
+        <a href="{% url 'teacher_payroll' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_payroll' %}active{% endif %}">
+          <i class="fas fa-money-check"></i> My Payroll
+        </a>
 
-    <a href="{% url 'teacher_payroll' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_payroll' %}active{% endif %}">
-      <i class="fas fa-money-check"></i> My Payroll
-    </a>
+        <a href="{% url 'teacher_attendance_list' %}"
+           class="{% if request.resolver_match.url_name == 'teacher_attendance_list' %}active{% endif %}">
+          <i class="fas fa-calendar-check"></i> Attendance
+        </a>
 
-    <a href="{% url 'teacher_attendance_list' %}"
-       class="{% if request.resolver_match.url_name == 'teacher_attendance_list' %}active{% endif %}">
-      <i class="fas fa-calendar-check"></i> Attendance
-    </a>
-
-    <a href="{% url 'portal_messages_list' %}"
-       class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
-      <i class="fas fa-comments"></i> Portal Messages
-      {% if portal_unread_count > 0 %}
-        <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
-      {% endif %}
-    </a>
+        <a href="{% url 'portal_messages_list' %}"
+           class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-comments"></i> Portal Messages
+          {% if portal_unread_count > 0 %}
+            <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
+          {% endif %}
+        </a>
+      </div>
+    </div>
 
   {% elif user.student_profile %}
-    <div class="menu-header">🎓 STUDENT</div>
+    <div class="menu-section">
+      <div class="menu-header active" onclick="toggleMenu(this)">
+        <span>🎓 STUDENT</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="menu-content">
+        <a href="{% url 'student_portal_dashboard' %}"
+           class="{% if request.resolver_match.url_name == 'student_portal_dashboard' %}active{% endif %}">
+          <i class="fas fa-home"></i> My Dashboard
+        </a>
 
-    <a href="{% url 'student_portal_dashboard' %}"
-       class="{% if request.resolver_match.url_name == 'student_portal_dashboard' %}active{% endif %}">
-      <i class="fas fa-home"></i> My Dashboard
-    </a>
+        <a href="{% url 'student_portal_profile' %}"
+           class="{% if request.resolver_match.url_name == 'student_portal_profile' %}active{% endif %}">
+          <i class="fas fa-user"></i> My Profile
+        </a>
 
-    <a href="{% url 'student_portal_profile' %}"
-       class="{% if request.resolver_match.url_name == 'student_portal_profile' %}active{% endif %}">
-      <i class="fas fa-user"></i> My Profile
-    </a>
+        <a href="{% url 'student_portal_results' %}"
+           class="{% if request.resolver_match.url_name == 'student_portal_results' %}active{% endif %}">
+          <i class="fas fa-chart-line"></i> My Results
+        </a>
 
-    <a href="{% url 'student_portal_results' %}"
-       class="{% if request.resolver_match.url_name == 'student_portal_results' %}active{% endif %}">
-      <i class="fas fa-chart-line"></i> My Results
-    </a>
+        <a href="{% url 'student_portal_fees' %}"
+           class="{% if request.resolver_match.url_name == 'student_portal_fees' %}active{% endif %}">
+          <i class="fas fa-wallet"></i> School Fees
+        </a>
 
-    <a href="{% url 'student_portal_fees' %}"
-       class="{% if request.resolver_match.url_name == 'student_portal_fees' %}active{% endif %}">
-      <i class="fas fa-wallet"></i> School Fees
-    </a>
-
-    <a href="{% url 'portal_messages_list' %}"
-       class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
-      <i class="fas fa-comments"></i> Portal Messages
-      {% if portal_unread_count > 0 %}
-        <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
-      {% endif %}
-    </a>
+        <a href="{% url 'portal_messages_list' %}"
+           class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fas fa-comments"></i> Portal Messages
+          {% if portal_unread_count > 0 %}
+            <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
+          {% endif %}
+        </a>
+      </div>
+    </div>
 
   {% endif %}
 
-  <div class="menu-header">📋 PORTAL</div>
+  <div class="menu-section">
+    <div class="menu-header active" onclick="toggleMenu(this)">
+      <span>📋 PORTAL</span>
+      <span class="arrow">›</span>
+    </div>
+    <div class="menu-content">
+      <a href="{% url 'school_classes:class_list' %}"
+         class="{% if request.resolver_match.url_name == 'class_list' %}active{% endif %}">
+        <i class="fas fa-chalkboard"></i> Classes
+      </a>
 
-  <a href="{% url 'school_classes:class_list' %}"
-     class="{% if request.resolver_match.url_name == 'class_list' %}active{% endif %}">
-    <i class="fas fa-chalkboard"></i> Classes
-  </a>
+      <a href="{% url 'announcement_list' %}"
+         class="{% if request.resolver_match.url_name == 'announcement_list' %}active{% endif %}">
+        <i class="fas fa-bullhorn"></i> Announcements
+      </a>
 
-  <a href="{% url 'announcement_list' %}"
-     class="{% if request.resolver_match.url_name == 'announcement_list' %}active{% endif %}">
-    <i class="fas fa-bullhorn"></i> Announcements
-  </a>
+      <a href="/results/">
+        <i class="fas fa-poll"></i> Results
+      </a>
 
-  <a href="/results/">
-    <i class="fas fa-poll"></i> Results
-  </a>
+      <a href="{% url 'profile' %}"
+         class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+        <i class="fas fa-cog"></i> Account Settings
+      </a>
+    </div>
+  </div>
 
-  <a href="{% url 'profile' %}"
-     class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
-    <i class="fas fa-cog"></i> Account Settings
-  </a>
-
-  <form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit" style="width:100%; text-align:left; padding:12px; border:none; background:none; color:white;">
-      <i class="fas fa-sign-out-alt"></i> Logout
-    </button>
-  </form>
+  <div class="menu-section">
+    <div style="padding:12px;">
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" style="width:100%; text-align:left; padding:8px 0; border:none; background:none; color:white; cursor: pointer; font-size: 14px;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </form>
+    </div>
+  </div>
 
 {% else %}
 
-  <div class="menu-header">👤 GUEST</div>
+  <div class="menu-section">
+    <div class="menu-header active" onclick="toggleMenu(this)">
+      <span>👤 GUEST</span>
+      <span class="arrow">›</span>
+    </div>
+    <div class="menu-content">
+      <a href="{% url 'login' %}">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </a>
 
-  <a href="{% url 'login' %}">
-    <i class="fas fa-sign-in-alt"></i> Sign In
-  </a>
+      <a href="{% url 'signup' %}">
+        <i class="fas fa-user-plus"></i> Create Account
+      </a>
+    </div>
+  </div>
 
-  <a href="{% url 'signup' %}">
-    <i class="fas fa-user-plus"></i> Create Account
-  </a>
+  <div class="menu-section">
+    <div class="menu-header active" onclick="toggleMenu(this)">
+      <span>📢 INFO</span>
+      <span class="arrow">›</span>
+    </div>
+    <div class="menu-content">
+      <a href="{% url 'student_application' %}">
+        <i class="fas fa-file-alt"></i> Apply for Admission
+      </a>
 
-  <div class="menu-header">📢 INFO</div>
+      <a href="{% url 'teachers:teacher_apply' %}">
+        <i class="fas fa-chalkboard-teacher"></i> Apply as Teacher
+      </a>
 
-  <a href="{% url 'student_application' %}">
-    <i class="fas fa-file-alt"></i> Apply for Admission
-  </a>
-
-  <a href="{% url 'teachers:teacher_apply' %}">
-    <i class="fas fa-chalkboard-teacher"></i> Apply as Teacher
-  </a>
-
-  <a href="{% url 'announcement_list' %}">
-    <i class="fas fa-bullhorn"></i> Announcements
-  </a>
+      <a href="{% url 'announcement_list' %}">
+        <i class="fas fa-bullhorn"></i> Announcements
+      </a>
+    </div>
+  </div>
 
 {% endif %}
 
@@ -649,6 +737,7 @@ overlay.onclick = function () {
   overlay.classList.remove('show');
   document.body.classList.remove('no-scroll');
 };
+
 document.querySelectorAll('.sidebar a').forEach(link => {
   link.onclick = () => {
     if (window.innerWidth < 1024) {
@@ -657,6 +746,41 @@ document.querySelectorAll('.sidebar a').forEach(link => {
       document.body.classList.remove('no-scroll');
     }
   };
+});
+
+// ===== COLLAPSIBLE MENU =====
+function toggleMenu(header) {
+  const content = header.nextElementSibling;
+  
+  if (!content || !content.classList.contains('menu-content')) {
+    return;
+  }
+
+  // Toggle active state on header
+  header.classList.toggle('active');
+  
+  // Toggle collapsed state on content
+  content.classList.toggle('collapsed');
+}
+
+// ===== AUTO-EXPAND CURRENT SECTION ON LOAD =====
+document.addEventListener('DOMContentLoaded', function() {
+  // Find any active link and expand its parent section
+  const activeLink = document.querySelector('.sidebar a.active');
+  
+  if (activeLink) {
+    let parent = activeLink.closest('.menu-content');
+    if (parent) {
+      // Expand the parent content
+      parent.classList.remove('collapsed');
+      
+      // Mark the header as active
+      const header = parent.previousElementSibling;
+      if (header && header.classList.contains('menu-header')) {
+        header.classList.add('active');
+      }
+    }
+  }
 });
 </script>
 
