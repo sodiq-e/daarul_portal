@@ -16,6 +16,10 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
         ('School Information', {
             'fields': ('school_name', 'motto', 'logo')
         }),
+        ('School Contact Information', {
+            'fields': ('school_address', 'school_phone', 'school_email'),
+            'description': 'School contact details displayed in header and printed documents'
+        }),
         ('Homepage Content', {
     'fields': (
         'homepage_welcome_text',

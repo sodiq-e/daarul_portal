@@ -144,6 +144,29 @@ class SchoolSettings(models.Model):
         help_text="Email subject for applications. Use {school_name} as placeholder"
     )
 
+    # School Contact Information (for header/documents)
+    school_address = models.TextField(
+        default="123 Main Street, City, Country",
+        blank=True,
+        null=True,
+        help_text="School physical address displayed in header and documents"
+    )
+
+    school_phone = models.CharField(
+        max_length=20,
+        default="+234 (0) 123 456 7890",
+        blank=True,
+        null=True,
+        help_text="School contact phone number"
+    )
+
+    school_email = models.EmailField(
+        default="info@daarulbayaan.edu",
+        blank=True,
+        null=True,
+        help_text="School general contact email address"
+    )
+
     def __str__(self):
         return self.school_name or "School Settings"
 
