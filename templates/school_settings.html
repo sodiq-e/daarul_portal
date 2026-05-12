@@ -21,6 +21,20 @@
         </div>
     {% endif %}
 
+    {% if form.errors %}
+        <div style="background:#ffdddd; padding:15px; margin-bottom:20px; border-radius:5px;">
+            <strong>Form validation errors:</strong>
+            <ul style="margin:10px 0 0 20px;">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field|capfirst }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
 
