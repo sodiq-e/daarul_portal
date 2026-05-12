@@ -1003,33 +1003,55 @@ const menuBtn = document.getElementById('menuBtn');
 const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('overlay');
 
-menuBtn.onclick = function () {
-  if (window.innerWidth < 1024) {
+// Handle menu button click
+menuBtn.addEventListener('click', function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const screenWidth = window.innerWidth;
+  
+  if (screenWidth < 1024) {
+    // Mobile: toggle drawer
     sidebar.classList.toggle('active');
     overlay.classList.toggle('show');
     document.body.classList.toggle('no-scroll');
   } else {
+    // Desktop: toggle collapse
     sidebar.classList.toggle('collapsed');
   }
-};
+});
 
-overlay.onclick = function () {
+// Close drawer when overlay clicked
+overlay.addEventListener('click', function() {
   sidebar.classList.remove('active');
   overlay.classList.remove('show');
   document.body.classList.remove('no-scroll');
-};
+});
 
+// Close drawer when any link is clicked on mobile
 document.querySelectorAll('.sidebar a').forEach(link => {
-  link.onclick = () => {
+  link.addEventListener('click', function() {
     if (window.innerWidth < 1024) {
       sidebar.classList.remove('active');
       overlay.classList.remove('show');
       document.body.classList.remove('no-scroll');
     }
-  };
+  });
 });
 
-// ===== COLLAPSIBLE MENU =====
+// Handle form button (logout)
+const logoutBtn = document.querySelector('.sidebar form button');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', function() {
+    if (window.innerWidth < 1024) {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('show');
+      document.body.classList.remove('no-scroll');
+    }
+  });
+}
+
+// ===== COLLAPSIBLE MENU SECTIONS =====
 function toggleMenu(header) {
   const content = header.nextElementSibling;
   
