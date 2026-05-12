@@ -195,7 +195,7 @@
       font-size: 24px;
       cursor: pointer;
       display: none;
-      z-index: 100;
+      z-index: 10000;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       transition: all 0.3s ease;
       animation: slideInUp 0.3s ease-out;
@@ -456,6 +456,10 @@
 
       .content {
         padding-bottom: 70px !important;
+      }
+
+      footer {
+        margin-bottom: 70px !important;
       }
     }
 
@@ -3166,17 +3170,17 @@ html, body {
         <div style="font-size:24px; font-weight:bold;">{{ school_name }}</div>
       </a>
       <div style="font-size:14px;">{{ motto }}</div>
-      <!-- School Contact Information - Single Line -->
+      <!-- School Contact Information - Responsive -->
       {% if school_address or school_phone or school_email %}
-      <div style="font-size:11px; margin-top:6px; color: var(--header-heading-color); opacity: 0.95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+      <div style="font-size:11px; margin-top:6px; color: var(--header-heading-color); opacity: 0.95; line-height: 1.3;">
         {% if school_address %}
-          📍 {{ school_address }}
+          <div>📍 {{ school_address }}</div>
         {% endif %}
         {% if school_phone %}
-          | 📞 {{ school_phone }}
+          <div>📞 {{ school_phone }}</div>
         {% endif %}
         {% if school_email %}
-          | 📧 {{ school_email }}
+          <div>📧 {{ school_email }}</div>
         {% endif %}
       </div>
       {% endif %}
@@ -3491,6 +3495,22 @@ html, body {
     </div>
 
   </div>
+
+<!-- Footer -->
+{% if footer_copyright_text %}
+<footer style="background: var(--primary-color); color: white; padding: 20px 0; text-align: center; margin-top: 40px;">
+  <div class="container" style="padding: 0 15px;">
+    {% if footer_copyright_link %}
+      <a href="{{ footer_copyright_link }}" style="color: white; text-decoration: none;" target="_blank">
+        {{ footer_copyright_text }}
+      </a>
+    {% else %}
+      {{ footer_copyright_text }}
+    {% endif %}
+  </div>
+</footer>
+{% endif %}
+
 <script>
 // ===== TOAST NOTIFICATION SYSTEM =====
 class Toast {

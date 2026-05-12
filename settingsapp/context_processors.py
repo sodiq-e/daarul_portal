@@ -67,6 +67,8 @@ def school_settings(request):
             "school_address": settings.school_address if settings else "",
             "school_phone": settings.school_phone if settings else "",
             "school_email": settings.school_email if settings else "",
+            "footer_copyright_text": settings.footer_copyright_text if settings else "",
+            "footer_copyright_link": settings.footer_copyright_link if settings else "",
             "school_settings": settings,
             # Theme colors (uses page theme if exists, otherwise global theme)
             "primary_color": theme["primary_color"],
@@ -96,6 +98,8 @@ def school_settings(request):
             "school_address": "",
             "school_phone": "",
             "school_email": "",
+            "footer_copyright_text": "",
+            "footer_copyright_link": "",
             "school_settings": None,
             "primary_color": "#4b2e83",
             "secondary_color": "#7f5af0",

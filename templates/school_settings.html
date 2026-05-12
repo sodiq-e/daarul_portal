@@ -72,6 +72,19 @@
             </div>
         </fieldset>
 
+        <!-- Footer Copyright -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Footer Copyright</legend>
+
+            <label><b>Copyright Text</b></label>
+            {{ form.footer_copyright_text }}
+            <small style="color:#666; display:block; margin-top:5px;">Text displayed in the website footer</small>
+
+            <label style="margin-top:15px;"><b>Copyright Link (Optional)</b></label>
+            {{ form.footer_copyright_link }}
+            <small style="color:#666; display:block; margin-top:5px;">Link for copyright text (e.g., privacy policy URL)</small>
+        </fieldset>
+
 {% if gallery_formset.errors %}
 <div style="background:#ffdddd; padding:10px; margin-bottom:15px; border-radius:5px;">
     <strong>Gallery Form Errors:</strong>
