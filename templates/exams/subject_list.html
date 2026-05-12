@@ -11,23 +11,13 @@
             </h1>
         </div>
         {% if can_modify %}
-        <div class="dropdown">
-            <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-plus"></i> Add New
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                    <a class="dropdown-item" href="{% url 'select_class_for_subjects' %}">
-                        <i class="fas fa-hand-pointer"></i> Add for Class...
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item" href="{% url 'subject_add' %}">
-                        <i class="fas fa-star"></i> Add Global Subject
-                    </a>
-                </li>
-            </ul>
+        <div class="d-flex gap-2">
+            <a href="{% url 'select_class_for_subjects' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-hand-pointer"></i> Add for Class
+            </a>
+            <a href="{% url 'subject_add' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-star"></i> Add Global Subject
+            </a>
         </div>
         {% endif %}
     </div>
