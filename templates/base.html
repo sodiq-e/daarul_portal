@@ -616,6 +616,348 @@ html, body {
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
+    /* ===== ENHANCED TABLE FEATURES ===== */
+    /* Table with sortable headers */
+    thead th[data-sortable] {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 24px;
+    }
+
+    thead th[data-sortable]:hover {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    }
+
+    thead th[data-sortable]::after {
+      content: '⇅';
+      position: absolute;
+      right: 8px;
+      opacity: 0.5;
+      transition: opacity 0.3s ease;
+    }
+
+    thead th[data-sortable].sort-asc::after {
+      content: '↑';
+      opacity: 1;
+      color: #fff;
+    }
+
+    thead th[data-sortable].sort-desc::after {
+      content: '↓';
+      opacity: 1;
+      color: #fff;
+    }
+
+    /* Table search & filter bar */
+    .table-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+
+    .table-search input {
+      width: 100%;
+      padding: 10px 36px 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .table-search input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(var(--primary-color), 0.1);
+    }
+
+    .table-search i {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      pointer-events: none;
+    }
+
+    .table-search .clear-btn {
+      display: none;
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 16px;
+    }
+
+    .table-search input:not(:placeholder-shown) ~ .clear-btn {
+      display: block;
+    }
+
+    .table-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-badge {
+      background: var(--accent-color);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .filter-badge:hover {
+      background: var(--secondary-color);
+      transform: scale(1.05);
+    }
+
+    .filter-badge .remove {
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .pagination button, .pagination a {
+      min-width: 36px;
+      height: 36px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      color: var(--primary-color);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .pagination button:hover, .pagination a:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .pagination .active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .pagination .disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-info {
+      font-size: 13px;
+      color: #666;
+      margin: 0 12px;
+    }
+
+    .items-per-page {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .items-per-page select {
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+    }
+
+    /* ===== NO DATA STATE ===== */
+    .no-data {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+      font-size: 16px;
+    }
+
+    .no-data i {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+
+    /* ===== RESPONSIVE TABLE (MOBILE) ===== */
+    @media (max-width: 768px) {
+      .table-wrapper table {
+        width: 100%;
+      }
+
+      /* Switch to card layout on mobile */
+      .table-responsive thead {
+        display: none;
+      }
+
+      .table-responsive tbody,
+      .table-responsive tr {
+        display: block;
+        width: 100%;
+      }
+
+      .table-responsive tr {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .table-responsive td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px !important;
+        border: none !important;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .table-responsive td:last-child {
+        border-bottom: none;
+      }
+
+      .table-responsive td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--primary-color);
+        flex: 0 0 40%;
+      }
+
+      .table-responsive td:last-child::before {
+        display: none;
+      }
+
+      .table-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .table-search {
+        min-width: 100%;
+      }
+    }
+
+    /* ===== ROW SELECTION ===== */
+    .table-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    tbody tr:has(.table-checkbox:checked) {
+      background: rgba(var(--primary-color), 0.05) !important;
+    }
+
+    .bulk-actions {
+      display: none;
+      background: var(--primary-color);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .bulk-actions.show {
+      display: flex;
+    }
+
+    .bulk-actions-count {
+      font-weight: 600;
+    }
+
+    .bulk-actions button {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 13px;
+    }
+
+    .bulk-actions button:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* ===== TABLE STATISTICS ===== */
+    .table-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary-color);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .stat-card-label {
+      font-size: 12px;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .stat-card-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .stat-card-subtitle {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+    }
+
     /* ===== LAYOUT ===== */
     .layout {
         display: block;
@@ -2023,6 +2365,262 @@ window.announcementTicker = new AnnouncementTicker();
 
 // Example usage (will be populated from Django context):
 // announcementTicker.addMessage('📢 Important: Exam results will be released on May 15');
+
+// ===== ENHANCED TABLE SYSTEM =====
+class DataTable {
+  constructor(tableSelector) {
+    this.table = document.querySelector(tableSelector);
+    if (!this.table) return;
+
+    this.tbody = this.table.querySelector('tbody');
+    this.rows = Array.from(this.tbody.querySelectorAll('tr'));
+    this.filteredRows = [...this.rows];
+    this.currentPage = 1;
+    this.itemsPerPage = 10;
+    this.searchTerm = '';
+    this.sortColumn = null;
+    this.sortDirection = 'asc';
+    this.selectedRows = new Set();
+
+    this.init();
+  }
+
+  init() {
+    this.setupSortableHeaders();
+    this.setupSearchFilter();
+    this.setupPagination();
+    this.setupRowSelection();
+  }
+
+  setupSortableHeaders() {
+    const headers = this.table.querySelectorAll('thead th[data-sortable]');
+    headers.forEach(header => {
+      header.addEventListener('click', () => this.sortTable(header));
+    });
+  }
+
+  sortTable(header) {
+    const column = header.dataset.sortable;
+    const columnIndex = Array.from(header.parentNode.children).indexOf(header);
+
+    // Reset all headers
+    this.table.querySelectorAll('thead th').forEach(h => {
+      h.classList.remove('sort-asc', 'sort-desc');
+    });
+
+    // Toggle sort direction
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'asc';
+    }
+
+    header.classList.add(this.sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+
+    // Sort rows
+    this.filteredRows.sort((a, b) => {
+      const aVal = a.children[columnIndex].textContent.trim();
+      const bVal = b.children[columnIndex].textContent.trim();
+
+      // Try numeric sort first
+      const aNum = parseFloat(aVal);
+      const bNum = parseFloat(bVal);
+
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        return this.sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+      }
+
+      // Fall back to string sort
+      return this.sortDirection === 'asc'
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    });
+
+    this.currentPage = 1;
+    this.render();
+  }
+
+  setupSearchFilter() {
+    const searchInput = document.querySelector(`[data-table-search="${this.table.id}"]`);
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', (e) => {
+      this.searchTerm = e.target.value.toLowerCase();
+      this.filterRows();
+      this.currentPage = 1;
+      this.render();
+    });
+
+    const clearBtn = searchInput.parentElement.querySelector('.clear-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        this.searchTerm = '';
+        this.filterRows();
+        this.render();
+      });
+    }
+  }
+
+  filterRows() {
+    if (!this.searchTerm) {
+      this.filteredRows = [...this.rows];
+      return;
+    }
+
+    this.filteredRows = this.rows.filter(row => {
+      const text = row.textContent.toLowerCase();
+      return text.includes(this.searchTerm);
+    });
+  }
+
+  setupPagination() {
+    const itemsSelect = document.querySelector(`[data-table-items="${this.table.id}"]`);
+    if (itemsSelect) {
+      itemsSelect.addEventListener('change', (e) => {
+        this.itemsPerPage = parseInt(e.target.value);
+        this.currentPage = 1;
+        this.render();
+      });
+    }
+  }
+
+  setupRowSelection() {
+    const headerCheckbox = this.table.querySelector('thead .table-checkbox');
+    if (headerCheckbox) {
+      headerCheckbox.addEventListener('change', (e) => {
+        const checkboxes = this.tbody.querySelectorAll('.table-checkbox');
+        checkboxes.forEach(cb => {
+          cb.checked = e.target.checked;
+          const row = cb.closest('tr');
+          if (e.target.checked) {
+            this.selectedRows.add(row);
+          } else {
+            this.selectedRows.delete(row);
+          }
+        });
+        this.updateBulkActions();
+      });
+    }
+
+    this.tbody.addEventListener('change', (e) => {
+      if (e.target.classList.contains('table-checkbox')) {
+        const row = e.target.closest('tr');
+        if (e.target.checked) {
+          this.selectedRows.add(row);
+        } else {
+          this.selectedRows.delete(row);
+        }
+        this.updateBulkActions();
+      }
+    });
+  }
+
+  updateBulkActions() {
+    const bulkActions = document.querySelector(`[data-bulk-actions="${this.table.id}"]`);
+    if (!bulkActions) return;
+
+    if (this.selectedRows.size > 0) {
+      bulkActions.classList.add('show');
+      bulkActions.querySelector('.bulk-actions-count').textContent = `${this.selectedRows.size} selected`;
+    } else {
+      bulkActions.classList.remove('show');
+    }
+  }
+
+  getSelectedRowData() {
+    const data = [];
+    this.selectedRows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      const rowData = {};
+      cells.forEach(cell => {
+        const label = cell.dataset.label || '';
+        rowData[label] = cell.textContent.trim();
+      });
+      data.push(rowData);
+    });
+    return data;
+  }
+
+  render() {
+    // Hide all rows
+    this.rows.forEach(row => row.style.display = 'none');
+
+    // Calculate pagination
+    const totalPages = Math.ceil(this.filteredRows.length / this.itemsPerPage);
+    const startIdx = (this.currentPage - 1) * this.itemsPerPage;
+    const endIdx = startIdx + this.itemsPerPage;
+    const pageRows = this.filteredRows.slice(startIdx, endIdx);
+
+    // Show page rows
+    pageRows.forEach(row => row.style.display = '');
+
+    // Update pagination controls
+    this.renderPagination(totalPages);
+
+    // Show no data message if empty
+    const noDataMsg = this.tbody.nextElementSibling;
+    if (this.filteredRows.length === 0 && noDataMsg?.classList.contains('no-data')) {
+      noDataMsg.style.display = 'block';
+    } else if (noDataMsg?.classList.contains('no-data')) {
+      noDataMsg.style.display = 'none';
+    }
+  }
+
+  renderPagination(totalPages) {
+    const paginationContainer = document.querySelector(`[data-table-pagination="${this.table.id}"]`);
+    if (!paginationContainer) return;
+
+    let html = '';
+    const totalItems = this.filteredRows.length;
+    const startItem = totalItems === 0 ? 0 : (this.currentPage - 1) * this.itemsPerPage + 1;
+    const endItem = Math.min(this.currentPage * this.itemsPerPage, totalItems);
+
+    // Previous button
+    html += `<button ${this.currentPage === 1 ? 'disabled' : ''} class="pagination-prev">← Prev</button>`;
+
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= this.currentPage - 1 && i <= this.currentPage + 1)) {
+        html += `<button class="page-num ${i === this.currentPage ? 'active' : ''}">${i}</button>`;
+      } else if (i === 2 || i === totalPages - 1) {
+        html += `<span>...</span>`;
+      }
+    }
+
+    // Next button
+    html += `<button ${this.currentPage === totalPages ? 'disabled' : ''} class="pagination-next">Next →</button>`;
+
+    // Info text
+    html += `<span class="pagination-info">${startItem}-${endItem} of ${totalItems}</span>`;
+
+    paginationContainer.innerHTML = html;
+
+    // Attach click handlers
+    paginationContainer.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if (btn.classList.contains('pagination-prev') && this.currentPage > 1) {
+          this.currentPage--;
+        } else if (btn.classList.contains('pagination-next') && this.currentPage < totalPages) {
+          this.currentPage++;
+        } else if (btn.classList.contains('page-num')) {
+          this.currentPage = parseInt(btn.textContent);
+        }
+        this.render();
+      });
+    });
+  }
+
+  destroy() {
+    this.rows = [];
+    this.filteredRows = [];
+    this.selectedRows.clear();
+  }
+}
+
+// Export for use in Django templates
+window.DataTable = DataTable;
 
 </script>
 
