@@ -503,6 +503,23 @@
       50% { transform: translateY(-5px); }
     }
 
+    /* Notification badge for mobile nav */
+    .notification-badge {
+      position: absolute;
+      top: 2px;
+      right: 50%;
+      transform: translateX(50%);
+      background: #dc3545;
+      color: white;
+      border-radius: 50%;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: bold;
+      min-width: 16px;
+      text-align: center;
+      z-index: 1;
+    }
+
     /* ===== BREADCRUMB RESPONSIVE ===== */
     @media (max-width: 768px) {
       .breadcrumb {
@@ -2921,22 +2938,30 @@ html, body {
     <i class="fas fa-home"></i>
     <span>Home</span>
   </a>
-  <a href="#" class="nav-item" title="Search" onclick="showToast('Search', 'Coming soon!', 'info', 2000); return false;">
+  {% if user.is_authenticated %}
+  <a href="#" class="nav-item" title="Search" onclick="openCommandPalette(); return false;">
     <i class="fas fa-search"></i>
     <span>Search</span>
   </a>
-  <a href="#" class="nav-item" title="Messages" onclick="showToast('Messages', 'New message feature coming soon!', 'info', 2000); return false;">
+  <a href="{% url 'portal_messages_list' %}" class="nav-item" title="Messages">
     <i class="fas fa-envelope"></i>
     <span>Messages</span>
+    {% if portal_unread_count > 0 %}
+      <span class="notification-badge">{{ portal_unread_count }}</span>
+    {% endif %}
   </a>
-  <a href="#" class="nav-item" title="Notifications" onclick="showToast('Notifications', 'Notification center coming soon!', 'info', 2000); return false;">
+  <a href="{% url 'announcement_list' %}" class="nav-item" title="Notifications">
     <i class="fas fa-bell"></i>
     <span>Alerts</span>
   </a>
-  {% if user.is_authenticated %}
   <a href="{% url 'logout' %}" class="nav-item" title="Logout">
     <i class="fas fa-sign-out-alt"></i>
     <span>Logout</span>
+  </a>
+  {% else %}
+  <a href="{% url 'login' %}" class="nav-item" title="Login">
+    <i class="fas fa-sign-in-alt"></i>
+    <span>Login</span>
   </a>
   {% endif %}
 </nav>
@@ -3117,6 +3142,26 @@ html, body {
          class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
         <i class="fas fa-cog"></i><span> Account Settings</span>
       </a>
+
+      {% if user.is_authenticated %}
+      <a href="#" onclick="openCommandPalette(); return false;" data-tooltip="Search"
+         class="{% if 'search' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="fas fa-search"></i><span> Search</span>
+      </a>
+
+      <a href="{% url 'portal_messages_list' %}" data-tooltip="Messages"
+         class="{% if 'portal' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="fas fa-envelope"></i><span> Messages</span>
+        {% if portal_unread_count > 0 %}
+          <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
+        {% endif %}
+      </a>
+
+      <a href="{% url 'announcement_list' %}" data-tooltip="Notifications"
+         class="{% if request.resolver_match.url_name == 'announcement_list' %}active{% endif %}">
+        <i class="fas fa-bell"></i><span> Notifications</span>
+      </a>
+      {% endif %}
     </div>
   </div>
 
@@ -3234,6 +3279,13 @@ class Toast {
 // Global toast functions
 window.showToast = (title, message, type = 'info', duration = 5000) => {
   return new Toast(title, message, type, duration);
+};
+
+// Global command palette function
+window.openCommandPalette = () => {
+  if (window.commandPalette) {
+    window.commandPalette.open();
+  }
 };
 
 // ===== PAGE LOADER =====
