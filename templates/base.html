@@ -2157,6 +2157,7 @@ html, body {
   .sidebar.collapsed {
     width: 70px;
     padding: 16px 0;
+    overflow: visible;
   }
 
   /* Expanded sidebar on desktop - show full links */
@@ -2365,27 +2366,30 @@ html, body {
 .sidebar.collapsed a::after {
   content: attr(data-tooltip);
   position: absolute;
-  left: 70px;
+  left: calc(100% + 12px);
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.9);
+  background: rgba(0, 0, 0, 0.95);
   color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
   font-size: 12px;
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease, left 0.2s ease;
   pointer-events: none;
   z-index: 1000;
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  min-width: max-content;
+  max-width: none;
 }
 
 .sidebar.collapsed a:hover::after {
   opacity: 1;
   visibility: visible;
+  left: calc(100% + 16px);
 }
 
 /* Hide logout form text in collapsed mode */
@@ -2413,27 +2417,30 @@ html, body {
 .sidebar.collapsed form button::after {
   content: "Logout";
   position: absolute;
-  left: 70px;
+  left: calc(100% + 12px);
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.9);
+  background: rgba(0, 0, 0, 0.95);
   color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
   font-size: 12px;
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease, left 0.2s ease;
   pointer-events: none;
   z-index: 1000;
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  min-width: max-content;
+  max-width: none;
 }
 
 .sidebar.collapsed form button:hover::after {
   opacity: 1;
   visibility: visible;
+  left: calc(100% + 16px);
 }
 
 .sidebar a {
