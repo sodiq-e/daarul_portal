@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}My Attendance{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">My Attendance Records</h3>
+                        <a href="{% url 'student_portal_dashboard' %}" class="btn btn-sm btn-light">Back to Dashboard</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if attendance_records %}
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Total Sessions</h6>
+                                    <h3 class="text-primary">{{ total_sessions }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Present</h6>
+                                    <h3 class="text-success">{{ present_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Absent</h6>
+                                    <h3 class="text-danger">{{ absent_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Attendance %</h6>
+                                    <h3 class="text-info">{{ attendance_percentage|floatformat:1 }}%</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Term</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in attendance_records %}
+                                <tr>
+                                    <td>{{ record.session.date|date:"d/m/Y" }}</td>
+                                    <td>{{ record.term }}</td>
+                                    <td>
+                                        {% if record.status == "present" %}
+                                            <span class="badge bg-success">Present</span>
+                                        {% elif record.status == "absent" %}
+                                            <span class="badge bg-danger">Absent</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ record.status|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p><i class="fas fa-inbox"></i> No attendance records yet. Attendance will be recorded once sessions start.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

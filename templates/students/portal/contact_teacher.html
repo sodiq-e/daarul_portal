@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Teachers{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">Contact Your Teachers</h3>
+                        <a href="{% url 'student_portal_dashboard' %}" class="btn btn-sm btn-light">Back to Dashboard</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if teachers %}
+                    <div class="alert alert-info">
+                        <p><i class="fas fa-info-circle"></i> Click on a teacher to send them a message through the portal.</p>
+                    </div>
+
+                    <div class="row">
+                        {% for teacher_assignment in teachers %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        {{ teacher_assignment.teacher.user.get_full_name|default:teacher_assignment.teacher.user.username }}
+                                    </h5>
+                                    <p class="card-text small">
+                                        <strong>Subject:</strong> {{ teacher_assignment.subject.name }}<br>
+                                        <strong>Employee ID:</strong> {{ teacher_assignment.teacher.employee_id|default:"N/A" }}<br>
+                                        <strong>Phone:</strong> {{ teacher_assignment.teacher.phone|default:"N/A" }}<br>
+                                        <strong>Email:</strong> {{ teacher_assignment.teacher.user.email|default:"N/A" }}
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-white">
+                                    <a href="{% url 'portal_message_compose' %}?teacher_id={{ teacher_assignment.teacher.pk }}" class="btn btn-sm btn-primary w-100">
+                                        <i class="fas fa-envelope"></i> Send Message
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p><i class="fas fa-inbox"></i> You are not assigned to any class, or no teachers are assigned to your class yet. Please contact the school administration.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

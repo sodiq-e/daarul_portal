@@ -318,6 +318,159 @@ class StudentFeesView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
+    """Student download their report card as PDF"""
+    template_name = 'students/portal/download_report_card.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            from results.models import TermResult
+            student = self.request.user.student_profile
+            context['student'] = student
+            # Get all term results for this student
+            context['term_results'] = TermResult.objects.filter(
+                student=student
+            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__term_number')
+        except Student.DoesNotExist:
+            context['student'] = None
+            context['term_results'] = []
+        return context
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            from results.models import TermResult
+            student = request.user.student_profile
+            term_results = TermResult.objects.filter(
+                student=student
+            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__term_number')
+            
+            # If PDF download is requested
+            if request.GET.get('format') == 'pdf' and WEASYPRINT_AVAILABLE:
+                context = {
+                    'student': student,
+                    'term_results': term_results,
+                }
+                html_string = render_to_string('students/portal/report_card_pdf.html', context)
+                html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
+                pdf = html.write_pdf()
+                response = HttpResponse(pdf, content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="report_card_{student.admission_no}.pdf"'
+                return response
+        except Student.DoesNotExist:
+            messages.error(request, 'Student profile not found.')
+            return redirect('student_portal_dashboard')
+        
+        return super().get(request, *args, **kwargs)
+
+
+class StudentClassTimetableView(LoginRequiredMixin, TemplateView):
+    """Student view their class timetable"""
+    template_name = 'students/portal/class_timetable.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            student = self.request.user.student_profile
+            context['student'] = student
+            context['class'] = student.student_class
+            
+            # Get class subjects for the student's current class
+            if student.student_class:
+                from exams.models import ClassSubject
+                context['class_subjects'] = ClassSubject.objects.filter(
+                    school_class=student.student_class
+                ).select_related('subject').order_by('order')
+            else:
+                context['class_subjects'] = []
+        except Student.DoesNotExist:
+            context['student'] = None
+            context['class'] = None
+            context['class_subjects'] = []
+        return context
+
+
+class StudentClassAnnouncementsView(LoginRequiredMixin, TemplateView):
+    """Student view class announcements"""
+    template_name = 'students/portal/class_announcements.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            from announcements.models import Announcement
+            student = self.request.user.student_profile
+            context['student'] = student
+            
+            # Get announcements for the student's class
+            if student.student_class:
+                context['announcements'] = Announcement.objects.filter(
+                    school_class=student.student_class,
+                    is_published=True
+                ).select_related('created_by').order_by('-created_at')
+            else:
+                context['announcements'] = []
+        except Student.DoesNotExist:
+            context['student'] = None
+            context['announcements'] = []
+        return context
+
+
+class StudentAttendanceView(LoginRequiredMixin, TemplateView):
+    """Student view their own attendance records"""
+    template_name = 'students/portal/student_attendance.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            from attendance.models import AttendanceRecord
+            student = self.request.user.student_profile
+            context['student'] = student
+            
+            # Get attendance records for this student
+            context['attendance_records'] = AttendanceRecord.objects.filter(
+                student=student
+            ).select_related('session', 'term').order_by('-session__date')
+            
+            # Calculate attendance summary
+            total_records = context['attendance_records'].count()
+            present_count = context['attendance_records'].filter(status='present').count()
+            absent_count = context['attendance_records'].filter(status='absent').count()
+            
+            context['total_sessions'] = total_records
+            context['present_count'] = present_count
+            context['absent_count'] = absent_count
+            context['attendance_percentage'] = (present_count / total_records * 100) if total_records > 0 else 0
+        except Student.DoesNotExist:
+            context['student'] = None
+            context['attendance_records'] = []
+        return context
+
+
+class StudentContactTeacherView(LoginRequiredMixin, TemplateView):
+    """Student contact teachers through portal messages"""
+    template_name = 'students/portal/contact_teacher.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            from school_classes.models import ClassTeacher
+            student = self.request.user.student_profile
+            context['student'] = student
+            
+            # Get teachers for the student's class
+            if student.student_class:
+                context['teachers'] = ClassTeacher.objects.filter(
+                    school_class=student.student_class,
+                    is_active=True
+                ).select_related('teacher__user', 'subject').order_by('teacher__user__first_name')
+            else:
+                context['teachers'] = []
+        except Student.DoesNotExist:
+            context['student'] = None
+            context['teachers'] = []
+        return context
+
+
 # ==================== ADMIN: STUDENT PERMISSIONS ====================
 
 def user_is_admin(user):

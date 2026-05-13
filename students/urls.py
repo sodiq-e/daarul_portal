@@ -7,6 +7,11 @@ urlpatterns = [
     path('portal/profile/', views.StudentProfileDetailView.as_view(), name='student_portal_profile'),
     path('portal/results/', views.StudentResultsView.as_view(), name='student_portal_results'),
     path('portal/fees/', views.StudentFeesView.as_view(), name='student_portal_fees'),
+    path('portal/report-card/', views.StudentDownloadReportCardView.as_view(), name='student_portal_report_card'),
+    path('portal/timetable/', views.StudentClassTimetableView.as_view(), name='student_portal_timetable'),
+    path('portal/announcements/', views.StudentClassAnnouncementsView.as_view(), name='student_portal_announcements'),
+    path('portal/attendance/', views.StudentAttendanceView.as_view(), name='student_portal_attendance'),
+    path('portal/contact-teacher/', views.StudentContactTeacherView.as_view(), name='student_portal_contact_teacher'),
     
     # Admin/Staff Views
     path('apply/', views.StudentApplicationCreateView.as_view(), name='student_application'),

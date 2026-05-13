@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Download Report Card{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">Download Report Card</h3>
+                        <a href="{% url 'student_portal_dashboard' %}" class="btn btn-sm btn-light">Back to Dashboard</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if term_results %}
+                    <div class="alert alert-info">
+                        <p><i class="fas fa-info-circle"></i> Select a term below to download your report card.</p>
+                    </div>
+
+                    <div class="row">
+                        {% for term_result in term_results %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-primary h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ term_result.term }}</h5>
+                                    <p class="card-text small text-muted">
+                                        <strong>Academic Year:</strong> {{ term_result.term.academic_year }}<br>
+                                        <strong>Overall Grade:</strong> <span class="badge bg-info">{{ term_result.overall_grade|default:"N/A" }}</span>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-white">
+                                    <a href="?format=pdf&term_id={{ term_result.id }}" class="btn btn-sm btn-primary w-100">
+                                        <i class="fas fa-download"></i> Download PDF
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p><i class="fas fa-inbox"></i> No report cards available yet. Check back soon!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

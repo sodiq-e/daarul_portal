@@ -60,30 +60,98 @@
     <div class="row">
         <div class="col-md-12">
             <h4 class="mb-3">Portal Menu</h4>
-            <div class="list-group">
+            <div class="row">
                 {# View Profile - shown by default #}
-                <a href="{% url 'student_portal_profile' %}" class="list-group-item list-group-item-action">
-                    <h5 class="mb-1">👤 View Profile</h5>
-                    <p class="mb-0">View your personal information</p>
-                </a>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_profile' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">👤 View Profile</h5>
+                            <p class="card-text small text-muted">View your personal information</p>
+                        </div>
+                    </a>
+                </div>
                 
                 {# View Results - shown by default #}
-                <a href="{% url 'student_portal_results' %}" class="list-group-item list-group-item-action">
-                    <h5 class="mb-1">📊 View Results</h5>
-                    <p class="mb-0">Check your academic results and grades</p>
-                </a>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_results' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">📊 View Results</h5>
+                            <p class="card-text small text-muted">Check your academic results and grades</p>
+                        </div>
+                    </a>
+                </div>
+
+                {# Download Report Card #}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_report_card' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">📄 Download Report Card</h5>
+                            <p class="card-text small text-muted">Download your report card as PDF</p>
+                        </div>
+                    </a>
+                </div>
                 
                 {# School Fees - show only if student has invoices or admin enabled it #}
                 {% if pending_invoices or total_owing %}
-                <a href="{% url 'student_portal_fees' %}" class="list-group-item list-group-item-action">
-                    <h5 class="mb-1">💰 School Fees</h5>
-                    <p class="mb-0">View invoices and payment history</p>
-                </a>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_fees' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">💰 School Fees</h5>
+                            <p class="card-text small text-muted">View invoices and payment history</p>
+                        </div>
+                    </a>
+                </div>
                 {% endif %}
-                <a href="{% url 'portal_messages_list' %}" class="list-group-item list-group-item-action">
-                    <h5 class="mb-1">✉️ Portal Messages</h5>
-                    <p class="mb-0">Open your portal conversation with the school administration</p>
-                </a>
+
+                {# Class Timetable #}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_timetable' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">🕒 Class Timetable</h5>
+                            <p class="card-text small text-muted">View your class timetable and schedule</p>
+                        </div>
+                    </a>
+                </div>
+
+                {# Class Announcements #}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_announcements' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">📢 Class Announcements</h5>
+                            <p class="card-text small text-muted">View announcements for your class</p>
+                        </div>
+                    </a>
+                </div>
+
+                {# Attendance #}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_attendance' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">✅ My Attendance</h5>
+                            <p class="card-text small text-muted">View your attendance records</p>
+                        </div>
+                    </a>
+                </div>
+
+                {# Contact Teachers #}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_portal_contact_teacher' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">✉️ Contact Teachers</h5>
+                            <p class="card-text small text-muted">Send messages to your teachers</p>
+                        </div>
+                    </a>
+                </div>
+
+                {# Portal Messages #}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'portal_messages_list' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">✉️ Portal Messages</h5>
+                            <p class="card-text small text-muted">Open your portal conversation with the school</p>
+                        </div>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
