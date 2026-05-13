@@ -449,12 +449,12 @@ class StudentAttendanceView(LoginRequiredMixin, TemplateView):
             # Get attendance records for this student
             context['attendance_records'] = AttendanceRecord.objects.filter(
                 student=student
-            ).select_related('session', 'term').order_by('-session__date')
+            ).select_related('school_class').order_by('-date')
             
             # Calculate attendance summary
             total_records = context['attendance_records'].count()
-            present_count = context['attendance_records'].filter(status='present').count()
-            absent_count = context['attendance_records'].filter(status='absent').count()
+            present_count = context['attendance_records'].filter(present=True).count()
+            absent_count = context['attendance_records'].filter(present=False).count()
             
             context['total_sessions'] = total_records
             context['present_count'] = present_count

@@ -55,22 +55,20 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Date</th>
-                                    <th>Term</th>
+                                    <th>Class</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for record in attendance_records %}
                                 <tr>
-                                    <td>{{ record.session.date|date:"d/m/Y" }}</td>
-                                    <td>{{ record.term }}</td>
+                                    <td>{{ record.date|date:"d/m/Y" }}</td>
+                                    <td>{{ record.school_class }}</td>
                                     <td>
-                                        {% if record.status == "present" %}
+                                        {% if record.present %}
                                             <span class="badge bg-success">Present</span>
-                                        {% elif record.status == "absent" %}
-                                            <span class="badge bg-danger">Absent</span>
                                         {% else %}
-                                            <span class="badge bg-secondary">{{ record.status|title }}</span>
+                                            <span class="badge bg-danger">Absent</span>
                                         {% endif %}
                                     </td>
                                 </tr>
