@@ -178,7 +178,6 @@ def class_subjects_list(request, class_id):
 
 
 @login_required
-@login_required
 def add_class_subject(request, class_id):
     """Add subjects to a class (can select multiple)"""
     school_class = get_object_or_404(SchoolClasses, pk=class_id)
@@ -408,7 +407,7 @@ class TeacherProfileEditView(LoginRequiredMixin, UserPassesTestMixin, UpdateView
         try:
             teacher = self.get_object()
             return self.request.user.teacher_profile == teacher
-        except:
+        except Teacher.DoesNotExist:
             return False
 
     def get_object(self):
@@ -761,18 +760,24 @@ class TeacherSchemeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return user_is_staff(self.request.user)
 
     def get_queryset(self):
-        teacher = self.request.user.teacher_profile
-        return SchemeOfWork.objects.filter(teacher=teacher).order_by('-id')
+        try:
+            teacher = self.request.user.teacher_profile
+            return SchemeOfWork.objects.filter(teacher=teacher).order_by('-id')
+        except Teacher.DoesNotExist:
+            return SchemeOfWork.objects.none()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Get classes where teacher is class teacher (for quick scheme creation)
-        teacher = self.request.user.teacher_profile
-        context['class_teacher_classes'] = ClassTeacher.objects.filter(
-            teacher=teacher,
-            is_active=True,
-            is_class_teacher=True
-        ).select_related('school_class__class_level').distinct()
+        try:
+            teacher = self.request.user.teacher_profile
+            context['class_teacher_classes'] = ClassTeacher.objects.filter(
+                teacher=teacher,
+                is_active=True,
+                is_class_teacher=True
+            ).select_related('school_class__class_level').distinct()
+        except Teacher.DoesNotExist:
+            context['class_teacher_classes'] = ClassTeacher.objects.none()
         return context
 
 
@@ -788,7 +793,8 @@ class TeacherSchemeSelectClassView(LoginRequiredMixin, UserPassesTestMixin, Temp
         context = super().get_context_data(**kwargs)
         try:
             teacher = self.request.user.teacher_profile
-        except:
+        except Teacher.DoesNotExist:
+            context['error'] = 'Teacher profile not found. Please contact administrator.'
             return context
         
         # Get classes where this teacher is assigned
@@ -826,7 +832,11 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        teacher = self.request.user.teacher_profile
+        try:
+            teacher = self.request.user.teacher_profile
+        except Teacher.DoesNotExist:
+            context['error'] = 'Teacher profile not found. Please contact administrator.'
+            return context
         
         # Get class and term from URL parameters
         class_id = self.kwargs.get('class_id')
@@ -862,7 +872,11 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
         return context
 
     def form_valid(self, form):
-        form.instance.teacher = self.request.user.teacher_profile
+        try:
+            form.instance.teacher = self.request.user.teacher_profile
+        except Teacher.DoesNotExist:
+            messages.error(self.request, 'Teacher profile not found. Please contact administrator.')
+            return self.form_invalid(form)
         
         # Get form data for class, subject, and term
         class_id = self.request.POST.get('school_class') or self.kwargs.get('class_id')
@@ -892,7 +906,7 @@ class TeacherSchemeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVie
             teacher = self.request.user.teacher_profile
             scheme = self.get_object()
             return scheme.teacher == teacher and teacher_has_permission(teacher, 'edit_scheme')
-        except:
+        except Teacher.DoesNotExist:
             return False
 
     def get_context_data(self, **kwargs):
@@ -915,7 +929,7 @@ class TeacherSchemeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateVie
             teacher = self.request.user.teacher_profile
             scheme = self.get_object()
             return scheme.teacher == teacher and teacher_has_permission(teacher, 'edit_scheme') and not scheme.is_submitted
-        except:
+        except Teacher.DoesNotExist:
             return False
 
     def get_success_url(self):
@@ -938,16 +952,19 @@ class SchemeWeekCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
             teacher = self.request.user.teacher_profile
             scheme = SchemeOfWork.objects.get(pk=self.kwargs.get('scheme_id'))
             return scheme.teacher == teacher and teacher_has_permission(teacher, 'edit_scheme') and not scheme.is_submitted
-        except:
+        except (Teacher.DoesNotExist, SchemeOfWork.DoesNotExist):
             return False
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        scheme = SchemeOfWork.objects.get(pk=self.kwargs.get('scheme_id'))
-        context['scheme'] = scheme
-        # Suggest next week number
-        last_week = SchemeWeek.objects.filter(scheme=scheme).order_by('-week_number').first()
-        context['next_week_number'] = (last_week.week_number + 1) if last_week else 1
+        try:
+            scheme = SchemeOfWork.objects.get(pk=self.kwargs.get('scheme_id'))
+            context['scheme'] = scheme
+            # Suggest next week number
+            last_week = SchemeWeek.objects.filter(scheme=scheme).order_by('-week_number').first()
+            context['next_week_number'] = (last_week.week_number + 1) if last_week else 1
+        except SchemeOfWork.DoesNotExist:
+            context['error'] = 'Scheme not found.'
         return context
 
     def form_valid(self, form):
@@ -975,7 +992,7 @@ class SchemeWeekUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
                 teacher_has_permission(teacher, 'edit_scheme') and
                 not week.scheme.is_submitted
             )
-        except:
+        except Teacher.DoesNotExist:
             return False
 
     def get_success_url(self):
@@ -1000,7 +1017,7 @@ def mark_week_complete(request, week_id):
         if not teacher_has_permission(teacher, 'edit_scheme'):
             messages.error(request, 'You do not have permission.')
             return redirect('home')
-    except:
+    except Teacher.DoesNotExist:
         messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
 
@@ -1026,7 +1043,7 @@ def mark_week_incomplete(request, week_id):
         if not teacher_has_permission(teacher, 'edit_scheme'):
             messages.error(request, 'You do not have permission.')
             return redirect('home')
-    except:
+    except Teacher.DoesNotExist:
         messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
 
@@ -1052,7 +1069,7 @@ def acknowledge_week_completion(request, week_id):
         if not teacher_has_permission(teacher, 'edit_scheme'):
             messages.error(request, 'You do not have permission.')
             return redirect('home')
-    except:
+    except Teacher.DoesNotExist:
         messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
 
@@ -1137,7 +1154,7 @@ def submit_scheme_for_approval(request, scheme_id):
         if not teacher_has_permission(teacher, 'submit_scheme'):
             messages.error(request, 'You do not have permission to submit schemes.')
             return redirect('home')
-    except:
+    except Teacher.DoesNotExist:
         messages.error(request, 'You must be a teacher to access this page.')
         return redirect('home')
 
