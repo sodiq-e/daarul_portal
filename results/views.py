@@ -621,8 +621,13 @@ def teacher_edit_student_result(request, result_id):
             result.entered_by = request.user
             result.save()
             
-            # Calculate aggregates
+            # Calculate aggregates for the individual result and mark term aggregates stale
             result.calculate_aggregates()
+            TermResult.objects.filter(
+                student=result.student,
+                term=result.term,
+                result_template=result.result_template
+            ).update(is_complete=False, completed_at=None)
 
             messages.success(request, f'Result for {result.student.get_full_name} in {result.class_subject.subject.name} updated successfully.')
             return redirect('teacher_class_results', class_id=result.class_subject.school_class.id, term_id=result.term.id)
@@ -759,20 +764,31 @@ def bulk_result_entry(request, class_id, term_id):
     ).select_related('subject').order_by('order')
 
     # Build results lookup: {student_id: {subject_id: result_obj}}
-    results_by_student_subject = {}
+    results_by_student_subject = {student.id: {} for student in students}
+    student_results = StudentResult.objects.filter(
+        student__in=students,
+        class_subject__in=class_subjects,
+        term=term,
+        result_template=result_template
+    ).select_related('class_subject')
+
+    for result in student_results:
+        results_by_student_subject.setdefault(result.student_id, {})[result.class_subject_id] = result
+
+    # Build conduct lookup: {student_id: conduct_obj}
+    conduct_by_student = {
+        conduct.student_id: conduct
+        for conduct in StudentConduct.objects.filter(
+            student__in=students,
+            term=term
+        )
+    }
     for student in students:
-        results_by_student_subject[student.id] = {}
-        for class_subject in class_subjects:
-            result = StudentResult.objects.filter(
-                student=student,
-                class_subject=class_subject,
-                term=term,
-                result_template=result_template
-            ).first()
-            results_by_student_subject[student.id][class_subject.id] = result
+        conduct_by_student.setdefault(student.id, None)
 
     if request.method == 'POST':
         # Process POST data and save results
+        updated_student_ids = set()
         for student in students:
             for class_subject in class_subjects:
                 test_field_name = f"test_{student.id}_{class_subject.id}"
@@ -803,6 +819,7 @@ def bulk_result_entry(request, class_id, term_id):
                     
                     result.entered_by = request.user
                     result.save()
+                    updated_student_ids.add(student.id)
 
             # Save conduct data for each student
             attendance = request.POST.get(f'attendance_{student.id}', '').strip()
@@ -835,6 +852,13 @@ def bulk_result_entry(request, class_id, term_id):
                 student_conduct.entered_by = request.user
                 student_conduct.save()
 
+        if updated_student_ids:
+            TermResult.objects.filter(
+                student_id__in=updated_student_ids,
+                term=term,
+                result_template=result_template
+            ).update(is_complete=False, completed_at=None)
+
         messages.success(request, f'✓ Results and conduct records saved successfully for {len(students)} students!')
         return redirect('teacher_class_results', class_id=class_id, term_id=term_id)
 
@@ -845,6 +869,7 @@ def bulk_result_entry(request, class_id, term_id):
         'students': students,
         'class_subjects': class_subjects,
         'results_by_student_subject': results_by_student_subject,
+        'conduct_by_student': conduct_by_student,
     }
 
     return render(request, 'results/bulk_result_entry.html', context)

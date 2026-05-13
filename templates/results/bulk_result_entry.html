@@ -100,7 +100,7 @@
                                                     <input 
                                                         type="number" 
                                                         name="test_{{ student.id }}_{{ subject.id }}"
-                                                        value="{% if result and result.test_score %}{{ result.test_score }}{% endif %}"
+                                                        value="{% if result and result.test_score is not None %}{{ result.test_score }}{% endif %}"
                                                         min="0"
                                                         max="{{ result_template.test_max_score }}"
                                                         step="0.5"
@@ -117,7 +117,7 @@
                                                     <input 
                                                         type="number" 
                                                         name="exam_{{ student.id }}_{{ subject.id }}"
-                                                        value="{% if result and result.exam_score %}{{ result.exam_score }}{% endif %}"
+                                                        value="{% if result and result.exam_score is not None %}{{ result.exam_score }}{% endif %}"
                                                         min="0"
                                                         max="{{ result_template.exam_max_score }}"
                                                         step="0.5"
@@ -181,13 +181,14 @@
                                     
                                     <!-- Attendance -->
                                     <td style="padding: 8px; text-align: center;">
+                                        {% with conduct=conduct_by_student|dict_lookup:student.id %}
                                         <select name="attendance_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
                                             <option value="">—</option>
-                                            <option value="Excellent">Excellent</option>
-                                            <option value="Very Good">Very Good</option>
-                                            <option value="Good" selected>Good</option>
-                                            <option value="Fair">Fair</option>
-                                            <option value="Poor">Poor</option>
+                                            <option value="Excellent" {% if conduct and conduct.attendance == 'Excellent' %}selected{% endif %}>Excellent (95-100%)</option>
+                                            <option value="Very Good" {% if conduct and conduct.attendance == 'Very Good' %}selected{% endif %}>Very Good (85-94%)</option>
+                                            <option value="Good" {% if not conduct or conduct.attendance == 'Good' %}selected{% endif %}>Good (75-84%)</option>
+                                            <option value="Fair" {% if conduct and conduct.attendance == 'Fair' %}selected{% endif %}>Fair (65-74%)</option>
+                                            <option value="Poor" {% if conduct and conduct.attendance == 'Poor' %}selected{% endif %}>Poor (&lt;65%)</option>
                                         </select>
                                     </td>
                                     
@@ -195,11 +196,11 @@
                                     <td style="padding: 8px; text-align: center;">
                                         <select name="conduct_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
                                             <option value="">—</option>
-                                            <option value="Excellent">Excellent</option>
-                                            <option value="Very Good">Very Good</option>
-                                            <option value="Good" selected>Good</option>
-                                            <option value="Fair">Fair</option>
-                                            <option value="Poor">Poor</option>
+                                            <option value="Excellent" {% if conduct and conduct.conduct == 'Excellent' %}selected{% endif %}>Excellent</option>
+                                            <option value="Very Good" {% if conduct and conduct.conduct == 'Very Good' %}selected{% endif %}>Very Good</option>
+                                            <option value="Good" {% if not conduct or conduct.conduct == 'Good' %}selected{% endif %}>Good</option>
+                                            <option value="Fair" {% if conduct and conduct.conduct == 'Fair' %}selected{% endif %}>Fair</option>
+                                            <option value="Poor" {% if conduct and conduct.conduct == 'Poor' %}selected{% endif %}>Poor</option>
                                         </select>
                                     </td>
                                     
@@ -207,11 +208,11 @@
                                     <td style="padding: 8px; text-align: center;">
                                         <select name="punctuality_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
                                             <option value="">—</option>
-                                            <option value="Excellent">Excellent</option>
-                                            <option value="Very Good">Very Good</option>
-                                            <option value="Good" selected>Good</option>
-                                            <option value="Fair">Fair</option>
-                                            <option value="Poor">Poor</option>
+                                            <option value="Excellent" {% if conduct and conduct.punctuality == 'Excellent' %}selected{% endif %}>Always on time</option>
+                                            <option value="Very Good" {% if conduct and conduct.punctuality == 'Very Good' %}selected{% endif %}>Usually on time</option>
+                                            <option value="Good" {% if not conduct or conduct.punctuality == 'Good' %}selected{% endif %}>Mostly on time</option>
+                                            <option value="Fair" {% if conduct and conduct.punctuality == 'Fair' %}selected{% endif %}>Often late</option>
+                                            <option value="Poor" {% if conduct and conduct.punctuality == 'Poor' %}selected{% endif %}>Frequently late</option>
                                         </select>
                                     </td>
                                     
@@ -219,11 +220,11 @@
                                     <td style="padding: 8px; text-align: center;">
                                         <select name="attentiveness_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
                                             <option value="">—</option>
-                                            <option value="Excellent">Excellent</option>
-                                            <option value="Very Good">Very Good</option>
-                                            <option value="Good" selected>Good</option>
-                                            <option value="Fair">Fair</option>
-                                            <option value="Poor">Poor</option>
+                                            <option value="Excellent" {% if conduct and conduct.attentiveness == 'Excellent' %}selected{% endif %}>Excellent</option>
+                                            <option value="Very Good" {% if conduct and conduct.attentiveness == 'Very Good' %}selected{% endif %}>Very Good</option>
+                                            <option value="Good" {% if not conduct or conduct.attentiveness == 'Good' %}selected{% endif %}>Good</option>
+                                            <option value="Fair" {% if conduct and conduct.attentiveness == 'Fair' %}selected{% endif %}>Fair</option>
+                                            <option value="Poor" {% if conduct and conduct.attentiveness == 'Poor' %}selected{% endif %}>Poor</option>
                                         </select>
                                     </td>
                                     
@@ -231,11 +232,11 @@
                                     <td style="padding: 8px; text-align: center;">
                                         <select name="participation_{{ student.id }}" class="form-select form-select-sm conduct-select" style="font-size: 0.9rem;">
                                             <option value="">—</option>
-                                            <option value="Excellent">Excellent</option>
-                                            <option value="Very Good">Very Good</option>
-                                            <option value="Good" selected>Good</option>
-                                            <option value="Fair">Fair</option>
-                                            <option value="Poor">Poor</option>
+                                            <option value="Excellent" {% if conduct and conduct.participation == 'Excellent' %}selected{% endif %}>Excellent</option>
+                                            <option value="Very Good" {% if conduct and conduct.participation == 'Very Good' %}selected{% endif %}>Very Good</option>
+                                            <option value="Good" {% if not conduct or conduct.participation == 'Good' %}selected{% endif %}>Good</option>
+                                            <option value="Fair" {% if conduct and conduct.participation == 'Fair' %}selected{% endif %}>Fair</option>
+                                            <option value="Poor" {% if conduct and conduct.participation == 'Poor' %}selected{% endif %}>Poor</option>
                                         </select>
                                     </td>
                                     
@@ -247,7 +248,8 @@
                                             rows="2"
                                             placeholder="Comments about student progress"
                                             style="font-size: 0.9rem;"
-                                        ></textarea>
+                                        >{% if conduct and conduct.teacher_notes %}{{ conduct.teacher_notes }}{% endif %}</textarea>
+                                        {% endwith %}
                                     </td>
                                 </tr>
                                 {% endfor %}

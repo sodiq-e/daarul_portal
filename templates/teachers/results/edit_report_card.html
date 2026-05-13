@@ -65,8 +65,14 @@
                             </div>
                             
                             <div class="mb-3">
-                                <label for="comment" class="form-label">Comments:</label>
-                                <textarea class="form-control" id="comment" name="comment" rows="5" placeholder="Enter report card comments here..."></textarea>
+                                {{ form.non_field_errors }}
+                                <label for="{{ form.comment.id_for_label }}" class="form-label">{{ form.comment.label }}</label>
+                                {{ form.comment }}
+                                {% if form.comment.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.comment.errors|striptags }}
+                                    </div>
+                                {% endif %}
                             </div>
                             
                             <button type="submit" class="btn btn-success">Save Report Card</button>

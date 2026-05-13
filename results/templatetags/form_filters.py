@@ -34,8 +34,8 @@ def dict_lookup(dictionary, key):
     Usage: {{ form|dict_lookup:key_name }}
     """
     if isinstance(dictionary, dict):
-        return dictionary.get(key, "")
-    return ""
+        return dictionary.get(key, None)
+    return None
 
 
 @register.filter(name='get_item')

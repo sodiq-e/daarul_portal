@@ -53,7 +53,17 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'bulk_result_entry' class_id=school_class.id term_id=term.id %}" class="btn btn-sm btn-info">View Details</a>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a href="{% url 'teacher_edit_report_card' student_id=item.student.id term_id=term.id %}" class="btn btn-sm btn-primary">
+                                                ✏️ Edit Report Card
+                                            </a>
+                                            <a href="{% url 'teacher_print_results' student_id=item.student.id term_id=term.id %}" class="btn btn-sm btn-outline-secondary">
+                                                🖨️ Print Result
+                                            </a>
+                                            <a href="{% url 'student_report_card' student_id=item.student.id term_id=term.id %}" class="btn btn-sm btn-outline-primary">
+                                                👁️ Preview Report Card
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
