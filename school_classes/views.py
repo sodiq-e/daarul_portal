@@ -565,12 +565,6 @@ class ClassTeacherCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView
     def test_func(self):
         return user_is_admin(self.request.user)
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        # Only show approved teachers
-        if self.request.method == 'GET':
-            kwargs['queryset'] = Teacher.objects.filter(is_approved=True)
-        return kwargs
 
     def form_valid(self, form):
         messages.success(

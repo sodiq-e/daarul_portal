@@ -158,6 +158,25 @@
 
         <div class="col-md-6 mb-4">
             <div class="card shadow">
+                <div class="card-header bg-dark text-white">
+                    <i class="fas fa-upload"></i> Publish Results
+                </div>
+                <div class="card-body">
+                    <p>Review unpublished results and publish them for students to view.</p>
+                    <ul class="small mb-3">
+                        <li>See class/term publication status</li>
+                        <li>Publish or unpublish results in bulk</li>
+                        <li>Control student visibility centrally</li>
+                    </ul>
+                    <a href="{% url 'results_admin:publish_results' %}" class="btn btn-dark btn-sm">
+                        <i class="fas fa-arrow-right"></i> Manage Publication
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
                 <div class="card-header bg-secondary text-white">
                     <i class="fas fa-cog"></i> Django Admin
                 </div>

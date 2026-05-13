@@ -4,9 +4,10 @@ from django.contrib import messages
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db import transaction
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from exams.models import Term, Subject, ClassSubject
-from results.models import GradeScale, ResultTemplate
+from results.models import GradeScale, ResultTemplate, StudentResult
 from school_classes.models import SchoolClasses
 
 
@@ -32,6 +33,40 @@ def results_settings_dashboard(request):
     }
 
     return render(request, 'results/admin/settings_dashboard.html', context)
+
+
+@login_required
+def manage_result_publication(request):
+    """Manage result publication for classes and terms"""
+    if not is_admin(request.user):
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('home')
+
+    publication_rows = []
+    results_summary = StudentResult.objects.values(
+        'student__student_class',
+        'term'
+    ).annotate(
+        published_count=Count('id', filter=Q(is_published=True)),
+        unpublished_count=Count('id', filter=Q(is_published=False))
+    ).order_by('student__student_class', 'term')
+
+    for entry in results_summary:
+        school_class = SchoolClasses.objects.filter(id=entry['student__student_class']).first()
+        term = Term.objects.filter(id=entry['term']).first()
+        if school_class and term:
+            publication_rows.append({
+                'school_class': school_class,
+                'term': term,
+                'published_count': entry['published_count'],
+                'unpublished_count': entry['unpublished_count'],
+            })
+
+    context = {
+        'publication_rows': publication_rows,
+    }
+
+    return render(request, 'results/admin/result_publication_dashboard.html', context)
 
 
 @login_required

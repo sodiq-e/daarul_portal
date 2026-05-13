@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
+from django.db.models import Q
 from .models import Teacher, ClassTeacher, SchemeOfWork, SchemeWeek, TeacherPermission
 
 
@@ -69,6 +70,15 @@ class TeacherApplicationForm(forms.ModelForm):
 
 class ClassTeacherForm(forms.ModelForm):
     """Form for assigning teachers to classes"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['teacher'].queryset = Teacher.objects.filter(
+                Q(is_approved=True) | Q(pk=self.instance.teacher_id)
+            )
+        else:
+            self.fields['teacher'].queryset = Teacher.objects.filter(is_approved=True)
 
     class Meta:
         model = ClassTeacher

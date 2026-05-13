@@ -10,4 +10,5 @@ urlpatterns = [
     path('grade-scales/', admin_views.bulk_manage_grade_scales, name='bulk_grade_scales'),
     path('templates/', admin_views.bulk_create_result_templates, name='bulk_templates'),
     path('class-subjects/', admin_views.bulk_assign_class_subjects, name='bulk_class_subjects'),
+    path('publish-results/', admin_views.manage_result_publication, name='publish_results'),
 ]
