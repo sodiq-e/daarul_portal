@@ -287,8 +287,22 @@ class StudentResultsView(LoginRequiredMixin, TemplateView):
             from results.models import StudentResult
             student = self.request.user.student_profile
             context['student'] = student
-            context['results'] = StudentResult.objects.filter(student=student).select_related('class_subject__subject', 'term').order_by('-term__academic_year')
+            # Fetch only published results
+            context['results'] = StudentResult.objects.filter(
+                student=student,
+                is_published=True
+            ).select_related(
+                'class_subject__subject',
+                'term',
+                'result_template'
+            ).order_by('-term__academic_year', '-term__term_number')
         except Student.DoesNotExist:
+            context['student'] = None
+            context['results'] = []
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in StudentResultsView: {str(e)}")
             context['student'] = None
             context['results'] = []
         return context
@@ -333,6 +347,12 @@ class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
                 student=student
             ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__term_number')
         except Student.DoesNotExist:
+            context['student'] = None
+            context['term_results'] = []
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in StudentDownloadReportCardView: {str(e)}")
             context['student'] = None
             context['term_results'] = []
         return context
@@ -443,6 +463,12 @@ class StudentAttendanceView(LoginRequiredMixin, TemplateView):
         except Student.DoesNotExist:
             context['student'] = None
             context['attendance_records'] = []
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in StudentAttendanceView: {str(e)}")
+            context['student'] = None
+            context['attendance_records'] = []
         return context
 
 
@@ -466,6 +492,12 @@ class StudentContactTeacherView(LoginRequiredMixin, TemplateView):
             else:
                 context['teachers'] = []
         except Student.DoesNotExist:
+            context['student'] = None
+            context['teachers'] = []
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in StudentContactTeacherView: {str(e)}")
             context['student'] = None
             context['teachers'] = []
         return context

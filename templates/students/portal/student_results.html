@@ -25,22 +25,26 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Subject</th>
-                                    <th>Exam</th>
-                                    <th>Score</th>
+                                    <th>Test Score</th>
+                                    <th>Exam Score</th>
+                                    <th>Total Score</th>
                                     <th>Grade</th>
-                                    <th>Date</th>
+                                    <th>Remark</th>
+                                    <th>Term</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for result in results %}
                                 <tr>
-                                    <td>{{ result.subject.name }}</td>
-                                    <td>{{ result.exam.name }}</td>
-                                    <td>{{ result.score|default:"N/A" }}</td>
+                                    <td><strong>{{ result.class_subject.subject.name }}</strong></td>
+                                    <td>{{ result.test_score|default:"N/A" }}</td>
+                                    <td>{{ result.exam_score|default:"N/A" }}</td>
+                                    <td><strong>{{ result.total_score|default:"N/A" }}</strong></td>
                                     <td>
                                         <span class="badge bg-info">{{ result.grade|default:"N/A" }}</span>
                                     </td>
-                                    <td>{{ result.exam.date|date:"d/m/Y" }}</td>
+                                    <td>{{ result.remark|default:"N/A" }}</td>
+                                    <td>{{ result.term }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

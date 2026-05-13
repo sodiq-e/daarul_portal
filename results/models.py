@@ -119,6 +119,17 @@ class StudentResult(models.Model):
         null=True,
         blank=True
     )
+    
+    # Publication status
+    is_published = models.BooleanField(default=False, help_text="Whether this result is visible to the student")
+    published_at = models.DateTimeField(null=True, blank=True)
+    published_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='published_results'
+    )
 
     class Meta:
         unique_together = ('student', 'class_subject', 'term')

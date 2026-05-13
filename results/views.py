@@ -1107,3 +1107,124 @@ def teacher_view_report_card_comments(request, student_id, term_id):
     }
 
     return render(request, 'teachers/results/report_card_comments.html', context)
+
+
+# ==================== ADMIN: RESULT PUBLICATION ====================
+
+def admin_is_staff(user):
+    """Check if user is admin/staff"""
+    try:
+        return user.is_staff or user.groups.filter(name__in=['Admin', 'Staff']).exists()
+    except:
+        return False
+
+
+@login_required
+def publish_result(request, result_id):
+    """Admin publishes a single result so student can see it"""
+    if not admin_is_staff(request.user):
+        messages.error(request, 'You do not have permission to publish results.')
+        return redirect('home')
+    
+    result = get_object_or_404(StudentResult, pk=result_id)
+    result.is_published = True
+    from django.utils import timezone
+    result.published_at = timezone.now()
+    result.published_by = request.user
+    result.save()
+    
+    messages.success(request, f'Result for {result.student.full_name()} - {result.class_subject.subject.name} published.')
+    return redirect('results_home')
+
+
+@login_required
+def unpublish_result(request, result_id):
+    """Admin unpublishes a result so student cannot see it"""
+    if not admin_is_staff(request.user):
+        messages.error(request, 'You do not have permission to unpublish results.')
+        return redirect('home')
+    
+    result = get_object_or_404(StudentResult, pk=result_id)
+    result.is_published = False
+    result.published_at = None
+    result.published_by = None
+    result.save()
+    
+    messages.success(request, f'Result for {result.student.full_name()} - {result.class_subject.subject.name} unpublished.')
+    return redirect('results_home')
+
+
+@login_required
+def publish_class_results(request, class_id, term_id):
+    """Admin publishes all results for a class and term"""
+    if not admin_is_staff(request.user):
+        messages.error(request, 'You do not have permission to publish results.')
+        return redirect('home')
+    
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+    
+    # Get all unpublished results for this class and term
+    results = StudentResult.objects.filter(
+        student__student_class=school_class,
+        term=term,
+        is_published=False
+    )
+    
+    count = results.count()
+    
+    if request.method == 'POST':
+        from django.utils import timezone
+        results.update(
+            is_published=True,
+            published_at=timezone.now(),
+            published_by=request.user
+        )
+        messages.success(request, f'Published {count} results for {school_class} - {term}.')
+        return redirect('results_home')
+    
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'result_count': count,
+    }
+    
+    return render(request, 'results/admin/confirm_publish_results.html', context)
+
+
+@login_required
+def unpublish_class_results(request, class_id, term_id):
+    """Admin unpublishes all results for a class and term"""
+    if not admin_is_staff(request.user):
+        messages.error(request, 'You do not have permission to unpublish results.')
+        return redirect('home')
+    
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+    
+    # Get all published results for this class and term
+    results = StudentResult.objects.filter(
+        student__student_class=school_class,
+        term=term,
+        is_published=True
+    )
+    
+    count = results.count()
+    
+    if request.method == 'POST':
+        results.update(
+            is_published=False,
+            published_at=None,
+            published_by=None
+        )
+        messages.success(request, f'Unpublished {count} results for {school_class} - {term}.')
+        return redirect('results_home')
+    
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'result_count': count,
+    }
+    
+    return render(request, 'results/admin/confirm_unpublish_results.html', context)
+

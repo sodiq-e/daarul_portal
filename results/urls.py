@@ -22,6 +22,12 @@ urlpatterns = [
     path('teacher/report-card/<int:student_id>/<int:term_id>/edit/', views.teacher_edit_report_card, name='teacher_edit_report_card'),
     path('teacher/report-card/<int:student_id>/<int:term_id>/comments/', views.teacher_view_report_card_comments, name='teacher_report_card_comments'),
     
+    # Admin: Result publication
+    path('admin/publish/<int:result_id>/', views.publish_result, name='publish_result'),
+    path('admin/unpublish/<int:result_id>/', views.unpublish_result, name='unpublish_result'),
+    path('admin/publish-class/<int:class_id>/<int:term_id>/', views.publish_class_results, name='publish_class_results'),
+    path('admin/unpublish-class/<int:class_id>/<int:term_id>/', views.unpublish_class_results, name='unpublish_class_results'),
+    
     # Legacy URLs for backward compatibility
     path('report/<int:student_id>/<int:exam_id>/', views.report_card, name='report_card'),
     path('promotions/', views.promotions_list, name='promotions_list'),
