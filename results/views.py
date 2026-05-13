@@ -1041,13 +1041,20 @@ def teacher_edit_report_card(request, student_id, term_id):
         result_template=result_template
     ).select_related('class_subject__subject').order_by('class_subject__order')
 
+    # Get student conduct data
+    student_conduct = StudentConduct.objects.filter(
+        student=student,
+        term=term
+    ).first()
+
     context = {
         'student': student,
         'term': term,
         'term_result': term_result,
         'results': results,
         'form': form,
-        'comment': report_comment
+        'comment': report_comment,
+        'student_conduct': student_conduct,
     }
 
     return render(request, 'teachers/results/edit_report_card.html', context)
