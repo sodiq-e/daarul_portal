@@ -295,7 +295,7 @@ class StudentResultsView(LoginRequiredMixin, TemplateView):
                 'class_subject__subject',
                 'term',
                 'result_template'
-            ).order_by('-term__academic_year', '-term__term_number')
+            ).order_by('-term__academic_year', '-term__name')
         except Student.DoesNotExist:
             context['student'] = None
             context['results'] = []
@@ -345,7 +345,7 @@ class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
             # Get all term results for this student
             context['term_results'] = TermResult.objects.filter(
                 student=student
-            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__term_number')
+            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__name')
         except Student.DoesNotExist:
             context['student'] = None
             context['term_results'] = []
@@ -363,7 +363,7 @@ class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
             student = request.user.student_profile
             term_results = TermResult.objects.filter(
                 student=student
-            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__term_number')
+            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__name')
             
             # If PDF download is requested
             if request.GET.get('format') == 'pdf' and WEASYPRINT_AVAILABLE:
