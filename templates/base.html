@@ -917,6 +917,16 @@ html, body {
         color: var(--primary-color);
         flex: 0 0 40%;
       }
+      /* Ensure action buttons inside responsive table cells don't stretch vertically */
+      .table-responsive td .btn,
+      .table-responsive td button {
+        height: auto !important;
+        align-self: center !important;
+        display: inline-flex !important;
+        white-space: nowrap !important;
+        width: auto !important;
+        padding: 6px 8px !important;
+      }
 
       .table-responsive td:last-child::before {
         display: none;
@@ -2865,9 +2875,10 @@ html, body {
   }
 
   .container {
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    /* Use desktop container width for print so documents match desktop layout */
+    max-width: 1140px !important;
+    margin: 0 auto !important;
+    padding: 12px 20px !important;
   }
 
   .layout {
@@ -2905,8 +2916,13 @@ html, body {
   .header-center {
     flex: 1;
     text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 4px !important;
   }
 
+  /* Match desktop header font sizing and alignment when printing */
   .header-center a,
   .header-center div {
     color: black !important;
@@ -2916,11 +2932,13 @@ html, body {
     font-size: 18px !important;
     font-weight: bold !important;
     margin-bottom: 4px !important;
+    text-align: center !important;
   }
 
   .header-center > div:nth-child(2) {
     font-size: 12px !important;
     margin-bottom: 6px !important;
+    text-align: center !important;
   }
 
   .header-center div[style*="font-size:11px"] {
@@ -2932,7 +2950,9 @@ html, body {
   }
 
   .header-right {
-    display: none !important;
+    /* Ensure right-side header content (e.g., school address) appears in print */
+    display: flex !important;
+    justify-content: flex-end !important;
   }
 
   /* Content area */
@@ -2970,6 +2990,7 @@ html, body {
     border-collapse: collapse !important;
     margin-bottom: 15px !important;
     page-break-inside: avoid !important;
+    display: table !important;
   }
 
   table, th, td {
