@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ SCHOOL_NAME }}</title>
   {% load static %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -2825,6 +2825,43 @@ html, body {
     color: black !important;
     margin: 0;
     padding: 0;
+  }
+
+  /* Reset mobile responsive layout for print so printed output matches desktop-style documents */
+  .table-responsive thead {
+    display: table-header-group !important;
+  }
+
+  .table-responsive tbody,
+  .table-responsive tr {
+    display: table-row-group !important;
+    width: auto !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .table-responsive td {
+    display: table-cell !important;
+    justify-content: left !important;
+    align-items: stretch !important;
+    padding: 8px !important;
+    border-bottom: 1px solid #333 !important;
+  }
+
+  html,
+  body {
+    width: auto !important;
+    min-width: auto !important;
+  }
+
+  .content,
+  .layout,
+  .page-content,
+  .page-wrapper {
+    width: auto !important;
+    max-width: none !important;
   }
 
   .container {
