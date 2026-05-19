@@ -896,6 +896,9 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
             messages.error(self.request, 'Please select class, subject, and term.')
             return self.form_invalid(form)
 
+    def get_success_url(self):
+        return reverse_lazy('teachers:teacher_scheme_detail', kwargs={'pk': self.object.pk})
+
 
 @method_decorator(login_required, name='dispatch')
 class TeacherSchemeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):

@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from exams.models import Term, Subject, ClassSubject
 from results.models import GradeScale, ResultTemplate, StudentResult
 from school_classes.models import SchoolClasses
+from students.models import Student
 
 
 def is_admin(user):
@@ -113,15 +114,9 @@ def manage_academic_sessions(request):
             term_id = request.POST.get('term_id')
             try:
                 term = Term.objects.get(id=term_id)
-                
-                # Deactivate all other terms in the same academic year
-                Term.objects.filter(academic_year=term.academic_year).update(is_active=False)
-                
-                # Activate selected term
                 term.is_active = True
                 term.save()
-                
-                messages.success(request, f'✓ {term} activated. All other terms in {term.academic_year} deactivated.')
+                messages.success(request, f'✓ {term} activated. Multiple terms can now be active simultaneously.')
             except Term.DoesNotExist:
                 messages.error(request, 'Term not found.')
 
@@ -319,7 +314,7 @@ def bulk_create_result_templates(request):
                         skipped += 1
                         continue
 
-                    ResultTemplate.objects.create(
+                    template = ResultTemplate.objects.create(
                         name=f"{school_class} - {term}",
                         school_class=school_class,
                         term=term,
@@ -329,6 +324,18 @@ def bulk_create_result_templates(request):
                         is_active=False
                     )
                     created += 1
+
+                    # Seed student result records for every active student in the class
+                    students = Student.objects.filter(student_class=school_class, status='active')
+                    class_subjects = ClassSubject.objects.filter(school_class=school_class)
+                    for student in students:
+                        for class_subject in class_subjects:
+                            StudentResult.objects.get_or_create(
+                                student=student,
+                                class_subject=class_subject,
+                                term=term,
+                                result_template=template
+                            )
 
                 messages.success(request, f'✓ Created {created} template(s), skipped {skipped} existing.')
 
