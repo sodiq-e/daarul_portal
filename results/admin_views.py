@@ -78,7 +78,7 @@ def manage_academic_sessions(request):
         return redirect('home')
 
     terms = Term.objects.all().order_by('-academic_year', 'name')
-    academic_years = set(t.academic_year for t in terms)
+    academic_years = sorted({t.academic_year for t in terms}, reverse=True)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -120,13 +120,32 @@ def manage_academic_sessions(request):
             except Term.DoesNotExist:
                 messages.error(request, 'Term not found.')
 
+        elif action == 'delete_session':
+            academic_year = request.POST.get('academic_year')
+            if not academic_year:
+                messages.error(request, 'Academic session not specified.')
+            else:
+                deleted_count, _ = Term.objects.filter(academic_year=academic_year).delete()
+                if deleted_count:
+                    messages.success(request, f'✓ Academic session {academic_year} deleted successfully.')
+                else:
+                    messages.error(request, f'No terms found for academic session {academic_year}.')
+
         elif action == 'deactivate_all_current':
             active_count = Term.objects.filter(is_active=True).update(is_active=False)
             messages.success(request, f'✓ Deactivated {active_count} active term(s).')
 
+    sessions = []
+    for year in academic_years:
+        sessions.append({
+            'academic_year': year,
+            'terms': terms.filter(academic_year=year).order_by('name')
+        })
+
     context = {
         'terms': terms,
-        'academic_years': sorted(academic_years, reverse=True),
+        'academic_years': academic_years,
+        'sessions': sessions,
         'active_terms': Term.objects.filter(is_active=True),
     }
 
