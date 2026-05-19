@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.urls import reverse_lazy, reverse
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.db import IntegrityError
 from django.http import HttpResponseForbidden
 from .models import (
     SchoolClasses, Teacher, ClassTeacher, SchemeOfWork, SchemeWeek, TeacherPermission
@@ -881,8 +882,16 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
             form.instance.school_class_id = class_id
             form.instance.subject_id = subject_id
             form.instance.term_id = term_id
+            try:
+                response = super().form_valid(form)
+            except IntegrityError:
+                messages.error(
+                    self.request,
+                    'A scheme for this class, subject, term and academic year already exists.'
+                )
+                return self.form_invalid(form)
             messages.success(self.request, 'Scheme of work created. Now add weekly details.')
-            return super().form_valid(form)
+            return response
         else:
             messages.error(self.request, 'Please select class, subject, and term.')
             return self.form_invalid(form)
@@ -962,9 +971,24 @@ class SchemeWeekCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         return context
 
     def form_valid(self, form):
-        form.instance.scheme_id = self.kwargs.get('scheme_id')
+        scheme_id = self.kwargs.get('scheme_id')
+        form.instance.scheme_id = scheme_id
+
+        if not form.instance.week_number:
+            last_week = SchemeWeek.objects.filter(scheme_id=scheme_id).order_by('-week_number').first()
+            form.instance.week_number = (last_week.week_number + 1) if last_week else 1
+
+        try:
+            response = super().form_valid(form)
+        except IntegrityError:
+            messages.error(
+                self.request,
+                'A week with this number already exists for this scheme.'
+            )
+            return self.form_invalid(form)
+
         messages.success(self.request, 'Week added to scheme.')
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse_lazy('teacher_scheme_detail', kwargs={'pk': self.kwargs.get('scheme_id')})
