@@ -820,7 +820,7 @@ class TeacherSchemeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVie
     model = SchemeOfWork
     form_class = SchemeOfWorkForm
     template_name = 'teachers/scheme/scheme_form.html'
-    success_url = reverse_lazy('teacher_scheme_list')
+    success_url = reverse_lazy('teachers:teacher_scheme_list')
 
     def test_func(self):
         return user_is_staff(self.request.user)
@@ -936,7 +936,7 @@ class TeacherSchemeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateVie
             return False
 
     def get_success_url(self):
-        return reverse_lazy('teacher_scheme_detail', kwargs={'pk': self.object.pk})
+        return reverse_lazy('teachers:teacher_scheme_detail', kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):
         messages.success(self.request, 'Scheme of work updated successfully.')
@@ -991,7 +991,7 @@ class SchemeWeekCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         return response
 
     def get_success_url(self):
-        return reverse_lazy('teacher_scheme_detail', kwargs={'pk': self.kwargs.get('scheme_id')})
+        return reverse_lazy('teachers:teacher_scheme_detail', kwargs={'pk': self.kwargs.get('scheme_id')})
 
 
 @method_decorator(login_required, name='dispatch')
@@ -1014,7 +1014,7 @@ class SchemeWeekUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
             return False
 
     def get_success_url(self):
-        return reverse_lazy('teacher_scheme_detail', kwargs={'pk': self.object.scheme.pk})
+        return reverse_lazy('teachers:teacher_scheme_detail', kwargs={'pk': self.object.scheme.pk})
 
     def form_valid(self, form):
         messages.success(self.request, 'Week updated successfully.')
@@ -1044,7 +1044,7 @@ def mark_week_complete(request, week_id):
     week.save()
 
     messages.success(request, f'Week {week.week_number} marked as completed.')
-    return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+    return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
 
 @login_required
@@ -1070,7 +1070,7 @@ def mark_week_incomplete(request, week_id):
     week.save()
 
     messages.success(request, f'Week {week.week_number} marked as not completed.')
-    return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+    return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
 
 @login_required
@@ -1093,14 +1093,14 @@ def acknowledge_week_completion(request, week_id):
 
     if not week.is_completed:
         messages.error(request, 'Please mark the week as completed before acknowledging.')
-        return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+        return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
     week.is_acknowledged = True
     week.acknowledged_at = timezone.now()
     week.save()
 
     messages.success(request, f'Week {week.week_number} acknowledged. Waiting for admin approval.')
-    return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+    return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
 
 @login_required
@@ -1127,7 +1127,7 @@ def approve_week_completion(request, week_id):
 
         messages.success(request, f'Week {week.week_number} approved successfully.')
     
-    return redirect('teacher_scheme_detail', pk=week.scheme.pk)
+    return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -1178,14 +1178,14 @@ def submit_scheme_for_approval(request, scheme_id):
 
     if scheme.is_submitted:
         messages.warning(request, 'This scheme has already been submitted.')
-        return redirect('teacher_scheme_detail', pk=scheme_id)
+        return redirect('teachers:teacher_scheme_detail', pk=scheme_id)
 
     scheme.is_submitted = True
     scheme.submitted_at = timezone.now()
     scheme.save()
 
     messages.success(request, 'Scheme submitted for approval. Awaiting admin acknowledgement.')
-    return redirect('teacher_scheme_detail', pk=scheme_id)
+    return redirect('teachers:teacher_scheme_detail', pk=scheme_id)
 
 
 # ==================== ADMIN: SCHEME APPROVAL ====================
