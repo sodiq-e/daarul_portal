@@ -89,18 +89,23 @@ def manage_academic_sessions(request):
                 messages.error(request, 'Please enter an academic year.')
                 return redirect('manage_academic_sessions')
 
-            # Check if session already exists
-            if Term.objects.filter(academic_year=academic_year).exists():
-                messages.warning(request, f'Academic session {academic_year} already exists.')
-            else:
-                # Create three terms for new session
-                term_names = [
-                    ('first', 'First Term'),
-                    ('second', 'Second Term'),
-                    ('third', 'Third Term'),
-                ]
+            existing_term_names = set(
+                Term.objects.filter(academic_year=academic_year).values_list('name', flat=True)
+            )
+            term_choices = dict(Term.TERM_CHOICES)
+            missing_terms = [
+                (name, term_choices[name])
+                for name in term_choices
+                if name not in existing_term_names
+            ]
 
-                for term_code, term_display in term_names:
+            if not missing_terms:
+                messages.warning(
+                    request,
+                    f'Academic session {academic_year} already exists with all terms. No new terms were created.'
+                )
+            else:
+                for term_code, term_display in missing_terms:
                     Term.objects.create(
                         name=term_code,
                         display_name=term_display,
@@ -108,7 +113,11 @@ def manage_academic_sessions(request):
                         is_active=False
                     )
 
-                messages.success(request, f'✓ Academic session {academic_year} created with 3 terms.')
+                created_names = ', '.join(display for _, display in missing_terms)
+                messages.success(
+                    request,
+                    f'✓ Academic session {academic_year} updated. Created missing term(s): {created_names}.'
+                )
 
         elif action == 'activate_term':
             term_id = request.POST.get('term_id')

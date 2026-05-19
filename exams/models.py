@@ -11,10 +11,13 @@ class Term(models.Model):
         ('third', 'Third Term'),
     ]
 
-    name = models.CharField(max_length=20, choices=TERM_CHOICES, unique=True)
+    name = models.CharField(max_length=20, choices=TERM_CHOICES)
     display_name = models.CharField(max_length=50, default='Term')
     academic_year = models.CharField(max_length=20, help_text="e.g., 2023/2024")
     is_active = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('academic_year', 'name')
 
     def __str__(self):
         return f"{self.display_name} ({self.academic_year})"
