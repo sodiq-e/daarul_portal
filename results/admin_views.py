@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.db.models import Count, Q
 from django.http import JsonResponse
 from exams.models import Term, Subject, ClassSubject
@@ -125,11 +125,19 @@ def manage_academic_sessions(request):
             if not academic_year:
                 messages.error(request, 'Academic session not specified.')
             else:
-                deleted_count, _ = Term.objects.filter(academic_year=academic_year).delete()
-                if deleted_count:
-                    messages.success(request, f'✓ Academic session {academic_year} deleted successfully.')
-                else:
-                    messages.error(request, f'No terms found for academic session {academic_year}.')
+                try:
+                    deleted_count, _ = Term.objects.filter(academic_year=academic_year).delete()
+                    if deleted_count:
+                        messages.success(request, f'✓ Academic session {academic_year} deleted successfully.')
+                    else:
+                        messages.error(request, f'No terms found for academic session {academic_year}.')
+                except DatabaseError as exc:
+                    messages.error(
+                        request,
+                        'Unable to delete session. Please ensure all database migrations are applied and try again.'
+                    )
+                    # Log the exception for debugging if you have a logging setup
+                    print(f'DatabaseError deleting academic session {academic_year}: {exc}')
 
         elif action == 'deactivate_all_current':
             active_count = Term.objects.filter(is_active=True).update(is_active=False)
