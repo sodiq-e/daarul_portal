@@ -12,6 +12,7 @@ urlpatterns = [
     path('teacher/mark/', views.TeacherAttendanceMarkView.as_view(), name='teacher_mark_attendance'),
     path('teacher/list/', views.TeacherAttendanceListView.as_view(), name='teacher_attendance_list'),
     path('teacher/report/', views.TeacherAttendanceReportView.as_view(), name='teacher_attendance_report'),
+    path('report/', views.AttendanceReportView.as_view(), name='attendance_report'),
     
     # Student Attendance Views
     path('my-attendance/', views.StudentAttendanceHistoryView.as_view(), name='student_attendance_history'),

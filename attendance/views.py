@@ -405,6 +405,62 @@ class TeacherAttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, Templ
 
 
 @method_decorator(login_required, name='dispatch')
+class AttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Staff/admin class attendance report"""
+    template_name = 'teachers/attendance/attendance_report.html'
+
+    def test_func(self):
+        return user_is_staff(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        class_id = self.request.GET.get('class_id')
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        classes = SchoolClasses.objects.all().order_by('name')
+        context['classes'] = classes
+        context['report_title'] = 'Class Attendance Statistics'
+        context['selected_class_id'] = class_id
+        context['start_date'] = start_date
+        context['end_date'] = end_date
+
+        if class_id:
+            try:
+                school_class = classes.get(pk=class_id)
+                context['selected_class'] = school_class
+
+                attendance_records = AttendanceRecord.objects.filter(school_class=school_class)
+                if start_date:
+                    attendance_records = attendance_records.filter(date__gte=start_date)
+                if end_date:
+                    attendance_records = attendance_records.filter(date__lte=end_date)
+
+                report_data = []
+                for date_info in attendance_records.values('date').distinct().order_by('date'):
+                    day = date_info['date']
+                    day_records = attendance_records.filter(date=day)
+                    total_students = day_records.count()
+                    present_sessions = sum(record.present_sessions for record in day_records)
+                    absent_sessions = total_students * 2 - present_sessions
+                    report_data.append({
+                        'date': day,
+                        'class_name': str(school_class),
+                        'total': total_students,
+                        'present': present_sessions,
+                        'absent': absent_sessions,
+                        'late': 0,
+                        'percentage': round((present_sessions / (total_students * 2) * 100) if total_students > 0 else 0, 2)
+                    })
+
+                context['report_data'] = report_data
+            except SchoolClasses.DoesNotExist:
+                pass
+
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
 class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
     """Students view their own attendance history"""
     template_name = 'students/attendance_history.html'

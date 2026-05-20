@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}Attendance Report{% endblock %}
+{% block title %}{{ report_title|default:'Attendance Report' }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-warning text-dark">
-            <h3 class="mb-0">Attendance Report</h3>
+            <h3 class="mb-0">{{ report_title|default:'Attendance Report' }}</h3>
         </div>
         <div class="card-body">
             <form method="get" class="mb-4">
