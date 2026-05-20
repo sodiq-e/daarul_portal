@@ -2893,6 +2893,96 @@ html, body {
     padding: 12px 20px !important;
   }
 
+  /* Force desktop-style grid layout for printed pages */
+  .row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    margin-right: -15px !important;
+    margin-left: -15px !important;
+  }
+
+  .row > [class*="col-"] {
+    position: relative !important;
+    width: auto !important;
+    min-height: 1px !important;
+    padding-right: 15px !important;
+    padding-left: 15px !important;
+    float: left !important;
+  }
+
+  .col-md-3 {
+    width: 25% !important;
+  }
+
+  .col-lg-6 {
+    width: 50% !important;
+  }
+
+  .col-12,
+  .col-sm-12,
+  .col-md-12,
+  .col-lg-12 {
+    width: 100% !important;
+  }
+
+  .d-flex {
+    display: flex !important;
+    flex-wrap: wrap !important;
+  }
+
+  .justify-content-between {
+    justify-content: space-between !important;
+  }
+
+  .justify-content-center {
+    justify-content: center !important;
+  }
+
+  .align-items-center {
+    align-items: center !important;
+  }
+
+  .text-center {
+    text-align: left !important;
+  }
+
+  .card,
+  .box,
+  [class*="card"],
+  [class*="box"] {
+    width: auto !important;
+    max-width: none !important;
+    display: block !important;
+  }
+
+  .card-header,
+  .card-body,
+  .card-footer {
+    display: block !important;
+    text-align: left !important;
+  }
+
+  .list-group-item {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .list-group-item .badge,
+  .list-group-item strong,
+  .list-group-item span {
+    text-align: left !important;
+  }
+
+  .page-break {
+    page-break-before: always !important;
+  }
+
+  .no-break {
+    page-break-inside: avoid !important;
+  }
+
   .layout {
     display: block !important;
     margin: 0 !important;
