@@ -4,12 +4,12 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-4" style="flex-wrap: wrap; gap: 16px;">
         <div>
             <h1>Finance Dashboard</h1>
             <p class="text-muted">Overview of school expenses, invoices, and payments.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2" style="flex-wrap: wrap; gap: 10px;">
             <a href="{% url 'expense_add' %}" class="btn btn-primary no-print">Record Expense</a>
             <a href="{% url 'invoice_add' %}" class="btn btn-secondary no-print">Create Invoice</a>
             <a href="{% url 'payment_add' %}" class="btn btn-success no-print">Record Payment</a>
