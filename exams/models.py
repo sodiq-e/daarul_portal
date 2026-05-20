@@ -14,6 +14,8 @@ class Term(models.Model):
     name = models.CharField(max_length=20, choices=TERM_CHOICES)
     display_name = models.CharField(max_length=50, default='Term')
     academic_year = models.CharField(max_length=20, help_text="e.g., 2023/2024")
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
 
     class Meta:

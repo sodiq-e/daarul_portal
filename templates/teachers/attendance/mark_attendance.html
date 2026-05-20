@@ -24,7 +24,7 @@
                     </div>
                     <div class="col-md-6">
                         <label for="date" class="form-label">Date</label>
-                        <input type="date" name="date" id="date" class="form-control" value="{{ selected_date }}">
+                        <input type="date" name="date" id="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary mt-3">Load Class</button>
@@ -34,7 +34,8 @@
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="class_id" value="{{ selected_class.pk }}">
-                <h4 class="mb-3">{{ selected_class }} - Today</h4>
+                <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+                <h4 class="mb-3">{{ selected_class }} - {{ selected_date|date:'F j, Y' }}</h4>
                 
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -42,7 +43,8 @@
                             <tr>
                                 <th>Student</th>
                                 <th>Admission No</th>
-                                <th>Present</th>
+                                <th class="text-center">Morning</th>
+                                <th class="text-center">Afternoon</th>
                                 <th>Notes</th>
                             </tr>
                         </thead>
@@ -52,7 +54,10 @@
                                 <td>{{ student.full_name }}</td>
                                 <td>{{ student.admission_no }}</td>
                                 <td class="text-center">
-                                    <input type="checkbox" name="student_{{ student.pk }}" class="form-check-input" style="width: 20px; height: 20px;">
+                                    <input type="checkbox" name="student_{{ student.pk }}_morning" class="form-check-input" style="width: 20px; height: 20px;">
+                                </td>
+                                <td class="text-center">
+                                    <input type="checkbox" name="student_{{ student.pk }}_afternoon" class="form-check-input" style="width: 20px; height: 20px;">
                                 </td>
                                 <td>
                                     <input type="text" name="notes_{{ student.pk }}" class="form-control form-control-sm" placeholder="Optional notes">

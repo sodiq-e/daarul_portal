@@ -6,6 +6,7 @@ from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponseForbidden, JsonResponse
+from datetime import date
 from django.db.models import Count, Q
 from django.utils.decorators import method_decorator
 from .models import AttendanceRecord, AttendanceSession
@@ -144,6 +145,18 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
 
         context['classes'] = SchoolClasses.objects.filter(id__in=assigned_classes)
 
+        # Determine date to mark attendance for
+        selected_date_str = self.request.GET.get('date')
+        if selected_date_str:
+            try:
+                selected_date = date.fromisoformat(selected_date_str)
+            except ValueError:
+                selected_date = date.today()
+        else:
+            selected_date = date.today()
+
+        context['selected_date'] = selected_date
+
         # Get class if specified
         class_id = self.request.GET.get('class_id')
         if class_id:
@@ -155,6 +168,11 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
                         student_class=school_class,
                         status='active'
                     ).order_by('surname', 'other_names')
+                    active_records = AttendanceRecord.objects.filter(
+                        school_class=school_class,
+                        date=selected_date
+                    )
+                    context['attendance_map'] = {record.student_id: record for record in active_records}
             except SchoolClasses.DoesNotExist:
                 pass
 
@@ -163,8 +181,6 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
     def post(self, request, *args, **kwargs):
         teacher = request.user.teacher_profile
         class_id = request.POST.get('class_id')
-        from django.utils import timezone
-        from datetime import date
 
         try:
             school_class = SchoolClasses.objects.get(id=class_id)
@@ -174,28 +190,35 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
                 messages.error(request, 'You are not assigned to this class.')
                 return redirect('teacher_mark_attendance')
 
-            today = date.today()
+            attendance_date_str = request.POST.get('date')
+            try:
+                attendance_date = date.fromisoformat(attendance_date_str) if attendance_date_str else date.today()
+            except ValueError:
+                attendance_date = date.today()
+
             present_count = 0
             absent_count = 0
 
             # Process attendance for each student
             students = Student.objects.filter(student_class=school_class, status='active')
             for student in students:
-                is_present = request.POST.get(f'student_{student.id}') == 'on'
+                morning_present = request.POST.get(f'student_{student.id}_morning') == 'on'
+                afternoon_present = request.POST.get(f'student_{student.id}_afternoon') == 'on'
                 notes = request.POST.get(f'notes_{student.id}', '')
 
                 attendance, created = AttendanceRecord.objects.update_or_create(
                     student=student,
-                    date=today,
+                    date=attendance_date,
                     school_class=school_class,
                     defaults={
-                        'present': is_present,
+                        'morning_present': morning_present,
+                        'afternoon_present': afternoon_present,
                         'marked_by': request.user,
                         'notes': notes
                     }
                 )
 
-                if is_present:
+                if attendance.present:
                     present_count += 1
                 else:
                     absent_count += 1
@@ -203,7 +226,7 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
             # Create or update attendance session
             session, created = AttendanceSession.objects.update_or_create(
                 school_class=school_class,
-                date=today,
+                date=attendance_date,
                 defaults={
                     'teacher': teacher,
                     'total_students': len(students),
@@ -302,6 +325,13 @@ class TeacherAttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, Templ
 
         # Get class if specified
         class_id = self.request.GET.get('class_id')
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        context['selected_class_id'] = class_id
+        context['start_date'] = start_date
+        context['end_date'] = end_date
+
         if class_id:
             try:
                 school_class = SchoolClasses.objects.get(id=class_id, id__in=assigned_classes)
@@ -316,28 +346,57 @@ class TeacherAttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, Templ
                 # Calculate attendance stats for each student
                 student_stats = []
                 for student in students:
-                    total_records = AttendanceRecord.objects.filter(
+                    records = AttendanceRecord.objects.filter(
                         student=student,
                         school_class=school_class
-                    ).count()
+                    )
 
-                    present_count = AttendanceRecord.objects.filter(
-                        student=student,
-                        school_class=school_class,
-                        present=True
-                    ).count()
-
-                    attendance_percentage = (present_count / total_records * 100) if total_records > 0 else 0
+                    total_records = records.count()
+                    present_days = records.filter(present=True).count()
+                    present_sessions = sum(int(record.morning_present) + int(record.afternoon_present) for record in records)
+                    total_half_sessions = total_records * 2
+                    absent_sessions = total_half_sessions - present_sessions
+                    days_marked = records.values('date').distinct().count()
+                    attendance_percentage = (present_sessions / total_half_sessions * 100) if total_half_sessions > 0 else 0
 
                     student_stats.append({
                         'student': student,
                         'total_records': total_records,
-                        'present_count': present_count,
-                        'absent_count': total_records - present_count,
+                        'present_days': present_days,
+                        'present_sessions': present_sessions,
+                        'absent_sessions': absent_sessions,
+                        'days_marked': days_marked,
                         'attendance_percentage': round(attendance_percentage, 2)
                     })
 
                 context['student_stats'] = student_stats
+
+                # Generate per-day class attendance report data
+                attendance_filters = {'school_class': school_class}
+                if start_date:
+                    attendance_filters['date__gte'] = start_date
+                if end_date:
+                    attendance_filters['date__lte'] = end_date
+
+                attendance_records = AttendanceRecord.objects.filter(**attendance_filters)
+                report_data = []
+                for date_info in attendance_records.values('date').distinct().order_by('date'):
+                    day = date_info['date']
+                    day_records = attendance_records.filter(date=day)
+                    total_students = day_records.count()
+                    present_sessions = sum(record.present_sessions for record in day_records)
+                    absent_sessions = total_students * 2 - present_sessions
+                    report_data.append({
+                        'date': day,
+                        'class_name': str(school_class),
+                        'total': total_students,
+                        'present': present_sessions,
+                        'absent': absent_sessions,
+                        'late': 0,
+                        'percentage': round((present_sessions / (total_students * 2) * 100) if total_students > 0 else 0, 2)
+                    })
+
+                context['report_data'] = report_data
 
             except SchoolClasses.DoesNotExist:
                 pass
@@ -369,12 +428,46 @@ class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
             total_records = attendance_records.count()
             present_count = attendance_records.filter(present=True).count()
             absent_count = total_records - present_count
-            attendance_percentage = (present_count / total_records * 100) if total_records > 0 else 0
-            
+            total_half_sessions = total_records * 2
+            present_sessions = sum(int(record.morning_present) + int(record.afternoon_present) for record in attendance_records)
+            absent_sessions = total_half_sessions - present_sessions
+            attendance_percentage = (present_sessions / total_half_sessions * 100) if total_half_sessions > 0 else 0
+            days_marked = attendance_records.values('date').distinct().count()
+
+            weekly_summary = {}
+            for record in attendance_records:
+                week_no = record.date.isocalendar()[1]
+                week_stat = weekly_summary.setdefault(week_no, {
+                    'week': week_no,
+                    'present_sessions': 0,
+                    'absent_sessions': 0,
+                    'days': set(),
+                })
+                week_stat['present_sessions'] += int(record.morning_present) + int(record.afternoon_present)
+                week_stat['absent_sessions'] += 2 - (int(record.morning_present) + int(record.afternoon_present))
+                week_stat['days'].add(record.date)
+
+            weekly_stats = []
+            for week in sorted(weekly_summary):
+                stats = weekly_summary[week]
+                days_count = len(stats['days'])
+                weekly_stats.append({
+                    'week': week,
+                    'present_sessions': stats['present_sessions'],
+                    'absent_sessions': stats['absent_sessions'],
+                    'days_marked': days_count,
+                    'attendance_percentage': round((stats['present_sessions'] / (days_count * 2) * 100), 2) if days_count > 0 else 0,
+                })
+
             context['total_records'] = total_records
             context['present_count'] = present_count
             context['absent_count'] = absent_count
+            context['total_half_sessions'] = total_half_sessions
+            context['present_sessions'] = present_sessions
+            context['absent_sessions'] = absent_sessions
+            context['days_marked'] = days_marked
             context['attendance_percentage'] = round(attendance_percentage, 2)
+            context['weekly_stats'] = weekly_stats
             
             # Get stats by class
             classes = student.school_class

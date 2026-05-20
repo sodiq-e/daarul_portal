@@ -16,7 +16,7 @@
                         <select name="class_id" id="class_id" class="form-select">
                             <option value="">-- All Classes --</option>
                             {% for class in classes %}
-                            <option value="{{ class.pk }}" {% if selected_class_id == class.pk %}selected{% endif %}>
+                            <option value="{{ class.pk }}" {% if selected_class_id == class.pk|stringformat:"s" %}selected{% endif %}>
                                 {{ class }}
                             </option>
                             {% endfor %}
@@ -47,8 +47,8 @@
                             <th>Date</th>
                             <th>Class</th>
                             <th>Total Students</th>
-                            <th>Present</th>
-                            <th>Absent</th>
+                            <th>Present Sessions</th>
+                            <th>Absent Sessions</th>
                             <th>Late</th>
                             <th>Attendance %</th>
                         </tr>
