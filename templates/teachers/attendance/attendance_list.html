@@ -12,7 +12,7 @@
                     <a href="{% url 'teacher_mark_attendance' %}" class="btn btn-sm btn-light me-2">
                         <i class="fas fa-plus"></i> Mark Attendance
                     </a>
-                    {% if request.user.is_superuser or request.user.groups.filter(name='Staff').exists %}
+                    {% if show_attendance_report %}
                     <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-secondary">
                         <i class="fas fa-chart-bar"></i> Attendance Stats
                     </a>

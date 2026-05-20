@@ -294,6 +294,7 @@ class TeacherAttendanceListView(LoginRequiredMixin, UserPassesTestMixin, ListVie
 
         context['classes'] = SchoolClasses.objects.filter(id__in=assigned_classes)
         context['selected_class'] = self.request.GET.get('class_id')
+        context['show_attendance_report'] = self.request.user.is_superuser or user_is_staff(self.request.user)
 
         return context
 
