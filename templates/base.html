@@ -2758,10 +2758,22 @@ html, body {
     width: 100% !important;
   }
 
-  .content input, .content textarea, .content select, .content button {
+  /* Inputs and selects should be full-width on mobile, but buttons must remain auto-sized */
+  .content input, .content textarea, .content select {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+
+  .content button, .btn, button {
+    width: auto !important;
+    max-width: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: auto !important;
+    padding: 6px 10px !important;
+    white-space: nowrap !important;
   }
 
   /* Cards and boxes */
@@ -3047,8 +3059,12 @@ html, body {
     font-family: Arial, sans-serif !important;
   }
 
-  button, [type="button"], [type="submit"] {
+  button, [type="button"], [type="submit"], .no-print {
     display: none !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
   }
 
   /* Report card specific */
@@ -3094,6 +3110,33 @@ html, body {
   body {
     widows: 3;
     orphans: 3;
+  }
+}
+
+/* Additional mobile fixes: prevent action buttons from stretching vertically or horizontally */
+@media (max-width: 768px) {
+  .container .btn,
+  .container button,
+  .table-responsive td .btn,
+  .bulk-actions button,
+  .pagination button,
+  .modal-footer button,
+  .card .btn {
+    display: inline-flex !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px 10px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Avoid children stretching to fill column flex parents */
+  .table-responsive td,
+  .card,
+  .box {
+    align-items: center !important;
   }
 }
 
