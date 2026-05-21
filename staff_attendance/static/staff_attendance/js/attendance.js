@@ -1,4 +1,4 @@
-const attendanceState = {
+﻿const attendanceState = {
   apiClockIn: null,
   apiClockOut: null,
   apiSync: null,
@@ -54,8 +54,8 @@ function initializeAttendancePage() {
   syncAttendance();
   registerServiceWorker();
 
-  document.getElementById('clockInBtn').addEventListener('click', handleClockIn);
-  document.getElementById('clockOutBtn').addEventListener('click', handleClockOut);
+  document.querySelectorAll('[id="clockInBtn"]').forEach((btn) => btn.addEventListener('click', handleClockIn));
+  document.querySelectorAll('[id="clockOutBtn"]').forEach((btn) => btn.addEventListener('click', handleClockOut));
 
   window.addEventListener('online', () => {
     updateConnectionStatus();
@@ -66,15 +66,15 @@ function initializeAttendancePage() {
 }
 
 function setupAttendanceControls() {
-  const clockInBtn = document.getElementById('clockInBtn');
-  const clockOutBtn = document.getElementById('clockOutBtn');
-  const completedBadge = document.getElementById('attendanceCompletedBadge');
-  const noClockInMessage = document.getElementById('noClockInMessage');
-  const liveTimerRow = document.getElementById('liveTimerRow');
-  const syncStatus = document.getElementById('syncStatus');
-  const messageBox = document.getElementById('attendanceMessage');
+  const clockInBtns = getAttendanceButtons('clockInBtn');
+  const clockOutBtns = getAttendanceButtons('clockOutBtn');
+  const completedBadges = getAttendanceElements('[id="attendanceCompletedBadge"]');
+  const noClockInMessages = getAttendanceElements('[id="noClockInMessage"]');
+  const liveTimerRows = getAttendanceElements('[id="liveTimerRow"]');
+  const syncStatusElements = getAttendanceElements('[id="syncStatus"]');
+  const messageBoxes = getAttendanceElements('[id="attendanceMessage"]');
 
-  if (!clockInBtn || !clockOutBtn || !completedBadge) return;
+  if (!clockInBtns.length || !clockOutBtns.length || !completedBadges.length) return;
 
   const hasClockIn = !!attendanceState.currentAttendance.clockIn;
   const hasClockOut = !!attendanceState.currentAttendance.clockOut;
@@ -82,50 +82,48 @@ function setupAttendanceControls() {
 
   if (!attendanceState.locationConfigured) {
     showMessage('Attendance location not configured. Contact administrator.', 'error');
-    clockInBtn.disabled = true;
-    clockOutBtn.disabled = true;
-    clockInBtn.classList.add('disabled');
-    clockOutBtn.classList.add('disabled');
+    setAttendanceButtonsDisabled('clockInBtn', true);
+    setAttendanceButtonsDisabled('clockOutBtn', true);
   }
 
   if (completed) {
-    clockInBtn.classList.add('d-none');
-    clockOutBtn.classList.add('d-none');
-    clockInBtn.disabled = true;
-    clockOutBtn.disabled = true;
-    completedBadge.classList.remove('d-none');
-    if (noClockInMessage) noClockInMessage.classList.add('d-none');
-    if (liveTimerRow) liveTimerRow.classList.add('d-none');
-    if (messageBox) {
-      messageBox.classList.add('d-none');
-      messageBox.textContent = '';
-    }
+    setAttendanceButtonsVisible('clockInBtn', false);
+    setAttendanceButtonsVisible('clockOutBtn', false);
+    setAttendanceButtonsDisabled('clockInBtn', true);
+    setAttendanceButtonsDisabled('clockOutBtn', true);
+    completedBadges.forEach((badge) => badge.classList.remove('d-none'));
+    noClockInMessages.forEach((message) => message.classList.add('d-none'));
+    liveTimerRows.forEach((row) => row.classList.add('d-none'));
+    messageBoxes.forEach((box) => {
+      box.classList.add('d-none');
+      box.textContent = '';
+    });
     updateStatusBadge('completed');
     renderAttendanceTimes();
     renderWorkDuration();
     return;
   }
 
-  completedBadge.classList.add('d-none');
-  if (liveTimerRow) liveTimerRow.classList.toggle('d-none', !hasClockIn);
+  completedBadges.forEach((badge) => badge.classList.add('d-none'));
+  liveTimerRows.forEach((row) => row.classList.toggle('d-none', !hasClockIn));
 
   if (hasClockIn) {
-    clockInBtn.classList.add('d-none');
-    clockOutBtn.classList.remove('d-none');
-    clockOutBtn.disabled = !attendanceState.enableClockOut;
-    if (noClockInMessage) noClockInMessage.classList.add('d-none');
+    setAttendanceButtonsVisible('clockInBtn', false);
+    setAttendanceButtonsVisible('clockOutBtn', true);
+    setAttendanceButtonsDisabled('clockOutBtn', !attendanceState.enableClockOut);
+    noClockInMessages.forEach((message) => message.classList.add('d-none'));
     startLiveTimer();
   } else {
-    clockInBtn.classList.remove('d-none');
-    clockOutBtn.classList.add('d-none');
-    if (noClockInMessage) noClockInMessage.classList.remove('d-none');
+    setAttendanceButtonsVisible('clockInBtn', true);
+    setAttendanceButtonsVisible('clockOutBtn', false);
+    noClockInMessages.forEach((message) => message.classList.remove('d-none'));
     stopLiveTimer();
   }
 
-  if (syncStatus) {
+  syncStatusElements.forEach((syncStatus) => {
     syncStatus.textContent = attendanceState.currentAttendance.synced ? 'Synced' : 'Pending';
     syncStatus.className = `badge ${attendanceState.currentAttendance.synced ? 'bg-info' : 'bg-warning text-dark'}`;
-  }
+  });
 
   renderAttendanceTimes();
   renderWorkDuration();
@@ -198,6 +196,33 @@ function parseIsoDate(value) {
   if (!value) return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getAttendanceElements(selector) {
+  return Array.from(document.querySelectorAll(selector));
+}
+
+function getAttendanceButtons(id) {
+  return getAttendanceElements(`[id="${id}"]`);
+}
+
+function setAttendanceButtonsVisible(id, visible) {
+  getAttendanceButtons(id).forEach((button) => {
+    if (visible) {
+      button.classList.remove('d-none');
+      button.style.display = '';
+    } else {
+      button.classList.add('d-none');
+      button.style.display = 'none';
+    }
+  });
+}
+
+function setAttendanceButtonsDisabled(id, disabled) {
+  getAttendanceButtons(id).forEach((button) => {
+    button.disabled = disabled;
+    button.classList.toggle('disabled', disabled);
+  });
 }
 
 function getCurrentPositionAsync() {
@@ -449,16 +474,8 @@ async function handleOfflineFallback(action, errorMessage, payload = null) {
 }
 
 function setLoading(isLoading, message = '') {
-  const clockInBtn = document.getElementById('clockInBtn');
-  const clockOutBtn = document.getElementById('clockOutBtn');
-  if (clockInBtn) {
-    clockInBtn.disabled = isLoading;
-    clockInBtn.classList.toggle('disabled', isLoading);
-  }
-  if (clockOutBtn) {
-    clockOutBtn.disabled = isLoading;
-    clockOutBtn.classList.toggle('disabled', isLoading);
-  }
+  setAttendanceButtonsDisabled('clockInBtn', isLoading);
+  setAttendanceButtonsDisabled('clockOutBtn', isLoading);
   if (message) {
     showMessage(message, 'info', false);
   }
@@ -695,3 +712,4 @@ if (document.readyState === 'loading') {
 } else {
   initializeAttendancePage();
 }
+
