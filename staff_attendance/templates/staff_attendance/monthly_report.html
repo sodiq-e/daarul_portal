@@ -10,20 +10,24 @@
   {% else %}
     <div class="row gy-3">
       <div class="col-md-4">
-        <div class="card p-4 shadow-sm">
-          <h3>Summary</h3>
-          <p><strong>Present:</strong> {{ present_count }}</p>
-          <p><strong>Late:</strong> {{ late_count }}</p>
-          <p><strong>Absent:</strong> {{ absent_count }}</p>
-          <p><strong>Hours Worked:</strong> {{ hours_worked|floatformat:1 }}</p>
+        <div class="card p-4 shadow-sm rounded-4">
+          <h3 class="h5 mb-3">Summary</h3>
+          <div class="mb-3"><span class="d-block text-muted">Present</span><strong>{{ present_count }}</strong></div>
+          <div class="mb-3"><span class="d-block text-muted">Late</span><strong>{{ late_count }}</strong></div>
+          <div class="mb-3"><span class="d-block text-muted">Absent</span><strong>{{ absent_count }}</strong></div>
+          <div class="mb-3"><span class="d-block text-muted">Hours Worked</span><strong>{{ hours_worked_formatted }}</strong></div>
+          <div><span class="d-block text-muted">Average Clock-In</span><strong>{{ average_clock_in|default:'N/A' }}</strong></div>
         </div>
       </div>
       <div class="col-md-8">
-        <div class="card p-4 shadow-sm">
-          <h3>Records</h3>
-          <div class="table-responsive">
-            <table class="table table-sm">
-              <thead>
+        <div class="card p-4 shadow-sm rounded-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="h5 mb-0">Records</h3>
+            <span class="badge bg-secondary">{{ records.count }} days</span>
+          </div>
+          <div class="table-responsive shadow-sm rounded-4 overflow-hidden">
+            <table class="table table-hover table-striped table-borderless mb-0">
+              <thead class="table-light">
                 <tr>
                   <th>Date</th>
                   <th>Status</th>
@@ -35,9 +39,17 @@
                 {% for record in records %}
                   <tr>
                     <td>{{ record.date }}</td>
-                    <td>{{ record.clock_in_status|capfirst }}</td>
-                    <td>{{ record.clock_in|default:'-' }}</td>
-                    <td>{{ record.clock_out|default:'-' }}</td>
+                    <td>
+                      {% if record.clock_in_status == 'present' %}
+                        <span class="badge bg-success">Present</span>
+                      {% elif record.clock_in_status == 'late' %}
+                        <span class="badge bg-warning text-dark">Late</span>
+                      {% else %}
+                        <span class="badge bg-danger">Absent</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ record.clock_in|date:'g:i A'|default:'-' }}</td>
+                    <td>{{ record.clock_out|date:'g:i A'|default:'-' }}</td>
                   </tr>
                 {% empty %}
                   <tr>

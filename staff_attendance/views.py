@@ -76,11 +76,29 @@ class MonthlyReportView(LoginRequiredMixin, TemplateView):
         context['present_count'] = records.filter(clock_in_status=StaffAttendance.STATUS_PRESENT).count()
         context['late_count'] = records.filter(clock_in_status=StaffAttendance.STATUS_LATE).count()
         context['absent_count'] = records.filter(clock_in_status=StaffAttendance.STATUS_ABSENT).count()
-        context['hours_worked'] = sum(
-            ((record.clock_out - record.clock_in).total_seconds() / 3600)
+
+        total_work_seconds = sum(
+            int((record.clock_out - record.clock_in).total_seconds())
             for record in records
-            if record.clock_in and record.clock_out
+            if record.clock_in and record.clock_out and record.clock_out >= record.clock_in
         )
+        total_work_hours = total_work_seconds / 3600 if total_work_seconds else 0
+        average_clock_in_seconds = 0
+        clock_in_records = [record for record in records if record.clock_in]
+        if clock_in_records:
+            average_clock_in_seconds = sum(
+                record.clock_in.hour * 3600 + record.clock_in.minute * 60 + record.clock_in.second
+                for record in clock_in_records
+            ) // len(clock_in_records)
+
+        average_clock_in_time = timezone.datetime(2000, 1, 1, tzinfo=timezone.get_default_timezone()) + timezone.timedelta(seconds=average_clock_in_seconds) if clock_in_records else None
+        context['hours_worked'] = total_work_hours
+        context['hours_worked_formatted'] = f"{int(total_work_hours)}h {int((total_work_hours * 60) % 60)}m"
+        if average_clock_in_time:
+            clock_in_display = average_clock_in_time.strftime('%I:%M %p')
+            context['average_clock_in'] = clock_in_display.lstrip('0') if clock_in_display.startswith('0') else clock_in_display
+        else:
+            context['average_clock_in'] = None
         return context
 
 
@@ -148,6 +166,11 @@ class StaffAttendanceBaseAPI(LoginRequiredMixin, APIView):
         except (TypeError, ValueError):
             return None
 
+    def validate_school_coordinates(self, settings):
+        if settings.school_latitude is None or settings.school_longitude is None:
+            return 'Attendance location not configured. Contact administrator.'
+        return None
+
     def parse_uuid(self, value):
         if not value:
             return None
@@ -188,6 +211,10 @@ class StaffAttendanceClockInAPI(StaffAttendanceBaseAPI):
         today = timezone.localdate()
         if StaffAttendance.objects.filter(teacher=teacher, date=today).exists():
             return Response({'detail': 'You have already clocked in today.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        location_error = self.validate_school_coordinates(attendance_settings)
+        if location_error:
+            return Response({'detail': location_error}, status=status.HTTP_400_BAD_REQUEST)
 
         latitude = self.get_decimal_coordinate(request.data.get('latitude'))
         longitude = self.get_decimal_coordinate(request.data.get('longitude'))
@@ -250,6 +277,10 @@ class StaffAttendanceClockOutAPI(StaffAttendanceBaseAPI):
         if record.clock_out:
             return Response({'detail': 'You have already clocked out today.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        location_error = self.validate_school_coordinates(attendance_settings)
+        if location_error:
+            return Response({'detail': location_error}, status=status.HTTP_400_BAD_REQUEST)
+
         latitude = self.get_decimal_coordinate(request.data.get('latitude'))
         longitude = self.get_decimal_coordinate(request.data.get('longitude'))
         offline_record = bool(request.data.get('offline_record', False))
@@ -300,6 +331,10 @@ class StaffAttendanceSyncAPI(StaffAttendanceBaseAPI):
         attendance_settings = AttendanceSettings.get_current()
         if not attendance_settings.enable_offline_sync:
             return Response({'detail': 'Offline sync is disabled.'}, status=status.HTTP_403_FORBIDDEN)
+
+        location_error = self.validate_school_coordinates(attendance_settings)
+        if location_error:
+            return Response({'detail': location_error}, status=status.HTTP_400_BAD_REQUEST)
 
         teacher = self.get_teacher()
         if teacher is None:

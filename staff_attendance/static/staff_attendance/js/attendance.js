@@ -6,13 +6,23 @@ const attendanceState = {
   enableOfflineSync: false,
   enableClockOut: true,
   allowedRadius: 0,
+  maxGpsAccuracy: 100,
   schoolLatitude: null,
   schoolLongitude: null,
+  locationConfigured: false,
+  currentAttendance: {
+    clockIn: null,
+    clockOut: null,
+    status: null,
+    synced: false,
+  },
+  liveTimerId: null,
 };
 
 const dbName = 'StaffAttendanceDB';
 const storeName = 'attendance_records';
 const settingsCacheKey = 'staffAttendanceSettingsCache';
+let messageTimeoutId = null;
 
 function initializeAttendancePage() {
   const config = document.getElementById('staffAttendanceConfig');
@@ -27,11 +37,18 @@ function initializeAttendancePage() {
   attendanceState.enableOfflineSync = config.dataset.enableOfflineSync === 'true';
   attendanceState.enableClockOut = config.dataset.enableClockOut === 'true';
   attendanceState.allowedRadius = Number(config.dataset.allowedRadius) || 0;
-  attendanceState.schoolLatitude = parseFloat(config.dataset.schoolLatitude) || null;
-  attendanceState.schoolLongitude = parseFloat(config.dataset.schoolLongitude) || null;
+  attendanceState.maxGpsAccuracy = Number(config.dataset.maxGpsAccuracy) || 100;
+  attendanceState.schoolLatitude = Number(config.dataset.schoolLatitude);
+  attendanceState.schoolLongitude = Number(config.dataset.schoolLongitude);
+  attendanceState.locationConfigured = Number.isFinite(attendanceState.schoolLatitude) && Number.isFinite(attendanceState.schoolLongitude);
+  attendanceState.currentAttendance.clockIn = parseIsoDate(config.dataset.todayClockIn);
+  attendanceState.currentAttendance.clockOut = parseIsoDate(config.dataset.todayClockOut);
+  attendanceState.currentAttendance.status = config.dataset.todayStatus || null;
+  attendanceState.currentAttendance.synced = config.dataset.todaySynced === 'true';
 
   cacheAttendanceSettings();
   updateConnectionStatus();
+  setupAttendanceControls();
   updatePendingCount();
   updateLocationStatus();
   syncAttendance();
@@ -46,6 +63,81 @@ function initializeAttendancePage() {
   });
 
   window.addEventListener('offline', updateConnectionStatus);
+}
+
+function setupAttendanceControls() {
+  const clockInBtn = document.getElementById('clockInBtn');
+  const clockOutBtn = document.getElementById('clockOutBtn');
+  const completedBadge = document.getElementById('attendanceCompletedBadge');
+  const noClockInMessage = document.getElementById('noClockInMessage');
+  const liveTimerRow = document.getElementById('liveTimerRow');
+  const syncStatus = document.getElementById('syncStatus');
+
+  if (!clockInBtn || !clockOutBtn || !completedBadge) return;
+
+  const hasClockIn = !!attendanceState.currentAttendance.clockIn;
+  const hasClockOut = !!attendanceState.currentAttendance.clockOut;
+  const completed = hasClockIn && hasClockOut;
+
+  if (!attendanceState.locationConfigured) {
+    showMessage('Attendance location not configured. Contact administrator.', 'error');
+    clockInBtn.disabled = true;
+    clockOutBtn.disabled = true;
+    clockInBtn.classList.add('disabled');
+    clockOutBtn.classList.add('disabled');
+  }
+
+  if (completed) {
+    clockInBtn.classList.add('d-none');
+    clockOutBtn.classList.add('d-none');
+    completedBadge.classList.remove('d-none');
+    if (noClockInMessage) noClockInMessage.classList.add('d-none');
+    if (liveTimerRow) liveTimerRow.classList.add('d-none');
+    updateStatusBadge('completed');
+    return;
+  }
+
+  completedBadge.classList.add('d-none');
+  if (liveTimerRow) liveTimerRow.classList.toggle('d-none', !hasClockIn);
+
+  if (hasClockIn) {
+    clockInBtn.classList.add('d-none');
+    clockOutBtn.classList.remove('d-none');
+    clockOutBtn.disabled = !attendanceState.enableClockOut;
+    if (noClockInMessage) noClockInMessage.classList.add('d-none');
+    startLiveTimer();
+  } else {
+    clockInBtn.classList.remove('d-none');
+    clockOutBtn.classList.add('d-none');
+    if (noClockInMessage) noClockInMessage.classList.remove('d-none');
+    stopLiveTimer();
+  }
+
+  if (syncStatus) {
+    syncStatus.textContent = attendanceState.currentAttendance.synced ? 'Synced' : 'Pending';
+    syncStatus.className = `badge ${attendanceState.currentAttendance.synced ? 'bg-info' : 'bg-warning text-dark'}`;
+  }
+}
+
+function updateStatusBadge(state) {
+  const statusBadge = document.getElementById('statusBadge');
+  if (!statusBadge) return;
+  if (state === 'completed') {
+    statusBadge.textContent = 'Completed';
+    statusBadge.className = 'badge bg-primary';
+    return;
+  }
+  const status = attendanceState.currentAttendance.status;
+  if (status === 'present') {
+    statusBadge.textContent = 'Present';
+    statusBadge.className = 'badge bg-success';
+  } else if (status === 'late') {
+    statusBadge.textContent = 'Late';
+    statusBadge.className = 'badge bg-warning text-dark';
+  } else {
+    statusBadge.textContent = 'Absent';
+    statusBadge.className = 'badge bg-danger';
+  }
 }
 
 function updateConnectionStatus() {
@@ -69,7 +161,8 @@ function updateConnectionStatus() {
   }
 }
 
-function showMessage(message, type = 'info') {
+let messageTimeoutId = null;
+function showMessage(message, type = 'info', autoHide = true) {
   const alertBox = document.getElementById('attendanceMessage');
   if (!alertBox) return;
   alertBox.className = 'alert';
@@ -80,6 +173,20 @@ function showMessage(message, type = 'info') {
   );
   alertBox.textContent = message;
   alertBox.classList.remove('d-none');
+  if (messageTimeoutId) {
+    clearTimeout(messageTimeoutId);
+  }
+  if (autoHide) {
+    messageTimeoutId = setTimeout(() => {
+      alertBox.classList.add('d-none');
+    }, 8000);
+  }
+}
+
+function parseIsoDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function getCurrentPositionAsync() {
@@ -94,6 +201,32 @@ function getCurrentPositionAsync() {
       maximumAge: 10000,
     });
   });
+}
+
+function validateGpsAccuracy(accuracy) {
+  if (typeof accuracy !== 'number' || Number.isNaN(accuracy)) {
+    return { valid: false, message: 'Unable to verify GPS accuracy.' };
+  }
+  if (accuracy > attendanceState.maxGpsAccuracy) {
+    return {
+      valid: false,
+      message: 'Location accuracy too weak. Move outdoors or enable GPS.',
+    };
+  }
+  return { valid: true };
+}
+
+function formatTimeSpan(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return `${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`;
+}
+
+function formatWorkDuration(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
 }
 
 function computeDistanceMeters(lat1, lon1, lat2, lon2) {
@@ -128,33 +261,60 @@ function buildClockPayload(action, coords, syncId) {
 }
 
 async function handleClockIn() {
+  if (!attendanceState.locationConfigured) {
+    showMessage('Attendance location not configured. Contact administrator.', 'error');
+    return;
+  }
   if (!attendanceState.enableGps) {
     showMessage('GPS validation is currently disabled. The app will still attempt to clock you in without location.', 'warning');
   }
   try {
+    setLoading(true, 'Getting location...');
     const position = await getCurrentPositionAsync();
+    const accuracyCheck = validateGpsAccuracy(position.coords.accuracy);
+    if (!accuracyCheck.valid) {
+      showMessage(accuracyCheck.message, 'error');
+      setLoading(false);
+      return;
+    }
     await sendClockEvent('clock_in', position.coords);
   } catch (error) {
     await handleOfflineFallback('clock_in', error.message);
+  } finally {
+    setLoading(false);
   }
 }
 
 async function handleClockOut() {
+  if (!attendanceState.locationConfigured) {
+    showMessage('Attendance location not configured. Contact administrator.', 'error');
+    return;
+  }
   if (!attendanceState.enableClockOut) {
     showMessage('Clock out is disabled by school settings.', 'warning');
     return;
   }
   try {
+    setLoading(true, 'Getting location...');
     const position = await getCurrentPositionAsync();
+    const accuracyCheck = validateGpsAccuracy(position.coords.accuracy);
+    if (!accuracyCheck.valid) {
+      showMessage(accuracyCheck.message, 'error');
+      setLoading(false);
+      return;
+    }
     await sendClockEvent('clock_out', position.coords);
   } catch (error) {
     await handleOfflineFallback('clock_out', error.message);
+  } finally {
+    setLoading(false);
   }
 }
 
 async function sendClockEvent(action, coords) {
   const offlineSyncId = createOfflineSyncId();
   const payload = buildClockPayload(action, coords, offlineSyncId);
+  setLoading(true, action === 'clock_in' ? 'Clocking in...' : 'Clocking out...');
 
   if (!navigator.onLine) {
     return handleOfflineFallback(action, 'No network available. Storing locally until connection returns.', payload);
@@ -179,8 +339,21 @@ async function sendClockEvent(action, coords) {
     showMessage(result.message || 'Attendance saved successfully.', 'success');
     document.getElementById('syncStatus').textContent = 'Synced';
     updatePendingCount();
+    if (action === 'clock_in') {
+      attendanceState.currentAttendance.clockIn = new Date();
+      attendanceState.currentAttendance.status = result.status || 'present';
+      attendanceState.currentAttendance.synced = result.synced;
+      updateStatusBadge(attendanceState.currentAttendance.status);
+    } else {
+      attendanceState.currentAttendance.clockOut = new Date();
+      attendanceState.currentAttendance.synced = result.synced;
+      stopLiveTimer();
+    }
+    setupAttendanceControls();
   } catch (error) {
     await handleOfflineFallback(action, error.message, payload);
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -211,6 +384,22 @@ async function handleOfflineFallback(action, errorMessage, payload = null) {
     updatePendingCount();
   } catch (error) {
     showMessage('Unable to save attendance offline: ' + error.message, 'error');
+  }
+}
+
+function setLoading(isLoading, message = '') {
+  const clockInBtn = document.getElementById('clockInBtn');
+  const clockOutBtn = document.getElementById('clockOutBtn');
+  if (clockInBtn) {
+    clockInBtn.disabled = isLoading;
+    clockInBtn.classList.toggle('disabled', isLoading);
+  }
+  if (clockOutBtn) {
+    clockOutBtn.disabled = isLoading;
+    clockOutBtn.classList.toggle('disabled', isLoading);
+  }
+  if (message) {
+    showMessage(message, 'info', false);
   }
 }
 
@@ -350,24 +539,42 @@ function updateLocationStatus() {
   const status = document.getElementById('locationStatus');
   const accuracy = document.getElementById('accuracyInfo');
   const distance = document.getElementById('distanceInfo');
-  if (!status || !accuracy || !distance || !attendanceState.enableGps) return;
+  if (!status || !accuracy || !distance) return;
+
+  if (!attendanceState.locationConfigured) {
+    status.textContent = 'Attendance location not configured. Contact administrator.';
+    accuracy.textContent = '--';
+    distance.textContent = '--';
+    return;
+  }
+
+  if (!attendanceState.enableGps) {
+    status.textContent = 'GPS not required for this school configuration.';
+    accuracy.textContent = '--';
+    distance.textContent = '--';
+    return;
+  }
 
   getCurrentPositionAsync()
     .then((position) => {
       const coords = position.coords;
+      const accuracyCheck = validateGpsAccuracy(coords.accuracy);
+      if (!accuracyCheck.valid) {
+        status.textContent = accuracyCheck.message;
+        accuracy.textContent = `>${attendanceState.maxGpsAccuracy} meters`;
+        distance.textContent = '--';
+        return;
+      }
+
       accuracy.textContent = `${coords.accuracy.toFixed(1)} meters`;
       status.textContent = 'Location available';
-      if (attendanceState.schoolLatitude && attendanceState.schoolLongitude) {
-        const meters = computeDistanceMeters(
-          attendanceState.schoolLatitude,
-          attendanceState.schoolLongitude,
-          coords.latitude,
-          coords.longitude,
-        );
-        distance.textContent = `${meters.toFixed(1)} meters`;
-      } else {
-        distance.textContent = 'School coordinates unavailable';
-      }
+      const meters = computeDistanceMeters(
+        attendanceState.schoolLatitude,
+        attendanceState.schoolLongitude,
+        coords.latitude,
+        coords.longitude,
+      );
+      distance.textContent = `${meters.toFixed(1)} meters`;
     })
     .catch((error) => {
       status.textContent = `Location error: ${error.message}`;
@@ -387,6 +594,26 @@ function cacheAttendanceSettings() {
     localStorage.setItem(settingsCacheKey, JSON.stringify(settings));
   } catch (error) {
     console.warn('Unable to cache attendance settings:', error);
+  }
+}
+
+function startLiveTimer() {
+  const liveTimer = document.getElementById('liveTimer');
+  if (!liveTimer || !attendanceState.currentAttendance.clockIn) return;
+  stopLiveTimer();
+  function updateTimer() {
+    const now = new Date();
+    const seconds = Math.max(0, Math.floor((now - attendanceState.currentAttendance.clockIn) / 1000));
+    liveTimer.textContent = formatTimeSpan(seconds);
+  }
+  updateTimer();
+  attendanceState.liveTimerId = setInterval(updateTimer, 1000);
+}
+
+function stopLiveTimer() {
+  if (attendanceState.liveTimerId) {
+    clearInterval(attendanceState.liveTimerId);
+    attendanceState.liveTimerId = null;
   }
 }
 

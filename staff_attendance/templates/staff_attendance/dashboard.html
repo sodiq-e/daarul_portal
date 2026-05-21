@@ -16,40 +16,50 @@
     <div class="alert alert-warning">Only authenticated teachers can access the staff attendance dashboard.</div>
   {% else %}
     <div class="row gy-3">
-      <div class="col-lg-6">
-        <div class="card p-4 shadow-sm">
-          <h2>Today's Attendance</h2>
+      <div class="col-12 col-lg-6">
+        <div class="card p-4 shadow-sm rounded-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <h2 class="h4 mb-1">Today's Attendance</h2>
+              <p class="text-muted mb-0">Track your current shift and live work timer.</p>
+            </div>
+            <span id="attendanceCompletedBadge" class="badge bg-success d-none">Attendance completed for today</span>
+          </div>
+
           <div id="todayStatusCard" class="mb-3">
             {% if current_attendance %}
-              <div><strong>Status:</strong> <span id="attendanceStatusText">{{ current_attendance.clock_in_status|capfirst }}</span></div>
-              <div><strong>Clock In:</strong> <span id="clockInTime">{{ current_attendance.clock_in|default:'--' }}</span></div>
-              <div><strong>Clock Out:</strong> <span id="clockOutTime">{{ current_attendance.clock_out|default:'--' }}</span></div>
-              <div><strong>Work Duration:</strong> <span id="workDuration">{{ current_attendance.formatted_work_duration|default:'--' }}</span></div>
-              <div><strong>Sync Status:</strong> <span id="syncStatus" class="badge bg-info">{{ current_attendance.synced|yesno:'Synced,Pending' }}</span></div>
+              <div class="d-flex flex-wrap gap-2 mb-2">
+                <span class="badge" id="statusBadge">{{ current_attendance.clock_in_status|capfirst }}</span>
+                <span class="badge bg-primary" id="syncStatus">{{ current_attendance.synced|yesno:'Synced,Pending' }}</span>
+              </div>
+              <div class="mb-2"><strong>Clock In:</strong> <span id="clockInTime">{{ current_attendance.clock_in|date:'g:i A'|default:'--' }}</span></div>
+              <div class="mb-2"><strong>Clock Out:</strong> <span id="clockOutTime">{{ current_attendance.clock_out|date:'g:i A'|default:'--' }}</span></div>
+              <div class="mb-2"><strong>Work Duration:</strong> <span id="workDuration">{{ current_attendance.formatted_work_duration|default:'--' }}</span></div>
+              <div class="mb-2" id="liveTimerRow"><strong>Working Time:</strong> <span id="liveTimer">--</span></div>
             {% else %}
-              <p id="noClockInMessage" class="mb-3">You have not clocked in today.</p>
+              <p id="noClockInMessage" class="mb-3 text-muted">You have not clocked in today.</p>
             {% endif %}
           </div>
 
           <div class="mb-3">
             <span id="onlineIndicator" class="badge bg-success">Online</span>
             <span id="offlineBadge" class="badge bg-warning d-none">Offline Mode</span>
-            <span id="pendingCountBadge" class="badge bg-secondary d-none">0 pending sync</span>
+            <span id="pendingCountBadge" class="badge bg-warning d-none">0 pending sync</span>
           </div>
 
-          <div class="mb-3" id="gpsInfoBox">
-            <div><strong>GPS Accuracy:</strong> <span id="accuracyInfo">--</span></div>
-            <div><strong>Distance from school:</strong> <span id="distanceInfo">--</span></div>
-            <div><strong>Location status:</strong> <span id="locationStatus">Waiting for location...</span></div>
+          <div class="mb-4" id="gpsInfoBox">
+            <div class="small text-muted mb-1"><strong>GPS Accuracy:</strong> <span id="accuracyInfo">--</span></div>
+            <div class="small text-muted mb-1"><strong>Distance:</strong> <span id="distanceInfo">--</span></div>
+            <div class="small text-muted"><strong>Location status:</strong> <span id="locationStatus">Waiting for location...</span></div>
+          </div>
+
+          <div class="d-grid gap-2 gap-md-3 d-md-flex">
+            <button id="clockInBtn" class="btn btn-primary btn-lg me-md-2">Clock In</button>
+            <button id="clockOutBtn" class="btn btn-success btn-lg">Clock Out</button>
           </div>
 
           <div class="mt-4">
-            <button id="clockInBtn" class="btn btn-primary me-2">Clock In</button>
-            <button id="clockOutBtn" class="btn btn-success">Clock Out</button>
-          </div>
-
-          <div class="mt-3">
-            <div id="attendanceMessage" class="alert d-none" role="alert"></div>
+            <div id="attendanceMessage" class="alert d-none mb-0" role="alert"></div>
           </div>
         </div>
       </div>
@@ -87,8 +97,13 @@
          data-late-after-time="{{ attendance_settings.late_after_time }}"
          data-earliest-clock-out-time="{{ attendance_settings.earliest_clock_out_time }}"
          data-allowed-radius="{{ attendance_settings.allowed_radius_meters }}"
-         data-school-latitude=""
-         data-school-longitude=""></div>
+         data-max-gps-accuracy="100"
+         data-school-latitude="{{ attendance_settings.school_latitude|default:'' }}"
+         data-school-longitude="{{ attendance_settings.school_longitude|default:'' }}"
+         data-today-clock-in="{{ current_attendance.clock_in|date:'c'|default:'' }}"
+         data-today-clock-out="{{ current_attendance.clock_out|date:'c'|default:'' }}"
+         data-today-status="{{ current_attendance.clock_in_status|default:'' }}"
+         data-today-synced="{{ current_attendance.synced|yesno:'true,false'|default:'false' }}"></div>
   {% endif %}
 </div>
 
