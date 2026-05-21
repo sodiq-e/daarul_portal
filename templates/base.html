@@ -3453,6 +3453,40 @@ html, body {
 <div class="layout">
 
 <aside class="sidebar" id="sidebar">
+<script>
+(function() {
+  try {
+    const saved = localStorage.getItem('sidebarState');
+    if (!saved) return;
+    const state = JSON.parse(saved);
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    if (!sidebar) return;
+
+    if (state.desktopCollapsed) {
+      sidebar.classList.add('collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+    }
+
+    if (state.mobileActive) {
+      sidebar.classList.add('active');
+      if (overlay) {
+        overlay.classList.add('show');
+      }
+      document.body.classList.add('no-scroll');
+    } else {
+      sidebar.classList.remove('active');
+      if (overlay) {
+        overlay.classList.remove('show');
+      }
+      document.body.classList.remove('no-scroll');
+    }
+  } catch (error) {
+    console.warn('Unable to restore sidebar state:', error);
+  }
+})();
+</script>
 
 {% if user.is_authenticated %}
 
@@ -3868,6 +3902,22 @@ const menuBtn = document.getElementById('menuBtn');
 const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('overlay');
 
+function getSidebarState() {
+  const sidebar = document.getElementById('sidebar');
+  return {
+    desktopCollapsed: sidebar ? sidebar.classList.contains('collapsed') : false,
+    mobileActive: sidebar ? sidebar.classList.contains('active') : false
+  };
+}
+
+function saveSidebarState() {
+  try {
+    localStorage.setItem('sidebarState', JSON.stringify(getSidebarState()));
+  } catch (error) {
+    console.warn('Unable to save sidebar state:', error);
+  }
+}
+
 // Handle menu button click
 menuBtn.addEventListener('click', function(e) {
   e.preventDefault();
@@ -3884,6 +3934,7 @@ menuBtn.addEventListener('click', function(e) {
     // Desktop: toggle collapse
     sidebar.classList.toggle('collapsed');
   }
+  saveSidebarState();
 });
 
 // Close drawer when overlay clicked
@@ -3891,6 +3942,7 @@ overlay.addEventListener('click', function() {
   sidebar.classList.remove('active');
   overlay.classList.remove('show');
   document.body.classList.remove('no-scroll');
+  saveSidebarState();
 });
 
 // Close drawer when any link is clicked on mobile
@@ -3900,6 +3952,7 @@ document.querySelectorAll('.sidebar a').forEach(link => {
       sidebar.classList.remove('active');
       overlay.classList.remove('show');
       document.body.classList.remove('no-scroll');
+      saveSidebarState();
     }
   });
 });
@@ -3912,6 +3965,7 @@ if (logoutBtn) {
       sidebar.classList.remove('active');
       overlay.classList.remove('show');
       document.body.classList.remove('no-scroll');
+      saveSidebarState();
     }
   });
 }
