@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Attempt for {{ attempt.exam.title }}</h1>
+<p>Status: {{ attempt.get_status_display }}</p>
+<p>Time remaining: {{ time_left_seconds }} seconds</p>
+<form method="post">{% csrf_token %}
+  {% for question in questions %}
+    <section>
+      <h2>Question {{ forloop.counter }} ({{ question.mark_value }} point{{ question.mark_value|pluralize }})</h2>
+      <p>{{ question.text }}</p>
+      {% for choice in question.choices.all %}
+      <div>
+        <label>
+          <input type="radio" name="question_{{ question.pk }}" value="{{ choice.pk }}">
+          {{ choice.text }}
+        </label>
+      </div>
+      {% endfor %}
+    </section>
+  {% endfor %}
+  <button type="submit">Submit answers</button>
+</form>
+{% if attempt.is_submitted %}
+  <h2>Result</h2>
+  <p>Score: {{ attempt.score }} / {{ total_points }}</p>
+{% endif %}
+{% endblock %}

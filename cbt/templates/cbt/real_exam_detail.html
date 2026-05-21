@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ exam.title }}</h1>
+<p>Mode: {{ exam.get_exam_mode_display }}</p>
+<p>Duration: {{ exam.duration_minutes }} minutes</p>
+<p>{{ exam.description }}</p>
+{% if exam.exam_mode == exam.REAL %}
+  {% if user.is_authenticated %}
+    <a href="{% url 'cbt:real_exam_start' exam.pk %}">Begin real exam</a>
+  {% else %}
+    <p>Please <a href="{% url 'login' %}">log in</a> to take this exam.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

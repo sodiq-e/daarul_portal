@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ form.instance.pk|yesno:'Edit Question,Create Question' }}</h1>
+<form method="post">{% csrf_token %}
+  {{ form.as_p }}
+  {{ formset.management_form }}
+  {% for form_choice in formset %}
+    <fieldset>
+      {{ form_choice.as_p }}
+    </fieldset>
+  {% endfor %}
+  <button type="submit">Save question</button>
+</form>
+<a href="{% url 'cbt:question_list' exam.pk %}">Back to questions</a>
+{% endblock %}

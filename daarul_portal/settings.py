@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'announcements',
     'communication',
     'pages',
+    'cbt.apps.CbtConfig',
 ]
 
 

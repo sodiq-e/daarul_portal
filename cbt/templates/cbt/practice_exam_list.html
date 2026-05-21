@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Practice Exams</h1>
+<ul>
+  {% for exam in practice_exams %}
+  <li>
+    <strong>{{ exam.title }}</strong> — {{ exam.duration_minutes }} minutes
+    <a href="{% url 'cbt:practice_exam_start' exam.pk %}">Start practice</a>
+  </li>
+  {% empty %}
+  <li>No practice exams available.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

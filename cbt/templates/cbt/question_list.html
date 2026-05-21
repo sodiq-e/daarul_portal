@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Questions for {{ exam.title }}</h1>
+<p><a href="{% url 'cbt:question_add' exam.pk %}">Add question</a></p>
+<table>
+  <thead>
+    <tr><th>Order</th><th>Text</th><th>Points</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for question in questions %}
+    <tr>
+      <td>{{ question.order }}</td>
+      <td>{{ question.text|truncatechars:80 }}</td>
+      <td>{{ question.points }}</td>
+      <td><a href="{% url 'cbt:question_edit' question.pk %}">Edit</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No questions yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<a href="{% url 'cbt:exam_list' %}">Back to exams</a>
+{% endblock %}

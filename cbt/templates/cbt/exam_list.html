@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>CBT Exams</h1>
+<p><a href="{% url 'cbt:exam_add' %}">Create new exam</a></p>
+<table>
+  <thead>
+    <tr><th>Title</th><th>Mode</th><th>Duration</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for exam in exams %}
+    <tr>
+      <td>{{ exam.title }}</td>
+      <td>{{ exam.get_exam_mode_display }}</td>
+      <td>{{ exam.duration_minutes }} minutes</td>
+      <td>
+        <a href="{% url 'cbt:exam_edit' exam.pk %}">Edit</a>
+        <a href="{% url 'cbt:question_list' exam.pk %}">Questions</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No exams created yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

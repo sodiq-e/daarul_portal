@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Exam Result</h1>
+<p>Exam: {{ attempt.exam.title }}</p>
+<p>Status: {{ attempt.get_status_display }}</p>
+<p>Score: {{ attempt.score }} / {{ total_points|default:'N/A' }}</p>
+<p>Submitted at: {{ attempt.completed_at }}</p>
+<p><a href="{% url 'cbt:real_exam_list' %}">Back to real exams</a></p>
+{% endblock %}
