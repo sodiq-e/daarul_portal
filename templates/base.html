@@ -3497,7 +3497,7 @@ html, body {
 
   {% if user.is_staff %}
     <div class="menu-section">
-      <div class="menu-header active" onclick="toggleMenu(this)">
+      <div class="menu-header active" data-menu-key="admin" onclick="toggleMenu(this)">
         <span>👨‍💼 ADMIN</span>
         <span class="arrow">›</span>
       </div>
@@ -3553,7 +3553,7 @@ html, body {
 
   {% elif user.teacher_profile %}
     <div class="menu-section">
-      <div class="menu-header active" onclick="toggleMenu(this)">
+      <div class="menu-header active" data-menu-key="teacher" onclick="toggleMenu(this)">
         <span>👨‍🏫 TEACHER</span>
         <span class="arrow">›</span>
       </div>
@@ -3595,7 +3595,7 @@ html, body {
 
   {% elif user.student_profile %}
     <div class="menu-section">
-      <div class="menu-header active" onclick="toggleMenu(this)">
+      <div class="menu-header active" data-menu-key="student" onclick="toggleMenu(this)">
         <span>🎓 STUDENT</span>
         <span class="arrow">›</span>
       </div>
@@ -3633,7 +3633,7 @@ html, body {
   {% endif %}
 
   <div class="menu-section">
-    <div class="menu-header active" onclick="toggleMenu(this)">
+    <div class="menu-header active" data-menu-key="portal" onclick="toggleMenu(this)">
       <span>📋 PORTAL</span>
       <span class="arrow">›</span>
     </div>
@@ -3693,7 +3693,7 @@ html, body {
 {% else %}
 
   <div class="menu-section">
-    <div class="menu-header active" onclick="toggleMenu(this)">
+    <div class="menu-header active" data-menu-key="guest" onclick="toggleMenu(this)">
       <span>👤 GUEST</span>
       <span class="arrow">›</span>
     </div>
@@ -3709,7 +3709,7 @@ html, body {
   </div>
 
   <div class="menu-section">
-    <div class="menu-header active" onclick="toggleMenu(this)">
+    <div class="menu-header active" data-menu-key="info" onclick="toggleMenu(this)">
       <span>📢 INFO</span>
       <span class="arrow">›</span>
     </div>
@@ -3731,6 +3731,35 @@ html, body {
 {% endif %}
 
 </aside>
+<script>
+(function() {
+  try {
+    const raw = localStorage.getItem('sidebarMenuState');
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    const normalizeKey = (text) => text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w-]/g, '');
+
+    document.querySelectorAll('.menu-header').forEach((header) => {
+      const key = header.dataset.menuKey || normalizeKey(header.textContent || '');
+      const content = header.nextElementSibling;
+      if (!content || !content.classList.contains('menu-content') || key === '') return;
+
+      const collapsed = state[key];
+      if (collapsed === undefined) return;
+
+      if (collapsed) {
+        content.classList.add('collapsed');
+        header.classList.remove('active');
+      } else {
+        content.classList.remove('collapsed');
+        header.classList.add('active');
+      }
+    });
+  } catch (error) {
+    console.warn('Unable to restore sidebar menu state:', error);
+  }
+})();
+</script>
   <main class="content">
         {% block content %}{% endblock %}
       </main>
@@ -3918,6 +3947,24 @@ function saveSidebarState() {
   }
 }
 
+function saveSidebarMenuState() {
+  try {
+    const state = {};
+    const normalizeKey = (text) => text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w-]/g, '');
+
+    document.querySelectorAll('.menu-header').forEach((header) => {
+      const key = header.dataset.menuKey || normalizeKey(header.textContent || '');
+      const content = header.nextElementSibling;
+      if (!content || !content.classList.contains('menu-content') || key === '') return;
+      state[key] = content.classList.contains('collapsed');
+    });
+
+    localStorage.setItem('sidebarMenuState', JSON.stringify(state));
+  } catch (error) {
+    console.warn('Unable to save sidebar menu state:', error);
+  }
+}
+
 // Handle menu button click
 menuBtn.addEventListener('click', function(e) {
   e.preventDefault();
@@ -3983,6 +4030,7 @@ function toggleMenu(header) {
   
   // Toggle collapsed state on content
   content.classList.toggle('collapsed');
+  saveSidebarMenuState();
 }
 
 // ===== AUTO-EXPAND CURRENT SECTION ON LOAD =====
