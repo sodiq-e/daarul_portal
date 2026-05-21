@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Staff Attendance Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>Staff Attendance Settings</h1>
+  <p class="text-muted">Configure GPS rules, clock in/out behavior, and offline synchronization.</p>
+
+  <div class="card p-4 shadow-sm">
+    <form method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="row gy-3">
+        <div class="col-md-6">{{ form.school_latitude.label_tag }}{{ form.school_latitude }}</div>
+        <div class="col-md-6">{{ form.school_longitude.label_tag }}{{ form.school_longitude }}</div>
+        <div class="col-12">
+          <button type="button" id="useCurrentLocation" class="btn btn-outline-secondary">Use Current Location</button>
+        </div>
+        <div class="col-md-4">{{ form.allowed_radius_meters.label_tag }}{{ form.allowed_radius_meters }}</div>
+        <div class="col-md-4">{{ form.normal_clock_in_time.label_tag }}{{ form.normal_clock_in_time }}</div>
+        <div class="col-md-4">{{ form.late_after_time.label_tag }}{{ form.late_after_time }}</div>
+        <div class="col-md-6">{{ form.earliest_clock_out_time.label_tag }}{{ form.earliest_clock_out_time }}</div>
+        <div class="col-md-6">{{ form.active.label_tag }}{{ form.active }}</div>
+        <div class="col-md-4">{{ form.enable_gps_verification.label_tag }}{{ form.enable_gps_verification }}</div>
+        <div class="col-md-4">{{ form.enable_clock_out.label_tag }}{{ form.enable_clock_out }}</div>
+        <div class="col-md-4">{{ form.enable_offline_sync.label_tag }}{{ form.enable_offline_sync }}</div>
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.getElementById('useCurrentLocation').addEventListener('click', function() {
+    if (!navigator.geolocation) {
+      alert('GPS is not available in this browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(position) {
+      document.getElementById('id_school_latitude').value = position.coords.latitude.toFixed(6);
+      document.getElementById('id_school_longitude').value = position.coords.longitude.toFixed(6);
+    }, function(error) {
+      alert('Unable to read current location: ' + error.message);
+    }, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 10000,
+    });
+  });
+</script>
+{% endblock %}

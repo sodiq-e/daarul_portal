@@ -3537,6 +3537,11 @@ html, body {
           <i class="fas fa-chart-bar"></i><span> Results Settings</span>
         </a>
 
+        <a href="{% url 'staff_attendance:settings' %}" data-tooltip="Attendance Settings"
+           class="{% if request.resolver_match.url_name == 'settings' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-cog"></i><span> Attendance Settings</span>
+        </a>
+
         <a href="/admin/" data-tooltip="Django Admin">
           <i class="fas fa-cog"></i><span> Django Admin</span>
         </a>
@@ -3589,6 +3594,27 @@ html, body {
           {% if portal_unread_count > 0 %}
             <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
           {% endif %}
+        </a>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <div class="menu-header active" data-menu-key="staff_attendance" onclick="toggleMenu(this)">
+        <span>🕒 Staff Attendance</span>
+        <span class="arrow">›</span>
+      </div>
+      <div class="menu-content">
+        <a href="{% url 'staff_attendance:dashboard' %}" data-tooltip="Clock In / Out"
+           class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-clock"></i><span> Clock In / Out</span>
+        </a>
+        <a href="{% url 'staff_attendance:history' %}" data-tooltip="Attendance History"
+           class="{% if request.resolver_match.url_name == 'history' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-history"></i><span> Attendance History</span>
+        </a>
+        <a href="{% url 'staff_attendance:monthly_report' %}" data-tooltip="Monthly Report"
+           class="{% if request.resolver_match.url_name == 'monthly_report' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-chart-bar"></i><span> Monthly Report</span>
         </a>
       </div>
     </div>

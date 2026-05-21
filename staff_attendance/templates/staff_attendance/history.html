@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>Attendance History</h1>
+  <p class="text-muted">Your past attendance records are held in the system and synced when available.</p>
+  <div class="table-responsive mt-3">
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Clock In</th>
+          <th>Clock Out</th>
+          <th>Status</th>
+          <th>Synced</th>
+          <th>Offline</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in attendances %}
+          <tr>
+            <td>{{ record.date }}</td>
+            <td>{{ record.clock_in|default:'-' }}</td>
+            <td>{{ record.clock_out|default:'-' }}</td>
+            <td>{{ record.clock_in_status|capfirst }}</td>
+            <td>{{ record.synced|yesno:'Yes,No' }}</td>
+            <td>{{ record.offline_record|yesno:'Yes,No' }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6">No attendance history available.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if is_paginated %}
+    <nav aria-label="Attendance pagination">
+      <ul class="pagination">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+        {% endif %}
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</div>
+{% endblock %}

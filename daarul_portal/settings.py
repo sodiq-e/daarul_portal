@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'rest_framework',
     'admin_interface',
     'colorfield',
 
@@ -30,6 +31,7 @@ INSTALLED_APPS = [
     'results',
     'psychomotor',
     'attendance',
+    'staff_attendance.apps.StaffAttendanceConfig',
     'school_classes.apps.SchoolClassesConfig',
     'payroll',
     'announcements',

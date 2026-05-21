@@ -38,6 +38,7 @@ urlpatterns = [
     path('students/', include('students.urls')),
     path('exams/', include('exams.urls')),
     path('attendance/', include('attendance.urls')),
+    path('staff-attendance/', include('staff_attendance.urls')),
     path('announcements/', include('announcements.urls')),
     path('payroll/', include('payroll.urls')),
     path('', include('pages.urls')),

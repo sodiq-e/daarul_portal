@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Monthly Attendance Report{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1>Monthly Attendance Report</h1>
+  {% if permission_denied %}
+    <div class="alert alert-warning">Only authenticated teachers can access this report.</div>
+  {% else %}
+    <div class="row gy-3">
+      <div class="col-md-4">
+        <div class="card p-4 shadow-sm">
+          <h3>Summary</h3>
+          <p><strong>Present:</strong> {{ present_count }}</p>
+          <p><strong>Late:</strong> {{ late_count }}</p>
+          <p><strong>Absent:</strong> {{ absent_count }}</p>
+          <p><strong>Hours Worked:</strong> {{ hours_worked|floatformat:1 }}</p>
+        </div>
+      </div>
+      <div class="col-md-8">
+        <div class="card p-4 shadow-sm">
+          <h3>Records</h3>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Clock In</th>
+                  <th>Clock Out</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for record in records %}
+                  <tr>
+                    <td>{{ record.date }}</td>
+                    <td>{{ record.clock_in_status|capfirst }}</td>
+                    <td>{{ record.clock_in|default:'-' }}</td>
+                    <td>{{ record.clock_out|default:'-' }}</td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="4">No attendance records for this month.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
