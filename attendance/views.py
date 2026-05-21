@@ -419,7 +419,7 @@ class AttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView
         start_date = self.request.GET.get('start_date')
         end_date = self.request.GET.get('end_date')
 
-        classes = SchoolClasses.objects.all().order_by('name')
+        classes = SchoolClasses.objects.all().order_by('class_name')
         context['classes'] = classes
         context['report_title'] = 'Class Attendance Statistics'
         context['selected_class_id'] = class_id
