@@ -1,5 +1,7 @@
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta
 from decimal import Decimal
+from uuid import UUID
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -146,6 +148,35 @@ class StaffAttendanceBaseAPI(LoginRequiredMixin, APIView):
         except (TypeError, ValueError):
             return None
 
+    def parse_uuid(self, value):
+        if not value:
+            return None
+        try:
+            return UUID(str(value))
+        except Exception:
+            return None
+
+    def parse_client_timestamp(self, value):
+        if not value:
+            return None
+        try:
+            ts = datetime.fromisoformat(value)
+            if ts.tzinfo is None:
+                ts = timezone.make_aware(ts)
+            return ts
+        except Exception:
+            return None
+
+    def mark_suspicious(self, server_time, client_time, offline=False):
+        if not client_time:
+            return False
+        delta_seconds = abs((server_time - client_time).total_seconds())
+        if delta_seconds >= 6 * 3600:
+            return True
+        if delta_seconds >= 30 * 60 and not offline:
+            return True
+        return False
+
 
 class StaffAttendanceClockInAPI(StaffAttendanceBaseAPI):
     def post(self, request, *args, **kwargs):
@@ -162,24 +193,36 @@ class StaffAttendanceClockInAPI(StaffAttendanceBaseAPI):
         longitude = self.get_decimal_coordinate(request.data.get('longitude'))
         offline_record = bool(request.data.get('offline_record', False))
         device_info = request.data.get('device_info', '').strip()
+        offline_sync_id = self.parse_uuid(request.data.get('offline_sync_id'))
+        client_timestamp = self.parse_client_timestamp(request.data.get('timestamp'))
+
+        if offline_record and not offline_sync_id:
+            offline_sync_id = uuid.uuid4()
+
+        if offline_sync_id and StaffAttendance.objects.filter(offline_sync_id=offline_sync_id).exists():
+            return Response({'detail': 'This offline attendance record has already been synced.'}, status=status.HTTP_400_BAD_REQUEST)
 
         gps_error = self.validate_gps(attendance_settings, latitude, longitude)
         if gps_error:
             return Response({'detail': gps_error}, status=status.HTTP_400_BAD_REQUEST)
 
-        current_time = timezone.localtime()
-        status_value = StaffAttendance.STATUS_LATE if current_time.time() > attendance_settings.late_after_time else StaffAttendance.STATUS_PRESENT
+        server_time = timezone.localtime()
+        client_time_for_suspicion = client_timestamp or server_time
+        is_suspicious = self.mark_suspicious(server_time, client_time_for_suspicion, offline=offline_record)
+        status_value = StaffAttendance.STATUS_LATE if server_time.time() > attendance_settings.late_after_time else StaffAttendance.STATUS_PRESENT
         record = StaffAttendance.objects.create(
             teacher=teacher,
             date=today,
-            clock_in=current_time,
+            clock_in=server_time,
             clock_in_latitude=latitude,
             clock_in_longitude=longitude,
             clock_in_status=status_value,
             synced=not offline_record,
-            sync_time=timezone.now() if not offline_record else None,
+            sync_time=server_time if not offline_record else None,
+            offline_sync_id=offline_sync_id,
             device_info=device_info,
             offline_record=offline_record,
+            is_suspicious=is_suspicious,
         )
 
         return Response({
@@ -211,24 +254,37 @@ class StaffAttendanceClockOutAPI(StaffAttendanceBaseAPI):
         longitude = self.get_decimal_coordinate(request.data.get('longitude'))
         offline_record = bool(request.data.get('offline_record', False))
         device_info = request.data.get('device_info', '').strip()
+        offline_sync_id = self.parse_uuid(request.data.get('offline_sync_id'))
+        client_timestamp = self.parse_client_timestamp(request.data.get('timestamp'))
+
+        if offline_record and not offline_sync_id:
+            offline_sync_id = uuid.uuid4()
+
+        if offline_sync_id and StaffAttendance.objects.filter(offline_sync_id=offline_sync_id).exists():
+            return Response({'detail': 'This offline attendance record has already been synced.'}, status=status.HTTP_400_BAD_REQUEST)
 
         gps_error = self.validate_gps(attendance_settings, latitude, longitude)
         if gps_error:
             return Response({'detail': gps_error}, status=status.HTTP_400_BAD_REQUEST)
 
-        current_time = timezone.localtime()
-        if current_time.time() < attendance_settings.earliest_clock_out_time:
+        server_time = timezone.localtime()
+        if server_time.time() < attendance_settings.earliest_clock_out_time:
             return Response({
                 'detail': 'You cannot clock out before the configured earliest clock-out time.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        record.clock_out = current_time
+        client_time_for_suspicion = client_timestamp or server_time
+        is_suspicious = self.mark_suspicious(server_time, client_time_for_suspicion, offline=offline_record)
+
+        record.clock_out = server_time
         record.clock_out_latitude = latitude
         record.clock_out_longitude = longitude
         record.device_info = device_info or record.device_info
         record.synced = not offline_record
         record.offline_record = offline_record
-        record.sync_time = timezone.now() if not offline_record else None
+        record.sync_time = server_time if not offline_record else None
+        record.offline_sync_id = offline_sync_id or record.offline_sync_id
+        record.is_suspicious = record.is_suspicious or is_suspicious
         record.save()
 
         return Response({
@@ -256,16 +312,23 @@ class StaffAttendanceSyncAPI(StaffAttendanceBaseAPI):
         results = []
         for item in records:
             attendance_type = item.get('attendance_type')
-            timestamp = item.get('timestamp')
+            timestamp_value = item.get('timestamp')
             latitude = self.get_decimal_coordinate(item.get('latitude'))
             longitude = self.get_decimal_coordinate(item.get('longitude'))
             device_info = item.get('device_info', '').strip()
+            offline_sync_id = self.parse_uuid(item.get('offline_sync_id'))
+            client_timestamp = self.parse_client_timestamp(timestamp_value)
+
             if attendance_type not in ['clock_in', 'clock_out']:
                 results.append({'item': item, 'error': 'Invalid attendance type.'})
                 continue
 
+            if offline_sync_id and StaffAttendance.objects.filter(offline_sync_id=offline_sync_id).exists():
+                results.append({'item': item, 'error': 'This offline attendance record has already been synced.'})
+                continue
+
             try:
-                timestamp = timezone.make_aware(datetime.fromisoformat(timestamp))
+                timestamp = timezone.make_aware(datetime.fromisoformat(timestamp_value))
             except Exception:
                 results.append({'item': item, 'error': 'Invalid timestamp format.'})
                 continue
@@ -290,8 +353,10 @@ class StaffAttendanceSyncAPI(StaffAttendanceBaseAPI):
                     'clock_in_status': StaffAttendance.STATUS_LATE if attendance_type == 'clock_in' and timestamp.time() > attendance_settings.late_after_time else StaffAttendance.STATUS_PRESENT,
                     'synced': True,
                     'sync_time': timezone.now(),
+                    'offline_sync_id': offline_sync_id,
                     'device_info': device_info,
                     'offline_record': True,
+                    'is_suspicious': self.mark_suspicious(timezone.localtime(), client_timestamp or timezone.localtime(), offline=True),
                 }
             )
 
@@ -322,6 +387,8 @@ class StaffAttendanceSyncAPI(StaffAttendanceBaseAPI):
             record.synced = True
             record.sync_time = timezone.now()
             record.offline_record = True
+            record.offline_sync_id = offline_sync_id or record.offline_sync_id
+            record.is_suspicious = record.is_suspicious or self.mark_suspicious(timezone.localtime(), client_timestamp or timezone.localtime(), offline=True)
             record.save()
             results.append({'item': item, 'status': 'synced'})
 

@@ -1,4 +1,5 @@
 import math
+import uuid
 from decimal import Decimal
 from datetime import date, time
 
@@ -150,8 +151,11 @@ class StaffAttendance(models.Model):
     )
     synced = models.BooleanField(default=False)
     sync_time = models.DateTimeField(blank=True, null=True)
+    offline_sync_id = models.UUIDField(null=True, blank=True, unique=True)
     device_info = models.TextField(blank=True)
     offline_record = models.BooleanField(default=False)
+    is_suspicious = models.BooleanField(default=False)
+    work_duration = models.DurationField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -164,6 +168,23 @@ class StaffAttendance(models.Model):
             raise ValidationError('Clock out cannot be saved without an earlier clock in.')
         if self.clock_in and self.clock_out and self.clock_out < self.clock_in:
             raise ValidationError('Clock out time cannot be earlier than clock in time.')
+
+    def save(self, *args, **kwargs):
+        if self.clock_in and self.clock_out:
+            duration = self.clock_out - self.clock_in
+            self.work_duration = duration if duration.total_seconds() >= 0 else None
+        else:
+            self.work_duration = None
+        super().save(*args, **kwargs)
+
+    @property
+    def formatted_work_duration(self):
+        if not self.work_duration:
+            return None
+        total_seconds = int(self.work_duration.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        return f"{hours}h {minutes}m"
 
     def __str__(self):
         return f"{self.teacher} attendance on {self.date}"

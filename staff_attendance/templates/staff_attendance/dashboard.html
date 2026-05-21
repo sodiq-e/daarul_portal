@@ -18,26 +18,34 @@
     <div class="row gy-3">
       <div class="col-lg-6">
         <div class="card p-4 shadow-sm">
-          <h2>Today</h2>
-          {% if current_attendance %}
-            <p><strong>Status:</strong> {{ current_attendance.clock_in_status|capfirst }}</p>
-            <p><strong>Clock In:</strong> {{ current_attendance.clock_in|default:'Not recorded yet' }}</p>
-            <p><strong>Clock Out:</strong> {{ current_attendance.clock_out|default:'Not recorded yet' }}</p>
-            <p><strong>Synced:</strong> {{ current_attendance.synced|yesno:'Yes,No' }}</p>
-            <p><strong>Offline Record:</strong> {{ current_attendance.offline_record|yesno:'Yes,No' }}</p>
-            <p><strong>Last Sync:</strong> {{ current_attendance.sync_time|default:'Not synced yet' }}</p>
-          {% else %}
-            <p>No attendance recorded for today.</p>
-          {% endif %}
+          <h2>Today's Attendance</h2>
+          <div id="todayStatusCard" class="mb-3">
+            {% if current_attendance %}
+              <div><strong>Status:</strong> <span id="attendanceStatusText">{{ current_attendance.clock_in_status|capfirst }}</span></div>
+              <div><strong>Clock In:</strong> <span id="clockInTime">{{ current_attendance.clock_in|default:'--' }}</span></div>
+              <div><strong>Clock Out:</strong> <span id="clockOutTime">{{ current_attendance.clock_out|default:'--' }}</span></div>
+              <div><strong>Work Duration:</strong> <span id="workDuration">{{ current_attendance.formatted_work_duration|default:'--' }}</span></div>
+              <div><strong>Sync Status:</strong> <span id="syncStatus" class="badge bg-info">{{ current_attendance.synced|yesno:'Synced,Pending' }}</span></div>
+            {% else %}
+              <p id="noClockInMessage" class="mb-3">You have not clocked in today.</p>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <span id="onlineIndicator" class="badge bg-success">Online</span>
+            <span id="offlineBadge" class="badge bg-warning d-none">Offline Mode</span>
+            <span id="pendingCountBadge" class="badge bg-secondary d-none">0 pending sync</span>
+          </div>
+
+          <div class="mb-3" id="gpsInfoBox">
+            <div><strong>GPS Accuracy:</strong> <span id="accuracyInfo">--</span></div>
+            <div><strong>Distance from school:</strong> <span id="distanceInfo">--</span></div>
+            <div><strong>Location status:</strong> <span id="locationStatus">Waiting for location...</span></div>
+          </div>
 
           <div class="mt-4">
             <button id="clockInBtn" class="btn btn-primary me-2">Clock In</button>
             <button id="clockOutBtn" class="btn btn-success">Clock Out</button>
-          </div>
-
-          <div class="mt-3">
-            <span id="onlineIndicator" class="badge bg-success">Online</span>
-            <span id="syncStatus" class="badge bg-info">Sync status will appear here</span>
           </div>
 
           <div class="mt-3">
@@ -78,7 +86,9 @@
          data-enable-clock-out="{{ attendance_settings.enable_clock_out|yesno:'true,false' }}"
          data-late-after-time="{{ attendance_settings.late_after_time }}"
          data-earliest-clock-out-time="{{ attendance_settings.earliest_clock_out_time }}"
-         data-allowed-radius="{{ attendance_settings.allowed_radius_meters }}"></div>
+         data-allowed-radius="{{ attendance_settings.allowed_radius_meters }}"
+         data-school-latitude=""
+         data-school-longitude=""></div>
   {% endif %}
 </div>
 
