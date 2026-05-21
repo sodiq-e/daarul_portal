@@ -161,7 +161,6 @@ function updateConnectionStatus() {
   }
 }
 
-let messageTimeoutId = null;
 function showMessage(message, type = 'info', autoHide = true) {
   const alertBox = document.getElementById('attendanceMessage');
   if (!alertBox) return;
