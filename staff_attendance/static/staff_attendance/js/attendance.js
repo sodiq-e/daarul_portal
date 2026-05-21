@@ -72,6 +72,7 @@ function setupAttendanceControls() {
   const noClockInMessage = document.getElementById('noClockInMessage');
   const liveTimerRow = document.getElementById('liveTimerRow');
   const syncStatus = document.getElementById('syncStatus');
+  const messageBox = document.getElementById('attendanceMessage');
 
   if (!clockInBtn || !clockOutBtn || !completedBadge) return;
 
@@ -90,10 +91,18 @@ function setupAttendanceControls() {
   if (completed) {
     clockInBtn.classList.add('d-none');
     clockOutBtn.classList.add('d-none');
+    clockInBtn.disabled = true;
+    clockOutBtn.disabled = true;
     completedBadge.classList.remove('d-none');
     if (noClockInMessage) noClockInMessage.classList.add('d-none');
     if (liveTimerRow) liveTimerRow.classList.add('d-none');
+    if (messageBox) {
+      messageBox.classList.add('d-none');
+      messageBox.textContent = '';
+    }
     updateStatusBadge('completed');
+    renderAttendanceTimes();
+    renderWorkDuration();
     return;
   }
 
@@ -117,6 +126,9 @@ function setupAttendanceControls() {
     syncStatus.textContent = attendanceState.currentAttendance.synced ? 'Synced' : 'Pending';
     syncStatus.className = `badge ${attendanceState.currentAttendance.synced ? 'bg-info' : 'bg-warning text-dark'}`;
   }
+
+  renderAttendanceTimes();
+  renderWorkDuration();
 }
 
 function updateStatusBadge(state) {
@@ -223,9 +235,58 @@ function formatTimeSpan(totalSeconds) {
 }
 
 function formatWorkDuration(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  return `${hours}h ${minutes}m`;
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes.toString().padStart(2, '0')}m` : `${hours}h`;
+  }
+
+  return `${minutes}m`;
+}
+
+function formatClockTime(date) {
+  if (!(date instanceof Date)) return '--';
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
+function renderAttendanceTimes() {
+  const clockInTime = document.getElementById('clockInTime');
+  const clockOutTime = document.getElementById('clockOutTime');
+  if (clockInTime) {
+    clockInTime.textContent = attendanceState.currentAttendance.clockIn ? formatClockTime(attendanceState.currentAttendance.clockIn) : '--';
+  }
+  if (clockOutTime) {
+    clockOutTime.textContent = attendanceState.currentAttendance.clockOut ? formatClockTime(attendanceState.currentAttendance.clockOut) : '--';
+  }
+}
+
+function renderWorkDuration() {
+  const workDuration = document.getElementById('workDuration');
+  if (!workDuration) return;
+  const hasClockIn = !!attendanceState.currentAttendance.clockIn;
+  const hasClockOut = !!attendanceState.currentAttendance.clockOut;
+  if (hasClockIn && hasClockOut) {
+    const seconds = Math.max(0, Math.floor((attendanceState.currentAttendance.clockOut - attendanceState.currentAttendance.clockIn) / 1000));
+    workDuration.textContent = formatWorkDuration(seconds);
+    return;
+  }
+  workDuration.textContent = '--';
+}
+
+function formatDistance(meters) {
+  if (typeof meters !== 'number' || Number.isNaN(meters)) {
+    return '--';
+  }
+  if (meters > 1000) {
+    return `${(meters / 1000).toFixed(1)} km`;
+  }
+  return `${Math.round(meters)} m`;
 }
 
 function computeDistanceMeters(lat1, lon1, lat2, lon2) {
@@ -347,6 +408,7 @@ async function sendClockEvent(action, coords) {
       attendanceState.currentAttendance.clockOut = new Date();
       attendanceState.currentAttendance.synced = result.synced;
       stopLiveTimer();
+      renderWorkDuration();
     }
     setupAttendanceControls();
   } catch (error) {
@@ -573,7 +635,7 @@ function updateLocationStatus() {
         coords.latitude,
         coords.longitude,
       );
-      distance.textContent = `${meters.toFixed(1)} meters`;
+      distance.textContent = formatDistance(meters);
     })
     .catch((error) => {
       status.textContent = `Location error: ${error.message}`;
