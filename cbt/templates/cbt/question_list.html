@@ -10,8 +10,8 @@
     {% for question in questions %}
     <tr>
       <td>{{ question.order }}</td>
-      <td>{{ question.text|truncatechars:80 }}</td>
-      <td>{{ question.points }}</td>
+      <td>{{ question.prompt|truncatechars:80 }}</td>
+      <td>{{ question.mark_value }}</td>
       <td><a href="{% url 'cbt:question_edit' question.pk %}">Edit</a></td>
     </tr>
     {% empty %}

@@ -7,15 +7,22 @@
   {% for question in questions %}
     <section>
       <h2>Question {{ forloop.counter }} ({{ question.mark_value }} point{{ question.mark_value|pluralize }})</h2>
-      <p>{{ question.text }}</p>
-      {% for choice in question.choices.all %}
-      <div>
-        <label>
-          <input type="radio" name="question_{{ question.pk }}" value="{{ choice.pk }}">
-          {{ choice.text }}
-        </label>
-      </div>
-      {% endfor %}
+      <p>{{ question.prompt }}</p>
+      {% if question.question_type == question.MCQ or question.question_type == question.TRUE_FALSE %}
+        {% for choice in question.choices.all %}
+        <div>
+          <label>
+            <input type="radio" name="question_{{ question.pk }}" value="{{ choice.pk }}">
+            {{ choice.text }}
+          </label>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="mb-3">
+          <label for="question_{{ question.pk }}" class="form-label">Your answer</label>
+          <textarea id="question_{{ question.pk }}" name="question_{{ question.pk }}" class="form-control" rows="3"></textarea>
+        </div>
+      {% endif %}
     </section>
   {% endfor %}
   <button type="submit">Submit answers</button>
