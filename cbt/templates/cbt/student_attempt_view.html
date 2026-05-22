@@ -248,7 +248,7 @@
 
                 <!-- Submit Exam Button -->
                 <div class="text-center mb-4">
-                    <button type="button" class="btn btn-success btn-lg" id="btn-submit" data-toggle="modal" data-target="#submit-modal">
+                    <button type="button" class="btn btn-success btn-lg" id="btn-submit" data-bs-toggle="modal" data-bs-target="#submit-modal">
                         <i class="fas fa-check-circle"></i> Submit Exam
                     </button>
                 </div>
@@ -281,9 +281,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="submitModalLabel">Submit Exam?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to submit your exam? You will not be able to change your answers after submission.</p>
@@ -293,7 +291,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Continue Exam</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Continue Exam</button>
                 <button type="button" class="btn btn-success" id="btn-confirm-submit">
                     <i class="fas fa-check"></i> Yes, Submit Exam
                 </button>
@@ -515,27 +513,36 @@
         }
 
         function attachEventListeners() {
-            document.getElementById('btn-previous').addEventListener('click', function(e) {
-                e.preventDefault();
-                if (currentQuestion > 1) {
-                    navigateToQuestion(currentQuestion - 1);
-                }
-            });
+            const btnPrevious = document.getElementById('btn-previous');
+            if (btnPrevious) {
+                btnPrevious.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (currentQuestion > 1) {
+                        navigateToQuestion(currentQuestion - 1);
+                    }
+                });
+            }
 
-            document.getElementById('btn-next').addEventListener('click', function(e) {
-                e.preventDefault();
-                if (currentQuestion < attemptData.totalQuestions) {
-                    navigateToQuestion(currentQuestion + 1);
-                }
-            });
+            const btnNext = document.getElementById('btn-next');
+            if (btnNext) {
+                btnNext.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (currentQuestion < attemptData.totalQuestions) {
+                        navigateToQuestion(currentQuestion + 1);
+                    }
+                });
+            }
 
-            document.getElementById('btn-save-continue').addEventListener('click', function(e) {
-                e.preventDefault();
-                saveCurrentAnswer();
-                if (currentQuestion < attemptData.totalQuestions) {
-                    navigateToQuestion(currentQuestion + 1);
-                }
-            });
+            const btnSaveContinue = document.getElementById('btn-save-continue');
+            if (btnSaveContinue) {
+                btnSaveContinue.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    saveCurrentAnswer();
+                    if (currentQuestion < attemptData.totalQuestions) {
+                        navigateToQuestion(currentQuestion + 1);
+                    }
+                });
+            }
 
             document.getElementById('btn-flag').addEventListener('click', function(e) {
                 e.preventDefault();
@@ -550,6 +557,11 @@
                 }
             });
 
+            document.getElementById('btn-submit').addEventListener('click', function(e) {
+                e.preventDefault();
+                openSubmitModal();
+            });
+
             document.getElementById('btn-confirm-submit').addEventListener('click', function(e) {
                 e.preventDefault();
                 submitExam();
@@ -561,6 +573,27 @@
                     saveCurrentAnswer();
                 }
             });
+        }
+
+        function openSubmitModal() {
+            // Bootstrap 5 modal fallback with custom modal if available
+            if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
+                const modalEl = document.getElementById('submit-modal');
+                if (modalEl) {
+                    new bootstrap.Modal(modalEl).show();
+                    return;
+                }
+            }
+
+            if (typeof window.showModal === 'function') {
+                window.showModal('Submit Exam?', '<p>Are you sure you want to submit your exam? You will not be able to change your answers after submission.</p>', [
+                    { label: 'Continue Exam', isPrimary: false, closeAfter: true },
+                    { label: 'Yes, Submit Exam', isPrimary: true, closeAfter: true, onClick: submitExam }
+                ]);
+                return;
+            }
+
+            submitExam();
         }
 
         function submitExam() {

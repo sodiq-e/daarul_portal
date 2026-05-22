@@ -25,10 +25,10 @@
         </div>
         <div class="btn-toolbar gap-2">
             <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-outline-secondary">Back to Exams</a>
-            <button type="button" id="btn-add-question" class="btn btn-primary">Add Question</button>
+            <button type="button" id="btn-add-question" class="btn btn-primary btn-add-question">Add Question</button>
             <button type="button" id="btn-import-bank" class="btn btn-info">Import Bank</button>
             <button type="button" class="btn-open-upload btn btn-secondary">Upload CSV / JSON</button>
-            <button type="button" id="btn-save-all" class="btn btn-success">Save All</button>
+            <button type="button" id="btn-save-all" class="btn btn-success btn-save-all">Save All</button>
         </div>
     </div>
 
@@ -115,6 +115,10 @@
                 {% if not questions %}
                     <div id="empty-placeholder" class="p-4 text-center text-muted">No questions added yet. Click "Add Question" to begin.</div>
                 {% endif %}
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <button type="button" class="btn btn-outline-primary btn-add-question">Add Another Question</button>
+                <button type="button" class="btn btn-success btn-save-all">Save All</button>
             </div>
         </div>
 
@@ -264,15 +268,15 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
         typeSelect.value = data.question_type || 'mcq';
         toggleChoiceSection(typeSelect.value, choicesSection);
 
-        wrapper.querySelector('.btn-add-choice').addEventListener('click', function(){ addChoiceRow(wrapper.querySelector('.choices-list')); });
+        wrapper.querySelector('.btn-add-choice').addEventListener('click', function(){ addChoiceRow(wrapper.querySelector('.choices-list'), {}, typeSelect.value); });
         wrapper.querySelector('.btn-remove').addEventListener('click', function(){ removeQuestionBlock(wrapper); });
         wrapper.querySelector('.btn-duplicate').addEventListener('click', function(){ duplicateQuestionBlock(wrapper); });
         wrapper.querySelector('.btn-collapse').addEventListener('click', function(){ wrapper.querySelector('.card-body').classList.toggle('d-none'); });
-        typeSelect.addEventListener('change', function(){ toggleChoiceSection(this.value, choicesSection); updateStats(); });
+        typeSelect.addEventListener('change', function(){ toggleChoiceSection(this.value, choicesSection); syncChoiceRows(wrapper); updateStats(); });
 
         const choiceList = wrapper.querySelector('.choices-list');
-        if(Array.isArray(data.choices) && data.choices.length){ data.choices.forEach(choice => addChoiceRow(choiceList, choice)); }
-        else if(typeSelect.value === 'mcq' || typeSelect.value === 'multiple'){ addChoiceRow(choiceList); addChoiceRow(choiceList); }
+        if(Array.isArray(data.choices) && data.choices.length){ data.choices.forEach(choice => addChoiceRow(choiceList, choice, typeSelect.value)); }
+        else if(typeSelect.value === 'mcq' || typeSelect.value === 'multiple' || typeSelect.value === 'true_false'){ addChoiceRow(choiceList, {}, typeSelect.value); addChoiceRow(choiceList, {}, typeSelect.value); }
 
         if(data.difficulty){ wrapper.querySelector('.question-difficulty').value = data.difficulty; }
         attachDragAndDrop(wrapper);
@@ -280,24 +284,98 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
         return wrapper;
     }
 
-    function toggleChoiceSection(type, section){
-        section.style.display = (type === 'mcq' || type === 'multiple') ? '' : 'none';
+    function getQuestionInputName(block){
+        if(block.dataset.existingId){
+            return `correct-${block.dataset.existingId}`;
+        }
+        if(!block._questionInputName){
+            block._questionInputName = `correct-new-${Math.random().toString(36).slice(2)}`;
+        }
+        return block._questionInputName;
     }
 
-    function addChoiceRow(list, data){
+    function buildCorrectInput(type, name, isCorrect){
+        if(type === 'multiple'){
+            return `<input type="checkbox" class="choice-correct" title="Correct" ${isCorrect ? 'checked' : ''}>`;
+        }
+        return `<input type="radio" class="choice-correct" name="${name}" title="Correct" ${isCorrect ? 'checked' : ''}>`;
+    }
+
+    function addChoiceRow(list, data, type){
         data = data || {};
         const row = document.createElement('div');
         row.className = 'choice-row mb-2';
+        const block = list.closest('.question-block');
+        const inputName = getQuestionInputName(block);
+        const correctInput = buildCorrectInput(type || block.querySelector('.question-type').value, inputName, !!data.is_correct);
         row.innerHTML = `
-            <input type="text" class="form-control choice-text" placeholder="Choice text" value="${escapeHtml(data.text)}">
-            <input type="checkbox" class="choice-correct" title="Correct" ${data.is_correct? 'checked' : ''}>
-            <input type="number" class="choice-order form-control" style="width:80px" value="${data.order!==undefined? data.order : 0}">
-            <button type="button" class="btn btn-sm btn-outline-secondary btn-move-up">↑</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary btn-move-down">↓</button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-choice">✕</button>
+            <div class="input-group">
+                <span class="input-group-text p-0 align-items-center">${correctInput}</span>
+                <input type="text" class="form-control choice-text" placeholder="Choice text" value="${escapeHtml(data.text)}">
+                <input type="number" class="choice-order form-control" style="width:80px" value="${data.order!==undefined? data.order : 0}">
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-move-up">↑</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-move-down">↓</button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remove-choice">✕</button>
+            </div>
         `;
         list.appendChild(row);
         attachChoiceRowHandlers(list);
+    }
+
+    function syncChoiceRows(block){
+        const type = block.querySelector('.question-type').value;
+        const choiceList = block.querySelector('.choices-list');
+        const choices = Array.from(choiceList.querySelectorAll('.choice-row')).map((row, idx) => ({
+            text: row.querySelector('.choice-text').value.trim(),
+            is_correct: row.querySelector('.choice-correct').checked,
+            order: parseInt(row.querySelector('.choice-order').value) || idx
+        }));
+
+        let normalized = choices;
+        if(type === 'true_false'){
+            if(normalized.length !== 2){
+                normalized = [
+                    {text: 'True', is_correct: normalized.some(c => c.is_correct), order: 0},
+                    {text: 'False', is_correct: normalized.some(c => c.is_correct) && !normalized.some(c => c.is_correct && c.text.toLowerCase() === 'true'), order: 1}
+                ];
+            } else {
+                let foundCorrect = false;
+                normalized = normalized.map(choice => {
+                    if(choice.is_correct && !foundCorrect){
+                        foundCorrect = true;
+                        return choice;
+                    }
+                    return {...choice, is_correct: false};
+                });
+                if(!foundCorrect){
+                    normalized[0].is_correct = true;
+                }
+            }
+        } else if(type === 'mcq'){
+            let foundCorrect = false;
+            normalized = normalized.map(choice => {
+                if(choice.is_correct && !foundCorrect){
+                    foundCorrect = true;
+                    return choice;
+                }
+                return {...choice, is_correct: false};
+            });
+            if(normalized.length && !foundCorrect){
+                normalized[0].is_correct = true;
+            }
+        }
+
+        choiceList.innerHTML = '';
+        if(normalized.length){
+            normalized.forEach(choice => addChoiceRow(choiceList, choice, type));
+        } else if(type === 'mcq' || type === 'multiple'){
+            addChoiceRow(choiceList, {}, type);
+            addChoiceRow(choiceList, {}, type);
+        }
+    }
+
+    function toggleChoiceSection(type, section){
+        section.style.display = (type === 'mcq' || type === 'multiple' || type === 'true_false') ? '' : 'none';
     }
 
     function attachChoiceRowHandlers(list){
@@ -534,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
         if(!btn) return;
 
         // Add Question
-        if(btn.id === 'btn-add-question'){
+        if(btn.id === 'btn-add-question' || btn.classList.contains('btn-add-question')){
             ev.preventDefault();
             const container = document.getElementById('questions-container');
             if(container){
@@ -548,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
         }
 
         // Save All
-        if(btn.id === 'btn-save-all'){
+        if(btn.id === 'btn-save-all' || btn.classList.contains('btn-save-all')){
             ev.preventDefault();
             saveAll();
             return;
@@ -587,12 +665,13 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
         const typeSelect = block.querySelector('.question-type');
         const choicesSection = block.querySelector('.choices-section');
         toggleChoiceSection(typeSelect.value, choicesSection);
+        syncChoiceRows(block);
         attachChoiceRowHandlers(block.querySelector('.choices-list'));
         attachDragAndDrop(block);
         block.querySelector('.btn-remove').addEventListener('click', function(){ removeQuestionBlock(block); });
         block.querySelector('.btn-duplicate').addEventListener('click', function(){ duplicateQuestionBlock(block); });
         block.querySelector('.btn-collapse').addEventListener('click', function(){ block.querySelector('.card-body').classList.toggle('d-none'); });
-        typeSelect.addEventListener('change', function(){ toggleChoiceSection(this.value, choicesSection); updateStats(); });
+        typeSelect.addEventListener('change', function(){ toggleChoiceSection(this.value, choicesSection); syncChoiceRows(block); updateStats(); });
     });
 
     updateStats();
