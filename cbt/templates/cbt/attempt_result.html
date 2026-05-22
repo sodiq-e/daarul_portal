@@ -48,7 +48,7 @@
                             {% for event in integrity_events %}
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <strong>{{ event.reason|capfirst|replace:'_',' ' }}</strong>
+                                        <strong>{{ event.reason|capfirst|underscore_to_space }}</strong>
                                         <small class="text-muted">{{ event.created_at }}</small>
                                     </div>
                                     {% if event.metadata %}
