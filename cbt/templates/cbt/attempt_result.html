@@ -1,9 +1,105 @@
 {% extends 'base.html' %}
+{% block extra_css %}
+<style>
+    .review-card {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+    .review-card .card-header {
+        background: #f8f9fa;
+        font-weight: 600;
+    }
+    .answer-label {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+    .correct-badge {
+        margin-left: 0.5rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<h1>Exam Result</h1>
-<p>Exam: {{ attempt.exam.name }}</p>
-<p>Status: {% if attempt.is_submitted %}Submitted{% else %}In progress{% endif %}</p>
-<p>Score: {{ attempt.score }} / {{ total_points|default:'N/A' }}</p>
-<p>Submitted at: {{ attempt.completed_at }}</p>
-<p><a href="{% url 'cbt:real_exam_list' %}">Back to real exams</a></p>
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h1 class="h4 mb-3">Exam Result</h1>
+                    <p class="mb-1"><strong>Exam:</strong> {{ attempt.exam.name }}</p>
+                    <p class="mb-1"><strong>Status:</strong> {% if attempt.is_submitted %}Submitted{% else %}In progress{% endif %}</p>
+                    <p class="mb-1"><strong>Score:</strong> {{ attempt.score|default:'0' }} / {{ total_points|default:'N/A' }}</p>
+                    <p class="mb-0"><strong>Submitted at:</strong> {{ attempt.completed_at }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% for item in questions %}
+        <div class="card review-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="me-3">Question {{ forloop.counter }} of {{ questions|length }}</span>
+                    <span class="badge {% if item.is_correct %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if item.is_correct %}Correct{% else %}Incorrect{% endif %}
+                    </span>
+                </div>
+                <span class="small text-muted">Marks: {{ item.awarded_marks }} / {{ item.mark_value }}</span>
+            </div>
+            <div class="card-body">
+                <p class="mb-3"><strong>Question:</strong> {{ item.question.prompt|linebreaksbr }}</p>
+
+                <div class="mb-3">
+                    <div class="answer-label">Your answer</div>
+                    {% if item.question.question_type == 'short_answer' %}
+                        <p>{{ item.selected_text|default:'No answer provided' }}</p>
+                    {% elif item.question.question_type == 'multiple' %}
+                        {% if item.selected_choice_ids %}
+                            <ul>
+                                {% for choice in item.choices %}
+                                    {% if choice.id in item.selected_choice_ids %}
+                                        <li>{{ choice.text }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">No answer provided</p>
+                        {% endif %}
+                    {% else %}
+                        {% if item.selected_choice %}
+                            <p>{{ item.selected_choice.text }}</p>
+                        {% else %}
+                            <p class="text-muted">No answer provided</p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <div class="answer-label">Correct answer{% if item.correct_choices|length != 1 %}s{% endif %}</div>
+                    {% if item.correct_choices %}
+                        <ul>
+                            {% for choice in item.correct_choices %}
+                                <li>{{ choice.text }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted">This question is not auto-graded or correct answer is unavailable.</p>
+                    {% endif %}
+                </div>
+
+                {% if item.question.explanation %}
+                    <div class="mb-3 px-3 py-2 bg-light rounded">
+                        <strong>Explanation</strong>
+                        <p class="mb-0">{{ item.question.explanation|linebreaksbr }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+
+    <div class="mb-4">
+        <a href="{% url 'cbt:real_exam_list' %}" class="btn btn-secondary">Back to real exams</a>
+    </div>
+</div>
 {% endblock %}

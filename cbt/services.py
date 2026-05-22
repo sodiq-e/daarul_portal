@@ -182,16 +182,49 @@ def grade_attempt(attempt):
 
 
 def build_attempt_context(attempt):
-    questions = attempt.exam.questions.filter(is_active=True).order_by('order')
+    attempt_questions = attempt.attempt_questions.select_related('question').prefetch_related('question__choices').order_by('randomized_position')
     answers = attempt.answers.select_related('selected_choice').all()
-    answer_map = {answer.question_id: answer.selected_choice_id for answer in answers if answer.selected_choice_id}
-    total_points = sum(float(question.mark_value) for question in questions)
+    answers_by_question = {answer.question_id: answer for answer in answers}
+
+    question_context = []
+    total_points = 0
+    for aq in attempt_questions:
+        q = aq.question
+        total_points += float(q.mark_value)
+        answer = answers_by_question.get(q.id)
+
+        selected_choice = answer.selected_choice if answer else None
+        selected_choice_ids = []
+        selected_text = ''
+        if answer:
+            if answer.selected_choices:
+                try:
+                    selected_choice_ids = json.loads(answer.selected_choices)
+                except Exception:
+                    selected_choice_ids = []
+            selected_text = answer.text_answer or ''
+
+        choices = aq.get_randomized_choices() if aq.randomized_choice_order else list(q.choices.all().order_by('order'))
+        correct_choices = [choice for choice in choices if choice.is_correct]
+
+        question_context.append({
+            'attempt_question': aq,
+            'question': q,
+            'choices': choices,
+            'answer': answer,
+            'selected_choice': selected_choice,
+            'selected_choice_ids': selected_choice_ids,
+            'selected_text': selected_text,
+            'correct_choices': correct_choices,
+            'is_correct': bool(answer and answer.is_correct),
+            'awarded_marks': float(answer.awarded_marks) if answer else 0,
+            'mark_value': float(q.mark_value),
+        })
 
     return {
         'attempt': attempt,
         'exam': attempt.exam,
-        'questions': questions,
-        'answers_map': answer_map,
+        'questions': question_context,
         'time_left_seconds': max(0, int((attempt.started_at + timedelta(minutes=attempt.exam.duration_minutes) - timezone.now()).total_seconds())),
         'total_points': total_points,
     }
