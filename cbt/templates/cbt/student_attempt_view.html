@@ -483,6 +483,12 @@
                     keepalive: true
                 }).then(resp => resp.json()).then(data => {
                     if (data.status === 'saved') {
+                        attemptData.answers[questionNum - 1] = {
+                            question_id: question.id,
+                            selected_choice_id: answerData.selected_choice_id || null,
+                            selected_choice_ids: answerData.selected_choice_ids || null,
+                            text_answer: answerData.text_answer || ''
+                        };
                         setSaveStatus('Saved');
                         resolve(data);
                     } else {
