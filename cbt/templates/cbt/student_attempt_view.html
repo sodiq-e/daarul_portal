@@ -178,6 +178,9 @@
                 <div>
                     <strong>Total Questions:</strong> <span id="total-questions">{{ total_questions }}</span>
                 </div>
+                <div>
+                    <strong>Status:</strong> <span id="save-status">Idle</span>
+                </div>
             </div>
         </div>
     </div>
@@ -400,6 +403,20 @@
                               placeholder="Enter your answer here..." 
                               rows="5">${textAnswer}</textarea>
                 `;
+            } else if (question.question_type === 'multiple') {
+                // multiple-select checkboxes
+                const selected_ids = (answer && answer.selected_choice_ids) ? answer.selected_choice_ids : [];
+                contentHtml = '<div class="answer-choices">';
+                question.choices.forEach((choice, idx) => {
+                    const checked = selected_ids.includes(choice.id) ? 'checked' : '';
+                    contentHtml += `
+                        <label class="answer-choice">
+                            <input type="checkbox" name="answer_multi" value="${choice.id}" ${checked} data-question="${questionNum}">
+                            <span>${choice.text}</span>
+                        </label>
+                    `;
+                });
+                contentHtml += '</div>';
             }
 
             document.getElementById('question-content').innerHTML = contentHtml;
@@ -419,31 +436,78 @@
                 question_id: question.id,
                 attempt_uuid: attemptData.uuid,
             };
+                if (question.question_type === 'mcq' || question.question_type === 'true_false') {
+                    const selected = document.querySelector('input[name="answer"]:checked');
+                    if (selected) {
+                        answerData.selected_choice_id = selected.value;
+                        navigator.markCurrentAnswered();
+                    }
+                } else if (question.question_type === 'short_answer') {
+                    const textAnswer = document.getElementById('answer-text').value;
+                    if (textAnswer.trim()) {
+                        answerData.text_answer = textAnswer;
+                        navigator.markCurrentAnswered();
+                    }
+                } else if (question.question_type === 'multiple') {
+                    const checkedBoxes = Array.from(document.querySelectorAll('input[name="answer_multi"]:checked'));
+                    if (checkedBoxes.length) {
+                        answerData.selected_choice_ids = checkedBoxes.map(cb => parseInt(cb.value));
+                        navigator.markCurrentAnswered();
+                    }
+                }
 
-            if (question.question_type === 'mcq' || question.question_type === 'true_false') {
-                const selected = document.querySelector('input[name="answer"]:checked');
-                if (selected) {
-                    answerData.selected_choice_id = selected.value;
-                    navigator.markCurrentAnswered();
-                }
-            } else if (question.question_type === 'short_answer') {
-                const textAnswer = document.getElementById('answer-text').value;
-                if (textAnswer.trim()) {
-                    answerData.text_answer = textAnswer;
-                    navigator.markCurrentAnswered();
-                }
+                // send AJAX request
+                const csrftoken = getCookie('csrftoken');
+                setSaveStatus('Saving...');
+                fetch('{% url "cbt:api_save_answer" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify(answerData),
+                    keepalive: true
+                }).then(resp => resp.json()).then(data => {
+                    if (data.status === 'saved') {
+                        setSaveStatus('Saved');
+                        // update attempt last saved if needed
+                    } else {
+                        setSaveStatus('Sync failed');
+                    }
+                }).catch(err => {
+                    console.error('Save failed', err);
+                    setSaveStatus('Offline');
+                });
+        }
+
+            function setSaveStatus(text) {
+                const el = document.getElementById('save-status');
+                if (el) el.textContent = text;
             }
 
-            // TODO: Send AJAX request to save answer
-            // fetch('/path/to/save-answer/', {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //         'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
-            //     },
-            //     body: JSON.stringify(answerData)
-            // });
-        }
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Save before unload
+            window.addEventListener('beforeunload', function(e) {
+                try {
+                    saveCurrentAnswer();
+                } catch (err) {
+                    // best-effort
+                }
+            });
 
         function navigateToQuestion(questionNum) {
             saveCurrentAnswer();
@@ -503,11 +567,29 @@
             // Save final answer
             saveCurrentAnswer();
             
-            // TODO: Submit the attempt
-            // document.getElementById('attempt-form').submit();
-            alert('Exam submitted successfully!');
-            // Redirect to results page
-            // window.location.href = '/path/to/results/';
+            const csrftoken = getCookie('csrftoken');
+            setSaveStatus('Saving...');
+            fetch('{% url "cbt:api_submit_attempt" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({attempt_uuid: attemptData.uuid})
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'submitted') {
+                    setSaveStatus('Submitted');
+                    // redirect to results view of attempt
+                    window.location.href = '{% url "cbt:attempt_detail" uuid=attempt.uuid %}';
+                } else {
+                    setSaveStatus('Sync failed');
+                    alert('Failed to submit exam. Please try again.');
+                }
+            }).catch(err => {
+                console.error('Submit failed', err);
+                setSaveStatus('Offline');
+                alert('Unable to submit exam. Check your connection.');
+            });
         }
     </script>
 {% endblock %}

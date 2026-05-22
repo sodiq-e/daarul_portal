@@ -102,18 +102,31 @@ def save_answer(attempt, question, selected_choice=None, text_answer=''):
     answer, _created = CBTAnswer.objects.get_or_create(
         attempt=attempt,
         question=question,
-        defaults={'text_answer': text_answer or ''},
+        defaults={'text_answer': text_answer or '', 'selected_choices': ''},
     )
 
-    answer.selected_choice = selected_choice
-    answer.text_answer = text_answer or ''
-
-    if selected_choice is not None:
-        answer.is_correct = selected_choice.is_correct
-        answer.awarded_marks = question.mark_value if selected_choice.is_correct else 0
+    # Handle multiple-select (list of ids) or single selected_choice
+    if isinstance(selected_choice, (list, tuple)):
+        # store json list
+        answer.selected_choices = json.dumps([int(x) for x in selected_choice])
+        # determine correctness: all selected choices must match correct set
+        correct_ids = [c.id for c in question.choices.filter(is_correct=True)]
+        selected_ids = [int(x) for x in selected_choice]
+        is_all_correct = set(selected_ids) == set(correct_ids)
+        answer.is_correct = is_all_correct
+        answer.awarded_marks = question.mark_value if is_all_correct else 0
+        answer.selected_choice = None
     else:
-        answer.is_correct = False
-        answer.awarded_marks = 0
+        # single choice or None
+        answer.selected_choice = selected_choice
+        answer.selected_choices = ''
+        answer.text_answer = text_answer or ''
+        if selected_choice is not None:
+            answer.is_correct = selected_choice.is_correct
+            answer.awarded_marks = question.mark_value if selected_choice.is_correct else 0
+        else:
+            answer.is_correct = False
+            answer.awarded_marks = 0
 
     answer.save()
     attempt.last_saved_at = timezone.now()
@@ -131,8 +144,22 @@ def grade_attempt(attempt):
         except CBTAnswer.DoesNotExist:
             continue
 
-        if question.question_type == question.MCQ or question.question_type == question.TRUE_FALSE:
+        if question.question_type in (question.MCQ, question.TRUE_FALSE):
             if answer.selected_choice and answer.selected_choice.is_correct:
+                earned += float(question.mark_value)
+                answer.is_correct = True
+                answer.awarded_marks = question.mark_value
+            else:
+                answer.is_correct = False
+                answer.awarded_marks = 0
+        elif question.question_type == question.MULTIPLE:
+            # multiple-select: check selected_choices JSON
+            try:
+                sel = json.loads(answer.selected_choices) if answer.selected_choices else []
+            except Exception:
+                sel = []
+            correct_ids = [c.id for c in question.choices.filter(is_correct=True)]
+            if set(sel) == set(correct_ids) and sel:
                 earned += float(question.mark_value)
                 answer.is_correct = True
                 answer.awarded_marks = question.mark_value

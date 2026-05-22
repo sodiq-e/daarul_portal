@@ -111,10 +111,12 @@ class CBTExam(models.Model):
 
 class CBTQuestion(models.Model):
     MCQ = 'mcq'
+    MULTIPLE = 'multiple'
     TRUE_FALSE = 'true_false'
     SHORT_ANSWER = 'short_answer'
     QUESTION_TYPE_CHOICES = [
         (MCQ, 'Multiple Choice'),
+        (MULTIPLE, 'Multiple Select'),
         (TRUE_FALSE, 'True / False'),
         (SHORT_ANSWER, 'Short Answer'),
     ]
@@ -190,6 +192,8 @@ class CBTAnswer(models.Model):
     attempt = models.ForeignKey(CBTStudentAttempt, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(CBTQuestion, on_delete=models.CASCADE, related_name='answers')
     selected_choice = models.ForeignKey(CBTChoice, on_delete=models.SET_NULL, null=True, blank=True)
+    # For multiple-select answers store selected choice ids as JSON list
+    selected_choices = models.TextField(blank=True, default='')
     text_answer = models.TextField(blank=True)
     is_correct = models.BooleanField(default=False)
     awarded_marks = models.DecimalField(max_digits=7, decimal_places=2, default=0.00)
