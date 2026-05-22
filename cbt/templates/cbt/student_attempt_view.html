@@ -315,8 +315,11 @@
             showInstantResults: {{ attempt.exam.show_instant_results|lower }},
             showCorrections: {{ attempt.exam.show_corrections|lower }},
             durationMinutes: {{ attempt.exam.duration_minutes }},
+            attemptSubmitted: {{ attempt.is_submitted|yesno:'true,false' }},
             questions: (function(){ try { return JSON.parse('{{ questions_json|escapejs }}'); } catch (e) { console.error('Failed to parse questions_json:', e); return []; } })(),
             answers: (function(){ try { return JSON.parse('{{ answers_json|escapejs }}'); } catch (e) { console.error('Failed to parse answers_json:', e); return []; } })(),
+            flaggedQuestions: (function(){ try { return JSON.parse('{{ flagged_questions_json|escapejs }}'); } catch (e) { console.error('Failed to parse flagged_questions_json:', e); return []; } })(),
+            integrityEvents: [],
         };
 
         // Initialize components
@@ -327,13 +330,21 @@
             const states = {};
             attemptData.questions.forEach((question, index) => {
                 const answer = attemptData.answers[index];
-                if (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))) {
+                const isFlagged = attemptData.flaggedQuestions.includes(index + 1);
+                if (isFlagged) {
+                    states[index + 1] = 'flagged';
+                } else if (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))) {
                     states[index + 1] = 'answered';
                 } else {
                     states[index + 1] = 'unanswered';
                 }
             });
             return states;
+        }
+
+        function getQuestionAnswerState(questionNum) {
+            const answer = attemptData.answers[questionNum - 1];
+            return (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))) ? 'answered' : 'unanswered';
         }
 
         function getUnansweredCount() {
@@ -360,7 +371,7 @@
             // Initialize flag manager
             flagManager = new FlagManager({
                 containerId: 'flagged-container',
-                flaggedQuestions: [],
+                flaggedQuestions: attemptData.flaggedQuestions,
                 onFlaggedClick: function(qNum) {
                     navigateToQuestion(qNum);
                 }
@@ -385,6 +396,8 @@
 
             // Auto-save functionality
             setInterval(saveCurrentAnswer, 30000); // Save every 30 seconds
+
+            registerExamIntegrityListeners();
         });
 
         function displayQuestion(questionNum) {
@@ -399,6 +412,8 @@
             document.getElementById('question-text').textContent = question.prompt;
             document.getElementById('question-type-badge').textContent = question.question_type;
             document.getElementById('question-marks').textContent = `Marks: ${question.mark_value}`;
+            const isFlagged = flagManager.isFlagged(questionNum);
+            document.getElementById('btn-flag').classList.toggle('flagged', isFlagged);
 
             // Display question content based on type
             let contentHtml = '';
@@ -441,11 +456,12 @@
             document.getElementById('question-content').innerHTML = contentHtml;
 
             // Update navigator
-            if (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))) {
-                navigator.updateQuestionState(questionNum, 'answered');
-            } else {
-                navigator.updateQuestionState(questionNum, 'unanswered');
-            }
+            const displayState = flagManager.isFlagged(questionNum)
+                ? 'flagged'
+                : (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))
+                    ? 'answered'
+                    : 'unanswered');
+            navigator.updateQuestionState(questionNum, displayState);
 
             if (navigator && typeof navigator.setCurrentQuestion === 'function') {
                 navigator.setCurrentQuestion(questionNum);
@@ -493,9 +509,16 @@
                     }
                 }
 
-                if (!hasAnswer) {
-                    console.log('No answer to save for question', question.id);
-                    return resolve({status: 'skipped', reason: 'no_answer'});
+                const isFlagged = flagManager.isFlagged(questionNum);
+                answerData.is_flagged = isFlagged;
+                const integrityEvents = attemptData.integrityEvents || [];
+                if (integrityEvents.length) {
+                    answerData.integrity_events = integrityEvents;
+                }
+
+                if (!hasAnswer && !isFlagged && !integrityEvents.length) {
+                    console.log('No answer, flag state change, or integrity events to save for question', question.id);
+                    return resolve({status: 'skipped', reason: 'no_changes'});
                 }
 
                 const csrftoken = getCookie('csrftoken');
@@ -516,6 +539,9 @@
                             selected_choice_ids: answerData.selected_choice_ids || null,
                             text_answer: answerData.text_answer || ''
                         };
+                        if (answerData.integrity_events) {
+                            attemptData.integrityEvents = [];
+                        }
                         setSaveStatus('Saved');
                         resolve(data);
                     } else {
@@ -528,6 +554,116 @@
                     setSaveStatus('Offline');
                     reject(err);
                 });
+            });
+        }
+
+        function saveFlagState(questionNum, isFlagged) {
+            return new Promise(function(resolve, reject) {
+                const question = attemptData.questions[questionNum - 1];
+                const csrftoken = getCookie('csrftoken');
+                const data = {
+                    attempt_uuid: attemptData.uuid,
+                    question_id: question.id,
+                    is_flagged: isFlagged
+                };
+
+                fetch('{% url "cbt:api_save_answer" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify(data),
+                    keepalive: true
+                }).then(resp => resp.json()).then(data => {
+                    if (data.status === 'saved') {
+                        resolve(data);
+                    } else {
+                        console.error('Flag save response error:', data);
+                        reject(data);
+                    }
+                }).catch(err => {
+                    console.error('Flag save fetch error:', err);
+                    reject(err);
+                });
+            });
+        }
+
+        function setInteractionEnabled(enabled) {
+            const inputs = document.querySelectorAll('#question-content input, #question-content textarea, #btn-flag, #btn-save-continue, #btn-next, #btn-previous');
+            inputs.forEach(input => {
+                input.disabled = !enabled;
+            });
+        }
+
+        function setExamWarning(message) {
+            let warning = document.getElementById('exam-integrity-alert');
+            if (!warning) {
+                warning = document.createElement('div');
+                warning.id = 'exam-integrity-alert';
+                warning.className = 'alert alert-warning text-center';
+                warning.style.marginBottom = '1rem';
+                const container = document.querySelector('.container-fluid');
+                if (container) {
+                    container.parentNode.insertBefore(warning, container);
+                } else {
+                    document.body.insertBefore(warning, document.body.firstChild);
+                }
+            }
+            warning.textContent = message;
+            warning.style.display = 'block';
+        }
+
+        function clearExamWarning() {
+            const warning = document.getElementById('exam-integrity-alert');
+            if (warning) {
+                warning.style.display = 'none';
+            }
+        }
+
+        function handleIntegrityViolation(reason) {
+            if (attemptData.attemptSubmitted) return;
+            attemptData.integrityEvents.push({reason: reason, timestamp: new Date().toISOString()});
+            setExamWarning('You have left the exam tab or window. Answers are disabled until you return. Please remain on this page until submission.');
+            setInteractionEnabled(false);
+        }
+
+        function registerExamIntegrityListeners() {
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState !== 'visible') {
+                    handleIntegrityViolation('visibility_change');
+                } else {
+                    clearExamWarning();
+                    setInteractionEnabled(true);
+                }
+            });
+
+            window.addEventListener('blur', function() {
+                if (document.visibilityState === 'visible') {
+                    handleIntegrityViolation('window_blur');
+                }
+            });
+
+            window.addEventListener('focus', function() {
+                if (document.visibilityState === 'visible') {
+                    clearExamWarning();
+                    setInteractionEnabled(true);
+                }
+            });
+
+            document.addEventListener('contextmenu', function(e) {
+                handleIntegrityViolation('context_menu');
+                e.preventDefault();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') ||
+                    (e.ctrlKey && e.key.toLowerCase() === 't') ||
+                    (e.metaKey && e.key.toLowerCase() === 't') ||
+                    (e.ctrlKey && e.key.toLowerCase() === 'n')) {
+                    handleIntegrityViolation('keyboard_navigation');
+                }
             });
         }
 
@@ -551,12 +687,18 @@
                 return cookieValue;
             }
 
-            // Save before unload
+            // Save before unload and prevent leaving exam early
             window.addEventListener('beforeunload', function(e) {
-                try {
-                    saveCurrentAnswer();
-                } catch (err) {
-                    // best-effort
+                if (!attemptData.attemptSubmitted) {
+                    try {
+                        saveCurrentAnswer();
+                    } catch (err) {
+                        // best-effort
+                    }
+                    const message = 'Your exam is still in progress. Please submit before leaving.';
+                    e.preventDefault();
+                    e.returnValue = message;
+                    return message;
                 }
             });
 
@@ -604,15 +746,18 @@
 
             document.getElementById('btn-flag').addEventListener('click', function(e) {
                 e.preventDefault();
-                const isFlagged = flagManager.isFlagged(currentQuestion);
+                const wasFlagged = flagManager.isFlagged(currentQuestion);
                 flagManager.toggleFlag(currentQuestion);
-                if (flagManager.isFlagged(currentQuestion)) {
+                const nowFlagged = flagManager.isFlagged(currentQuestion);
+                if (nowFlagged) {
                     navigator.markCurrentFlagged();
                     this.classList.add('flagged');
                 } else {
-                    navigator.updateQuestionState(currentQuestion, 'unanswered');
+                    navigator.updateQuestionState(currentQuestion, getQuestionAnswerState(currentQuestion));
                     this.classList.remove('flagged');
                 }
+                attemptData.flaggedQuestions = [...flagManager.flaggedQuestions];
+                saveFlagState(currentQuestion, nowFlagged).catch(err => console.error('Flag save failed', err));
             });
 
             document.getElementById('btn-submit').addEventListener('click', function(e) {
@@ -627,8 +772,18 @@
 
             // Radio/checkbox change tracking
             document.addEventListener('change', function(e) {
-                if (e.target.name === 'answer') {
+                if (e.target.name === 'answer' || e.target.name === 'answer_multi' || e.target.id === 'answer-text') {
                     saveCurrentAnswer();
+                }
+            });
+
+            document.body.addEventListener('click', function(e) {
+                const anchor = e.target.closest('a');
+                if (anchor && anchor.href && !anchor.href.startsWith('#')) {
+                    if (!attemptData.attemptSubmitted) {
+                        e.preventDefault();
+                        alert('You must submit the exam before leaving this page.');
+                    }
                 }
             });
         }

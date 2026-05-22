@@ -234,3 +234,16 @@ class StudentAttemptQuestion(models.Model):
             return [choices_dict[cid] for cid in choice_ids if cid in choices_dict]
         except (json.JSONDecodeError, KeyError):
             return list(self.question.choices.all().order_by('order'))
+
+
+class CBTAttemptIntegrityEvent(models.Model):
+    attempt = models.ForeignKey(CBTStudentAttempt, on_delete=models.CASCADE, related_name='integrity_events')
+    reason = models.CharField(max_length=128)
+    metadata = models.JSONField(blank=True, null=True, default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Integrity event for {self.attempt.uuid}: {self.reason}"

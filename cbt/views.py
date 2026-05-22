@@ -7,7 +7,7 @@ from django.db.models import Avg, Q
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
-from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank
+from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank, StudentAttemptQuestion, CBTAttemptIntegrityEvent
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
 from django.http import JsonResponse, HttpResponseForbidden
@@ -296,6 +296,7 @@ def attempt_detail(request, uuid):
             answers_arr.append(None)
 
     context['answers_json'] = json.dumps(answers_arr)
+    context['flagged_questions_json'] = json.dumps(list(attempt_questions.filter(is_flagged=True).values_list('randomized_position', flat=True)))
     context['total_questions'] = attempt.attempt_questions.count() or attempt.exam.questions.filter(is_active=True).count()
     return render(request, 'cbt/student_attempt_view.html', context)
 
@@ -325,17 +326,39 @@ def api_save_answer(request):
     # Verify question belongs to the exam
     question = get_object_or_404(CBTQuestion, pk=question_id, exam=attempt.exam)
     
-    # handle multi-select
-    if selected_choice_ids is not None:
-        save_answer(attempt=attempt, question=question, selected_choice=selected_choice_ids, text_answer='')
-    else:
-        sel_choice_obj = None
-        if selected_choice:
-            try:
-                sel_choice_obj = CBTChoice.objects.get(pk=int(selected_choice), question=question)
-            except CBTChoice.DoesNotExist:
-                return JsonResponse({'error': 'invalid choice for this question'}, status=400)
-        save_answer(attempt=attempt, question=question, selected_choice=sel_choice_obj, text_answer=text_answer)
+    # handle answer updates only when answer data is present
+    has_answer_data = selected_choice_ids is not None or selected_choice is not None or (text_answer and text_answer.strip());
+    if has_answer_data:
+        if selected_choice_ids is not None:
+            save_answer(attempt=attempt, question=question, selected_choice=selected_choice_ids, text_answer='')
+        else:
+            sel_choice_obj = None
+            if selected_choice:
+                try:
+                    sel_choice_obj = CBTChoice.objects.get(pk=int(selected_choice), question=question)
+                except CBTChoice.DoesNotExist:
+                    return JsonResponse({'error': 'invalid choice for this question'}, status=400)
+            save_answer(attempt=attempt, question=question, selected_choice=sel_choice_obj, text_answer=text_answer)
+
+    if 'is_flagged' in data:
+        is_flagged = bool(data.get('is_flagged'))
+        saq = StudentAttemptQuestion.objects.filter(attempt=attempt, question=question).first()
+        if saq:
+            saq.is_flagged = is_flagged
+            saq.save(update_fields=['is_flagged'])
+
+    integrity_events = data.get('integrity_events')
+    if isinstance(integrity_events, list) and integrity_events:
+        for event in integrity_events:
+            if not isinstance(event, dict):
+                continue
+            reason = event.get('reason') or 'unknown'
+            metadata = event.get('metadata') if isinstance(event.get('metadata'), dict) else {}
+            CBTAttemptIntegrityEvent.objects.create(
+                attempt=attempt,
+                reason=reason,
+                metadata=metadata
+            )
 
     return JsonResponse({'status': 'saved', 'last_saved': attempt.last_saved_at.isoformat()})
 
