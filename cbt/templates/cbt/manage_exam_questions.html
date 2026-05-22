@@ -56,7 +56,7 @@
                                     <label>Type</label>
                                     <select class="form-control question-type">
                                         {% for val,label in QUESTION_TYPE_CHOICES %}
-                                            <option value="{{ val }}" {% if q.question_type==val %}selected{% endif %}>{{ label }}</option>
+                                            <option value="{{ val }}" {% if q.question_type == val %}selected{% endif %}>{{ label }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -68,7 +68,7 @@
                                     <label>Difficulty</label>
                                     <select class="form-control question-difficulty">
                                         {% for val,label in DIFFICULTY_CHOICES %}
-                                            <option value="{{ val }}" {% if q.difficulty==val %}selected{% endif %}>{{ label }}</option>
+                                            <option value="{{ val }}" {% if q.difficulty == val %}selected{% endif %}>{{ label }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
