@@ -420,7 +420,13 @@
             document.getElementById('question-content').innerHTML = contentHtml;
 
             // Update navigator
-            navigator.goToQuestion(questionNum);
+            if (navigator && typeof navigator.setCurrentQuestion === 'function') {
+                navigator.setCurrentQuestion(questionNum);
+            } else {
+                navigator.currentQuestion = questionNum;
+                navigator.render();
+                navigator.attachEventListeners();
+            }
 
             // Scroll to top
             window.scrollTo(0, 0);
@@ -555,10 +561,11 @@
             if (btnSaveContinue) {
                 btnSaveContinue.addEventListener('click', function(e) {
                     e.preventDefault();
-                    saveCurrentAnswer();
-                    if (currentQuestion < attemptData.totalQuestions) {
-                        navigateToQuestion(currentQuestion + 1);
-                    }
+                    saveCurrentAnswer().finally(() => {
+                        if (currentQuestion < attemptData.totalQuestions) {
+                            navigateToQuestion(currentQuestion + 1);
+                        }
+                    });
                 });
             }
 

@@ -110,9 +110,20 @@ class QuestionNavigator {
      */
     goToQuestion(questionNum) {
         if (questionNum < 1 || questionNum > this.totalQuestions) return;
-        
+        if (questionNum === this.currentQuestion) {
+            this.render();
+            this.attachEventListeners();
+            return;
+        }
         this.currentQuestion = questionNum;
         this.onQuestionChange(questionNum);
+        this.render();
+        this.attachEventListeners();
+    }
+
+    setCurrentQuestion(questionNum) {
+        if (questionNum < 1 || questionNum > this.totalQuestions) return;
+        this.currentQuestion = questionNum;
         this.render();
         this.attachEventListeners();
     }
