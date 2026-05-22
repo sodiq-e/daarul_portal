@@ -296,6 +296,11 @@
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save"></i> {{ form.instance.pk|yesno:'Update,Create' }} Exam
             </button>
+            {% if form.instance.pk %}
+                <a href="{% url 'teacher_cbt:manage_questions' exam_pk=form.instance.pk %}" class="btn btn-outline-success">
+                    <i class="fas fa-th-list"></i> Manage Questions
+                </a>
+            {% endif %}
             <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-secondary">
                 <i class="fas fa-times"></i> Cancel
             </a>

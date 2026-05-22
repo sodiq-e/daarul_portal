@@ -43,6 +43,7 @@
                     </td>
                     <td>
                         <a href="{% url 'teacher_cbt:exam_edit' exam.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a href="{% url 'teacher_cbt:manage_questions' exam_pk=exam.pk %}" class="btn btn-sm btn-outline-success">Manage Questions</a>
                     </td>
                 </tr>
                 {% empty %}

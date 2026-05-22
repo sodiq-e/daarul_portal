@@ -1,0 +1,564 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manage Questions - {{ exam.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/cbt-navigator.css' %}">
+<style>
+.question-block { margin-bottom: 1rem; }
+.question-card { border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; }
+.choice-row { display:flex; gap: .5rem; align-items:center; }
+.choice-row input[type=text] { flex:1; }
+.toolbox { position: sticky; top: 80px; }
+.drag-handle { cursor: grab; margin-right: .75rem; }
+.toast-container .toast { min-width: 220px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-2">
+        <div>
+            <h3>Manage Questions — {{ exam.name }}</h3>
+            <p class="text-muted">Create, organize, and import questions for this CBT exam.</p>
+        </div>
+        <div class="btn-toolbar gap-2">
+            <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-outline-secondary">Back to Exams</a>
+            <button id="btn-add-question" class="btn btn-primary">Add Question</button>
+            <button id="btn-import-bank" class="btn btn-info">Import Bank</button>
+            <button id="btn-open-upload" class="btn btn-secondary">Upload CSV / JSON</button>
+            <button id="btn-save-all" class="btn btn-success">Save All</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9">
+            <div id="questions-container">
+                {% for q in questions %}
+                <div class="question-block" data-existing-id="{{ q.id }}">
+                    <div class="question-card card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <strong>Question</strong>
+                            <div>
+                                <button class="btn btn-sm btn-duplicate btn-outline-secondary">Duplicate</button>
+                                <button class="btn btn-sm btn-collapse btn-outline-secondary">Toggle</button>
+                                <button class="btn btn-sm btn-remove btn-outline-danger">Remove</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Prompt</label>
+                                <textarea class="form-control question-prompt" rows="3">{{ q.prompt }}</textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4">
+                                    <label>Type</label>
+                                    <select class="form-control question-type">
+                                        {% for val,label in QUESTION_TYPE_CHOICES %}
+                                            <option value="{{ val }}" {% if q.question_type==val %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label>Marks</label>
+                                    <input type="number" step="0.01" class="form-control question-marks" value="{{ q.mark_value }}">
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>Difficulty</label>
+                                    <select class="form-control question-difficulty">
+                                        {% for val,label in DIFFICULTY_CHOICES %}
+                                            <option value="{{ val }}" {% if q.difficulty==val %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-3">
+                                    <label>Topic</label>
+                                    <input class="form-control question-topic" value="{{ q.topic }}">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Explanation (optional)</label>
+                                <textarea class="form-control question-explanation" rows="2">{{ q.explanation }}</textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Image (optional)</label>
+                                <input type="file" class="form-control question-image" accept="image/*">
+                                {% if q.image %}
+                                    <small class="text-muted">Current image: <a href="{{ q.image.url }}" target="_blank">View</a></small>
+                                {% endif %}
+                            </div>
+
+                            <div class="choices-section">
+                                <h6>Choices</h6>
+                                <div class="choices-list">
+                                    {% for c in q.choices.all %}
+                                    <div class="choice-row mb-2">
+                                        <input type="text" class="form-control choice-text" value="{{ c.text }}">
+                                        <input type="checkbox" class="choice-correct" {% if c.is_correct %}checked{% endif %}>
+                                        <input type="number" class="choice-order form-control" style="width:80px" value="{{ c.order }}">
+                                        <button class="btn btn-sm btn-outline-secondary btn-move-up">↑</button>
+                                        <button class="btn btn-sm btn-outline-secondary btn-move-down">↓</button>
+                                        <button class="btn btn-sm btn-outline-danger btn-remove-choice">✕</button>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary btn-add-choice">Add Choice</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-lg-3">
+            <div class="card toolbox">
+                <div class="card-body">
+                    <h6>Question Bank</h6>
+                    <select id="select-bank" class="form-control mb-2">
+                        <option value="">Select bank to preview</option>
+                        {% for bank in question_banks %}
+                            <option value="{{ bank.id }}">{{ bank.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input id="bank-query" type="text" class="form-control mb-2" placeholder="Search text">
+                    <select id="bank-type" class="form-control mb-2">
+                        <option value="">Any type</option>
+                        <option value="mcq">Multiple Choice</option>
+                        <option value="multiple">Multi-select</option>
+                        <option value="true_false">True/False</option>
+                        <option value="short_answer">Short Answer</option>
+                    </select>
+                    <select id="bank-difficulty" class="form-control mb-2">
+                        <option value="">Any difficulty</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                    <button id="btn-preview-bank" class="btn btn-sm btn-outline-primary mb-2 w-100">Preview</button>
+                    <div id="bank-preview" style="max-height:300px; overflow:auto"></div>
+                    <button id="btn-import-selected" class="btn btn-sm btn-success mt-2 w-100">Import Selected</button>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6>Bulk Upload</h6>
+                    <p class="text-muted">Upload CSV or JSON files formatted for CBT questions.</p>
+                    <button id="btn-open-upload" class="btn btn-sm btn-outline-secondary w-100 mb-2">Choose File</button>
+                    <a href="#" id="download-template" class="d-block">Download sample template</a>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6>Stats</h6>
+                    <p>Total Questions: <span id="stat-total">{{ questions|length }}</span></p>
+                    <p>Total Marks: <span id="stat-marks">0</span></p>
+                    <p>MCQ: <span id="stat-mcq">0</span></p>
+                    <p>Multi-select: <span id="stat-multi">0</span></p>
+                    <p>True/False: <span id="stat-truefalse">0</span></p>
+                    <p>Short Answer: <span id="stat-short">0</span></p>
+                    <p>Estimated duration: <span id="stat-duration">0</span> mins</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<input type="file" id="upload-file" accept=".csv,.json" style="display:none">
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+    const deletedQuestionIds = [];
+    const csrfToken = getCookie('csrftoken');
+    const bankPreviewContainer = document.getElementById('bank-preview');
+
+    function escapeHtml(text){
+        return String(text || '').replace(/[&<>"']/g, function(ch){
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+        });
+    }
+
+    function createQuestionBlock(data){
+        data = data || {};
+        const wrapper = document.createElement('div');
+        wrapper.className = 'question-block';
+        if(data.existing_id){ wrapper.dataset.existingId = data.existing_id; }
+        wrapper.draggable = true;
+        wrapper.innerHTML = `
+            <div class="question-card card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="drag-handle me-2">☰</span>
+                        <strong>Question</strong>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-duplicate">Duplicate</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-collapse">Toggle</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove">Remove</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Prompt</label>
+                        <textarea class="form-control question-prompt" rows="3">${escapeHtml(data.prompt)}</textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Type</label>
+                            <select class="form-control question-type">
+                                <option value="mcq">Multiple Choice</option>
+                                <option value="multiple">Multi-select</option>
+                                <option value="true_false">True/False</option>
+                                <option value="short_answer">Short Answer</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-2">
+                            <label>Marks</label>
+                            <input type="number" step="0.01" class="form-control question-marks" value="${data.mark_value||1}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Difficulty</label>
+                            <select class="form-control question-difficulty">
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Topic</label>
+                            <input class="form-control question-topic" value="${escapeHtml(data.topic)}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Explanation (optional)</label>
+                        <textarea class="form-control question-explanation" rows="2">${escapeHtml(data.explanation)}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Image (optional)</label>
+                        <input type="file" class="form-control question-image" accept="image/*">
+                        ${data.image_url ? `<small class="text-muted">Current image: <a href="${data.image_url}" target="_blank">View</a></small>` : ''}
+                    </div>
+                    <div class="choices-section">
+                        <h6>Choices</h6>
+                        <div class="choices-list"></div>
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-add-choice">Add Choice</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const typeSelect = wrapper.querySelector('.question-type');
+        const choicesSection = wrapper.querySelector('.choices-section');
+        typeSelect.value = data.question_type || 'mcq';
+        toggleChoiceSection(typeSelect.value, choicesSection);
+
+        wrapper.querySelector('.btn-add-choice').addEventListener('click', function(){ addChoiceRow(wrapper.querySelector('.choices-list')); });
+        wrapper.querySelector('.btn-remove').addEventListener('click', function(){ removeQuestionBlock(wrapper); });
+        wrapper.querySelector('.btn-duplicate').addEventListener('click', function(){ duplicateQuestionBlock(wrapper); });
+        wrapper.querySelector('.btn-collapse').addEventListener('click', function(){ wrapper.querySelector('.card-body').classList.toggle('d-none'); });
+        typeSelect.addEventListener('change', function(){ toggleChoiceSection(this.value, choicesSection); updateStats(); });
+
+        const choiceList = wrapper.querySelector('.choices-list');
+        if(Array.isArray(data.choices) && data.choices.length){ data.choices.forEach(choice => addChoiceRow(choiceList, choice)); }
+        else if(typeSelect.value === 'mcq' || typeSelect.value === 'multiple'){ addChoiceRow(choiceList); addChoiceRow(choiceList); }
+
+        if(data.difficulty){ wrapper.querySelector('.question-difficulty').value = data.difficulty; }
+        attachDragAndDrop(wrapper);
+        attachChoiceRowHandlers(choiceList);
+        return wrapper;
+    }
+
+    function toggleChoiceSection(type, section){
+        section.style.display = (type === 'mcq' || type === 'multiple') ? '' : 'none';
+    }
+
+    function addChoiceRow(list, data){
+        data = data || {};
+        const row = document.createElement('div');
+        row.className = 'choice-row mb-2';
+        row.innerHTML = `
+            <input type="text" class="form-control choice-text" placeholder="Choice text" value="${escapeHtml(data.text)}">
+            <input type="checkbox" class="choice-correct" title="Correct" ${data.is_correct? 'checked' : ''}>
+            <input type="number" class="choice-order form-control" style="width:80px" value="${data.order!==undefined? data.order : 0}">
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-move-up">↑</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-move-down">↓</button>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-choice">✕</button>
+        `;
+        list.appendChild(row);
+        attachChoiceRowHandlers(list);
+    }
+
+    function attachChoiceRowHandlers(list){
+        list.querySelectorAll('.btn-remove-choice').forEach(btn => btn.onclick = function(){ this.closest('.choice-row').remove(); updateStats(); });
+        list.querySelectorAll('.btn-move-up').forEach(btn => btn.onclick = function(){ moveChoiceRow(this.closest('.choice-row'), -1); });
+        list.querySelectorAll('.btn-move-down').forEach(btn => btn.onclick = function(){ moveChoiceRow(this.closest('.choice-row'), 1); });
+    }
+
+    function moveChoiceRow(row, delta){
+        const parent = row.parentElement;
+        if(delta < 0 && row.previousElementSibling) parent.insertBefore(row, row.previousElementSibling);
+        if(delta > 0 && row.nextElementSibling) parent.insertBefore(row.nextElementSibling, row);
+    }
+
+    function removeQuestionBlock(block){
+        if(block.dataset.existingId){ deletedQuestionIds.push(block.dataset.existingId); }
+        block.remove();
+        updateStats();
+        showToast('Question removed', 'warning');
+    }
+
+    function duplicateQuestionBlock(block){
+        const cloneData = collectBlockData(block);
+        cloneData.existing_id = null;
+        const clone = createQuestionBlock(cloneData);
+        document.getElementById('questions-container').appendChild(clone);
+        updateStats();
+    }
+
+    function attachDragAndDrop(block){
+        block.addEventListener('dragstart', function(e){ block.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+        block.addEventListener('dragend', function(){ block.classList.remove('dragging'); });
+        block.addEventListener('dragover', function(e){
+            e.preventDefault();
+            const dragging = document.querySelector('.dragging');
+            if(!dragging || dragging === block) return;
+            const rect = block.getBoundingClientRect();
+            const next = (e.clientY - rect.top) / rect.height > 0.5;
+            block.parentElement.insertBefore(dragging, next ? block.nextSibling : block);
+        });
+    }
+
+    function collectBlockData(block){
+        const prompt = block.querySelector('.question-prompt').value.trim();
+        const question_type = block.querySelector('.question-type').value;
+        const mark_value = parseFloat(block.querySelector('.question-marks').value) || 1;
+        const difficulty = block.querySelector('.question-difficulty').value || 'medium';
+        const topic = block.querySelector('.question-topic').value.trim();
+        const explanation = block.querySelector('.question-explanation').value.trim();
+        const existing_id = block.dataset.existingId || null;
+        const choices = Array.from(block.querySelectorAll('.choice-row')).map((row, idx) => ({
+            text: row.querySelector('.choice-text').value.trim(),
+            is_correct: row.querySelector('.choice-correct').checked,
+            order: parseInt(row.querySelector('.choice-order').value) || idx
+        }));
+        return {prompt, question_type, mark_value, difficulty, topic, explanation, existing_id, choices};
+    }
+
+    function collectQuestions(){
+        return Array.from(document.querySelectorAll('#questions-container .question-block')).map(collectBlockData);
+    }
+
+    function saveAll(){
+        const questions = collectQuestions();
+        const formData = new FormData();
+        formData.append('payload', JSON.stringify({questions, deleted_question_ids: deletedQuestionIds}));
+        Array.from(document.querySelectorAll('#questions-container .question-block')).forEach((block, idx) => {
+            const fileInput = block.querySelector('.question-image');
+            if(fileInput && fileInput.files && fileInput.files[0]){
+                const key = `image_${block.dataset.existingId || idx}`;
+                formData.append(key, fileInput.files[0]);
+            }
+        });
+        const url = `{% url 'teacher_cbt:manage_questions' exam_pk=exam.pk %}`;
+        showToast('Saving questions...', 'info');
+        fetch(url, {method:'POST', headers:{'X-CSRFToken': csrfToken}, body: formData})
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'ok'){
+                    showToast(`Saved ${data.created.length + data.updated.length} questions`, 'success');
+                    setTimeout(()=> location.reload(), 800);
+                } else {
+                    showToast(data.error || 'Save failed', 'danger');
+                }
+            }).catch(err => { console.error(err); showToast('Unable to save questions', 'danger'); });
+    }
+
+    function updateStats(){
+        const blocks = Array.from(document.querySelectorAll('#questions-container .question-block'));
+        const total = blocks.length;
+        let marks = 0, mcq=0, multiple=0, true_false=0, short_answer=0;
+        blocks.forEach(block => {
+            const type = block.querySelector('.question-type').value;
+            const mark = parseFloat(block.querySelector('.question-marks').value) || 0;
+            marks += mark;
+            if(type==='mcq') mcq++;
+            if(type==='multiple') multiple++;
+            if(type==='true_false') true_false++;
+            if(type==='short_answer') short_answer++;
+        });
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-marks').textContent = marks.toFixed(2);
+        document.getElementById('stat-mcq').textContent = mcq;
+        document.getElementById('stat-multi').textContent = multiple;
+        document.getElementById('stat-truefalse').textContent = true_false;
+        document.getElementById('stat-short').textContent = short_answer;
+        document.getElementById('stat-duration').textContent = Math.max(1, Math.round(total * 1.5));
+    }
+
+    function showToast(message, type='info'){
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0 show mb-2`;
+        toast.role = 'alert';
+        toast.ariaLive = 'assertive';
+        toast.ariaAtomic = 'true';
+        toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Close"></button></div>`;
+        const container = document.getElementById('toast-container');
+        container.appendChild(toast);
+        toast.querySelector('.btn-close').onclick = () => toast.remove();
+        setTimeout(()=> toast.remove(), 6000);
+    }
+
+    function parseUploadFile(file){
+        const reader = new FileReader();
+        reader.onload = function(){
+            const text = reader.result;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if(ext === 'json'){
+                try {
+                    const data = JSON.parse(text);
+                    if(Array.isArray(data)){
+                        data.forEach(item => addUploadedQuestion(item));
+                        showToast('JSON imported successfully', 'success');
+                    } else {
+                        showToast('JSON file must contain an array of questions', 'danger');
+                    }
+                } catch(err){ showToast('Invalid JSON file', 'danger'); }
+            } else if(ext === 'csv'){
+                importCsv(text);
+            } else {
+                showToast('Unsupported file type', 'danger');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function importCsv(text){
+        const lines = text.split(/\r?\n/).filter(line => line.trim());
+        if(lines.length < 2){ showToast('CSV must contain a header row and at least one data row', 'danger'); return; }
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const rows = lines.slice(1);
+        rows.forEach(row => {
+            const values = row.split(',');
+            const record = {};
+            headers.forEach((header, index) => { record[header] = values[index] ? values[index].trim() : ''; });
+            const choices = (record.choices || '').split(';').map((text, idx) => ({ text: text.trim(), is_correct: (record.correct_answers || '').split(';').map(s=>s.trim()).includes(text.trim()), order: idx })).filter(c => c.text);
+            addUploadedQuestion({
+                prompt: record.prompt || '',
+                question_type: record.question_type || 'mcq',
+                mark_value: parseFloat(record.mark_value) || 1,
+                explanation: record.explanation || '',
+                topic: record.topic || '',
+                difficulty: record.difficulty || 'medium',
+                choices
+            });
+        });
+        showToast('CSV imported into builder', 'success');
+    }
+
+    function addUploadedQuestion(data){
+        const block = createQuestionBlock(data);
+        document.getElementById('questions-container').appendChild(block);
+        updateStats();
+    }
+
+    function fetchBankPreview(){
+        const bankId = document.getElementById('select-bank').value;
+        const query = encodeURIComponent(document.getElementById('bank-query').value.trim());
+        const qtype = document.getElementById('bank-type').value;
+        const difficulty = document.getElementById('bank-difficulty').value;
+        if(!bankId){ showToast('Select a question bank', 'warning'); return; }
+        const params = [`bank_id=${bankId}`];
+        if(query) params.push(`q=${query}`);
+        if(qtype) params.push(`type=${qtype}`);
+        if(difficulty) params.push(`difficulty=${difficulty}`);
+        bankPreviewContainer.innerHTML = '<p class="text-muted">Loading preview…</p>';
+        fetch(`{% url 'teacher_cbt:search_questions' %}?` + params.join('&'))
+            .then(r => r.json())
+            .then(data => {
+                bankPreviewContainer.innerHTML = '';
+                if(!data.questions || !data.questions.length){ bankPreviewContainer.innerHTML = '<p class="text-muted">No questions found.</p>'; return; }
+                const list = document.createElement('div');
+                data.questions.forEach(q => {
+                    const item = document.createElement('div');
+                    item.className = 'border rounded p-2 mb-2';
+                    item.innerHTML = `
+                        <div class="form-check mb-1">
+                            <input class="form-check-input bank-select" type="checkbox" value="${q.id}" id="bank-q-${q.id}">
+                            <label class="form-check-label" for="bank-q-${q.id}"><strong>${escapeHtml(q.prompt)}</strong></label>
+                        </div>
+                        <small class="text-muted">${escapeHtml(q.type)} · ${escapeHtml(q.difficulty)} · ${escapeHtml(q.topic || 'No topic')}</small>
+                    `;
+                    list.appendChild(item);
+                });
+                bankPreviewContainer.appendChild(list);
+            }).catch(err => { console.error(err); bankPreviewContainer.innerHTML = '<p class="text-danger">Unable to preview questions.</p>'; });
+    }
+
+    function importSelectedBank(){
+        const bankId = document.getElementById('select-bank').value;
+        if(!bankId){ showToast('Select a bank first', 'warning'); return; }
+        const selected = Array.from(bankPreviewContainer.querySelectorAll('.bank-select:checked')).map(cb => parseInt(cb.value));
+        if(!selected.length){ showToast('Select questions to import', 'warning'); return; }
+        const payload = {bank_import:{bank_id:bankId, question_ids:selected}};
+        const url = `{% url 'teacher_cbt:manage_questions' exam_pk=exam.pk %}`;
+        showToast('Importing selected questions...', 'info');
+        fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken}, body: JSON.stringify(payload)})
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'ok'){
+                    showToast(`Imported ${data.created.length} questions`, 'success');
+                    setTimeout(()=> location.reload(), 800);
+                } else {
+                    showToast(data.error || 'Import failed', 'danger');
+                }
+            }).catch(err => { console.error(err); showToast('Import failed', 'danger'); });
+    }
+
+    document.getElementById('btn-add-question').addEventListener('click', function(){ document.getElementById('questions-container').appendChild(createQuestionBlock()); updateStats(); });
+    document.getElementById('btn-save-all').addEventListener('click', saveAll);
+    document.getElementById('btn-import-bank').addEventListener('click', fetchBankPreview);
+    document.getElementById('btn-import-selected').addEventListener('click', importSelectedBank);
+    document.getElementById('btn-open-upload').addEventListener('click', function(){ document.getElementById('upload-file').click(); });
+    document.getElementById('upload-file').addEventListener('change', function(){ if(this.files && this.files[0]) parseUploadFile(this.files[0]); });
+
+    Array.from(document.querySelectorAll('#questions-container .question-block')).forEach(block => {
+        const typeSelect = block.querySelector('.question-type');
+        const choicesSection = block.querySelector('.choices-section');
+        toggleChoiceSection(typeSelect.value, choicesSection);
+        attachChoiceRowHandlers(block.querySelector('.choices-list'));
+        attachDragAndDrop(block);
+        block.querySelector('.btn-remove').addEventListener('click', function(){ removeQuestionBlock(block); });
+        block.querySelector('.btn-duplicate').addEventListener('click', function(){ duplicateQuestionBlock(block); });
+        block.querySelector('.btn-collapse').addEventListener('click', function(){ block.querySelector('.card-body').classList.toggle('d-none'); });
+        typeSelect.addEventListener('change', function(){ toggleChoiceSection(this.value, choicesSection); updateStats(); });
+    });
+
+    updateStats();
+    showToast('Question builder loaded', 'info');
+
+    function getCookie(name){
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== ''){
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++){
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')){
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+})();
+</script>
+{% endblock %}

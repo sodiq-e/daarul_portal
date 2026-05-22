@@ -136,6 +136,7 @@ class CBTQuestion(models.Model):
     question_type = models.CharField(max_length=32, choices=QUESTION_TYPE_CHOICES, default=MCQ)
     mark_value = models.DecimalField(max_digits=5, decimal_places=2, default=1.00)
     explanation = models.TextField(blank=True)
+    image = models.FileField(upload_to='cbt/question_images/', blank=True, null=True)
     topic = models.CharField(max_length=100, blank=True, db_index=True)
     difficulty = models.CharField(max_length=16, choices=DIFFICULTY_CHOICES, default=DIFFICULTY_MEDIUM)
     order = models.PositiveIntegerField(default=0)

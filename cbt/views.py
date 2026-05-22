@@ -7,7 +7,7 @@ from django.db.models import Avg
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
-from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice
+from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
 from django.http import JsonResponse, HttpResponseForbidden
@@ -507,3 +507,139 @@ class TeacherCBTAnalyticsView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
         context['cbt_attempts'] = attempts.count()
         context['cbt_avg_score'] = attempts.aggregate(avg_score=Avg('score'))['avg_score'] or 0
         return context
+
+
+@method_decorator(login_required, name='dispatch')
+class ManageExamQuestionsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Bulk question builder and manager for a specific exam"""
+    template_name = 'cbt/manage_exam_questions.html'
+
+    def test_func(self):
+        exam = get_object_or_404(CBTExam, pk=self.kwargs.get('exam_pk'))
+        return exam.created_by == self.request.user
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        exam = get_object_or_404(CBTExam, pk=self.kwargs.get('exam_pk'))
+        # existing questions for the exam
+        context['exam'] = exam
+        context['questions'] = exam.questions.all().prefetch_related('choices')
+        # include question bank options
+        context['question_banks'] = QuestionBank.objects.filter(created_by=self.request.user)
+        # provide choice lists for template
+        context['QUESTION_TYPE_CHOICES'] = CBTQuestion.QUESTION_TYPE_CHOICES
+        context['DIFFICULTY_CHOICES'] = CBTQuestion.DIFFICULTY_CHOICES
+        return context
+
+    def post(self, request, *args, **kwargs):
+        exam = get_object_or_404(CBTExam, pk=self.kwargs.get('exam_pk'))
+        if exam.created_by != request.user:
+            return HttpResponseForbidden()
+
+        payload = {}
+        if request.content_type and 'application/json' in request.content_type:
+            try:
+                payload = json.loads(request.body.decode())
+            except Exception:
+                return JsonResponse({'error': 'Invalid JSON payload'}, status=400)
+        else:
+            try:
+                payload = json.loads(request.POST.get('payload', '{}'))
+            except Exception:
+                return JsonResponse({'error': 'Invalid payload'}, status=400)
+
+        questions = payload.get('questions', [])
+        bank_import = payload.get('bank_import')
+        deleted_ids = payload.get('deleted_question_ids', [])
+
+        created = []
+        updated = []
+        deleted = []
+
+        from django.db import transaction
+
+        with transaction.atomic():
+            # delete removed questions
+            if deleted_ids:
+                for qid in deleted_ids:
+                    qobj = CBTQuestion.objects.filter(pk=qid, exam=exam).first()
+                    if qobj:
+                        qobj.delete()
+                        deleted.append(qid)
+
+            for idx, q in enumerate(questions):
+                existing_id = q.get('existing_id')
+                if existing_id:
+                    qobj = CBTQuestion.objects.filter(pk=existing_id, exam=exam).first()
+                else:
+                    qobj = None
+
+                if qobj:
+                    qobj.prompt = q.get('prompt', qobj.prompt)
+                    qobj.question_type = q.get('question_type', qobj.question_type)
+                    qobj.mark_value = q.get('mark_value', qobj.mark_value)
+                    qobj.explanation = q.get('explanation', qobj.explanation)
+                    qobj.topic = q.get('topic', qobj.topic)
+                    qobj.difficulty = q.get('difficulty', qobj.difficulty)
+                    qobj.order = q.get('order', qobj.order)
+                    qobj.is_active = q.get('is_active', qobj.get('is_active', True))
+                    qobj.save()
+                    updated.append(qobj.id)
+                    qobj.choices.all().delete()
+                else:
+                    qobj = CBTQuestion.objects.create(
+                        exam=exam,
+                        question_bank=None,
+                        prompt=q.get('prompt', ''),
+                        question_type=q.get('question_type', CBTQuestion.MCQ),
+                        mark_value=q.get('mark_value', 1.0),
+                        explanation=q.get('explanation', ''),
+                        topic=q.get('topic', ''),
+                        difficulty=q.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM),
+                        order=q.get('order', idx),
+                        is_active=q.get('is_active', True)
+                    )
+                    created.append(qobj.id)
+
+                if request.FILES:
+                    image_key = f'image_{existing_id or qobj.id}'
+                    if image_key in request.FILES:
+                        qobj.image = request.FILES[image_key]
+                        qobj.save()
+
+                for cidx, ch in enumerate(q.get('choices', [])):
+                    CBTChoice.objects.create(
+                        question=qobj,
+                        text=ch.get('text', ''),
+                        is_correct=bool(ch.get('is_correct', False)),
+                        order=ch.get('order', cidx)
+                    )
+
+            if bank_import:
+                bank_id = bank_import.get('bank_id')
+                selected_ids = bank_import.get('question_ids', [])
+                qb = get_object_or_404(QuestionBank, pk=bank_id, created_by=request.user)
+                for qid in selected_ids:
+                    src = get_object_or_404(CBTQuestion, pk=qid, question_bank=qb)
+                    nq = CBTQuestion.objects.create(
+                        exam=exam,
+                        question_bank=qb,
+                        prompt=src.prompt,
+                        question_type=src.question_type,
+                        mark_value=src.mark_value,
+                        explanation=src.explanation,
+                        topic=src.topic,
+                        difficulty=src.difficulty,
+                        order=src.order,
+                        is_active=src.is_active
+                    )
+                    for c in src.choices.all():
+                        CBTChoice.objects.create(
+                            question=nq,
+                            text=c.text,
+                            is_correct=c.is_correct,
+                            order=c.order
+                        )
+                    created.append(nq.id)
+
+        return JsonResponse({'status': 'ok', 'created': created, 'updated': updated, 'deleted': deleted})

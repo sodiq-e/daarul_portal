@@ -37,6 +37,7 @@ urlpatterns = [
     path('questions/<int:pk>/edit/', QuestionUpdateView.as_view(), name='question_edit'),
     path('questions/<int:pk>/delete/', QuestionDeleteView.as_view(), name='question_delete'),
     path('questions/<int:question_pk>/clone/', QuestionCloneView.as_view(), name='question_clone'),
+    path('manage/<int:exam_pk>/questions/', views.ManageExamQuestionsView.as_view(), name='manage_questions'),
     
     # API endpoints
     path('api/search-questions/', QuestionSearchAPIView.as_view(), name='search_questions'),
