@@ -7,6 +7,7 @@ from django.db.models import Avg, Q, Count
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank, StudentAttemptQuestion, CBTAttemptIntegrityEvent
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
@@ -367,16 +368,36 @@ def api_save_answer(request):
     return JsonResponse({'status': 'saved', 'last_saved': attempt.last_saved_at.isoformat()})
 
 
+@csrf_exempt
 @login_required
 def api_submit_attempt(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
-    try:
-        data = json.loads(request.body.decode())
-    except Exception:
-        return JsonResponse({'error': 'invalid json'}, status=400)
 
-    attempt_uuid = data.get('attempt_uuid')
+    attempt_uuid = None
+    body = request.body.decode(errors='ignore')
+    if body:
+        try:
+            data = json.loads(body)
+            attempt_uuid = data.get('attempt_uuid')
+        except Exception:
+            pass
+
+    if not attempt_uuid:
+        attempt_uuid = request.POST.get('attempt_uuid') or request.GET.get('attempt_uuid')
+
+    if not attempt_uuid:
+        return JsonResponse({'error': 'attempt_uuid required'}, status=400)
+
+    # Enforce same-origin for beacon/fallback submissions
+    origin = request.META.get('HTTP_ORIGIN')
+    referer = request.META.get('HTTP_REFERER')
+    allowed_origin = f"{request.scheme}://{request.get_host()}"
+    if origin and origin != allowed_origin:
+        return HttpResponseForbidden()
+    if not origin and referer and not referer.startswith(allowed_origin):
+        return HttpResponseForbidden()
+
     attempt = get_object_or_404(CBTStudentAttempt, uuid=attempt_uuid)
     if attempt.student and attempt.student != request.user:
         return HttpResponseForbidden()

@@ -696,10 +696,13 @@
                     } catch (err) {
                         // best-effort
                     }
-                    const message = 'Your exam is still in progress. Please submit before leaving.';
-                    e.preventDefault();
-                    e.returnValue = message;
-                    return message;
+                    submitExam({silent: true, useBeacon: true});
+                }
+            });
+
+            window.addEventListener('unload', function() {
+                if (!attemptData.attemptSubmitted) {
+                    submitExam({silent: true, useBeacon: true});
                 }
             });
 
@@ -824,36 +827,62 @@
             submitExam();
         }
 
-        async function submitExam() {
-            // Save final answer
+        async function submitExam(options = {}) {
+            const silent = options.silent === true;
+            const useBeacon = options.useBeacon === true;
+
+            // Save final answer when possible
             try {
                 await saveCurrentAnswer();
             } catch (err) {
-                console.warn('Submit: final save failed but continuing', err);
+                if (!silent) {
+                    console.warn('Submit: final save failed but continuing', err);
+                }
             }
-            
+
             const csrftoken = getCookie('csrftoken');
+            const endpoint = '{% url "cbt:api_submit_attempt" %}';
+            const payload = JSON.stringify({attempt_uuid: attemptData.uuid});
+
+            if (useBeacon && navigator.sendBeacon) {
+                const beaconData = new FormData();
+                beaconData.append('attempt_uuid', attemptData.uuid);
+                navigator.sendBeacon(endpoint, beaconData);
+                return;
+            }
+
             setSaveStatus('Saving...');
-            fetch('{% url "cbt:api_submit_attempt" %}', {
+            fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                body: JSON.stringify({attempt_uuid: attemptData.uuid})
+                body: payload,
+                keepalive: true,
+                credentials: 'same-origin'
             }).then(r => r.json()).then(data => {
                 if (data.status === 'submitted') {
+                    attemptData.attemptSubmitted = true;
+                    if (typeof timer !== 'undefined' && timer && typeof timer.stop === 'function') {
+                        timer.stop();
+                    }
                     setSaveStatus('Submitted');
-                    // redirect to results view of attempt
-                    window.location.href = '{% url "cbt:attempt_detail" uuid=attempt.uuid %}';
+                    if (!silent) {
+                        window.location.href = '{% url "cbt:attempt_detail" uuid=attempt.uuid %}';
+                    }
                 } else {
                     setSaveStatus('Sync failed');
-                    alert('Failed to submit exam. Please try again.');
+                    if (!silent) {
+                        alert('Failed to submit exam. Please try again.');
+                    }
                 }
             }).catch(err => {
                 console.error('Submit failed', err);
                 setSaveStatus('Offline');
-                alert('Unable to submit exam. Check your connection.');
+                if (!silent) {
+                    alert('Unable to submit exam. Check your connection.');
+                }
             });
         }
     </script>
