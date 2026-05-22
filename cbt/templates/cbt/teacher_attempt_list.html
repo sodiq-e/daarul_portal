@@ -21,6 +21,7 @@
                     <th>Exam</th>
                     <th>Started</th>
                     <th>Status</th>
+                    <th>Integrity</th>
                     <th>Score</th>
                     <th></th>
                 </tr>
@@ -36,6 +37,13 @@
                             <span class="badge bg-success">Submitted</span>
                         {% else %}
                             <span class="badge bg-warning">In Progress</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if attempt.integrity_count > 0 %}
+                            <span class="badge bg-danger">{{ attempt.integrity_count }} alert{% if attempt.integrity_count|int > 1 %}s{% endif %}</span>
+                        {% else %}
+                            <span class="text-muted">None</span>
                         {% endif %}
                     </td>
                     <td>{{ attempt.score|default:'-' }}</td>

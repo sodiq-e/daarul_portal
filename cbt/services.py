@@ -221,10 +221,12 @@ def build_attempt_context(attempt):
             'mark_value': float(q.mark_value),
         })
 
+    integrity_events = list(attempt.integrity_events.order_by('created_at').values('reason', 'metadata', 'created_at'))
     return {
         'attempt': attempt,
         'exam': attempt.exam,
         'questions': question_context,
+        'integrity_events': integrity_events,
         'time_left_seconds': max(0, int((attempt.started_at + timedelta(minutes=attempt.exam.duration_minutes) - timezone.now()).total_seconds())),
         'total_points': total_points,
     }

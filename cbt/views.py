@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy, reverse
-from django.db.models import Avg, Q
+from django.db.models import Avg, Q, Count
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
@@ -298,6 +298,10 @@ def attempt_detail(request, uuid):
     context['answers_json'] = json.dumps(answers_arr)
     context['flagged_questions_json'] = json.dumps(list(attempt_questions.filter(is_flagged=True).values_list('randomized_position', flat=True)))
     context['total_questions'] = attempt.attempt_questions.count() or attempt.exam.questions.filter(is_active=True).count()
+    # Determine remaining time for the current attempt
+    elapsed_seconds = max(0, int((timezone.now() - attempt.started_at).total_seconds()))
+    total_seconds = int(attempt.exam.duration_minutes * 60)
+    context['time_left_seconds'] = max(0, total_seconds - elapsed_seconds)
     return render(request, 'cbt/student_attempt_view.html', context)
 
 
@@ -522,7 +526,9 @@ class TeacherCBTAttemptListView(LoginRequiredMixin, UserPassesTestMixin, ListVie
     def get_queryset(self):
         return CBTStudentAttempt.objects.filter(
             exam__created_by=self.request.user
-        ).select_related('exam', 'student').order_by('-started_at')
+        ).select_related('exam', 'student').annotate(
+            integrity_count=Count('integrity_events')
+        ).order_by('-started_at')
 
 
 @method_decorator(login_required, name='dispatch')

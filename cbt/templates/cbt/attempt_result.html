@@ -36,6 +36,32 @@
         </div>
     </div>
 
+    {% if integrity_events %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h5 mb-3">Integrity Report</h2>
+                        <p class="text-muted mb-3">The system detected the following events during this attempt.</p>
+                        <div class="list-group">
+                            {% for event in integrity_events %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>{{ event.reason|capfirst|replace:'_',' ' }}</strong>
+                                        <small class="text-muted">{{ event.created_at }}</small>
+                                    </div>
+                                    {% if event.metadata %}
+                                        <pre class="mb-0 small">{{ event.metadata }}</pre>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     {% for item in questions %}
         <div class="card review-card">
             <div class="card-header d-flex justify-content-between align-items-center">

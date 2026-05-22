@@ -248,7 +248,7 @@
 
                 <!-- Submit Exam Button -->
                 <div class="text-center mb-4">
-                    <button type="button" class="btn btn-success btn-lg" id="btn-submit" data-bs-toggle="modal" data-bs-target="#submit-modal">
+                    <button type="button" class="btn btn-success btn-lg" id="btn-submit">
                         <i class="fas fa-check-circle"></i> Submit Exam
                     </button>
                 </div>
@@ -315,6 +315,7 @@
             showInstantResults: {{ attempt.exam.show_instant_results|lower }},
             showCorrections: {{ attempt.exam.show_corrections|lower }},
             durationMinutes: {{ attempt.exam.duration_minutes }},
+            timeLeftSeconds: {{ time_left_seconds }},
             attemptSubmitted: {{ attempt.is_submitted|yesno:'true,false' }},
             questions: (function(){ try { return JSON.parse('{{ questions_json|escapejs }}'); } catch (e) { console.error('Failed to parse questions_json:', e); return []; } })(),
             answers: (function(){ try { return JSON.parse('{{ answers_json|escapejs }}'); } catch (e) { console.error('Failed to parse answers_json:', e); return []; } })(),
@@ -359,7 +360,7 @@
             // Initialize timer
             timer = new ExamTimer({
                 containerId: 'exam-timer-container',
-                totalSeconds: attemptData.durationMinutes * 60,
+                totalSeconds: typeof attemptData.timeLeftSeconds === 'number' ? attemptData.timeLeftSeconds : attemptData.durationMinutes * 60,
                 warningThreshold: 300,
                 onTimeUp: function() {
                     alert('Time is up! Your exam will be submitted automatically.');
