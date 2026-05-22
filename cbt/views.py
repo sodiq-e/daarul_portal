@@ -12,7 +12,8 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank, StudentAttemptQuestion, CBTAttemptIntegrityEvent
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
-from .gemini_service import generate_ai_questions_using_gemini, validate_generated_question_payload
+from .gemini_service import generate_ai_questions_using_gemini, validate_generated_question_payload, generate_ss1_questions
+import logging
 from django.http import JsonResponse, HttpResponseForbidden
 import json
 
@@ -452,6 +453,50 @@ def api_generate_ai_questions(request, exam_pk):
         validated_questions.append(question)
 
     return JsonResponse({'status': 'ok', 'questions': validated_questions})
+
+
+@login_required
+def api_generate_ss1_questions(request):
+    """
+    Test endpoint for generating SS1 questions from Gemini.
+
+    - Validates GEMINI_API_KEY presence
+    - Calls `generate_ss1_questions` which performs cleaning, retries and strict validation
+    - Returns ONLY the list of question objects on success (safe=False)
+    - On error returns a fallback JSON: {"success": false, "error": "message"}
+
+    Note: This endpoint is for testing the AI integration only. Do NOT wire
+    frontend UI to this endpoint until SDK, parsing and validation are confirmed.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+
+    try:
+        data = json.loads(request.body.decode() or '{}')
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON payload.'}, status=400)
+
+    topic = data.get('topic', '').strip()
+    num_questions = data.get('num_questions', 5)
+    try:
+        num_questions = int(num_questions)
+    except (TypeError, ValueError):
+        num_questions = 5
+
+    if num_questions < 1 or num_questions > 20:
+        return JsonResponse({'success': False, 'error': 'num_questions must be between 1 and 20.'}, status=400)
+
+    try:
+        questions = generate_ss1_questions(topic=topic, num_questions=num_questions)
+    except EnvironmentError as env_err:
+        logging.exception('Environment error when generating SS1 questions')
+        return JsonResponse({'success': False, 'error': str(env_err)}, status=500)
+    except Exception as exc:
+        logging.exception('Failed to generate SS1 questions')
+        return JsonResponse({'success': False, 'error': 'AI generation failed: ' + str(exc)}, status=500)
+
+    # Return the validated list directly (safe=False allows non-dict top-level JSON)
+    return JsonResponse(questions, safe=False)
 
 
 @login_required

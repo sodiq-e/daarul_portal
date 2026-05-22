@@ -21,4 +21,5 @@ urlpatterns = [
     path('attempt/<uuid:uuid>/', views.attempt_detail, name='attempt_detail'),
     path('api/save-answer/', views.api_save_answer, name='api_save_answer'),
     path('api/submit-attempt/', views.api_submit_attempt, name='api_submit_attempt'),
+    path('api/generate-ss1-questions/', views.api_generate_ss1_questions, name='api_generate_ss1_questions'),
 ]

@@ -1,14 +1,18 @@
 import json
 import os
 import re
-import urllib.error
-import urllib.request
 
 from .models import CBTQuestion
 
-GEMINI_API_URL = os.getenv('GEMINI_API_URL', 'https://api.openai.com/v1/chat/completions')
+try:
+    from google import genai
+    from google.genai.types import GenerateContentConfig
+except ImportError:  # pragma: no cover
+    genai = None
+    GenerateContentConfig = None
+
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gpt-4.1-mini')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
 
 
 def _build_prompt(exam, topic, difficulty, num_questions):
@@ -50,46 +54,33 @@ def _parse_json_from_text(text):
 
 
 def _make_gemini_request(prompt):
+    if genai is None or GenerateContentConfig is None:
+        raise ImportError(
+            'Gemini integration requires the google-genai package. '
+            'Install google-genai and restart the app.'
+        )
     if not GEMINI_API_KEY:
-        raise EnvironmentError('Gemini API key is not configured. Set GEMINI_API_KEY in environment.')
-    if not GEMINI_API_URL:
-        raise EnvironmentError('Gemini API URL is not configured. Set GEMINI_API_URL in environment.')
+        raise EnvironmentError(
+            'Gemini API key is not configured. Set GEMINI_API_KEY in environment.'
+        )
 
-    payload = {
-        'model': GEMINI_MODEL,
-        'messages': [
-            {'role': 'system', 'content': 'You are a helpful question generation assistant.'},
-            {'role': 'user', 'content': prompt}
-        ],
-        'temperature': 0.2,
-        'max_tokens': 1200,
-        'top_p': 0.95,
-        'n': 1,
-    }
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    config = GenerateContentConfig(
+        temperature=0.2,
+        top_p=0.95,
+        max_output_tokens=1200,
+        candidate_count=1,
+    )
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=config,
+    )
 
-    data = json.dumps(payload).encode('utf-8')
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {GEMINI_API_KEY}',
-    }
-
-    request = urllib.request.Request(GEMINI_API_URL, data=data, headers=headers)
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            response_body = response.read().decode('utf-8')
-            parsed = json.loads(response_body)
-            choices = parsed.get('choices') or []
-            if not choices:
-                raise ValueError('No choices returned from Gemini API')
-            message = choices[0].get('message') or choices[0].get('text') or ''
-            if isinstance(message, dict):
-                message = message.get('content', '')
-            return message
-    except urllib.error.HTTPError as exc:
-        error_body = exc.read().decode('utf-8', errors='ignore')
-        raise RuntimeError(f'Gemini API request failed: {exc.code} {exc.reason}. Response: {error_body}')
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f'Gemini API network error: {exc.reason}')
+    text = getattr(response, 'text', None)
+    if not text:
+        raise ValueError('No text returned from Gemini API')
+    return text
 
 
 def generate_ai_questions_using_gemini(exam, topic, difficulty, num_questions):
