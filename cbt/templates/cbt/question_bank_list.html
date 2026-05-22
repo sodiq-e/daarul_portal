@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Question Banks - Teacher CBT{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 font-weight-bold">Question Banks</h1>
+            <p class="text-muted">Manage and organize your question banks for reuse across exams</p>
+        </div>
+        <div class="col-md-4 text-md-right">
+            <a href="{% url 'teacher_cbt:question_bank_add' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Bank
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="form-inline">
+                <input type="text" name="q" class="form-control mr-2" placeholder="Search question banks..." value="{{ search_query }}">
+                <select name="subject" class="form-control mr-2">
+                    <option value="">All Subjects</option>
+                    {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if request.GET.subject|add:"0" == subject.id %}selected{% endif %}>
+                            {{ subject.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <select name="class" class="form-control mr-2">
+                    <option value="">All Classes</option>
+                    {% for class_obj in classes %}
+                        <option value="{{ class_obj.id }}" {% if request.GET.class|add:"0" == class_obj.id %}selected{% endif %}>
+                            {{ class_obj.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-outline-secondary mr-2">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <a href="{% url 'teacher_cbt:question_banks' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-redo"></i> Reset
+                </a>
+            </form>
+        </div>
+    </div>
+
+    {% if question_banks %}
+        <!-- Question Banks Grid -->
+        <div class="row">
+            {% for bank in question_banks %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title font-weight-bold">{{ bank.name }}</h5>
+                            <p class="card-text text-muted small">{{ bank.description|truncatewords:15 }}</p>
+                            
+                            <div class="mb-3">
+                                <span class="badge badge-info">{{ bank.subject.name }}</span>
+                                {% if bank.school_class %}
+                                    <span class="badge badge-secondary">{{ bank.school_class.name }}</span>
+                                {% endif %}
+                                {% if bank.term %}
+                                    <span class="badge badge-warning">{{ bank.term.name }}</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="alert alert-light py-2 px-3 mb-3">
+                                <strong>{{ bank.question_count }}</strong> Questions
+                            </div>
+                            
+                            <div class="btn-group btn-block" role="group">
+                                <a href="{% url 'teacher_cbt:question_bank_detail' bank.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <a href="{% url 'teacher_cbt:question_bank_edit' bank.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a href="{% url 'teacher_cbt:question_bank_delete' bank.pk %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle"></i>
+            <strong>No question banks found.</strong> 
+            <a href="{% url 'teacher_cbt:question_bank_add' %}" class="alert-link">Create your first question bank</a>.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

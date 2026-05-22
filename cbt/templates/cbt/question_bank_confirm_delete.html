@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Delete Question Bank - Confirmation{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 font-weight-bold text-danger">Delete Question Bank</h1>
+        </div>
+    </div>
+
+    <div class="card border-danger">
+        <div class="card-body">
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Warning!</strong> This action cannot be undone.
+            </div>
+
+            <p>Are you sure you want to delete this question bank?</p>
+            <div class="mb-3">
+                <p><strong>Bank Name:</strong> {{ object.name }}</p>
+                <p><strong>Questions:</strong> {{ object.get_question_count }}</p>
+                <p><strong>Subject:</strong> {{ object.subject.name }}</p>
+                {% if object.description %}
+                    <p><strong>Description:</strong> {{ object.description }}</p>
+                {% endif %}
+            </div>
+
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-info-circle"></i>
+                All questions in this bank will also be deleted.
+            </div>
+
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Yes, Delete Bank
+                </button>
+            </form>
+            
+            <a href="{% url 'teacher_cbt:question_banks' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

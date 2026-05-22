@@ -1,9 +1,327 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ form.instance.pk|yesno:'Edit Exam,Create Exam' }} - CBT{% endblock %}
+
 {% block content %}
-<h1>{{ form.instance.pk|yesno:'Edit Exam,Create Exam' }}</h1>
-<form method="post">{% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Save</button>
-</form>
-<a href="{% url 'cbt:exam_list' %}">Back to exams</a>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 font-weight-bold">
+                {{ form.instance.pk|yesno:'Edit Exam,Create Exam' }}
+            </h1>
+        </div>
+    </div>
+
+    <form method="post" id="exam-form">
+        {% csrf_token %}
+
+        <!-- Basic Information -->
+        <div class="card mb-4">
+            <div class="card-header bg-light font-weight-bold">
+                <i class="fas fa-info-circle"></i> Basic Information
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="{{ form.name.id_for_label }}">Exam Name *</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.name.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.exam_mode.id_for_label }}">Exam Mode *</label>
+                        {{ form.exam_mode }}
+                        {% if form.exam_mode.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.exam_mode.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.subject.id_for_label }}">Subject *</label>
+                        {{ form.subject }}
+                        {% if form.subject.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.subject.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="{{ form.school_class.id_for_label }}">Class</label>
+                        {{ form.school_class }}
+                        {% if form.school_class.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.school_class.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-4">
+                        <label for="{{ form.term.id_for_label }}">Term</label>
+                        {{ form.term }}
+                        {% if form.term.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.term.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-4">
+                        <label for="{{ form.linked_exam.id_for_label }}">Linked Exam</label>
+                        {{ form.linked_exam }}
+                        {% if form.linked_exam.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.linked_exam.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Configuration -->
+        <div class="card mb-4">
+            <div class="card-header bg-light font-weight-bold">
+                <i class="fas fa-question-circle"></i> Question Configuration
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="{{ form.question_mode.id_for_label }}">Question Selection Mode *</label>
+                    {{ form.question_mode }}
+                    <small class="form-text text-muted">Choose how questions will be selected for each student attempt</small>
+                    {% if form.question_mode.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.question_mode.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.question_bank.id_for_label }}">Question Bank (for Random Mode)</label>
+                    {{ form.question_bank }}
+                    <small class="form-text text-muted">Select a question bank to use for random question selection</small>
+                    {% if form.question_bank.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.question_bank.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.total_questions_to_display.id_for_label }}">Total Questions to Display</label>
+                        {{ form.total_questions_to_display }}
+                        <small class="form-text text-muted">Number of questions each student receives (random mode)</small>
+                        {% if form.total_questions_to_display.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.total_questions_to_display.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.duration_minutes.id_for_label }}">Duration (Minutes) *</label>
+                        {{ form.duration_minutes }}
+                        {% if form.duration_minutes.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.duration_minutes.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.balance_by_difficulty }}
+                        <label class="custom-control-label" for="{{ form.balance_by_difficulty.id_for_label }}">
+                            Balance by Difficulty Level
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Mix easy, medium, and hard questions</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.balance_by_topic }}
+                        <label class="custom-control-label" for="{{ form.balance_by_topic.id_for_label }}">
+                            Balance by Topic
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Distribute questions evenly across topics</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Randomization Settings -->
+        <div class="card mb-4">
+            <div class="card-header bg-light font-weight-bold">
+                <i class="fas fa-random"></i> Randomization Settings
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.randomize_questions }}
+                        <label class="custom-control-label" for="{{ form.randomize_questions.id_for_label }}">
+                            Randomize Question Order
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Each student gets questions in random order (consistent across refresh)</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.randomize_answers }}
+                        <label class="custom-control-label" for="{{ form.randomize_answers.id_for_label }}">
+                            Randomize Answer Order
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Shuffle answer choices for each question</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Behavior -->
+        <div class="card mb-4">
+            <div class="card-header bg-light font-weight-bold">
+                <i class="fas fa-cogs"></i> Exam Behavior
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.allow_navigation }}
+                        <label class="custom-control-label" for="{{ form.allow_navigation.id_for_label }}">
+                            Allow Navigation
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Show question grid allowing students to jump to any question</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.one_at_a_time }}
+                        <label class="custom-control-label" for="{{ form.one_at_a_time.id_for_label }}">
+                            One Question at a Time
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Display only one question per page</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.show_instant_results }}
+                        <label class="custom-control-label" for="{{ form.show_instant_results.id_for_label }}">
+                            Show Instant Results
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Show if answer is correct immediately after submission</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.show_corrections }}
+                        <label class="custom-control-label" for="{{ form.show_corrections.id_for_label }}">
+                            Show Corrections
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Display question explanations after exam submission</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.allow_review }}
+                        <label class="custom-control-label" for="{{ form.allow_review.id_for_label }}">
+                            Allow Review
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Allow students to return to previous answers</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scheduling -->
+        <div class="card mb-4">
+            <div class="card-header bg-light font-weight-bold">
+                <i class="fas fa-calendar-alt"></i> Scheduling
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.start_datetime.id_for_label }}">Start Date & Time</label>
+                        {{ form.start_datetime }}
+                        {% if form.start_datetime.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.start_datetime.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.end_datetime.id_for_label }}">End Date & Time</label>
+                        {{ form.end_datetime }}
+                        {% if form.end_datetime.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.end_datetime.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Publication & Status -->
+        <div class="card mb-4">
+            <div class="card-header bg-light font-weight-bold">
+                <i class="fas fa-toggle-on"></i> Publication & Status
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.is_published }}
+                        <label class="custom-control-label" for="{{ form.is_published.id_for_label }}">
+                            Published
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Published exams are visible to students</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.is_active }}
+                        <label class="custom-control-label" for="{{ form.is_active.id_for_label }}">
+                            Active
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Inactive exams cannot be accessed</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="custom-control custom-checkbox">
+                        {{ form.allow_ai_questions }}
+                        <label class="custom-control-label" for="{{ form.allow_ai_questions.id_for_label }}">
+                            Allow AI Questions
+                        </label>
+                    </div>
+                    <small class="form-text text-muted d-block mt-1">Allow AI-generated questions in this exam</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-group mb-0">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> {{ form.instance.pk|yesno:'Update,Create' }} Exam
+            </button>
+            <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Dynamic field visibility based on question mode
+    document.addEventListener('DOMContentLoaded', function() {
+        const questionModeSelect = document.getElementById('id_question_mode');
+        const questionBankGroup = document.getElementById('id_question_bank').closest('.form-group');
+        const totalQuestionsGroup = document.getElementById('id_total_questions_to_display').closest('.form-group');
+        const balanceDifficultyGroup = document.getElementById('id_balance_by_difficulty').closest('.form-group');
+        const balanceTopicGroup = document.getElementById('id_balance_by_topic').closest('.form-group');
+        
+        function updateVisibility() {
+            const isRandom = questionModeSelect.value === 'random';
+            questionBankGroup.style.display = isRandom ? 'block' : 'none';
+            totalQuestionsGroup.style.display = isRandom ? 'block' : 'none';
+            balanceDifficultyGroup.style.display = isRandom ? 'block' : 'none';
+            balanceTopicGroup.style.display = isRandom ? 'block' : 'none';
+        }
+        
+        questionModeSelect.addEventListener('change', updateVisibility);
+        updateVisibility();
+    });
+</script>
 {% endblock %}

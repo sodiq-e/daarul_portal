@@ -1,15 +1,192 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Question{% endblock %}
+
 {% block content %}
-<h1>{{ form.instance.pk|yesno:'Edit Question,Create Question' }}</h1>
-<form method="post">{% csrf_token %}
-  {{ form.as_p }}
-  {{ formset.management_form }}
-  {% for form_choice in formset %}
-    <fieldset>
-      {{ form_choice.as_p }}
-    </fieldset>
-  {% endfor %}
-  <button type="submit">Save question</button>
-</form>
-<a href="{% url 'cbt:question_list' exam.pk %}">Back to questions</a>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 font-weight-bold">{{ page_title }}</h1>
+        </div>
+    </div>
+
+    {% if source_question %}
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i>
+            Cloning from: <strong>{{ source_question.prompt|truncatewords:10 }}</strong>
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" id="question-form">
+                {% csrf_token %}
+
+                <!-- Question Content -->
+                <div class="form-group">
+                    <label for="{{ form.prompt.id_for_label }}">Question Text *</label>
+                    {{ form.prompt }}
+                    {% if form.prompt.errors %}
+                        <div class="alert alert-danger mt-2">
+                            {{ form.prompt.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.question_type.id_for_label }}">Question Type *</label>
+                        {{ form.question_type }}
+                        {% if form.question_type.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.question_type.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-3">
+                        <label for="{{ form.mark_value.id_for_label }}">Marks *</label>
+                        {{ form.mark_value }}
+                        {% if form.mark_value.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.mark_value.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-3">
+                        <label for="{{ form.order.id_for_label }}">Order</label>
+                        {{ form.order }}
+                        {% if form.order.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.order.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Categorization -->
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.topic.id_for_label }}">Topic</label>
+                        {{ form.topic }}
+                        {% if form.topic.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.topic.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="{{ form.difficulty.id_for_label }}">Difficulty *</label>
+                        {{ form.difficulty }}
+                        {% if form.difficulty.errors %}
+                            <div class="alert alert-danger mt-2">
+                                {{ form.difficulty.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Explanation -->
+                <div class="form-group">
+                    <label for="{{ form.explanation.id_for_label }}">Explanation / Solution</label>
+                    {{ form.explanation }}
+                    {% if form.explanation.errors %}
+                        <div class="alert alert-danger mt-2">
+                            {{ form.explanation.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                            Active
+                        </label>
+                    </div>
+                    {% if form.is_active.errors %}
+                        <div class="alert alert-danger mt-2">
+                            {{ form.is_active.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <hr>
+
+                <!-- Answer Choices -->
+                <h5 class="font-weight-bold mb-3">Answer Choices</h5>
+                <div id="choices-container">
+                    {{ choices_formset.management_form }}
+                    {% for form_choice in choices_formset %}
+                        <div class="choice-form card mb-3">
+                            <div class="card-body">
+                                <div class="form-row">
+                                    <div class="form-group col-md-10">
+                                        {{ form_choice.text }}
+                                    </div>
+                                    <div class="form-group col-md-1">
+                                        {{ form_choice.order }}
+                                    </div>
+                                    <div class="form-group col-md-1">
+                                        <div class="form-check">
+                                            {{ form_choice.is_correct }}
+                                            <label class="form-check-label" for="{{ form_choice.is_correct.id_for_label }}">
+                                                Correct
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if form_choice.DELETE %}
+                                    <div class="form-check">
+                                        {{ form_choice.DELETE }}
+                                        <label class="form-check-label" for="{{ form_choice.DELETE.id_for_label }}">
+                                            Delete this choice
+                                        </label>
+                                    </div>
+                                {% endif %}
+                                {% if form_choice.non_field_errors %}
+                                    <div class="alert alert-danger mt-2">
+                                        {{ form_choice.non_field_errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-group mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Question
+                    </button>
+                    <a href="{% url 'teacher_cbt:question_bank_detail' question_bank.pk %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Bootstrap form styling for formset
+    document.addEventListener('DOMContentLoaded', function() {
+        const textInputs = document.querySelectorAll('#choices-container [name*="text"]');
+        const orderInputs = document.querySelectorAll('#choices-container [name*="order"]');
+        
+        textInputs.forEach(input => {
+            input.classList.add('form-control');
+            input.placeholder = 'Enter choice text';
+        });
+        
+        orderInputs.forEach(input => {
+            input.classList.add('form-control');
+            input.min = '0';
+        });
+    });
+</script>
 {% endblock %}

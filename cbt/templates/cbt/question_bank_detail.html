@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ question_bank.name }} - Question Bank{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 font-weight-bold">{{ question_bank.name }}</h1>
+            <p class="text-muted">{{ question_bank.description }}</p>
+        </div>
+        <div class="col-md-4 text-md-right">
+            <a href="{% url 'teacher_cbt:question_bank_edit' question_bank.pk %}" class="btn btn-secondary">
+                <i class="fas fa-edit"></i> Edit Bank
+            </a>
+            <a href="{% url 'teacher_cbt:question_add' question_bank.pk %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Question
+            </a>
+        </div>
+    </div>
+
+    <!-- Bank Info Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Questions</h5>
+                    <h2 class="text-primary">{{ question_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Subject</h5>
+                    <p class="card-text">{{ question_bank.subject.name }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Class</h5>
+                    <p class="card-text">{{ question_bank.school_class.name|default:"All Classes" }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Term</h5>
+                    <p class="card-text">{{ question_bank.term.name|default:"All Terms" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="form">
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <input type="text" name="q" class="form-control" placeholder="Search questions..." value="{{ search_query }}">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <select name="difficulty" class="form-control">
+                            <option value="">All Difficulties</option>
+                            {% for value, label in difficulties %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <select name="type" class="form-control">
+                            <option value="">All Types</option>
+                            {% for value, label in question_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <button type="submit" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Questions Table -->
+    {% if questions %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 10%">#</th>
+                            <th>Question</th>
+                            <th style="width: 12%">Type</th>
+                            <th style="width: 12%">Difficulty</th>
+                            <th style="width: 10%">Topic</th>
+                            <th style="width: 8%">Marks</th>
+                            <th style="width: 15%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for question in questions %}
+                            <tr>
+                                <td>{{ question.order|add:1 }}</td>
+                                <td>
+                                    <small>{{ question.prompt|truncatewords:15 }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge badge-info">{{ question.get_question_type_display }}</span>
+                                </td>
+                                <td>
+                                    {% if question.difficulty == "easy" %}
+                                        <span class="badge badge-success">Easy</span>
+                                    {% elif question.difficulty == "medium" %}
+                                        <span class="badge badge-warning">Medium</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Hard</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ question.topic }}</small></td>
+                                <td>{{ question.mark_value }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'teacher_cbt:question_edit' question.pk %}" class="btn btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'teacher_cbt:question_clone' question.pk %}" class="btn btn-outline-secondary" title="Clone">
+                                            <i class="fas fa-copy"></i>
+                                        </a>
+                                        <a href="{% url 'teacher_cbt:question_delete' question.pk %}" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Are you sure?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle"></i>
+            <strong>No questions found.</strong>
+            <a href="{% url 'teacher_cbt:question_add' question_bank.pk %}" class="alert-link">Add a question to this bank</a>.
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'teacher_cbt:question_banks' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Banks
+        </a>
+    </div>
+</div>
+{% endblock %}

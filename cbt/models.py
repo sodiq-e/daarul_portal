@@ -2,6 +2,37 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+import hashlib
+import json
+
+
+class QuestionBank(models.Model):
+    """Independent question storage for reuse across exams"""
+    name = models.CharField(max_length=180)
+    subject = models.ForeignKey('exams.Subject', on_delete=models.PROTECT, related_name='cbt_question_banks')
+    school_class = models.ForeignKey(
+        'school_classes.SchoolClasses',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cbt_question_banks'
+    )
+    term = models.ForeignKey('exams.Term', on_delete=models.SET_NULL, null=True, blank=True, related_name='cbt_question_banks')
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_question_banks')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', 'name']
+        verbose_name = 'Question Bank'
+        verbose_name_plural = 'Question Banks'
+
+    def __str__(self):
+        return f"{self.name} ({self.subject.name})"
+
+    def get_question_count(self):
+        return self.questions.filter(is_active=True).count()
 
 
 class CBTExam(models.Model):
@@ -12,8 +43,27 @@ class CBTExam(models.Model):
         (PRACTICE, 'Practice / Test'),
     ]
 
+    QUESTION_MODE_MANUAL = 'manual'
+    QUESTION_MODE_RANDOM = 'random'
+    QUESTION_MODE_CHOICES = [
+        (QUESTION_MODE_MANUAL, 'Manual Selection'),
+        (QUESTION_MODE_RANDOM, 'Random Selection'),
+    ]
+
     name = models.CharField(max_length=180)
     exam_mode = models.CharField(max_length=16, choices=EXAM_MODE_CHOICES, default=PRACTICE)
+    question_mode = models.CharField(max_length=16, choices=QUESTION_MODE_CHOICES, default=QUESTION_MODE_MANUAL)
+    randomize_questions = models.BooleanField(default=False)
+    randomize_answers = models.BooleanField(default=False)
+    allow_navigation = models.BooleanField(default=True)
+    one_at_a_time = models.BooleanField(default=False)
+    show_instant_results = models.BooleanField(default=False)
+    show_corrections = models.BooleanField(default=False)
+    allow_review = models.BooleanField(default=True)
+    total_questions_to_display = models.PositiveIntegerField(null=True, blank=True)
+    balance_by_difficulty = models.BooleanField(default=False)
+    balance_by_topic = models.BooleanField(default=False)
+    question_bank = models.ForeignKey(QuestionBank, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
     subject = models.ForeignKey('exams.Subject', on_delete=models.PROTECT, related_name='cbt_exams')
     school_class = models.ForeignKey(
         'school_classes.SchoolClasses',
@@ -69,13 +119,26 @@ class CBTQuestion(models.Model):
         (SHORT_ANSWER, 'Short Answer'),
     ]
 
+    DIFFICULTY_EASY = 'easy'
+    DIFFICULTY_MEDIUM = 'medium'
+    DIFFICULTY_HARD = 'hard'
+    DIFFICULTY_CHOICES = [
+        (DIFFICULTY_EASY, 'Easy'),
+        (DIFFICULTY_MEDIUM, 'Medium'),
+        (DIFFICULTY_HARD, 'Hard'),
+    ]
+
     exam = models.ForeignKey(CBTExam, on_delete=models.CASCADE, related_name='questions')
+    question_bank = models.ForeignKey(QuestionBank, on_delete=models.SET_NULL, null=True, blank=True, related_name='questions')
     prompt = models.TextField()
     question_type = models.CharField(max_length=32, choices=QUESTION_TYPE_CHOICES, default=MCQ)
     mark_value = models.DecimalField(max_digits=5, decimal_places=2, default=1.00)
     explanation = models.TextField(blank=True)
+    topic = models.CharField(max_length=100, blank=True, db_index=True)
+    difficulty = models.CharField(max_length=16, choices=DIFFICULTY_CHOICES, default=DIFFICULTY_MEDIUM)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['order', 'id']
@@ -137,3 +200,32 @@ class CBTAnswer(models.Model):
 
     def __str__(self):
         return f"Answer for {self.question}"
+
+
+class StudentAttemptQuestion(models.Model):
+    """Track randomized question order and options for each student attempt"""
+    attempt = models.ForeignKey(CBTStudentAttempt, on_delete=models.CASCADE, related_name='attempt_questions')
+    question = models.ForeignKey(CBTQuestion, on_delete=models.CASCADE)
+    randomized_position = models.PositiveIntegerField()
+    randomized_choice_order = models.TextField(blank=True)  # JSON array of choice IDs in randomized order
+    is_answered = models.BooleanField(default=False)
+    is_flagged = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('attempt', 'question')
+        ordering = ['randomized_position']
+
+    def __str__(self):
+        return f"Attempt {self.attempt.uuid} - Question {self.randomized_position}"
+
+    def get_randomized_choices(self):
+        """Return choices in randomized order"""
+        if not self.randomized_choice_order:
+            return list(self.question.choices.all().order_by('order'))
+        try:
+            choice_ids = json.loads(self.randomized_choice_order)
+            choices_dict = {c.id: c for c in self.question.choices.all()}
+            return [choices_dict[cid] for cid in choice_ids if cid in choices_dict]
+        except (json.JSONDecodeError, KeyError):
+            return list(self.question.choices.all().order_by('order'))

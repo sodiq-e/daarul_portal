@@ -1,9 +1,55 @@
 from datetime import timedelta
 from django.utils import timezone
-from .models import CBTChoice, CBTStudentAttempt, CBTAnswer
+from .models import CBTChoice, CBTStudentAttempt, CBTAnswer, CBTQuestion, StudentAttemptQuestion, QuestionBank
+import random
+import json
+import hashlib
 
 
-def create_attempt(exam, student=None, session_key=None):
+def generate_attempt_seed(attempt_uuid, salt=''):
+    """Generate a deterministic seed from attempt UUID for consistent randomization"""
+    combined = f"{str(attempt_uuid)}{salt}"
+    hash_obj = hashlib.md5(combined.encode())
+    return int(hash_obj.hexdigest()[:8], 16)
+
+
+def get_questions_for_exam(exam):
+    """Get questions to display for an exam based on selection mode"""
+    if exam.question_mode == exam.QUESTION_MODE_RANDOM and exam.question_bank:
+        questions = exam.question_bank.questions.filter(is_active=True)
+    else:
+        questions = exam.questions.filter(is_active=True)
+    return questions
+
+
+def select_random_questions(questions, total_to_display, seed=None):
+    """Select random questions with optional difficulty/topic balancing"""
+    if not questions.exists():
+        return []
+    
+    if total_to_display is None or total_to_display >= questions.count():
+        return list(questions.order_by('?'))
+    
+    if seed is not None:
+        random.seed(seed)
+    
+    return random.sample(list(questions), min(total_to_display, questions.count()))
+
+
+def shuffle_choices_for_question(question, seed=None):
+    """Randomize choice order for a question"""
+    choices = list(question.choices.all())
+    if seed is not None:
+        random.seed(seed)
+    random.shuffle(choices)
+    return [c.id for c in choices]
+
+
+def create_attempt_with_randomization(exam, student=None, session_key=None):
+    """
+    Create a student attempt with randomized questions and options.
+    Maintains consistency using attempt UUID as seed.
+    """
     if exam.is_real_exam() and student is None:
         raise ValueError('Real exams require authenticated student access.')
     if not student and not session_key:
@@ -16,7 +62,40 @@ def create_attempt(exam, student=None, session_key=None):
         started_at=timezone.now(),
         last_saved_at=timezone.now(),
     )
+    
+    # Generate questions for this attempt
+    questions = get_questions_for_exam(exam)
+    
+    # Apply random selection if configured
+    if exam.question_mode == exam.QUESTION_MODE_RANDOM:
+        total_to_display = exam.total_questions_to_display or questions.count()
+        seed = generate_attempt_seed(attempt.uuid, salt='questions')
+        questions = select_random_questions(questions, total_to_display, seed=seed)
+    else:
+        questions = list(questions.order_by('order'))
+    
+    # Create StudentAttemptQuestion records with randomization
+    for position, question in enumerate(questions, start=1):
+        # Generate randomized choice order if configured
+        randomized_choice_order = []
+        if exam.randomize_answers:
+            seed = generate_attempt_seed(attempt.uuid, salt=f'question_{question.id}_choices')
+            randomized_choice_order = shuffle_choices_for_question(question, seed=seed)
+        
+        StudentAttemptQuestion.objects.create(
+            attempt=attempt,
+            question=question,
+            randomized_position=position,
+            randomized_choice_order=json.dumps(randomized_choice_order) if randomized_choice_order else ''
+        )
+    
     return attempt
+
+
+def create_attempt(exam, student=None, session_key=None):
+    """Legacy wrapper for backward compatibility"""
+    return create_attempt_with_randomization(exam, student=student, session_key=session_key)
+
 
 
 def save_answer(attempt, question, selected_choice=None, text_answer=''):
