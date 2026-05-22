@@ -18,7 +18,7 @@
             <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <h5 class="card-title">Active Attempts</h5>
-                    <p class="display-6 mb-1">{{ active_attempts|length|default:0 }}</p>
+                    <p class="display-6 mb-1">{{ active_attempts_count|default:0 }}</p>
                     <p class="text-muted">Ongoing real exams you can continue.</p>
                 </div>
             </div>
@@ -27,7 +27,7 @@
             <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <h5 class="card-title">Upcoming Exams</h5>
-                    <p class="display-6 mb-1">{{ upcoming_cbt_exams|length|default:0 }}</p>
+                    <p class="display-6 mb-1">{{ upcoming_cbt_exams_count|default:0 }}</p>
                     <p class="text-muted">Real CBT exams scheduled for your class.</p>
                 </div>
             </div>
@@ -36,7 +36,7 @@
             <div class="card shadow-sm h-100">
                 <div class="card-body text-center">
                     <h5 class="card-title">Recent Results</h5>
-                    <p class="display-6 mb-1">{{ recent_cbt_results|length|default:0 }}</p>
+                    <p class="display-6 mb-1">{{ recent_cbt_results_count|default:0 }}</p>
                     <p class="text-muted">Submitted exam results from your profile.</p>
                 </div>
             </div>

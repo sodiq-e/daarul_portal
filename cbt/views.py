@@ -375,10 +375,13 @@ class StudentCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
             student=self.request.user,
             is_submitted=False
         ).select_related('exam').order_by('-started_at')
+        # provide explicit counts to make templates defensive and straightforward
+        context['active_attempts_count'] = context['active_attempts'].count()
         context['recent_cbt_results'] = CBTStudentAttempt.objects.filter(
             student=self.request.user,
             is_submitted=True
         ).select_related('exam').order_by('-completed_at')[:5]
+        context['recent_cbt_results_count'] = CBTStudentAttempt.objects.filter(student=self.request.user, is_submitted=True).count()
         student_class = getattr(getattr(self.request.user, 'student_profile', None), 'student_class', None)
         if student_class:
             context['upcoming_cbt_exams'] = CBTExam.objects.filter(
@@ -388,8 +391,10 @@ class StudentCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
                 start_datetime__gt=now,
                 school_class=student_class
             ).order_by('start_datetime')
+            context['upcoming_cbt_exams_count'] = context['upcoming_cbt_exams'].count()
         else:
             context['upcoming_cbt_exams'] = CBTExam.objects.none()
+            context['upcoming_cbt_exams_count'] = 0
         return context
 
 
