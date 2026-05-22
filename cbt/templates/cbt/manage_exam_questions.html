@@ -526,15 +526,62 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
             }).catch(err => { console.error(err); showToast('Import failed', 'danger'); });
     }
 
-    document.getElementById('btn-add-question').addEventListener('click', function(){ document.getElementById('questions-container').appendChild(createQuestionBlock()); updateStats(); });
-    document.getElementById('btn-save-all').addEventListener('click', saveAll);
-    document.getElementById('btn-import-bank').addEventListener('click', fetchBankPreview);
-    // sidebar preview button
-    const pb = document.getElementById('btn-preview-bank');
-    if(pb) pb.addEventListener('click', fetchBankPreview);
-    document.getElementById('btn-import-selected').addEventListener('click', importSelectedBank);
-    document.querySelectorAll('.btn-open-upload').forEach(btn => btn.addEventListener('click', function(){ document.getElementById('upload-file').click(); }));
-    document.getElementById('upload-file').addEventListener('change', function(){ if(this.files && this.files[0]) parseUploadFile(this.files[0]); });
+    console.debug('CBT builder: DOMContentLoaded - binding handlers');
+
+    // Use delegated handlers to be robust against dynamic DOM changes
+    document.addEventListener('click', function(ev){
+        const btn = ev.target.closest && ev.target.closest('.btn, button');
+        if(!btn) return;
+
+        // Add Question
+        if(btn.id === 'btn-add-question'){
+            ev.preventDefault();
+            const container = document.getElementById('questions-container');
+            if(container){
+                // remove empty placeholder if present
+                const placeholder = document.getElementById('empty-placeholder');
+                if(placeholder) placeholder.remove();
+                container.appendChild(createQuestionBlock());
+                updateStats();
+            } else console.warn('CBT builder: questions-container not found');
+            return;
+        }
+
+        // Save All
+        if(btn.id === 'btn-save-all'){
+            ev.preventDefault();
+            saveAll();
+            return;
+        }
+
+        // Import Bank (top button)
+        if(btn.id === 'btn-import-bank' || btn.id === 'btn-preview-bank'){
+            ev.preventDefault();
+            fetchBankPreview();
+            return;
+        }
+
+        // Import Selected
+        if(btn.id === 'btn-import-selected'){
+            ev.preventDefault();
+            importSelectedBank();
+            return;
+        }
+
+        // Upload buttons (class)
+        if(btn.classList && btn.classList.contains('btn-open-upload')){
+            ev.preventDefault();
+            const uf = document.getElementById('upload-file');
+            if(uf) uf.click(); else console.warn('CBT builder: upload-file input not found');
+            return;
+        }
+    });
+
+    // File change handler
+    const uploadFile = document.getElementById('upload-file');
+    if(uploadFile){
+        uploadFile.addEventListener('change', function(){ if(this.files && this.files[0]) parseUploadFile(this.files[0]); });
+    } else console.warn('CBT builder: upload-file element missing');
 
     Array.from(document.querySelectorAll('#questions-container .question-block')).forEach(block => {
         const typeSelect = block.querySelector('.question-type');
