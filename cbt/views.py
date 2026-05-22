@@ -3,7 +3,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy, reverse
-from django.db.models import Avg, Q, Count
+from django.db import transaction
+from django.db.models import Avg, Q, Count, Max
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
@@ -11,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank, StudentAttemptQuestion, CBTAttemptIntegrityEvent
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
+from .gemini_service import generate_ai_questions_using_gemini, validate_generated_question_payload
 from django.http import JsonResponse, HttpResponseForbidden
 import json
 
@@ -409,6 +411,107 @@ def api_submit_attempt(request):
     return JsonResponse({'status': 'submitted', 'score': float(attempt.score or 0)})
 
 
+@login_required
+def api_generate_ai_questions(request, exam_pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
+
+    exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
+    if not exam.allow_ai_questions:
+        return JsonResponse({'error': 'AI question generation is not enabled for this exam.'}, status=403)
+
+    try:
+        data = json.loads(request.body.decode())
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON payload.'}, status=400)
+
+    topic = data.get('topic', '').strip()
+    difficulty = data.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM)
+    num_questions = data.get('num_questions', 5)
+    try:
+        num_questions = int(num_questions)
+    except (TypeError, ValueError):
+        num_questions = 5
+
+    if num_questions < 1 or num_questions > 20:
+        return JsonResponse({'error': 'num_questions must be between 1 and 20.'}, status=400)
+
+    if difficulty not in dict(CBTQuestion.DIFFICULTY_CHOICES):
+        return JsonResponse({'error': 'Invalid difficulty value.'}, status=400)
+
+    try:
+        questions = generate_ai_questions_using_gemini(exam=exam, topic=topic, difficulty=difficulty, num_questions=num_questions)
+    except Exception as exc:
+        return JsonResponse({'error': str(exc)}, status=500)
+
+    validated_questions = []
+    for question in questions:
+        valid, error = validate_generated_question_payload(question)
+        if not valid:
+            return JsonResponse({'error': f'AI returned invalid question data: {error}'}, status=500)
+        validated_questions.append(question)
+
+    return JsonResponse({'status': 'ok', 'questions': validated_questions})
+
+
+@login_required
+def api_save_generated_ai_questions(request, exam_pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=400)
+
+    exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
+    if not exam.allow_ai_questions:
+        return JsonResponse({'error': 'AI question generation is not enabled for this exam.'}, status=403)
+
+    try:
+        data = json.loads(request.body.decode())
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON payload.'}, status=400)
+
+    questions = data.get('questions')
+    if not isinstance(questions, list) or not questions:
+        return JsonResponse({'error': 'questions must be a non-empty list.'}, status=400)
+
+    created_question_ids = []
+    try:
+        with transaction.atomic():
+            current_max_order = exam.questions.aggregate(max_order=Max('order'))['max_order']
+            if current_max_order is None:
+                current_max_order = -1
+
+            for idx, question in enumerate(questions):
+                valid, error = validate_generated_question_payload(question)
+                if not valid:
+                    return JsonResponse({'error': f'Invalid question payload at index {idx}: {error}'}, status=400)
+
+                qobj = CBTQuestion.objects.create(
+                    exam=exam,
+                    question_bank=None,
+                    prompt=question['prompt'].strip(),
+                    question_type=question['question_type'],
+                    mark_value=question.get('mark_value', 1.0),
+                    explanation=question.get('explanation', '').strip(),
+                    topic=question.get('topic', '').strip(),
+                    difficulty=question['difficulty'],
+                    order=current_max_order + idx + 1,
+                    is_active=True
+                )
+
+                for cidx, choice in enumerate(question.get('choices', [])):
+                    CBTChoice.objects.create(
+                        question=qobj,
+                        text=choice['text'].strip(),
+                        is_correct=bool(choice.get('is_correct', False)),
+                        order=cidx
+                    )
+
+                created_question_ids.append(qobj.id)
+    except Exception as exc:
+        return JsonResponse({'error': f'Failed to save generated questions: {str(exc)}'}, status=500)
+
+    return JsonResponse({'status': 'ok', 'created_question_ids': created_question_ids})
+
+
 @method_decorator(login_required, name='dispatch')
 class StudentCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'cbt/student_dashboard.html'
@@ -571,6 +674,25 @@ class TeacherCBTAnalyticsView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
 
 
 @method_decorator(login_required, name='dispatch')
+class TeacherCBTAIGeneratorView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'cbt/ai_question_generator.html'
+
+    def test_func(self):
+        return CBTExam.objects.filter(
+            pk=self.kwargs.get('exam_pk'),
+            created_by=self.request.user,
+            allow_ai_questions=True
+        ).exists()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        exam = get_object_or_404(CBTExam, pk=self.kwargs.get('exam_pk'))
+        context['exam'] = exam
+        context['QUESTION_TYPE_CHOICES'] = CBTQuestion.QUESTION_TYPE_CHOICES
+        context['DIFFICULTY_CHOICES'] = CBTQuestion.DIFFICULTY_CHOICES
+        return context
+
+
 class ManageExamQuestionsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     """Bulk question builder and manager for a specific exam"""
     template_name = 'cbt/manage_exam_questions.html'

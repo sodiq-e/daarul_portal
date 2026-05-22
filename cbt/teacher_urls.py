@@ -38,6 +38,9 @@ urlpatterns = [
     path('questions/<int:pk>/delete/', QuestionDeleteView.as_view(), name='question_delete'),
     path('questions/<int:question_pk>/clone/', QuestionCloneView.as_view(), name='question_clone'),
     path('manage/<int:exam_pk>/questions/', views.ManageExamQuestionsView.as_view(), name='manage_questions'),
+    path('manage/<int:exam_pk>/generate/', views.TeacherCBTAIGeneratorView.as_view(), name='generate_questions'),
+    path('manage/<int:exam_pk>/generate/api/', views.api_generate_ai_questions, name='generate_ai_questions'),
+    path('manage/<int:exam_pk>/generate/save/', views.api_save_generated_ai_questions, name='save_generated_ai_questions'),
     
     # API endpoints
     path('api/search-questions/', QuestionSearchAPIView.as_view(), name='search_questions'),

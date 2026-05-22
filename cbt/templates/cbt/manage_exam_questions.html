@@ -25,6 +25,11 @@
         </div>
         <div class="btn-toolbar gap-2">
             <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-outline-secondary">Back to Exams</a>
+            {% if exam.allow_ai_questions %}
+                <a href="{% url 'teacher_cbt:generate_questions' exam_pk=exam.pk %}" class="btn btn-outline-primary">Generate with AI</a>
+            {% else %}
+                <button type="button" class="btn btn-outline-secondary" disabled>AI Generation Disabled</button>
+            {% endif %}
             <button type="button" id="btn-add-question" class="btn btn-primary btn-add-question">Add Question</button>
             <button type="button" id="btn-import-bank" class="btn btn-info">Import Bank</button>
             <button type="button" class="btn-open-upload btn btn-secondary">Upload CSV / JSON</button>

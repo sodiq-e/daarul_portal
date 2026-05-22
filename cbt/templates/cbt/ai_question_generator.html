@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}AI Question Generator - {{ exam.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/cbt-navigator.css' %}">
+<style>
+.generator-panel { max-width: 1200px; }
+.generator-card { border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 1rem; background: #fff; }
+.generator-card .card-body { padding: 1rem; }
+.preview-fieldset { margin-bottom: 1rem; }
+.question-preview { border: 1px solid #ced4da; border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+.choice-row { display:flex; gap:.5rem; align-items:flex-start; margin-bottom:.5rem; }
+.choice-row input[type=text] { flex:1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 generator-panel">
+    <div class="row mb-3">
+        <div class="col-md-9">
+            <h3>AI Question Generator</h3>
+            <p class="text-muted">Generate draft CBT questions using Gemini AI, review and edit them, then save them into the exam.</p>
+        </div>
+        <div class="col-md-3 text-md-end">
+            <a href="{% url 'teacher_cbt:manage_questions' exam_pk=exam.pk %}" class="btn btn-outline-secondary">Back to Question Builder</a>
+        </div>
+    </div>
+
+    <div class="card generator-card">
+        <div class="card-body">
+            <h5 class="card-title">Generate draft questions</h5>
+            <div class="row gy-3">
+                <div class="col-md-4">
+                    <label class="form-label">Topic or concept</label>
+                    <input id="ai-topic" class="form-control" placeholder="E.g. algebraic expressions, world history" value="">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Difficulty</label>
+                    <select id="ai-difficulty" class="form-control">
+                        {% for val,label in DIFFICULTY_CHOICES %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Number of questions</label>
+                    <input id="ai-num-questions" type="number" min="1" max="20" value="5" class="form-control">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button id="btn-generate-ai" class="btn btn-primary w-100">Generate Preview</button>
+                </div>
+            </div>
+            <div class="mt-3">
+                <p class="text-muted mb-0">This preview is generated server-side and saved only when you hit <strong>Save All</strong>.</p>
+                <p class="text-muted mb-0">Gemini API usage requires a valid <code>GEMINI_API_KEY</code> and optional <code>GEMINI_API_URL</code> environment setting.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ai-message" class="alert d-none" role="alert"></div>
+
+    <div id="preview-section" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>Preview and edit generated questions</h5>
+            <button id="btn-save-generated" class="btn btn-success">Save All to Exam</button>
+        </div>
+        <div id="preview-questions"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+    const examId = {{ exam.pk }};
+    const csrfToken = getCookie('csrftoken');
+    const messageBox = document.getElementById('ai-message');
+    const previewSection = document.getElementById('preview-section');
+    const previewContainer = document.getElementById('preview-questions');
+    const btnGenerate = document.getElementById('btn-generate-ai');
+    const btnSave = document.getElementById('btn-save-generated');
+
+    function getCookie(name){
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== ''){
+            const cookies = document.cookie.split(';');
+            for (const cookie of cookies){
+                const trimmed = cookie.trim();
+                if (trimmed.startsWith(name + '=')){
+                    cookieValue = decodeURIComponent(trimmed.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function setMessage(text, type='info'){
+        messageBox.textContent = text;
+        messageBox.className = `alert alert-${type}`;
+        messageBox.classList.remove('d-none');
+    }
+
+    function clearMessage(){
+        messageBox.className = 'alert d-none';
+        messageBox.textContent = '';
+    }
+
+    function buildQuestionPreview(question, index){
+        const wrapper = document.createElement('div');
+        wrapper.className = 'question-preview';
+        wrapper.dataset.index = index;
+        wrapper.innerHTML = `
+            <div class="mb-3">
+                <label class="form-label">Prompt</label>
+                <textarea class="form-control question-prompt" rows="3">${escapeHtml(question.prompt || '')}</textarea>
+            </div>
+            <div class="row gy-3">
+                <div class="col-md-3">
+                    <label class="form-label">Type</label>
+                    <select class="form-control question-type">
+                        <option value="mcq">Multiple Choice</option>
+                        <option value="multiple">Multiple Select</option>
+                        <option value="true_false">True/False</option>
+                        <option value="short_answer">Short Answer</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Marks</label>
+                    <input type="number" step="0.01" class="form-control question-marks" value="${question.mark_value || 1}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Difficulty</label>
+                    <select class="form-control question-difficulty">
+                        {% for val,label in DIFFICULTY_CHOICES %}
+                            <option value="{{ val }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Topic</label>
+                    <input type="text" class="form-control question-topic" value="${escapeHtml(question.topic || '')}">
+                </div>
+            </div>
+            <div class="mb-3 mt-3">
+                <label class="form-label">Explanation</label>
+                <textarea class="form-control question-explanation" rows="2">${escapeHtml(question.explanation || '')}</textarea>
+            </div>
+            <div class="choices-wrapper">
+                <h6>Choices</h6>
+                <div class="choices-list mb-2"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary btn-add-choice">Add Choice</button>
+            </div>
+        `;
+
+        const typeSelect = wrapper.querySelector('.question-type');
+        const choicesSection = wrapper.querySelector('.choices-wrapper');
+        const choicesList = wrapper.querySelector('.choices-list');
+        typeSelect.value = question.question_type || 'mcq';
+        typeSelect.addEventListener('change', function(){
+            toggleChoiceSection(this.value, choicesSection);
+            syncQuestionChoices(wrapper);
+        });
+
+        wrapper.querySelector('.btn-add-choice').addEventListener('click', function(){
+            addChoiceRow(choicesList, {}, typeSelect.value);
+        });
+
+        if (Array.isArray(question.choices) && question.choices.length){
+            question.choices.forEach((choice, idx) => addChoiceRow(choicesList, choice, typeSelect.value));
+        } else if(typeSelect.value !== 'short_answer'){
+            addChoiceRow(choicesList, {}, typeSelect.value);
+            addChoiceRow(choicesList, {}, typeSelect.value);
+        }
+
+        toggleChoiceSection(typeSelect.value, choicesSection);
+        return wrapper;
+    }
+
+    function addChoiceRow(list, data, type){
+        const row = document.createElement('div');
+        row.className = 'choice-row';
+        row.innerHTML = `
+            <input type="text" class="form-control choice-text" placeholder="Choice text" value="${escapeHtml(data.text || '')}">
+            <label class="form-check-label align-self-center"><input type="checkbox" class="form-check-input choice-correct" ${data.is_correct ? 'checked' : ''}>Correct</label>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-choice">Remove</button>
+        `;
+        list.appendChild(row);
+        row.querySelector('.btn-remove-choice').addEventListener('click', () => { row.remove(); });
+    }
+
+    function toggleChoiceSection(type, section){
+        section.style.display = (type === 'short_answer') ? 'none' : '';
+    }
+
+    function escapeHtml(value){
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function collectPreviewQuestions(){
+        return Array.from(previewContainer.querySelectorAll('.question-preview')).map((wrapper, idx) => ({
+            prompt: wrapper.querySelector('.question-prompt').value.trim(),
+            question_type: wrapper.querySelector('.question-type').value,
+            mark_value: parseFloat(wrapper.querySelector('.question-marks').value) || 1,
+            difficulty: wrapper.querySelector('.question-difficulty').value,
+            topic: wrapper.querySelector('.question-topic').value.trim(),
+            explanation: wrapper.querySelector('.question-explanation').value.trim(),
+            choices: Array.from(wrapper.querySelectorAll('.choice-row')).map((row, order) => ({
+                text: row.querySelector('.choice-text').value.trim(),
+                is_correct: row.querySelector('.choice-correct').checked,
+                order,
+            }))
+        }));
+    }
+
+    function isSaveEnabled(){
+        return previewContainer.children.length > 0;
+    }
+
+    async function generateQuestions(){
+        clearMessage();
+        btnGenerate.disabled = true;
+        btnGenerate.textContent = 'Generating...';
+        previewContainer.innerHTML = '';
+        previewSection.classList.add('d-none');
+
+        const topic = document.getElementById('ai-topic').value.trim();
+        const difficulty = document.getElementById('ai-difficulty').value;
+        const numQuestions = parseInt(document.getElementById('ai-num-questions').value, 10) || 5;
+
+        try {
+            const response = await fetch(`{% url 'teacher_cbt:generate_ai_questions' exam_pk=exam.pk %}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({topic, difficulty, num_questions: numQuestions})
+            });
+            const data = await response.json();
+            if (!response.ok || data.status !== 'ok'){
+                throw new Error(data.error || 'Unable to generate questions.');
+            }
+
+            if (!Array.isArray(data.questions) || !data.questions.length){
+                throw new Error('No questions returned from AI.');
+            }
+
+            data.questions.forEach((question, index) => {
+                const preview = buildQuestionPreview(question, index);
+                previewContainer.appendChild(preview);
+            });
+            previewSection.classList.remove('d-none');
+            btnSave.disabled = false;
+            setMessage('Preview generated. Edit question text and choices before saving.', 'success');
+        } catch (err) {
+            setMessage(err.message || 'AI generation failed.', 'danger');
+        } finally {
+            btnGenerate.disabled = false;
+            btnGenerate.textContent = 'Generate Preview';
+        }
+    }
+
+    async function saveGeneratedQuestions(){
+        clearMessage();
+        btnSave.disabled = true;
+        btnSave.textContent = 'Saving...';
+
+        const questions = collectPreviewQuestions();
+        try {
+            const response = await fetch(`{% url 'teacher_cbt:save_generated_ai_questions' exam_pk=exam.pk %}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({questions})
+            });
+            const data = await response.json();
+            if (!response.ok || data.status !== 'ok'){
+                throw new Error(data.error || 'Unable to save questions.');
+            }
+            setMessage(`Saved ${data.created_question_ids.length} questions into the exam.`, 'success');
+            setTimeout(() => { window.location.href = `{% url 'teacher_cbt:manage_questions' exam_pk=exam.pk %}`; }, 1200);
+        } catch (err) {
+            setMessage(err.message || 'Save failed.', 'danger');
+            btnSave.disabled = false;
+            btnSave.textContent = 'Save All to Exam';
+        }
+    }
+
+    btnGenerate.addEventListener('click', function(event){
+        event.preventDefault();
+        generateQuestions();
+    });
+
+    btnSave.addEventListener('click', function(event){
+        event.preventDefault();
+        if (!isSaveEnabled()){
+            setMessage('Generate questions before saving.', 'warning');
+            return;
+        }
+        saveGeneratedQuestions();
+    });
+})();
+</script>
+{% endblock %}
