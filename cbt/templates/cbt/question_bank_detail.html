@@ -138,6 +138,32 @@
                                         <a href="{% url 'teacher_cbt:question_delete' question.pk %}" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Are you sure?')">
                                             <i class="fas fa-trash"></i>
                                         </a>
+                                        <button type="button" class="btn btn-outline-info btn-view-choices" data-question-id="{{ question.pk }}" title="View Choices">
+                                            <i class="fas fa-list"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="choices-row-{{ question.pk }}" class="choices-row" style="display:none;">
+                                <td colspan="7">
+                                    <div class="p-3 bg-light">
+                                        <strong>Answer Options:</strong>
+                                        <div class="mt-2">
+                                            <ul class="list-unstyled mb-0">
+                                                {% for choice in question.choices.all %}
+                                                    <li class="mb-1">
+                                                        {% if choice.is_correct %}
+                                                            <span class="badge badge-success">Correct</span>
+                                                        {% else %}
+                                                            <span class="badge badge-secondary">Option</span>
+                                                        {% endif %}
+                                                        <span class="ml-2">{{ choice.text }}</span>
+                                                    </li>
+                                                {% empty %}
+                                                    <li class="text-muted">No choices defined for this question.</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -160,4 +186,27 @@
         </a>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.btn-view-choices').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const qid = this.getAttribute('data-question-id');
+                    const row = document.getElementById('choices-row-' + qid);
+                    if (!row) return;
+                    if (row.style.display === 'none') {
+                        row.style.display = '';
+                        this.classList.remove('btn-outline-info');
+                        this.classList.add('btn-info');
+                    } else {
+                        row.style.display = 'none';
+                        this.classList.remove('btn-info');
+                        this.classList.add('btn-outline-info');
+                    }
+                });
+            });
+        });
+    </script>
 {% endblock %}
