@@ -112,6 +112,9 @@
                     </div>
                 </div>
                 {% endfor %}
+                {% if not questions %}
+                    <div id="empty-placeholder" class="p-4 text-center text-muted">No questions added yet. Click "Add Question" to begin.</div>
+                {% endif %}
             </div>
         </div>
 
@@ -176,7 +179,7 @@
 
 {% block extra_js %}
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded', function(){ (function(){
     const deletedQuestionIds = [];
     const csrfToken = getCookie('csrftoken');
     const bankPreviewContainer = document.getElementById('bank-preview');
@@ -526,6 +529,9 @@
     document.getElementById('btn-add-question').addEventListener('click', function(){ document.getElementById('questions-container').appendChild(createQuestionBlock()); updateStats(); });
     document.getElementById('btn-save-all').addEventListener('click', saveAll);
     document.getElementById('btn-import-bank').addEventListener('click', fetchBankPreview);
+    // sidebar preview button
+    const pb = document.getElementById('btn-preview-bank');
+    if(pb) pb.addEventListener('click', fetchBankPreview);
     document.getElementById('btn-import-selected').addEventListener('click', importSelectedBank);
     document.querySelectorAll('.btn-open-upload').forEach(btn => btn.addEventListener('click', function(){ document.getElementById('upload-file').click(); }));
     document.getElementById('upload-file').addEventListener('change', function(){ if(this.files && this.files[0]) parseUploadFile(this.files[0]); });
@@ -559,6 +565,6 @@
         }
         return cookieValue;
     }
-})();
+})(); });
 </script>
 {% endblock %}
