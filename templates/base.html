@@ -3578,6 +3578,11 @@ html, body {
           <i class="fas fa-edit"></i><span> Edit Results</span>
         </a>
 
+        <a href="{% url 'teacher_cbt:dashboard' %}" data-tooltip="CBT Dashboard"
+           class="{% if request.resolver_match.app_name == 'teacher_cbt' %}active{% endif %}">
+          <i class="fas fa-laptop-code"></i><span> CBT Exams</span>
+        </a>
+
         <a href="{% url 'teacher_payroll' %}" data-tooltip="Payroll"
            class="{% if request.resolver_match.url_name == 'teacher_payroll' %}active{% endif %}">
           <i class="fas fa-money-check"></i><span> My Payroll</span>
@@ -3639,6 +3644,11 @@ html, body {
         <a href="{% url 'student_portal_results' %}" data-tooltip="Results"
            class="{% if request.resolver_match.url_name == 'student_portal_results' %}active{% endif %}">
           <i class="fas fa-chart-line"></i><span> My Results</span>
+        </a>
+
+        <a href="{% url 'student_cbt:dashboard' %}" data-tooltip="CBT Exams"
+           class="{% if request.resolver_match.app_name == 'student_cbt' %}active{% endif %}">
+          <i class="fas fa-laptop-code"></i><span> CBT Exams</span>
         </a>
 
         <a href="{% url 'student_portal_fees' %}" data-tooltip="Fees"

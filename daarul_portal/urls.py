@@ -36,6 +36,8 @@ urlpatterns = [
     path('settings/', include('settingsapp.urls')),
     path('classes/', include((class_urlpatterns, 'school_classes'))),
     path('students/', include('students.urls')),
+    path('student/cbt/', include('cbt.student_urls')),
+    path('teacher/cbt/', include('cbt.teacher_urls')),
     path('exams/', include('exams.urls')),
     path('attendance/', include('attendance.urls')),
     path('staff-attendance/', include('staff_attendance.urls')),

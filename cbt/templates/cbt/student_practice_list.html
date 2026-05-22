@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Practice CBT Exams{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2>Practice CBT Exams</h2>
+                <p class="text-muted">Browse available practice exams for your class.</p>
+            </div>
+            <a href="{% url 'student_cbt:dashboard' %}" class="btn btn-outline-secondary">Back to CBT Dashboard</a>
+        </div>
+    </div>
+
+    <div class="row">
+        {% if practice_exams %}
+            {% for exam in practice_exams %}
+            <div class="col-md-6 mb-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ exam.name }}</h5>
+                        <p class="card-text text-muted">{{ exam.subject.name }} &bull; {{ exam.duration_minutes }} minutes</p>
+                        <p class="card-text">
+                            {% if exam.start_datetime %}
+                                Starts: {{ exam.start_datetime|date:'M d, Y H:i' }}<br>
+                            {% endif %}
+                            {% if exam.end_datetime %}
+                                Ends: {{ exam.end_datetime|date:'M d, Y H:i' }}
+                            {% endif %}
+                        </p>
+                        <a href="{% url 'student_cbt:practice_start' exam.pk %}" class="btn btn-primary">Start Practice</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">No practice CBT exams are available right now.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

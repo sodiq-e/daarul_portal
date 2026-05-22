@@ -3,6 +3,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy, reverse
+from django.db.models import Avg
+from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
 from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice
@@ -22,6 +24,13 @@ def is_cbt_authenticated(user):
         return user.profile.is_approved
     except Exception:
         return user.is_authenticated
+
+
+def is_cbt_student(user):
+    try:
+        return user.profile.is_approved and hasattr(user, 'student_profile')
+    except Exception:
+        return False
 
 
 @method_decorator(login_required, name='dispatch')
@@ -216,3 +225,153 @@ def attempt_detail(request, uuid):
 
     context = build_attempt_context(attempt)
     return render(request, 'cbt/attempt_detail.html', context)
+
+
+@method_decorator(login_required, name='dispatch')
+class StudentCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'cbt/student_dashboard.html'
+
+    def test_func(self):
+        return is_cbt_student(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        now = timezone.now()
+        context['active_attempts'] = CBTStudentAttempt.objects.filter(
+            student=self.request.user,
+            is_submitted=False
+        ).select_related('exam').order_by('-started_at')
+        context['recent_cbt_results'] = CBTStudentAttempt.objects.filter(
+            student=self.request.user,
+            is_submitted=True
+        ).select_related('exam').order_by('-completed_at')[:5]
+        student_class = getattr(getattr(self.request.user, 'student_profile', None), 'student_class', None)
+        if student_class:
+            context['upcoming_cbt_exams'] = CBTExam.objects.filter(
+                exam_mode=CBTExam.REAL,
+                is_active=True,
+                is_published=True,
+                start_datetime__gt=now,
+                school_class=student_class
+            ).order_by('start_datetime')
+        else:
+            context['upcoming_cbt_exams'] = CBTExam.objects.none()
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class StudentCBTPracticeListView(LoginRequiredMixin, UserPassesTestMixin, PracticeExamListView):
+    template_name = 'cbt/student_practice_list.html'
+
+    def test_func(self):
+        return is_cbt_student(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        student_class = getattr(getattr(self.request.user, 'student_profile', None), 'student_class', None)
+        if student_class:
+            context['practice_exams'] = context['practice_exams'].filter(school_class=student_class)
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class StudentCBTAttemptListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'cbt/student_attempt_list.html'
+
+    def test_func(self):
+        return is_cbt_student(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['attempts'] = CBTStudentAttempt.objects.filter(
+            student=self.request.user
+        ).select_related('exam').order_by('-started_at')
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class StudentCBTResultListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'cbt/student_result_list.html'
+
+    def test_func(self):
+        return is_cbt_student(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['attempts'] = CBTStudentAttempt.objects.filter(
+            student=self.request.user,
+            is_submitted=True
+        ).select_related('exam').order_by('-completed_at')
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'cbt/teacher_dashboard.html'
+
+    def test_func(self):
+        return is_cbt_teacher(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        exams = CBTExam.objects.filter(created_by=self.request.user)
+        attempts = CBTStudentAttempt.objects.filter(exam__created_by=self.request.user)
+        context['cbt_exams_created'] = exams.count()
+        context['cbt_active_exams'] = exams.filter(is_active=True, is_published=True).count()
+        context['cbt_attempts'] = attempts.count()
+        context['cbt_recent_attempts'] = attempts.select_related('student', 'exam').order_by('-started_at')[:5]
+        completed_attempts = attempts.filter(is_submitted=True)
+        context['cbt_avg_score'] = completed_attempts.aggregate(avg_score=Avg('score'))['avg_score'] or 0
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherCBTExamListView(CBTExamListView):
+    template_name = 'cbt/teacher_exam_list.html'
+
+    def get_queryset(self):
+        return super().get_queryset().filter(created_by=self.request.user)
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherCBTExamCreateView(CBTExamCreateView):
+    success_url = reverse_lazy('teacher_cbt:manage')
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherCBTExamUpdateView(CBTExamUpdateView):
+    success_url = reverse_lazy('teacher_cbt:manage')
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherCBTAttemptListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = CBTStudentAttempt
+    template_name = 'cbt/teacher_attempt_list.html'
+    context_object_name = 'attempts'
+    paginate_by = 20
+
+    def test_func(self):
+        return is_cbt_teacher(self.request.user)
+
+    def get_queryset(self):
+        return CBTStudentAttempt.objects.filter(
+            exam__created_by=self.request.user
+        ).select_related('exam', 'student').order_by('-started_at')
+
+
+@method_decorator(login_required, name='dispatch')
+class TeacherCBTAnalyticsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'cbt/teacher_analytics.html'
+
+    def test_func(self):
+        return is_cbt_teacher(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        exams = CBTExam.objects.filter(created_by=self.request.user)
+        attempts = CBTStudentAttempt.objects.filter(exam__created_by=self.request.user, is_submitted=True)
+        context['cbt_exams_created'] = exams.count()
+        context['cbt_active_exams'] = exams.filter(is_active=True, is_published=True).count()
+        context['cbt_attempts'] = attempts.count()
+        context['cbt_avg_score'] = attempts.aggregate(avg_score=Avg('score'))['avg_score'] or 0
+        return context

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>{{ exam.title }}</h1>
+<h1>{{ exam.name }}</h1>
 <p>Mode: {{ exam.get_exam_mode_display }}</p>
 <p>Duration: {{ exam.duration_minutes }} minutes</p>
 <p>{{ exam.description }}</p>

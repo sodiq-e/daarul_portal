@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, get_object_or_404, redirect
@@ -250,6 +251,32 @@ class StudentDashboardView(LoginRequiredMixin, TemplateView):
             context['invoices'] = student.invoices.all().order_by('-issued_date')
             context['pending_invoices'] = student.invoices.filter(status='pending').count()
             context['total_owing'] = sum(inv.balance for inv in student.invoices.filter(status__in=['pending', 'overdue']))
+            try:
+                from cbt.models import CBTExam, CBTStudentAttempt
+                now = timezone.now()
+                student_class = getattr(student, 'student_class', None)
+                context['active_attempts'] = CBTStudentAttempt.objects.filter(
+                    student=self.request.user,
+                    is_submitted=False
+                ).select_related('exam').order_by('-started_at')
+                context['recent_cbt_results'] = CBTStudentAttempt.objects.filter(
+                    student=self.request.user,
+                    is_submitted=True
+                ).select_related('exam').order_by('-completed_at')[:5]
+                if student_class:
+                    context['upcoming_cbt_exams'] = CBTExam.objects.filter(
+                        exam_mode=CBTExam.REAL,
+                        is_active=True,
+                        is_published=True,
+                        start_datetime__gt=now,
+                        school_class=student_class
+                    ).order_by('start_datetime')
+                else:
+                    context['upcoming_cbt_exams'] = CBTExam.objects.none()
+            except Exception:
+                context['active_attempts'] = []
+                context['recent_cbt_results'] = []
+                context['upcoming_cbt_exams'] = []
         except Student.DoesNotExist:
             context['student'] = None
         return context

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Attempt for {{ attempt.exam.title }}</h1>
+<h1>Attempt for {{ attempt.exam.name }}</h1>
 <p>Status: {{ attempt.get_status_display }}</p>
 <p>Time remaining: {{ time_left_seconds }} seconds</p>
 <form method="post">{% csrf_token %}

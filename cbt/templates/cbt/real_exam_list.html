@@ -4,7 +4,7 @@
 <ul>
   {% for exam in real_exams %}
   <li>
-    <strong>{{ exam.title }}</strong> — {{ exam.duration_minutes }} minutes
+    <strong>{{ exam.name }}</strong> — {{ exam.duration_minutes }} minutes
     <a href="{% url 'cbt:real_exam_detail' exam.pk %}">View details</a>
   </li>
   {% empty %}

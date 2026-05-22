@@ -15,6 +15,36 @@
     </div>
 
     <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center border-primary h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Active CBT Attempts</h5>
+                    <p class="card-text display-6 mb-0">{{ active_attempts|length|default:0 }}</p>
+                    <small class="text-muted">Continue exams in progress</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center border-success h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Upcoming CBT Exams</h5>
+                    <p class="card-text display-6 mb-0">{{ upcoming_cbt_exams|length|default:0 }}</p>
+                    <small class="text-muted">See scheduled real exams</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center border-info h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Recent CBT Scores</h5>
+                    <p class="card-text display-6 mb-0">{{ recent_cbt_results|length|default:0 }}</p>
+                    <small class="text-muted">Your last submitted attempts</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body">
@@ -77,6 +107,15 @@
                         <div class="card-body">
                             <h5 class="card-title">📊 View Results</h5>
                             <p class="card-text small text-muted">Check your academic results and grades</p>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <a href="{% url 'student_cbt:dashboard' %}" class="card text-decoration-none h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">🧠 CBT Exams</h5>
+                            <p class="card-text small text-muted">Start practice or view active exams</p>
                         </div>
                     </a>
                 </div>

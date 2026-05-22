@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}My CBT Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2>My CBT Results</h2>
+                <p class="text-muted">View scores for CBT exams you have submitted.</p>
+            </div>
+            <a href="{% url 'student_cbt:dashboard' %}" class="btn btn-outline-secondary">Back to CBT Dashboard</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Exam</th>
+                    <th>Completed</th>
+                    <th>Score</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attempt in attempts %}
+                <tr>
+                    <td>{{ attempt.exam.name }}</td>
+                    <td>{{ attempt.completed_at|date:'M d, Y H:i' }}</td>
+                    <td>{{ attempt.score|default:'-' }}</td>
+                    <td>
+                        <a href="{% url 'student_cbt:attempt_detail' attempt.uuid %}" class="btn btn-sm btn-outline-primary">View Result</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">You have not submitted any CBT attempts yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

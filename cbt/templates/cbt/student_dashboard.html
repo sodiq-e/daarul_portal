@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}CBT Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2>CBT Dashboard</h2>
+                <p class="text-muted">Access practice tests, active exams, and your recent CBT scores.</p>
+            </div>
+            <a href="{% url 'student_portal_dashboard' %}" class="btn btn-outline-secondary">Back to Portal</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Active Attempts</h5>
+                    <p class="display-6 mb-1">{{ active_attempts|length|default:0 }}</p>
+                    <p class="text-muted">Ongoing real exams you can continue.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Upcoming Exams</h5>
+                    <p class="display-6 mb-1">{{ upcoming_cbt_exams|length|default:0 }}</p>
+                    <p class="text-muted">Real CBT exams scheduled for your class.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Recent Results</h5>
+                    <p class="display-6 mb-1">{{ recent_cbt_results|length|default:0 }}</p>
+                    <p class="text-muted">Submitted exam results from your profile.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <a href="{% url 'student_cbt:practice_list' %}" class="card h-100 text-decoration-none text-dark shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Practice Tests</h5>
+                    <p class="card-text text-muted">Try practice exams for your class.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{% url 'student_cbt:attempt_list' %}" class="card h-100 text-decoration-none text-dark shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">My Attempts</h5>
+                    <p class="card-text text-muted">Review your exam attempts and progress.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{% url 'student_cbt:result_list' %}" class="card h-100 text-decoration-none text-dark shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">My Results</h5>
+                    <p class="card-text text-muted">View scores for submitted CBT exams.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    Upcoming Exams
+                </div>
+                <div class="card-body">
+                    {% if upcoming_cbt_exams %}
+                        <ul class="list-group list-group-flush">
+                            {% for exam in upcoming_cbt_exams %}
+                                <li class="list-group-item">
+                                    <strong>{{ exam.name }}</strong><br>
+                                    <small>{{ exam.subject.name }} • {{ exam.duration_minutes }} minutes</small><br>
+                                    <small>Starts: {{ exam.start_datetime|date:'M d, Y H:i' }}</small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No upcoming CBT exams are scheduled for your class.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    Recent Scores
+                </div>
+                <div class="card-body">
+                    {% if recent_cbt_results %}
+                        <ul class="list-group list-group-flush">
+                            {% for attempt in recent_cbt_results %}
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>{{ attempt.exam.name }}</strong><br>
+                                        <small>{{ attempt.completed_at|date:'M d, Y H:i' }}</small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">{{ attempt.score }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No submitted CBT exam results yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Manage CBT Exams{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h2>Manage CBT Exams</h2>
+                <p class="text-muted">Create and update CBT exams assigned to your classes.</p>
+            </div>
+            <a href="{% url 'teacher_cbt:exam_add' %}" class="btn btn-primary">Add New Exam</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Exam Name</th>
+                    <th>Mode</th>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exam in exams %}
+                <tr>
+                    <td>{{ exam.name }}</td>
+                    <td>{{ exam.get_exam_mode_display }}</td>
+                    <td>{{ exam.school_class }}</td>
+                    <td>{{ exam.subject.name }}</td>
+                    <td>
+                        {% if exam.is_active and exam.is_published %}
+                            <span class="badge bg-success">Published</span>
+                        {% elif exam.is_active %}
+                            <span class="badge bg-warning">Draft</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'teacher_cbt:exam_edit' exam.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No CBT exams created yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -393,6 +393,21 @@ class TeacherProfileView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
             context['schemes'] = SchemeOfWork.objects.filter(
                 teacher=self.get_object()
             ).order_by('-created_at')
+            try:
+                from django.db.models import Avg
+                from cbt.models import CBTExam, CBTStudentAttempt
+                teacher_user = self.request.user
+                exams = CBTExam.objects.filter(created_by=teacher_user)
+                attempts = CBTStudentAttempt.objects.filter(exam__created_by=teacher_user)
+                context['cbt_exams_created'] = exams.count()
+                context['cbt_active_exams'] = exams.filter(is_active=True, is_published=True).count()
+                context['cbt_attempts'] = attempts.count()
+                context['cbt_avg_score'] = attempts.filter(is_submitted=True).aggregate(avg_score=Avg('score'))['avg_score'] or 0
+            except Exception:
+                context['cbt_exams_created'] = 0
+                context['cbt_active_exams'] = 0
+                context['cbt_attempts'] = 0
+                context['cbt_avg_score'] = 0
         return context
 
 

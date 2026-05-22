@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Questions for {{ exam.title }}</h1>
+<h1>Questions for {{ exam.name }}</h1>
 <p><a href="{% url 'cbt:question_add' exam.pk %}">Add question</a></p>
 <table>
   <thead>

@@ -83,6 +83,13 @@
                             </a>
                         </div>
                         <div class="col-md-6">
+                            <a href="{% url 'teacher_cbt:dashboard' %}" class="btn btn-outline-warning w-100 py-3">
+                                <div style="font-size: 20px; margin-bottom: 5px;">🧠</div>
+                                <strong>CBT Dashboard</strong>
+                                <div style="font-size: 12px; color: #666;">Manage exams, attempts, and analytics</div>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
                             <a href="{% url 'teacher_attendance_list' %}" class="btn btn-outline-success w-100 py-3">
                                 <div style="font-size: 20px; margin-bottom: 5px;">✅</div>
                                 <strong>Attendance</strong>
@@ -130,6 +137,30 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if cbt_exams_created is not None %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-white">
+                    <h4 class="mb-0">CBT Summary</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <h5>{{ cbt_exams_created }}</h5>
+                            <p class="mb-0 text-muted">Exams Created</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <h5>{{ cbt_active_exams }}</h5>
+                            <p class="mb-0 text-muted">Active Exams</p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <h5>{{ cbt_attempts }}</h5>
+                            <p class="mb-0 text-muted">Student Attempts</p>
+                        </div>
                     </div>
                 </div>
             </div>
