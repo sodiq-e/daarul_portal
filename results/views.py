@@ -83,7 +83,7 @@ def select_class_for_report_card(request):
         try:
             teacher_instance = request.user.teacher_profile
             classes = SchoolClasses.objects.filter(
-                class_assignments__teacher=teacher_instance
+                teachers__teacher=teacher_instance
             ).distinct().order_by('class_name')
         except Teacher.DoesNotExist:
             classes = SchoolClasses.objects.none()

@@ -1,8 +1,17 @@
 import json
+import logging
 import os
 import re
+import time
+from typing import Any, Dict, List
 
-from .models import CBTQuestion
+# Avoid importing Django models at module import time to prevent AppRegistryNotReady
+CBTQuestion = None
+
+logger = logging.getLogger(__name__)
+
+GEMINI_TIMEOUT = int(os.getenv('GEMINI_TIMEOUT', '30'))
+GEMINI_RETRIES = int(os.getenv('GEMINI_RETRIES', '3'))
 
 try:
     from google import genai
@@ -92,7 +101,100 @@ def generate_ai_questions_using_gemini(exam, topic, difficulty, num_questions):
     return parsed
 
 
+def _clean_response_text(text: str) -> str:
+    """Remove markdown fences and wrappers so JSON parsing is stable.
+
+    AI responses often include human-friendly formatting (```json blocks,
+    explanatory text). We strip those wrappers to improve json.loads()
+    reliability.
+    """
+    if not isinstance(text, str):
+        return ''
+    cleaned = re.sub(r'```(?:json)?\s*', '', text, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\s*```$', '', cleaned)
+    # Trim any leading non-json characters before the first { or [
+    m = re.search(r'([\[\{])', cleaned)
+    if m:
+        cleaned = cleaned[m.start():]
+    return cleaned.strip()
+
+
+def _validate_strict_questions(parsed: Any) -> List[Dict[str, Any]]:
+    if not isinstance(parsed, list):
+        raise ValueError('Response must be a JSON array')
+    normalized: List[Dict[str, Any]] = []
+    for idx, item in enumerate(parsed):
+        if not isinstance(item, dict):
+            raise ValueError(f'Question at index {idx} must be an object')
+        q = item.get('question')
+        opts = item.get('options')
+        corr = item.get('correct_answer')
+        expl = item.get('explanation')
+
+        if not q or not isinstance(q, str):
+            raise ValueError(f'question is required and must be a string at index {idx}')
+        if not isinstance(opts, list) or len(opts) < 4:
+            raise ValueError(f'options must be a list with at least 4 items at index {idx}')
+        if not all(isinstance(o, str) and o.strip() for o in opts):
+            raise ValueError(f'all options must be non-empty strings at index {idx}')
+        if not corr or not isinstance(corr, str):
+            raise ValueError(f'correct_answer is required and must be a string at index {idx}')
+        if corr not in opts:
+            raise ValueError(f'correct_answer must be one of the options at index {idx}')
+        if expl is None or not isinstance(expl, str):
+            raise ValueError(f'explanation is required and must be a string at index {idx}')
+
+        normalized.append({
+            'question': q.strip(),
+            'options': [o.strip() for o in opts],
+            'correct_answer': corr.strip(),
+            'explanation': expl.strip(),
+        })
+    return normalized
+
+
+def generate_ss1_questions(topic: str = '', num_questions: int = 5) -> List[Dict[str, Any]]:
+    """Generate SS1-level MCQs and return strictly validated JSON list."""
+    if not os.getenv('GEMINI_API_KEY'):
+        raise EnvironmentError('GEMINI_API_KEY is not configured in environment')
+
+    prompt = (
+        f"You are an exam question generator for SS1 students. Generate {num_questions} multiple-choice questions suitable for SS1. "
+        f"Focus on the topic: {topic}. Return ONLY valid JSON in the format: "
+        '[{"question":"", "options":["","","",""], "correct_answer":"", "explanation":""}]'
+    )
+
+    last_exc = None
+    for attempt in range(1, GEMINI_RETRIES + 1):
+        try:
+            raw = _make_gemini_request(prompt)
+            logger.debug('Raw Gemini response (attempt %s): %s', attempt, raw)
+            cleaned = _clean_response_text(raw)
+            parsed = _parse_json_from_text(cleaned)
+            validated = _validate_strict_questions(parsed)
+            logger.info('Gemini SS1 generation succeeded')
+            return validated
+        except Exception as exc:
+            last_exc = exc
+            logger.warning('Attempt %s failed: %s', attempt, exc)
+            if attempt < GEMINI_RETRIES:
+                time.sleep(2 ** (attempt - 1))
+            else:
+                logger.exception('All Gemini attempts failed')
+                raise
+
+
+
 def validate_generated_question_payload(question):
+    # Import CBTQuestion lazily to avoid AppRegistryNotReady during module import
+    global CBTQuestion
+    if CBTQuestion is None:
+        try:
+            from .models import CBTQuestion as _CBTQuestion
+            CBTQuestion = _CBTQuestion
+        except Exception:
+            CBTQuestion = None
+
     if not isinstance(question, dict):
         return False, 'Each question must be an object.'
 
@@ -101,8 +203,13 @@ def validate_generated_question_payload(question):
         return False, 'Question prompt is required and must be a string.'
 
     question_type = question.get('question_type')
-    if question_type not in dict(CBTQuestion.QUESTION_TYPE_CHOICES):
-        return False, f'Invalid question_type {question_type}.'
+    if CBTQuestion is None:
+        # If model import failed, perform basic validation only
+        if not question_type:
+            return False, f'Invalid question_type {question_type}.'
+    else:
+        if question_type not in dict(CBTQuestion.QUESTION_TYPE_CHOICES):
+            return False, f'Invalid question_type {question_type}.'
 
     try:
         mark_value = float(question.get('mark_value', 1.0))
