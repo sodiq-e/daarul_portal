@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy, reverse
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
@@ -371,17 +371,19 @@ class StudentCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         now = timezone.now()
+        # include attempts either owned by the user or tied to the current session
+        session_key = _ensure_session(self.request)
         context['active_attempts'] = CBTStudentAttempt.objects.filter(
-            student=self.request.user,
+            (Q(student=self.request.user) | Q(session_key=session_key)),
             is_submitted=False
         ).select_related('exam').order_by('-started_at')
         # provide explicit counts to make templates defensive and straightforward
         context['active_attempts_count'] = context['active_attempts'].count()
         context['recent_cbt_results'] = CBTStudentAttempt.objects.filter(
-            student=self.request.user,
+            (Q(student=self.request.user) | Q(session_key=session_key)),
             is_submitted=True
         ).select_related('exam').order_by('-completed_at')[:5]
-        context['recent_cbt_results_count'] = CBTStudentAttempt.objects.filter(student=self.request.user, is_submitted=True).count()
+        context['recent_cbt_results_count'] = CBTStudentAttempt.objects.filter((Q(student=self.request.user) | Q(session_key=session_key)), is_submitted=True).count()
         student_class = getattr(getattr(self.request.user, 'student_profile', None), 'student_class', None)
         if student_class:
             context['upcoming_cbt_exams'] = CBTExam.objects.filter(
@@ -422,8 +424,9 @@ class StudentCBTAttemptListView(LoginRequiredMixin, UserPassesTestMixin, Templat
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        session_key = _ensure_session(self.request)
         context['attempts'] = CBTStudentAttempt.objects.filter(
-            student=self.request.user
+            (Q(student=self.request.user) | Q(session_key=session_key))
         ).select_related('exam').order_by('-started_at')
         return context
 
@@ -437,8 +440,9 @@ class StudentCBTResultListView(LoginRequiredMixin, UserPassesTestMixin, Template
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        session_key = _ensure_session(self.request)
         context['attempts'] = CBTStudentAttempt.objects.filter(
-            student=self.request.user,
+            (Q(student=self.request.user) | Q(session_key=session_key)),
             is_submitted=True
         ).select_related('exam').order_by('-completed_at')
         return context
