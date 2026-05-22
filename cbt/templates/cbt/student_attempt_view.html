@@ -323,6 +323,27 @@
         let navigator, timer, flagManager;
         let currentQuestion = 1;
 
+        function getInitialQuestionStates() {
+            const states = {};
+            attemptData.questions.forEach((question, index) => {
+                const answer = attemptData.answers[index];
+                if (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))) {
+                    states[index + 1] = 'answered';
+                } else {
+                    states[index + 1] = 'unanswered';
+                }
+            });
+            return states;
+        }
+
+        function getUnansweredCount() {
+            return attemptData.questions.reduce((count, question, index) => {
+                const answer = attemptData.answers[index];
+                const hasAnswer = answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()));
+                return count + (hasAnswer ? 0 : 1);
+            }, 0);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize timer
             timer = new ExamTimer({
@@ -353,7 +374,7 @@
                 allowNavigation: attemptData.allowNavigation,
                 oneAtATime: attemptData.oneAtATime,
                 onQuestionChange: navigateToQuestion,
-                questionStates: {}
+                questionStates: getInitialQuestionStates()
             });
 
             // Load first question
@@ -420,6 +441,12 @@
             document.getElementById('question-content').innerHTML = contentHtml;
 
             // Update navigator
+            if (answer && (answer.selected_choice_id || (answer.selected_choice_ids && answer.selected_choice_ids.length) || (answer.text_answer && answer.text_answer.trim()))) {
+                navigator.updateQuestionState(questionNum, 'answered');
+            } else {
+                navigator.updateQuestionState(questionNum, 'unanswered');
+            }
+
             if (navigator && typeof navigator.setCurrentQuestion === 'function') {
                 navigator.setCurrentQuestion(questionNum);
             } else {
@@ -606,7 +633,21 @@
             });
         }
 
-        function openSubmitModal() {
+        async function openSubmitModal() {
+            try {
+                await saveCurrentAnswer();
+            } catch (err) {
+                console.warn('Open submit modal: final save failed but continuing', err);
+            }
+
+            const unansweredCount = getUnansweredCount();
+            const unansweredEl = document.getElementById('unanswered-count');
+            const warningEl = document.getElementById('unanswered-warning');
+            if (unansweredEl) unansweredEl.textContent = unansweredCount;
+            if (warningEl) {
+                warningEl.style.display = unansweredCount > 0 ? 'block' : 'none';
+            }
+
             // Bootstrap 5 modal fallback with custom modal if available
             if (typeof bootstrap !== 'undefined' && typeof bootstrap.Modal !== 'undefined') {
                 const modalEl = document.getElementById('submit-modal');
