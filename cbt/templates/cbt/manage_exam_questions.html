@@ -27,7 +27,7 @@
             <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-outline-secondary">Back to Exams</a>
             <button id="btn-add-question" class="btn btn-primary">Add Question</button>
             <button id="btn-import-bank" class="btn btn-info">Import Bank</button>
-            <button id="btn-open-upload" class="btn btn-secondary">Upload CSV / JSON</button>
+            <button class="btn-open-upload btn btn-secondary">Upload CSV / JSON</button>
             <button id="btn-save-all" class="btn btn-success">Save All</button>
         </div>
     </div>
@@ -149,7 +149,7 @@
                 <div class="card-body">
                     <h6>Bulk Upload</h6>
                     <p class="text-muted">Upload CSV or JSON files formatted for CBT questions.</p>
-                    <button id="btn-open-upload" class="btn btn-sm btn-outline-secondary w-100 mb-2">Choose File</button>
+                    <button class="btn-open-upload btn btn-sm btn-outline-secondary w-100 mb-2">Choose File</button>
                     <a href="#" id="download-template" class="d-block">Download sample template</a>
                 </div>
             </div>
@@ -527,7 +527,7 @@
     document.getElementById('btn-save-all').addEventListener('click', saveAll);
     document.getElementById('btn-import-bank').addEventListener('click', fetchBankPreview);
     document.getElementById('btn-import-selected').addEventListener('click', importSelectedBank);
-    document.getElementById('btn-open-upload').addEventListener('click', function(){ document.getElementById('upload-file').click(); });
+    document.querySelectorAll('.btn-open-upload').forEach(btn => btn.addEventListener('click', function(){ document.getElementById('upload-file').click(); }));
     document.getElementById('upload-file').addEventListener('change', function(){ if(this.files && this.files[0]) parseUploadFile(this.files[0]); });
 
     Array.from(document.querySelectorAll('#questions-container .question-block')).forEach(block => {
