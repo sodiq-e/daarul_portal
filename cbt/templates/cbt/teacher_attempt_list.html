@@ -41,7 +41,7 @@
                     </td>
                     <td>
                         {% if attempt.integrity_count > 0 %}
-                            <span class="badge bg-danger">{{ attempt.integrity_count }} alert{% if attempt.integrity_count|int > 1 %}s{% endif %}</span>
+                            <span class="badge bg-danger">{{ attempt.integrity_count }} alert{% if attempt.integrity_count > 1 %}s{% endif %}</span>
                         {% else %}
                             <span class="text-muted">None</span>
                         {% endif %}
