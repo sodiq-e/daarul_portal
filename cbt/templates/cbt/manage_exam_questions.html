@@ -25,10 +25,10 @@
         </div>
         <div class="btn-toolbar gap-2">
             <a href="{% url 'teacher_cbt:manage' %}" class="btn btn-outline-secondary">Back to Exams</a>
-            <button id="btn-add-question" class="btn btn-primary">Add Question</button>
-            <button id="btn-import-bank" class="btn btn-info">Import Bank</button>
-            <button class="btn-open-upload btn btn-secondary">Upload CSV / JSON</button>
-            <button id="btn-save-all" class="btn btn-success">Save All</button>
+            <button type="button" id="btn-add-question" class="btn btn-primary">Add Question</button>
+            <button type="button" id="btn-import-bank" class="btn btn-info">Import Bank</button>
+            <button type="button" class="btn-open-upload btn btn-secondary">Upload CSV / JSON</button>
+            <button type="button" id="btn-save-all" class="btn btn-success">Save All</button>
         </div>
     </div>
 
@@ -41,9 +41,9 @@
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <strong>Question</strong>
                             <div>
-                                <button class="btn btn-sm btn-duplicate btn-outline-secondary">Duplicate</button>
-                                <button class="btn btn-sm btn-collapse btn-outline-secondary">Toggle</button>
-                                <button class="btn btn-sm btn-remove btn-outline-danger">Remove</button>
+                                <button type="button" class="btn btn-sm btn-duplicate btn-outline-secondary">Duplicate</button>
+                                <button type="button" class="btn btn-sm btn-collapse btn-outline-secondary">Toggle</button>
+                                <button type="button" class="btn btn-sm btn-remove btn-outline-danger">Remove</button>
                             </div>
                         </div>
                         <div class="card-body">
@@ -99,13 +99,13 @@
                                         <input type="text" class="form-control choice-text" value="{{ c.text }}">
                                         <input type="checkbox" class="choice-correct" {% if c.is_correct %}checked{% endif %}>
                                         <input type="number" class="choice-order form-control" style="width:80px" value="{{ c.order }}">
-                                        <button class="btn btn-sm btn-outline-secondary btn-move-up">↑</button>
-                                        <button class="btn btn-sm btn-outline-secondary btn-move-down">↓</button>
-                                        <button class="btn btn-sm btn-outline-danger btn-remove-choice">✕</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-move-up">↑</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-move-down">↓</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-choice">✕</button>
                                     </div>
                                     {% endfor %}
                                 </div>
-                                <button class="btn btn-sm btn-outline-primary btn-add-choice">Add Choice</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-add-choice">Add Choice</button>
                             </div>
 
                         </div>
@@ -139,9 +139,9 @@
                         <option value="medium">Medium</option>
                         <option value="hard">Hard</option>
                     </select>
-                    <button id="btn-preview-bank" class="btn btn-sm btn-outline-primary mb-2 w-100">Preview</button>
+                    <button type="button" id="btn-preview-bank" class="btn btn-sm btn-outline-primary mb-2 w-100">Preview</button>
                     <div id="bank-preview" style="max-height:300px; overflow:auto"></div>
-                    <button id="btn-import-selected" class="btn btn-sm btn-success mt-2 w-100">Import Selected</button>
+                    <button type="button" id="btn-import-selected" class="btn btn-sm btn-success mt-2 w-100">Import Selected</button>
                 </div>
             </div>
 
@@ -149,7 +149,7 @@
                 <div class="card-body">
                     <h6>Bulk Upload</h6>
                     <p class="text-muted">Upload CSV or JSON files formatted for CBT questions.</p>
-                    <button class="btn-open-upload btn btn-sm btn-outline-secondary w-100 mb-2">Choose File</button>
+                    <button type="button" class="btn-open-upload btn btn-sm btn-outline-secondary w-100 mb-2">Choose File</button>
                     <a href="#" id="download-template" class="d-block">Download sample template</a>
                 </div>
             </div>
