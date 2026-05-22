@@ -427,34 +427,44 @@
         }
 
         function saveCurrentAnswer() {
-            const questionNum = currentQuestion;
-            const question = attemptData.questions[questionNum - 1];
+            return new Promise(function(resolve, reject) {
+                const questionNum = currentQuestion;
+                const question = attemptData.questions[questionNum - 1];
 
-            let answerData = {
-                question_id: question.id,
-                attempt_uuid: attemptData.uuid,
-            };
+                let answerData = {
+                    question_id: question.id,
+                    attempt_uuid: attemptData.uuid,
+                };
+                let hasAnswer = false;
+
                 if (question.question_type === 'mcq' || question.question_type === 'true_false') {
                     const selected = document.querySelector('input[name="answer"]:checked');
                     if (selected) {
-                        answerData.selected_choice_id = selected.value;
+                        answerData.selected_choice_id = parseInt(selected.value);
                         navigator.markCurrentAnswered();
+                        hasAnswer = true;
                     }
                 } else if (question.question_type === 'short_answer') {
-                    const textAnswer = document.getElementById('answer-text').value;
+                    const textAnswer = document.getElementById('answer-text')?.value || '';
                     if (textAnswer.trim()) {
                         answerData.text_answer = textAnswer;
                         navigator.markCurrentAnswered();
+                        hasAnswer = true;
                     }
                 } else if (question.question_type === 'multiple') {
                     const checkedBoxes = Array.from(document.querySelectorAll('input[name="answer_multi"]:checked'));
                     if (checkedBoxes.length) {
                         answerData.selected_choice_ids = checkedBoxes.map(cb => parseInt(cb.value));
                         navigator.markCurrentAnswered();
+                        hasAnswer = true;
                     }
                 }
 
-                // send AJAX request
+                if (!hasAnswer) {
+                    console.log('No answer to save for question', question.id);
+                    return resolve({status: 'skipped', reason: 'no_answer'});
+                }
+
                 const csrftoken = getCookie('csrftoken');
                 setSaveStatus('Saving...');
                 fetch('{% url "cbt:api_save_answer" %}', {
@@ -468,14 +478,18 @@
                 }).then(resp => resp.json()).then(data => {
                     if (data.status === 'saved') {
                         setSaveStatus('Saved');
-                        // update attempt last saved if needed
+                        resolve(data);
                     } else {
-                        setSaveStatus('Sync failed');
+                        setSaveStatus('Sync failed: ' + (data.error || 'unknown'));
+                        console.error('Save response error:', data);
+                        reject(data);
                     }
                 }).catch(err => {
-                    console.error('Save failed', err);
+                    console.error('Save fetch error:', err);
                     setSaveStatus('Offline');
+                    reject(err);
                 });
+            });
         }
 
             function setSaveStatus(text) {
@@ -507,8 +521,12 @@
                 }
             });
 
-        function navigateToQuestion(questionNum) {
-            saveCurrentAnswer();
+        async function navigateToQuestion(questionNum) {
+            try {
+                await saveCurrentAnswer();
+            } catch (err) {
+                console.warn('Navigate: save failed but continuing', err);
+            }
             displayQuestion(questionNum);
         }
 
@@ -596,9 +614,13 @@
             submitExam();
         }
 
-        function submitExam() {
+        async function submitExam() {
             // Save final answer
-            saveCurrentAnswer();
+            try {
+                await saveCurrentAnswer();
+            } catch (err) {
+                console.warn('Submit: final save failed but continuing', err);
+            }
             
             const csrftoken = getCookie('csrftoken');
             setSaveStatus('Saving...');
