@@ -315,8 +315,8 @@
             showInstantResults: {{ attempt.exam.show_instant_results|lower }},
             showCorrections: {{ attempt.exam.show_corrections|lower }},
             durationMinutes: {{ attempt.exam.duration_minutes }},
-            questions: JSON.parse('{{ questions_json|escapejs }}'),
-            answers: JSON.parse('{{ answers_json|escapejs }}'),
+            questions: (function(){ try { return JSON.parse('{{ questions_json|escapejs }}'); } catch (e) { console.error('Failed to parse questions_json:', e); return []; } })(),
+            answers: (function(){ try { return JSON.parse('{{ answers_json|escapejs }}'); } catch (e) { console.error('Failed to parse answers_json:', e); return []; } })(),
         };
 
         // Initialize components

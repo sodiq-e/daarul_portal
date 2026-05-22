@@ -228,7 +228,7 @@ def attempt_detail(request, uuid):
     context = build_attempt_context(attempt)
     # Build JSON payload for frontend
     # Use attempt.attempt_questions ordering if available
-    attempt_questions = attempt.attempt_questions.select_related('question').order_by('randomized_position')
+    attempt_questions = attempt.attempt_questions.select_related('question').prefetch_related('question__choices').order_by('randomized_position')
     questions_list = []
     answers = {a.question_id: a for a in attempt.answers.select_related('selected_choice').all()}
     for aq in attempt_questions:
