@@ -12,16 +12,55 @@ logger = logging.getLogger(__name__)
 
 GEMINI_TIMEOUT = int(os.getenv('GEMINI_TIMEOUT', '30'))
 GEMINI_RETRIES = int(os.getenv('GEMINI_RETRIES', '3'))
+DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+GEMINI_MODEL_FALLBACKS = [
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+]
+
+# Keep backward compatibility with existing environment variable configuration.
+# If GEMINI_MODEL is set, use it. Otherwise default to the currently preferred model.
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', DEFAULT_GEMINI_MODEL)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 try:
     from google import genai
     from google.genai.types import GenerateContentConfig
+    GEMINI_SDK_VERSION = getattr(genai, '__version__', 'unknown')
+    logger.info(
+        'Gemini SDK import successful. sdk_version=%s active_model=%s',
+        GEMINI_SDK_VERSION,
+        GEMINI_MODEL,
+    )
 except ImportError:  # pragma: no cover
     genai = None
     GenerateContentConfig = None
+    GEMINI_SDK_VERSION = None
+    logger.warning(
+        'Gemini SDK package google-genai is unavailable. Gemini integration is disabled until the package is installed.'
+    )
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
+
+def get_gemini_model() -> str:
+    """Return the configured Gemini model.
+
+    Gemini model names change over time. Latest aliases are more stable,
+    while hardcoding old model names can break deployments when models get
+    retired or renamed.
+    """
+    model = os.getenv('GEMINI_MODEL', '').strip() or GEMINI_MODEL
+    model = model or DEFAULT_GEMINI_MODEL
+    logger.debug('Determined Gemini model name: %s', model)
+    return model
+
+
+def _is_model_not_found_error(exc: Exception) -> bool:
+    message = str(exc)
+    return (
+        'NOT_FOUND' in message.upper() or
+        'not found' in message.lower() or
+        'model' in message.lower() and 'not found' in message.lower()
+    )
 
 
 def _build_prompt(exam, topic, difficulty, num_questions):
@@ -73,18 +112,49 @@ def _make_gemini_request(prompt):
             'Gemini API key is not configured. Set GEMINI_API_KEY in environment.'
         )
 
+    model_name = get_gemini_model()
     client = genai.Client(api_key=GEMINI_API_KEY)
+    logger.info(
+        'Gemini SDK initialization success. model=%s sdk_version=%s',
+        model_name,
+        GEMINI_SDK_VERSION,
+    )
+
     config = GenerateContentConfig(
         temperature=0.2,
         top_p=0.95,
         max_output_tokens=1200,
         candidate_count=1,
     )
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=config,
-    )
+
+    try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=config,
+        )
+    except Exception as exc:
+        if _is_model_not_found_error(exc) and model_name != GEMINI_MODEL_FALLBACKS[0]:
+            fallback_model = GEMINI_MODEL_FALLBACKS[0]
+            logger.warning(
+                'Gemini model %s not found. Retrying once with fallback model %s.',
+                model_name,
+                fallback_model,
+            )
+            response = client.models.generate_content(
+                model=fallback_model,
+                contents=prompt,
+                config=config,
+            )
+            logger.info(
+                'Gemini fallback model retry succeeded; active_model=%s',
+                fallback_model,
+            )
+        else:
+            raise
+
+    response_model = getattr(response, 'model', None)
+    logger.info('Gemini generate_content response model=%s', response_model)
 
     text = getattr(response, 'text', None)
     if not text:
