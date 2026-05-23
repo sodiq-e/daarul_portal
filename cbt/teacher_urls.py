@@ -24,6 +24,7 @@ urlpatterns = [
     path('attempts/', views.TeacherCBTAttemptListView.as_view(), name='attempt_list'),
     path('attempts/<uuid:uuid>/', views.attempt_detail, name='attempt_detail'),
     path('analytics/', views.TeacherCBTAnalyticsView.as_view(), name='analytics'),
+    path('analytics/ai-metrics/', views.api_ai_request_metrics, name='ai_request_metrics'),
     
     # Question banks
     path('question-banks/', TeacherQuestionBankListView.as_view(), name='question_banks'),

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CBTExam, CBTQuestion, CBTChoice, CBTStudentAttempt, CBTAnswer, QuestionBank, StudentAttemptQuestion
+from .models import AIRequestMetric, CBTExam, CBTQuestion, CBTChoice, CBTStudentAttempt, CBTAnswer, QuestionBank, StudentAttemptQuestion
 
 
 class CBTChoiceInline(admin.TabularInline):
@@ -107,4 +107,12 @@ class StudentAttemptQuestionAdmin(admin.ModelAdmin):
     list_display = ('attempt', 'question', 'randomized_position', 'is_answered', 'is_flagged')
     list_filter = ('is_answered', 'is_flagged', 'created_at')
     search_fields = ('attempt__uuid', 'question__prompt')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(AIRequestMetric)
+class AIRequestMetricAdmin(admin.ModelAdmin):
+    list_display = ('user', 'exam', 'request_type', 'status', 'latency_ms', 'created_at')
+    list_filter = ('request_type', 'status', 'created_at')
+    search_fields = ('user__username', 'exam__name', 'error_code')
     readonly_fields = ('created_at',)

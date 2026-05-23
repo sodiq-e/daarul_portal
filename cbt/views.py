@@ -1,3 +1,8 @@
+import json
+import logging
+import os
+import time
+
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -9,13 +14,44 @@ from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from .models import CBTExam, CBTQuestion, CBTStudentAttempt, CBTAnswer, CBTChoice, QuestionBank, StudentAttemptQuestion, CBTAttemptIntegrityEvent
+from .models import (
+    CBTExam,
+    CBTQuestion,
+    CBTStudentAttempt,
+    CBTAnswer,
+    CBTChoice,
+    QuestionBank,
+    StudentAttemptQuestion,
+    CBTAttemptIntegrityEvent,
+    AIRequestMetric,
+)
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
-from .gemini_service import generate_ai_questions_using_gemini, validate_generated_question_payload, generate_ss1_questions
+from .gemini_service import (
+    generate_ai_questions_using_gemini,
+    validate_generated_question_payload,
+    generate_ss1_questions,
+    GeminiQuotaError,
+    GeminiInvalidAPIKeyError,
+    GeminiModelNotFoundError,
+    GeminiTimeoutError,
+    GeminiJSONError,
+    GeminiAPIError,
+)
 import logging
+import time
 from django.http import JsonResponse, HttpResponseForbidden
 import json
+
+AI_GENERATION_THROTTLE_SECONDS = int(os.getenv('AI_GENERATION_THROTTLE_SECONDS', '8'))
+AI_GENERATION_SESSION_KEY = 'cbt_ai_generation'
+
+
+def _increment_ai_generation_failure(request):
+    throttle_data = request.session.get(AI_GENERATION_SESSION_KEY, {})
+    throttle_data['daily_failed_requests'] = throttle_data.get('daily_failed_requests', 0) + 1
+    request.session[AI_GENERATION_SESSION_KEY] = throttle_data
+    request.session.modified = True
 
 
 def is_cbt_teacher(user):
@@ -426,6 +462,21 @@ def api_generate_ai_questions(request, exam_pk):
     except Exception:
         return JsonResponse({'error': 'Invalid JSON payload.'}, status=400)
 
+    now_ts = int(time.time())
+    throttle_data = request.session.get(AI_GENERATION_SESSION_KEY, {})
+    last_request_ts = throttle_data.get('last_request_at', 0)
+    if now_ts - last_request_ts < AI_GENERATION_THROTTLE_SECONDS:
+        return JsonResponse({
+            'error': 'Please wait a few seconds before generating questions again. Reduce repeated requests and try again shortly.'
+        }, status=429)
+
+    throttle_data['last_request_at'] = now_ts
+    throttle_data['daily_request_count'] = throttle_data.get('daily_request_count', 0) + 1
+    throttle_data.setdefault('daily_successful_requests', 0)
+    throttle_data.setdefault('daily_failed_requests', 0)
+    request.session[AI_GENERATION_SESSION_KEY] = throttle_data
+    request.session.modified = True
+
     topic = data.get('topic', '').strip()
     difficulty = data.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM)
     num_questions = data.get('num_questions', 5)
@@ -441,9 +492,92 @@ def api_generate_ai_questions(request, exam_pk):
         return JsonResponse({'error': 'Invalid difficulty value.'}, status=400)
 
     try:
+        start_ts = time.time()
         questions = generate_ai_questions_using_gemini(exam=exam, topic=topic, difficulty=difficulty, num_questions=num_questions)
-    except Exception as exc:
+        latency_ms = int((time.time() - start_ts) * 1000)
+        throttle_data['daily_successful_requests'] = throttle_data.get('daily_successful_requests', 0) + 1
+        request.session[AI_GENERATION_SESSION_KEY] = throttle_data
+        request.session.modified = True
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_SUCCESS,
+            latency_ms=latency_ms,
+        )
+    except GeminiQuotaError as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_QUOTA,
+            error_code=exc.__class__.__name__,
+        )
+        return JsonResponse({
+            'error': str(exc),
+            'retryable': True,
+        }, status=503)
+    except GeminiInvalidAPIKeyError as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
+        return JsonResponse({'error': str(exc)}, status=401)
+    except GeminiModelNotFoundError as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
+        return JsonResponse({'error': str(exc)}, status=404)
+    except GeminiTimeoutError as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
+        return JsonResponse({'error': str(exc), 'retryable': True}, status=503)
+    except GeminiJSONError as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
+        return JsonResponse({'error': 'The AI returned an unexpected response format. Please try again or contact support.'}, status=502)
+    except GeminiAPIError as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
         return JsonResponse({'error': str(exc)}, status=500)
+    except Exception as exc:
+        _increment_ai_generation_failure(request)
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
+        return JsonResponse({'error': 'AI generation failed. Please try again later.'}, status=500)
 
     validated_questions = []
     for question in questions:
@@ -453,6 +587,21 @@ def api_generate_ai_questions(request, exam_pk):
         validated_questions.append(question)
 
     return JsonResponse({'status': 'ok', 'questions': validated_questions})
+
+
+@login_required
+def api_ai_request_metrics(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'GET required'}, status=400)
+
+    metrics = AIRequestMetric.objects.filter(exam__created_by=request.user)
+    today = timezone.localdate()
+    summary = list(metrics.values('request_type', 'status').annotate(count=Count('id')))
+    today_summary = list(metrics.filter(date=today).values('status').annotate(count=Count('id')))
+    return JsonResponse({
+        'metrics': summary,
+        'today': today_summary,
+    })
 
 
 @login_required
@@ -491,6 +640,24 @@ def api_generate_ss1_questions(request):
     except EnvironmentError as env_err:
         logging.exception('Environment error when generating SS1 questions')
         return JsonResponse({'success': False, 'error': str(env_err)}, status=500)
+    except GeminiQuotaError as exc:
+        logging.warning('Gemini quota error for SS1 generation: %s', exc)
+        return JsonResponse({'success': False, 'error': str(exc)}, status=503)
+    except GeminiInvalidAPIKeyError as exc:
+        logging.warning('Gemini auth error for SS1 generation: %s', exc)
+        return JsonResponse({'success': False, 'error': str(exc)}, status=401)
+    except GeminiModelNotFoundError as exc:
+        logging.warning('Gemini model error for SS1 generation: %s', exc)
+        return JsonResponse({'success': False, 'error': str(exc)}, status=404)
+    except GeminiTimeoutError as exc:
+        logging.warning('Gemini timeout for SS1 generation: %s', exc)
+        return JsonResponse({'success': False, 'error': str(exc)}, status=503)
+    except GeminiJSONError as exc:
+        logging.warning('Gemini JSON format error for SS1 generation: %s', exc)
+        return JsonResponse({'success': False, 'error': 'The AI returned an unexpected response format. Please try again later.'}, status=502)
+    except GeminiAPIError as exc:
+        logging.warning('Gemini API error for SS1 generation: %s', exc)
+        return JsonResponse({'success': False, 'error': str(exc)}, status=500)
     except Exception as exc:
         logging.exception('Failed to generate SS1 questions')
         return JsonResponse({'success': False, 'error': 'AI generation failed: ' + str(exc)}, status=500)
@@ -715,6 +882,10 @@ class TeacherCBTAnalyticsView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
         context['cbt_active_exams'] = exams.filter(is_active=True, is_published=True).count()
         context['cbt_attempts'] = attempts.count()
         context['cbt_avg_score'] = attempts.aggregate(avg_score=Avg('score'))['avg_score'] or 0
+        today = timezone.localdate()
+        ai_metrics = AIRequestMetric.objects.filter(exam__created_by=self.request.user)
+        context['ai_metrics_summary'] = ai_metrics.values('request_type', 'status').annotate(count=Count('id'))
+        context['ai_metrics_today'] = ai_metrics.filter(date=today).values('status').annotate(count=Count('id'))
         return context
 
 

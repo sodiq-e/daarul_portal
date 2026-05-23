@@ -22,6 +22,31 @@ GEMINI_MODEL_FALLBACKS = [
 # If GEMINI_MODEL is set, use it. Otherwise default to the currently preferred model.
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', DEFAULT_GEMINI_MODEL)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+GEMINI_MOCK_MODE = os.getenv('GEMINI_MOCK_MODE', 'false').strip().lower() in ('1', 'true', 'yes')
+
+
+class GeminiAPIError(Exception):
+    """Base exception for Gemini integration issues."""
+
+
+class GeminiQuotaError(GeminiAPIError):
+    """Gemini quota or rate-limit conditions."""
+
+
+class GeminiInvalidAPIKeyError(GeminiAPIError):
+    """Gemini authentication failures."""
+
+
+class GeminiModelNotFoundError(GeminiAPIError):
+    """Gemini model is not available for the current API version."""
+
+
+class GeminiTimeoutError(GeminiAPIError):
+    """Gemini service timeout or unavailable."""
+
+
+class GeminiJSONError(GeminiAPIError):
+    """Gemini returned invalid JSON or unparsable content."""
 
 try:
     from google import genai
@@ -39,6 +64,10 @@ except ImportError:  # pragma: no cover
     logger.warning(
         'Gemini SDK package google-genai is unavailable. Gemini integration is disabled until the package is installed.'
     )
+
+
+def is_gemini_mock_mode() -> bool:
+    return GEMINI_MOCK_MODE
 
 
 def get_gemini_model() -> str:
@@ -59,8 +88,84 @@ def _is_model_not_found_error(exc: Exception) -> bool:
     return (
         'NOT_FOUND' in message.upper() or
         'not found' in message.lower() or
-        'model' in message.lower() and 'not found' in message.lower()
+        ('model' in message.lower() and 'not found' in message.lower())
     )
+
+
+def _is_quota_error(exc: Exception) -> bool:
+    message = str(exc)
+    return (
+        'RESOURCE_EXHAUSTED' in message.upper() or
+        'quota exceeded' in message.lower() or
+        'rate limit' in message.lower() or
+        'rate-limit' in message.lower()
+    )
+
+
+def _is_invalid_api_key_error(exc: Exception) -> bool:
+    message = str(exc)
+    return (
+        '401' in message or
+        'invalid api key' in message.lower() or
+        'authentication' in message.lower() and 'failed' in message.lower()
+    )
+
+
+def _is_timeout_error(exc: Exception) -> bool:
+    message = str(exc)
+    return (
+        'timeout' in message.lower() or
+        'timed out' in message.lower() or
+        'deadlineexceeded' in message.lower() or
+        'deadline exceeded' in message.lower() or
+        'service unavailable' in message.lower()
+    )
+
+
+def _record_gemini_request_event(status: str, latency: float, model: str, error_code: str = None, tokens_used: int = None):
+    logger.info(
+        'Gemini request event: status=%s model=%s latency=%.3f tokens=%s error=%s',
+        status,
+        model,
+        latency,
+        tokens_used,
+        error_code,
+    )
+
+
+def _format_gemini_error_message(exc: Exception) -> str:
+    if _is_quota_error(exc):
+        return (
+            'AI question generation is temporarily unavailable because the Gemini API quota has been exceeded. '
+            'Please try again later, check Gemini billing/quota, or reduce the number of generated questions.'
+        )
+    if _is_invalid_api_key_error(exc):
+        return (
+            'AI question generation is unavailable because the Gemini API key is invalid. '
+            'Please verify the GEMINI_API_KEY configuration.'
+        )
+    if _is_model_not_found_error(exc):
+        return (
+            'AI question generation is unavailable because the configured Gemini model is invalid or unavailable. '
+            'Please verify the model configuration.'
+        )
+    if _is_timeout_error(exc):
+        return (
+            'AI question generation is temporarily unavailable. Please try again in a few minutes.'
+        )
+    return str(exc)
+
+
+def _translate_gemini_exception(exc: Exception) -> GeminiAPIError:
+    if _is_quota_error(exc):
+        return GeminiQuotaError(_format_gemini_error_message(exc))
+    if _is_invalid_api_key_error(exc):
+        return GeminiInvalidAPIKeyError(_format_gemini_error_message(exc))
+    if _is_model_not_found_error(exc):
+        return GeminiModelNotFoundError(_format_gemini_error_message(exc))
+    if _is_timeout_error(exc):
+        return GeminiTimeoutError(_format_gemini_error_message(exc))
+    return GeminiAPIError(_format_gemini_error_message(exc))
 
 
 def _build_prompt(exam, topic, difficulty, num_questions):
@@ -101,6 +206,38 @@ def _parse_json_from_text(text):
         raise ValueError(f'Unable to parse JSON from AI response: {err}')
 
 
+def _generate_mock_response(num_questions: int, topic: str) -> str:
+    sample_questions = []
+    for idx in range(1, num_questions + 1):
+        sample_questions.append({
+            'prompt': f'Sample question {idx} about {topic or "general knowledge"}.',
+            'question_type': 'mcq',
+            'mark_value': 1.0,
+            'topic': topic or 'General',
+            'difficulty': 'medium',
+            'explanation': f'This is a sample explanation for sample question {idx}.',
+            'choices': [
+                {'text': 'Option A', 'is_correct': idx % 4 == 1, 'order': 0},
+                {'text': 'Option B', 'is_correct': idx % 4 == 2, 'order': 1},
+                {'text': 'Option C', 'is_correct': idx % 4 == 3, 'order': 2},
+                {'text': 'Option D', 'is_correct': idx % 4 == 0, 'order': 3},
+            ],
+        })
+    return json.dumps(sample_questions)
+
+
+def _extract_token_usage(response):
+    if not response:
+        return None
+    if hasattr(response, 'token_usage'):
+        usage = getattr(response, 'token_usage')
+        return getattr(usage, 'total', None) or getattr(usage, 'total_tokens', None) or usage
+    if hasattr(response, 'usage'):
+        usage = getattr(response, 'usage')
+        return getattr(usage, 'total_tokens', None) or getattr(usage, 'prompt_tokens', None) or usage
+    return None
+
+
 def _make_gemini_request(prompt):
     if genai is None or GenerateContentConfig is None:
         raise ImportError(
@@ -127,9 +264,12 @@ def _make_gemini_request(prompt):
         candidate_count=1,
     )
 
+    start_time = time.monotonic()
+    used_model = model_name
+    response = None
     try:
         response = client.models.generate_content(
-            model=model_name,
+            model=used_model,
             contents=prompt,
             config=config,
         )
@@ -141,33 +281,87 @@ def _make_gemini_request(prompt):
                 model_name,
                 fallback_model,
             )
-            response = client.models.generate_content(
-                model=fallback_model,
-                contents=prompt,
-                config=config,
-            )
-            logger.info(
-                'Gemini fallback model retry succeeded; active_model=%s',
-                fallback_model,
-            )
+            used_model = fallback_model
+            try:
+                response = client.models.generate_content(
+                    model=used_model,
+                    contents=prompt,
+                    config=config,
+                )
+            except Exception as exc2:
+                latency = time.monotonic() - start_time
+                _record_gemini_request_event(
+                    status='failure',
+                    latency=latency,
+                    model=used_model,
+                    error_code=exc2.__class__.__name__,
+                    tokens_used=None,
+                )
+                raise _translate_gemini_exception(exc2)
         else:
-            raise
+            latency = time.monotonic() - start_time
+            _record_gemini_request_event(
+                status='failure',
+                latency=latency,
+                model=used_model,
+                error_code=exc.__class__.__name__,
+                tokens_used=None,
+            )
+            raise _translate_gemini_exception(exc)
 
+    latency = time.monotonic() - start_time
+    token_usage = _extract_token_usage(response)
     response_model = getattr(response, 'model', None)
-    logger.info('Gemini generate_content response model=%s', response_model)
+    _record_gemini_request_event(
+        status='success',
+        latency=latency,
+        model=response_model or used_model,
+        error_code=None,
+        tokens_used=token_usage,
+    )
+
+    logger.info('Gemini generate_content response model=%s', response_model or used_model)
 
     text = getattr(response, 'text', None)
     if not text:
-        raise ValueError('No text returned from Gemini API')
+        raise GeminiJSONError('No text returned from Gemini API')
     return text
 
 
+def generate_mock_questions(num_questions: int, topic: str = '') -> List[Dict[str, Any]]:
+    sample_questions = []
+    for idx in range(1, num_questions + 1):
+        sample_questions.append({
+            'prompt': f'Sample question {idx} about {topic or "general knowledge"}.',
+            'question_type': 'mcq',
+            'mark_value': 1.0,
+            'topic': topic or 'General',
+            'difficulty': 'medium',
+            'explanation': f'This is a sample explanation for sample question {idx}.',
+            'choices': [
+                {'text': 'Option A', 'is_correct': idx % 4 == 1, 'order': 0},
+                {'text': 'Option B', 'is_correct': idx % 4 == 2, 'order': 1},
+                {'text': 'Option C', 'is_correct': idx % 4 == 3, 'order': 2},
+                {'text': 'Option D', 'is_correct': idx % 4 == 0, 'order': 3},
+            ],
+        })
+    return sample_questions
+
+
 def generate_ai_questions_using_gemini(exam, topic, difficulty, num_questions):
+    if is_gemini_mock_mode():
+        logger.warning('Gemini mock mode enabled; generating sample questions locally.')
+        return generate_mock_questions(num_questions=num_questions, topic=topic)
+
     prompt = _build_prompt(exam, topic, difficulty, num_questions)
     response_text = _make_gemini_request(prompt)
-    parsed = _parse_json_from_text(response_text)
+    try:
+        parsed = _parse_json_from_text(response_text)
+    except ValueError as err:
+        raise GeminiJSONError(str(err)) from err
+
     if not isinstance(parsed, list):
-        raise ValueError('Gemini response JSON must be an array of questions.')
+        raise GeminiJSONError('Gemini response JSON must be an array of questions.')
     return parsed
 
 
@@ -225,7 +419,11 @@ def _validate_strict_questions(parsed: Any) -> List[Dict[str, Any]]:
 
 def generate_ss1_questions(topic: str = '', num_questions: int = 5) -> List[Dict[str, Any]]:
     """Generate SS1-level MCQs and return strictly validated JSON list."""
-    if not os.getenv('GEMINI_API_KEY'):
+    if is_gemini_mock_mode():
+        logger.warning('Gemini mock mode enabled; generating sample SS1 questions locally.')
+        return generate_mock_questions(num_questions=num_questions, topic=topic)
+
+    if not GEMINI_API_KEY:
         raise EnvironmentError('GEMINI_API_KEY is not configured in environment')
 
     prompt = (

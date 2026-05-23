@@ -109,6 +109,44 @@ class CBTExam(models.Model):
         return True
 
 
+class AIRequestMetric(models.Model):
+    REQUEST_TYPE_GENERATE_AI = 'generate_ai_questions'
+    REQUEST_TYPE_GENERATE_SS1 = 'generate_ss1_questions'
+    REQUEST_TYPE_CHOICES = [
+        (REQUEST_TYPE_GENERATE_AI, 'Generate AI Questions'),
+        (REQUEST_TYPE_GENERATE_SS1, 'Generate SS1 Questions'),
+    ]
+
+    STATUS_SUCCESS = 'success'
+    STATUS_FAILURE = 'failure'
+    STATUS_QUOTA = 'quota_failure'
+    STATUS_THROTTLED = 'throttled'
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, 'Success'),
+        (STATUS_FAILURE, 'Failure'),
+        (STATUS_QUOTA, 'Quota / Rate Limit'),
+        (STATUS_THROTTLED, 'Throttled'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='ai_request_metrics')
+    exam = models.ForeignKey(CBTExam, on_delete=models.SET_NULL, null=True, blank=True, related_name='ai_request_metrics')
+    date = models.DateField(default=timezone.localdate)
+    request_type = models.CharField(max_length=64, choices=REQUEST_TYPE_CHOICES, default=REQUEST_TYPE_GENERATE_AI)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_FAILURE)
+    error_code = models.CharField(max_length=128, blank=True)
+    latency_ms = models.PositiveIntegerField(null=True, blank=True)
+    token_usage = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'AI Request Metric'
+        verbose_name_plural = 'AI Request Metrics'
+
+    def __str__(self):
+        return f"{self.user or 'Unknown'} {self.request_type} {self.status} on {self.date}"
+
+
 class CBTQuestion(models.Model):
     MCQ = 'mcq'
     MULTIPLE = 'multiple'

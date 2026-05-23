@@ -64,7 +64,7 @@
     <div id="preview-section" class="d-none">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5>Preview and edit generated questions</h5>
-            <button id="btn-save-generated" class="btn btn-success">Save All to Exam</button>
+            <button id="btn-save-generated" class="btn btn-success" disabled>Save All to Exam</button>
         </div>
         <div id="preview-questions"></div>
     </div>
@@ -106,6 +106,26 @@
     function clearMessage(){
         messageBox.className = 'alert d-none';
         messageBox.textContent = '';
+    }
+
+    function buildAIErrorMessage(error){
+        const message = String(error || '').trim();
+        if (/quota|resource_exhausted|rate limit|rate-limit/i.test(message)){
+            return 'AI question generation is temporarily unavailable because the Gemini API quota has been exceeded. Please try again later, check Gemini billing/quota, or reduce the number of generated questions.';
+        }
+        if (/401|invalid api key|authentication failed|api key/i.test(message)){
+            return 'AI question generation is unavailable because the Gemini API key is invalid. Please verify your Gemini configuration and API key.';
+        }
+        if (/404|model not found|invalid model/i.test(message)){
+            return 'AI question generation is unavailable because the configured Gemini model is invalid or unavailable. Please verify the model configuration.';
+        }
+        if (/timeout|timed out|deadline exceeded|service unavailable|temporarily unavailable/i.test(message)){
+            return 'AI question generation is temporarily unavailable. Please try again in a few minutes.';
+        }
+        if (/invalid json|unexpected response/i.test(message)){
+            return 'The AI returned an unexpected response format. Please try again or contact support.';
+        }
+        return message || 'AI generation failed. Please try again later.';
     }
 
     function buildQuestionPreview(question, index){
@@ -228,8 +248,6 @@
         clearMessage();
         btnGenerate.disabled = true;
         btnGenerate.textContent = 'Generating...';
-        previewContainer.innerHTML = '';
-        previewSection.classList.add('d-none');
 
         const topic = document.getElementById('ai-topic').value.trim();
         const difficulty = document.getElementById('ai-difficulty').value;
@@ -253,6 +271,7 @@
                 throw new Error('No questions returned from AI.');
             }
 
+            previewContainer.innerHTML = '';
             data.questions.forEach((question, index) => {
                 const preview = buildQuestionPreview(question, index);
                 previewContainer.appendChild(preview);
@@ -261,7 +280,8 @@
             btnSave.disabled = false;
             setMessage('Preview generated. Edit question text and choices before saving.', 'success');
         } catch (err) {
-            setMessage(err.message || 'AI generation failed.', 'danger');
+            const friendlyMessage = buildAIErrorMessage(err.message || err);
+            setMessage(friendlyMessage, 'danger');
         } finally {
             btnGenerate.disabled = false;
             btnGenerate.textContent = 'Generate Preview';
