@@ -31,30 +31,34 @@
     <div class="card generator-card">
         <div class="card-body">
             <h5 class="card-title">Generate draft questions</h5>
-            <div class="row gy-3">
-                <div class="col-md-4">
-                    <label class="form-label">Topic or concept</label>
-                    <input id="ai-topic" class="form-control" placeholder="E.g. algebraic expressions, world history" value="">
+            {% if ai_generation_enabled %}
+                <div class="row gy-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Topic or concept</label>
+                        <input id="ai-topic" class="form-control" placeholder="E.g. algebraic expressions, world history" value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Difficulty</label>
+                        <select id="ai-difficulty" class="form-control">
+                            {% for val,label in DIFFICULTY_CHOICES %}
+                                <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Number of questions</label>
+                        <input id="ai-num-questions" type="number" min="1" max="20" value="5" class="form-control">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button id="btn-generate-ai" class="btn btn-primary w-100">Generate Preview</button>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label">Difficulty</label>
-                    <select id="ai-difficulty" class="form-control">
-                        {% for val,label in DIFFICULTY_CHOICES %}
-                            <option value="{{ val }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Number of questions</label>
-                    <input id="ai-num-questions" type="number" min="1" max="20" value="5" class="form-control">
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button id="btn-generate-ai" class="btn btn-primary w-100">Generate Preview</button>
-                </div>
-            </div>
+            {% else %}
+                <div class="alert alert-warning mb-0">AI question generation is temporarily disabled. Please try again later.</div>
+            {% endif %}
             <div class="mt-3">
                 <p class="text-muted mb-0">This preview is generated server-side and saved only when you hit <strong>Save All</strong>.</p>
-                <p class="text-muted mb-0">Gemini API usage requires a valid <code>GEMINI_API_KEY</code> and optional <code>GEMINI_API_URL</code> environment setting.</p>
+                <p class="text-muted mb-0">The generator uses Groq as the primary provider and Gemini as a fallback when needed.</p>
             </div>
         </div>
     </div>

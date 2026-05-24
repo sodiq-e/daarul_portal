@@ -126,3 +126,5 @@ if not DEBUG:
     SECURE_CONTENT_SECURITY_POLICY = {
         "default-src": ("'self'",),
     }
+
+AI_GENERATION_ENABLED = os.environ.get('AI_GENERATION_ENABLED', 'True').strip().lower() not in ('0', 'false', 'no')

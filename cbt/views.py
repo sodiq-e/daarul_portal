@@ -14,6 +14,8 @@ from django.utils import timezone
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.core.cache import cache
 from .models import (
     CBTExam,
     CBTQuestion,
@@ -27,8 +29,8 @@ from .models import (
 )
 from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
 from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
+from .ai_provider import generate_ai_questions
 from .gemini_service import (
-    generate_ai_questions_using_gemini,
     validate_generated_question_payload,
     generate_ss1_questions,
     GeminiQuotaError,
@@ -45,6 +47,7 @@ import json
 
 AI_GENERATION_THROTTLE_SECONDS = int(os.getenv('AI_GENERATION_THROTTLE_SECONDS', '8'))
 AI_GENERATION_SESSION_KEY = 'cbt_ai_generation'
+AI_GENERATION_RATE_LIMIT_PER_MINUTE = int(os.getenv('AI_GENERATION_RATE_LIMIT_PER_MINUTE', '5'))
 
 
 def _increment_ai_generation_failure(request):
@@ -52,6 +55,19 @@ def _increment_ai_generation_failure(request):
     throttle_data['daily_failed_requests'] = throttle_data.get('daily_failed_requests', 0) + 1
     request.session[AI_GENERATION_SESSION_KEY] = throttle_data
     request.session.modified = True
+
+
+def _enforce_ai_rate_limit(request):
+    if not getattr(settings, 'AI_GENERATION_ENABLED', True):
+        return JsonResponse({'error': 'AI question generation is currently disabled. Please try again later.'}, status=503)
+
+    rate_limit_key = f'cbt:ai:rate-limit:{request.user.pk}'
+    current = cache.get(rate_limit_key) or 0
+    if current >= AI_GENERATION_RATE_LIMIT_PER_MINUTE:
+        return JsonResponse({'error': 'AI question generation rate limit exceeded. Please wait a minute and try again.'}, status=429)
+
+    cache.set(rate_limit_key, current + 1, 60)
+    return None
 
 
 def is_cbt_teacher(user):
@@ -453,6 +469,13 @@ def api_generate_ai_questions(request, exam_pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
 
+    rate_limit_response = _enforce_ai_rate_limit(request)
+    if rate_limit_response is not None:
+        return rate_limit_response
+
+    if not getattr(settings, 'AI_GENERATION_ENABLED', True):
+        return JsonResponse({'error': 'AI question generation is currently disabled. Please try again later.'}, status=503)
+
     exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
     if not exam.allow_ai_questions:
         return JsonResponse({'error': 'AI question generation is not enabled for this exam.'}, status=403)
@@ -493,7 +516,12 @@ def api_generate_ai_questions(request, exam_pk):
 
     try:
         start_ts = time.time()
-        questions = generate_ai_questions_using_gemini(exam=exam, topic=topic, difficulty=difficulty, num_questions=num_questions)
+        questions = generate_ai_questions(
+            exam=exam,
+            topic=topic,
+            difficulty=difficulty,
+            num_questions=num_questions,
+        )
         latency_ms = int((time.time() - start_ts) * 1000)
         throttle_data['daily_successful_requests'] = throttle_data.get('daily_successful_requests', 0) + 1
         request.session[AI_GENERATION_SESSION_KEY] = throttle_data
@@ -894,11 +922,14 @@ class TeacherCBTAIGeneratorView(LoginRequiredMixin, UserPassesTestMixin, Templat
     template_name = 'cbt/ai_question_generator.html'
 
     def test_func(self):
-        return CBTExam.objects.filter(
-            pk=self.kwargs.get('exam_pk'),
-            created_by=self.request.user,
-            allow_ai_questions=True
-        ).exists()
+        return (
+            getattr(settings, 'AI_GENERATION_ENABLED', True)
+            and CBTExam.objects.filter(
+                pk=self.kwargs.get('exam_pk'),
+                created_by=self.request.user,
+                allow_ai_questions=True,
+            ).exists()
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -906,6 +937,7 @@ class TeacherCBTAIGeneratorView(LoginRequiredMixin, UserPassesTestMixin, Templat
         context['exam'] = exam
         context['QUESTION_TYPE_CHOICES'] = CBTQuestion.QUESTION_TYPE_CHOICES
         context['DIFFICULTY_CHOICES'] = CBTQuestion.DIFFICULTY_CHOICES
+        context['ai_generation_enabled'] = getattr(settings, 'AI_GENERATION_ENABLED', True)
         return context
 
 
