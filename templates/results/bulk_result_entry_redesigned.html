@@ -1,0 +1,806 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load form_filters %}
+
+{% block title %}📊 Result Entry - {{ school_class }} - {{ term }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 mb-5" style="max-width: 1800px; padding: 0 12px;">
+    <!-- Header -->
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <h1 style="font-weight: 700; color: #1a1a1a; margin: 0; font-size: 1.8rem;">📊 Result Entry Sheet</h1>
+                <p class="text-muted mb-0" style="font-size: 0.95rem;"><strong>{{ school_class }}</strong> • {{ term }} • {{ students.count }} students • {{ class_subjects.count }} subjects</p>
+            </div>
+            <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-outline-secondary btn-sm">
+                ← Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="margin-bottom: 16px; padding: 10px 16px; font-size: 0.95rem;">
+                {{ message }}
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-0" id="resultTabs" role="tablist" style="border-bottom: 2px solid #e0e0e0;">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="scores-tab" data-bs-toggle="tab" data-bs-target="#scores-pane" type="button" role="tab" aria-controls="scores-pane" aria-selected="true" style="padding: 12px 16px; font-weight: 500; border: none; color: #666;">
+                📝 Test & Exam Scores
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="conduct-tab" data-bs-toggle="tab" data-bs-target="#conduct-pane" type="button" role="tab" aria-controls="conduct-pane" aria-selected="false" style="padding: 12px 16px; font-weight: 500; border: none; color: #999;">
+                ⭐ Conduct & Behavior
+            </button>
+        </li>
+    </ul>
+
+    <!-- Main Form Wrapping All Tabs -->
+    <form method="POST" id="resultForm" class="result-form">
+        {% csrf_token %}
+        <div class="tab-content" id="resultTabContent">
+            <!-- Scores Tab -->
+            <div class="tab-pane fade show active" id="scores-pane" role="tabpanel" aria-labelledby="scores-tab">
+                <div class="score-table-wrapper">
+                    <table class="score-table">
+                        <thead>
+                            <tr class="table-header">
+                                <th class="col-student">👤 Student Name</th>
+                                <th class="col-admission">Admission #</th>
+                                {% for subject in class_subjects %}
+                                    <th colspan="2" class="col-subject" data-subject-id="{{ subject.id }}">{{ subject.subject.name }}</th>
+                                {% endfor %}
+                            </tr>
+                            <tr class="table-subheader">
+                                <th colspan="2"></th>
+                                {% for subject in class_subjects %}
+                                    <th class="score-type">Test</th>
+                                    <th class="score-type">Exam</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr class="score-row" data-student-id="{{ student.id }}">
+                                <td class="col-student sticky-col">{{ student.full_name }}</td>
+                                <td class="col-admission sticky-col">{{ student.admission_no }}</td>
+                                
+                                {% for subject in class_subjects %}
+                                    {% with result=results_by_student_subject|dict_lookup:student.id|dict_lookup:subject.id %}
+                                        <td class="score-cell">
+                                            <input 
+                                                type="number" 
+                                                name="test_{{ student.id }}_{{ subject.id }}"
+                                                value="{% if result and result.test_score is not None %}{{ result.test_score }}{% endif %}"
+                                                min="0"
+                                                max="{{ result_template.test_max_score }}"
+                                                step="0.5"
+                                                placeholder="—"
+                                                class="score-input test-input"
+                                                data-student="{{ student.id }}"
+                                                data-subject="{{ subject.id }}"
+                                                data-type="test"
+                                            >
+                                        </td>
+                                        
+                                        <td class="score-cell">
+                                            <input 
+                                                type="number" 
+                                                name="exam_{{ student.id }}_{{ subject.id }}"
+                                                value="{% if result and result.exam_score is not None %}{{ result.exam_score }}{% endif %}"
+                                                min="0"
+                                                max="{{ result_template.exam_max_score }}"
+                                                step="0.5"
+                                                placeholder="—"
+                                                class="score-input exam-input"
+                                                data-student="{{ student.id }}"
+                                                data-subject="{{ subject.id }}"
+                                                data-type="exam"
+                                            >
+                                        </td>
+                                    {% endwith %}
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Conduct Tab -->
+            <div class="tab-pane fade" id="conduct-pane" role="tabpanel" aria-labelledby="conduct-tab">
+                <div class="conduct-container">
+                    {% for student in students %}
+                    <div class="conduct-card">
+                        <div class="conduct-header">
+                            <div class="student-name">{{ student.full_name }}</div>
+                            <div class="student-adm">{{ student.admission_no }}</div>
+                        </div>
+                        
+                        {% with conduct=conduct_by_student|dict_lookup:student.id %}
+                        <div class="conduct-grid">
+                            <!-- Attendance -->
+                            <div class="field-group">
+                                <label class="field-label">📋 Attendance</label>
+                                <select name="attendance_{{ student.id }}" class="conduct-select">
+                                    <option value="">—</option>
+                                    <option value="Excellent" {% if conduct and conduct.attendance == 'Excellent' %}selected{% endif %}>Excellent (95-100%)</option>
+                                    <option value="Very Good" {% if conduct and conduct.attendance == 'Very Good' %}selected{% endif %}>Very Good (85-94%)</option>
+                                    <option value="Good" {% if not conduct or conduct.attendance == 'Good' %}selected{% endif %}>Good (75-84%)</option>
+                                    <option value="Fair" {% if conduct and conduct.attendance == 'Fair' %}selected{% endif %}>Fair (65-74%)</option>
+                                    <option value="Poor" {% if conduct and conduct.attendance == 'Poor' %}selected{% endif %}>Poor (&lt;65%)</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Conduct -->
+                            <div class="field-group">
+                                <label class="field-label">🎓 Conduct</label>
+                                <select name="conduct_{{ student.id }}" class="conduct-select">
+                                    <option value="">—</option>
+                                    <option value="Excellent" {% if conduct and conduct.conduct == 'Excellent' %}selected{% endif %}>Excellent</option>
+                                    <option value="Very Good" {% if conduct and conduct.conduct == 'Very Good' %}selected{% endif %}>Very Good</option>
+                                    <option value="Good" {% if not conduct or conduct.conduct == 'Good' %}selected{% endif %}>Good</option>
+                                    <option value="Fair" {% if conduct and conduct.conduct == 'Fair' %}selected{% endif %}>Fair</option>
+                                    <option value="Poor" {% if conduct and conduct.conduct == 'Poor' %}selected{% endif %}>Poor</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Punctuality -->
+                            <div class="field-group">
+                                <label class="field-label">⏰ Punctuality</label>
+                                <select name="punctuality_{{ student.id }}" class="conduct-select">
+                                    <option value="">—</option>
+                                    <option value="Excellent" {% if conduct and conduct.punctuality == 'Excellent' %}selected{% endif %}>Always on time</option>
+                                    <option value="Very Good" {% if conduct and conduct.punctuality == 'Very Good' %}selected{% endif %}>Usually on time</option>
+                                    <option value="Good" {% if not conduct or conduct.punctuality == 'Good' %}selected{% endif %}>Mostly on time</option>
+                                    <option value="Fair" {% if conduct and conduct.punctuality == 'Fair' %}selected{% endif %}>Often late</option>
+                                    <option value="Poor" {% if conduct and conduct.punctuality == 'Poor' %}selected{% endif %}>Frequently late</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Attentiveness -->
+                            <div class="field-group">
+                                <label class="field-label">👁️ Attentiveness</label>
+                                <select name="attentiveness_{{ student.id }}" class="conduct-select">
+                                    <option value="">—</option>
+                                    <option value="Excellent" {% if conduct and conduct.attentiveness == 'Excellent' %}selected{% endif %}>Excellent</option>
+                                    <option value="Very Good" {% if conduct and conduct.attentiveness == 'Very Good' %}selected{% endif %}>Very Good</option>
+                                    <option value="Good" {% if not conduct or conduct.attentiveness == 'Good' %}selected{% endif %}>Good</option>
+                                    <option value="Fair" {% if conduct and conduct.attentiveness == 'Fair' %}selected{% endif %}>Fair</option>
+                                    <option value="Poor" {% if conduct and conduct.attentiveness == 'Poor' %}selected{% endif %}>Poor</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Participation -->
+                            <div class="field-group">
+                                <label class="field-label">🙋 Participation</label>
+                                <select name="participation_{{ student.id }}" class="conduct-select">
+                                    <option value="">—</option>
+                                    <option value="Excellent" {% if conduct and conduct.participation == 'Excellent' %}selected{% endif %}>Excellent</option>
+                                    <option value="Very Good" {% if conduct and conduct.participation == 'Very Good' %}selected{% endif %}>Very Good</option>
+                                    <option value="Good" {% if not conduct or conduct.participation == 'Good' %}selected{% endif %}>Good</option>
+                                    <option value="Fair" {% if conduct and conduct.participation == 'Fair' %}selected{% endif %}>Fair</option>
+                                    <option value="Poor" {% if conduct and conduct.participation == 'Poor' %}selected{% endif %}>Poor</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Teacher Notes -->
+                        <div class="notes-group">
+                            <label class="field-label">📝 Teacher Notes</label>
+                            <textarea 
+                                name="teacher_notes_{{ student.id }}" 
+                                class="conduct-textarea"
+                                placeholder="Comments about student progress"
+                            >{% if conduct and conduct.teacher_notes %}{{ conduct.teacher_notes }}{% endif %}</textarea>
+                        </div>
+                        {% endwith %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Submit Button Bar -->
+    <div class="submit-bar">
+        <button type="submit" form="resultForm" class="btn btn-primary" id="submitBtn">
+            💾 Save All Results
+        </button>
+        <a href="{% url 'teacher_class_results' class_id=school_class.id term_id=term.id %}" class="btn btn-outline-secondary">
+            Cancel
+        </a>
+    </div>
+
+    <!-- Info Panels -->
+    <div class="info-panels mt-4">
+        <div class="info-panel">
+            <h6 class="panel-title">💡 Test & Exam Scores</h6>
+            <ul class="panel-list">
+                <li>Click a cell to enter a score</li>
+                <li>Use <kbd>Tab</kbd> to move right, <kbd>Shift+Tab</kbd> to move left</li>
+                <li>Use arrow keys to navigate rows</li>
+                <li>Leave blank for no score</li>
+                <li><strong>Max Test:</strong> {{ result_template.test_max_score }} | <strong>Max Exam:</strong> {{ result_template.exam_max_score }}</li>
+            </ul>
+        </div>
+        <div class="info-panel">
+            <h6 class="panel-title">⭐ Conduct Assessment</h6>
+            <ul class="panel-list">
+                <li><strong>Attendance:</strong> Based on percentage presence</li>
+                <li><strong>Conduct:</strong> General behavior and discipline</li>
+                <li><strong>Punctuality:</strong> Arrival punctuality</li>
+                <li><strong>Attentiveness:</strong> Focus and concentration in class</li>
+                <li><strong>Participation:</strong> Active classroom involvement</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ===== CORE LAYOUT ===== */
+.result-form {
+    display: block;
+}
+
+/* ===== SCORE TABLE ===== */
+.score-table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin: 16px 0;
+    background: white;
+}
+
+.score-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.table-header,
+.table-subheader {
+    background: #f5f5f5;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.table-header th {
+    background: #2c3e50;
+    color: white;
+    padding: 10px 8px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #34495e;
+    position: sticky;
+    top: 0;
+    z-index: 21;
+}
+
+.table-subheader th {
+    background: #ecf0f1;
+    color: #2c3e50;
+    padding: 8px 6px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-align: center;
+    border-bottom: 2px solid #bdc3c7;
+    position: sticky;
+    top: 40px;
+    z-index: 20;
+}
+
+.col-student {
+    min-width: 160px;
+    position: sticky;
+    left: 0;
+    z-index: 15;
+    text-align: left;
+}
+
+.col-admission {
+    min-width: 90px;
+    position: sticky;
+    left: 160px;
+    z-index: 14;
+    text-align: center;
+}
+
+.col-subject {
+    background: #e8f4f8 !important;
+    color: #0066cc;
+    min-width: 100px;
+    text-align: center;
+}
+
+.score-type {
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: #555;
+}
+
+.score-row {
+    border-bottom: 1px solid #e8e8e8;
+    transition: background 0.15s ease;
+}
+
+.score-row:hover {
+    background: #f9f9f9;
+}
+
+.score-row:focus-within {
+    background: #f0f7ff;
+}
+
+.sticky-col {
+    background: #fafafa;
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    z-index: 10;
+}
+
+.col-admission.sticky-col {
+    left: 160px;
+    z-index: 9;
+}
+
+.score-cell {
+    padding: 4px 2px;
+    text-align: center;
+    border-right: 1px solid #f0f0f0;
+}
+
+.score-cell:last-child {
+    border-right: none;
+}
+
+.score-input {
+    width: 100%;
+    min-width: 50px;
+    padding: 6px 4px;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    text-align: center;
+    font-size: 0.9rem;
+    background: white;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.score-input::placeholder {
+    color: #ccc;
+}
+
+.score-input:focus {
+    outline: none;
+    background: #fffbea;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+
+.score-input.test-input:focus {
+    border-color: #ffc107;
+}
+
+.score-input.exam-input:focus {
+    border-color: #17a2b8;
+}
+
+/* ===== CONDUCT CARDS ===== */
+.conduct-container {
+    display: grid;
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.conduct-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 16px;
+    transition: box-shadow 0.2s ease;
+}
+
+.conduct-card:focus-within {
+    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.12);
+    border-color: #0066cc;
+}
+
+.conduct-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.student-name {
+    font-weight: 600;
+    color: #1a1a1a;
+    font-size: 0.95rem;
+}
+
+.student-adm {
+    color: #999;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.conduct-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.field-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.conduct-select {
+    padding: 6px 8px;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    background: white;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.conduct-select:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+
+.notes-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.conduct-textarea {
+    padding: 8px;
+    border: 1px solid #d0d0d0;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 60px;
+    transition: all 0.15s ease;
+}
+
+.conduct-textarea:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+
+/* ===== SUBMIT BAR ===== */
+.submit-bar {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 16px 0;
+    margin-top: 16px;
+    border-top: 1px solid #e0e0e0;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    z-index: 30;
+}
+
+.submit-bar .btn {
+    padding: 8px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.submit-bar .btn-primary {
+    background: #0066cc;
+    border-color: #0066cc;
+    color: white;
+}
+
+.submit-bar .btn-primary:hover {
+    background: #0052a3;
+    border-color: #0052a3;
+}
+
+.submit-bar .btn-outline-secondary {
+    border: 1px solid #d0d0d0;
+    color: #666;
+    background: white;
+}
+
+.submit-bar .btn-outline-secondary:hover {
+    background: #f5f5f5;
+    border-color: #999;
+    color: #333;
+}
+
+/* ===== INFO PANELS ===== */
+.info-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.info-panel {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 14px;
+}
+
+.panel-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 10px;
+}
+
+.panel-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.panel-list li {
+    padding: 4px 0;
+    line-height: 1.4;
+}
+
+.panel-list kbd {
+    background: #e8e8e8;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: #333;
+}
+
+/* ===== TAB STYLING ===== */
+.nav-tabs {
+    border-bottom: 2px solid #e0e0e0 !important;
+    margin-bottom: 0 !important;
+}
+
+.nav-tabs .nav-link {
+    color: #999;
+    border: none !important;
+    padding: 12px 16px !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #0066cc;
+    border-bottom: 3px solid #0066cc !important;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0066cc !important;
+    border-bottom: 3px solid #0066cc !important;
+    background: transparent !important;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .score-table-wrapper {
+        max-height: 80vh;
+    }
+
+    .score-input {
+        min-width: 45px;
+        padding: 5px 2px;
+        font-size: 0.85rem;
+    }
+
+    .conduct-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .submit-bar {
+        flex-direction: column;
+    }
+
+    .submit-bar .btn {
+        width: 100%;
+    }
+
+    .info-panels {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .table-header th,
+    .table-subheader th {
+        padding: 8px 4px;
+        font-size: 0.8rem;
+    }
+
+    .col-student {
+        min-width: 130px;
+    }
+
+    .col-admission {
+        min-width: 70px;
+    }
+
+    .score-cell {
+        padding: 3px 1px;
+    }
+
+    .score-input {
+        min-width: 40px;
+        padding: 4px 2px;
+        font-size: 0.8rem;
+    }
+
+    .conduct-card {
+        padding: 12px;
+    }
+
+    .conduct-header {
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .panel-list li {
+        font-size: 0.8rem;
+    }
+}
+</style>
+
+<script>
+// ===== ENHANCED KEYBOARD NAVIGATION =====
+const scoreInputs = document.querySelectorAll('.score-input');
+const conductSelects = document.querySelectorAll('.conduct-select');
+
+scoreInputs.forEach(input => {
+    input.addEventListener('keydown', function(e) {
+        const row = this.closest('tr');
+        const allInputsInRow = Array.from(row.querySelectorAll('.score-input'));
+        const currentIndex = allInputsInRow.indexOf(this);
+        
+        if (e.key === 'Tab' && !e.shiftKey) {
+            // Tab: move to next input in row, then to next row's first input
+            if (currentIndex < allInputsInRow.length - 1) {
+                e.preventDefault();
+                allInputsInRow[currentIndex + 1].focus();
+                allInputsInRow[currentIndex + 1].select();
+            } else {
+                const nextRow = row.nextElementSibling;
+                if (nextRow) {
+                    e.preventDefault();
+                    const firstInput = nextRow.querySelector('.score-input');
+                    if (firstInput) {
+                        firstInput.focus();
+                        firstInput.select();
+                    }
+                }
+            }
+        } else if (e.key === 'Tab' && e.shiftKey) {
+            // Shift+Tab: move to previous input in row, then to previous row's last input
+            if (currentIndex > 0) {
+                e.preventDefault();
+                allInputsInRow[currentIndex - 1].focus();
+                allInputsInRow[currentIndex - 1].select();
+            } else {
+                const prevRow = row.previousElementSibling;
+                if (prevRow) {
+                    e.preventDefault();
+                    const lastInput = prevRow.querySelector('.score-input:last-of-type');
+                    if (lastInput) {
+                        lastInput.focus();
+                        lastInput.select();
+                    }
+                }
+            }
+        } else if (e.key === 'ArrowRight') {
+            // Right: move to next input in row
+            e.preventDefault();
+            if (currentIndex < allInputsInRow.length - 1) {
+                allInputsInRow[currentIndex + 1].focus();
+            }
+        } else if (e.key === 'ArrowLeft') {
+            // Left: move to previous input in row
+            e.preventDefault();
+            if (currentIndex > 0) {
+                allInputsInRow[currentIndex - 1].focus();
+            }
+        } else if (e.key === 'ArrowDown') {
+            // Down: move to same input in next row
+            e.preventDefault();
+            const nextRow = row.nextElementSibling;
+            if (nextRow) {
+                const nextInputs = Array.from(nextRow.querySelectorAll('.score-input'));
+                if (nextInputs[currentIndex]) {
+                    nextInputs[currentIndex].focus();
+                }
+            }
+        } else if (e.key === 'ArrowUp') {
+            // Up: move to same input in previous row
+            e.preventDefault();
+            const prevRow = row.previousElementSibling;
+            if (prevRow) {
+                const prevInputs = Array.from(prevRow.querySelectorAll('.score-input'));
+                if (prevInputs[currentIndex]) {
+                    prevInputs[currentIndex].focus();
+                }
+            }
+        } else if (e.key === 'Enter') {
+            // Enter: move down one row
+            e.preventDefault();
+            const nextRow = row.nextElementSibling;
+            if (nextRow) {
+                const nextInputs = Array.from(nextRow.querySelectorAll('.score-input'));
+                if (nextInputs[currentIndex]) {
+                    nextInputs[currentIndex].focus();
+                }
+            }
+        }
+    });
+
+    // Auto-select on focus
+    input.addEventListener('focus', function() {
+        this.select();
+    });
+
+    // Format input (numbers and decimal only)
+    input.addEventListener('input', function() {
+        if (this.value) {
+            this.value = this.value.replace(/[^0-9.]/g, '');
+        }
+    });
+});
+
+// ===== FORM SUBMISSION =====
+document.getElementById('resultForm').addEventListener('submit', function(e) {
+    if (!confirm('Save all results and conduct records?\n\nThis action cannot be undone.')) {
+        e.preventDefault();
+    }
+});
+
+// ===== TAB SWITCHER =====
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.nav-tabs .nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        this.classList.add('active');
+    });
+});
+</script>
+{% endblock %}
