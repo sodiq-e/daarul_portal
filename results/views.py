@@ -872,7 +872,7 @@ def bulk_result_entry(request, class_id, term_id):
         'conduct_by_student': conduct_by_student,
     }
 
-    return render(request, 'results/bulk_result_entry_redesigned.html', context)
+    return render(request, 'results/bulk_result_entry.html', context)
 
 
 @login_required
