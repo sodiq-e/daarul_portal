@@ -879,18 +879,27 @@ html, body {
         width: 100%;
       }
 
-      /* Switch to card layout on mobile */
-      .table-responsive thead {
+      .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .table-responsive table {
+        min-width: 100%;
+      }
+
+      /* Optional card-style layout for explicitly marked tables */
+      .table-responsive.card-layout thead {
         display: none;
       }
 
-      .table-responsive tbody,
-      .table-responsive tr {
+      .table-responsive.card-layout tbody,
+      .table-responsive.card-layout tr {
         display: block;
         width: 100%;
       }
 
-      .table-responsive tr {
+      .table-responsive.card-layout tr {
         border: 1px solid #e0e0e0;
         border-radius: 8px;
         margin-bottom: 12px;
@@ -899,7 +908,7 @@ html, body {
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       }
 
-      .table-responsive td {
+      .table-responsive.card-layout td {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -908,19 +917,19 @@ html, body {
         border-bottom: 1px solid #f0f0f0;
       }
 
-      .table-responsive td:last-child {
+      .table-responsive.card-layout td:last-child {
         border-bottom: none;
       }
 
-      .table-responsive td::before {
+      .table-responsive.card-layout td::before {
         content: attr(data-label);
         font-weight: 600;
         color: var(--primary-color);
         flex: 0 0 40%;
       }
       /* Ensure action buttons inside responsive table cells don't stretch vertically */
-      .table-responsive td .btn,
-      .table-responsive td button {
+      .table-responsive.card-layout td .btn,
+      .table-responsive.card-layout td button {
         height: auto !important;
         align-self: center !important;
         display: inline-flex !important;
@@ -929,7 +938,7 @@ html, body {
         padding: 6px 8px !important;
       }
 
-      .table-responsive td:last-child::before {
+      .table-responsive.card-layout td:last-child::before {
         display: none;
       }
 
@@ -1186,8 +1195,9 @@ html, body {
       position: fixed;
       right: -350px;
       top: 0;
-      width: 350px;
-      height: 100vh;
+      width: min(350px, 100%);
+      max-width: 100%;
+      max-height: 100vh;
       background: white;
       border-left: 1px solid #ddd;
       z-index: 9997;
@@ -2021,7 +2031,8 @@ html, body {
       border-radius: 8px;
       padding: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      min-width: 300px;
+      min-width: min(300px, 100%);
+      max-width: 90vw;
       z-index: 9900;
       animation: slideInRight 0.3s ease-out;
       display: flex;
@@ -2385,27 +2396,18 @@ html, body {
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease, left 0.2s ease;
-  pointer-events: none;
-  z-index: 1000;
-  font-weight: 500;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  min-width: max-content;
-  max-width: none;
-}
-
-.sidebar.collapsed a:hover::after {
-  opacity: 1;
-  visibility: visible;
-  left: calc(100% + 16px);
-}
-
-/* Hide logout form text in collapsed mode */
-.sidebar.collapsed form button {
-  width: 54px !important;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, left 0.2s ease;
+    pointer-events: none;
+    z-index: 1000;
+    font-weight: 500;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    min-width: 0;
+    max-width: 220px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   height: 54px;
   padding: 0 !important;
   margin: 6px auto;
@@ -2436,27 +2438,18 @@ html, body {
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease, left 0.2s ease;
-  pointer-events: none;
-  z-index: 1000;
-  font-weight: 500;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  min-width: max-content;
-  max-width: none;
-}
-
-.sidebar.collapsed form button:hover::after {
-  opacity: 1;
-  visibility: visible;
-  left: calc(100% + 16px);
-}
-
-.sidebar a {
-  display: flex;
-  align-items: center;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease, left 0.2s ease;
+    pointer-events: none;
+    z-index: 1000;
+    font-weight: 500;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    min-width: 0;
+    max-width: 220px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   gap: 12px;
   padding: 12px 14px;
   color: white;
