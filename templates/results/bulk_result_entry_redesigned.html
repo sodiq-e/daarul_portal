@@ -255,6 +255,7 @@
 .score-table-wrapper {
     overflow-x: auto;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     max-height: 70vh;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
@@ -263,7 +264,8 @@
 }
 
 .score-table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
 }
