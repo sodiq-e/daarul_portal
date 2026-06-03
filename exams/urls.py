@@ -16,4 +16,17 @@ urlpatterns = [
     path('exams/add/', views.ExamCreateView.as_view(), name='exam_add'),
     path('exams/<int:pk>/edit/', views.ExamUpdateView.as_view(), name='exam_edit'),
     path('exams/<int:pk>/delete/', views.ExamDeleteView.as_view(), name='exam_delete'),
+
+    # Teacher exam paper workflow
+    path('exam-papers/', views.TeacherExamPaperListView.as_view(), name='exam_paper_list'),
+    path('exam-papers/add/', views.TeacherExamPaperCreateView.as_view(), name='exam_paper_add'),
+    path('exam-papers/<int:pk>/edit/', views.TeacherExamPaperEditView.as_view(), name='exam_paper_edit'),
+    path('exam-papers/<int:pk>/', views.TeacherExamPaperDetailView.as_view(), name='exam_paper_detail'),
+    path('exam-papers/save-draft/', views.ExamPaperSaveView.as_view(), name='exam_paper_save'),
+    path('exam-papers/submit/', views.ExamPaperSubmitView.as_view(), name='exam_paper_submit'),
+
+    # Admin review workflow
+    path('admin/exam-papers/', views.AdminExamPaperListView.as_view(), name='admin_exam_paper_list'),
+    path('admin/exam-papers/<int:pk>/', views.AdminExamPaperDetailView.as_view(), name='admin_exam_paper_detail'),
+    path('admin/exam-papers/<int:pk>/action/', views.AdminExamPaperActionView.as_view(), name='admin_exam_paper_action'),
 ]

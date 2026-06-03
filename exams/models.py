@@ -108,3 +108,121 @@ class Exam(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.school_class} ({self.term})"
+
+
+class ExamPaper(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('returned', 'Returned for Review'),
+    ]
+
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='exam_papers')
+    school_class = models.ForeignKey(SchoolClasses, on_delete=models.CASCADE, related_name='exam_papers')
+    teacher = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='created_exams')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='exam_papers')
+    academic_session = models.CharField(max_length=20, help_text='e.g., 2023/2024')
+    duration = models.CharField(max_length=50, blank=True)
+    total_marks = models.PositiveIntegerField(default=100)
+    instructions = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.subject} - {self.school_class} ({self.academic_session}) [{self.get_status_display()}]"
+
+
+class ExamSection(models.Model):
+    SECTION_TYPES = [
+        ('objective', 'Objective'),
+        ('theory', 'Theory'),
+        ('oral', 'Oral'),
+        ('grammar', 'Grammar'),
+        ('comprehension', 'Comprehension'),
+        ('other', 'Other'),
+    ]
+
+    exam = models.ForeignKey(ExamPaper, on_delete=models.CASCADE, related_name='sections')
+    title = models.CharField(max_length=120, blank=True)
+    section_type = models.CharField(max_length=30, choices=SECTION_TYPES, default='theory')
+    instruction = models.TextField(blank=True)
+    marks_allocation = models.PositiveIntegerField(default=0)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.title or self.get_section_type_display()} ({self.exam})"
+
+
+class Question(models.Model):
+    QUESTION_TYPES = [
+        ('objective', 'Objective'),
+        ('theory', 'Theory'),
+    ]
+
+    SUBNUMBERING_STYLES = [
+        ('parent_alpha', '1(a) 1(b) ...'),
+        ('roman', 'i ii iii'),
+        ('alpha', 'a b c'),
+        ('custom', 'Custom'),
+    ]
+
+    section = models.ForeignKey(ExamSection, on_delete=models.CASCADE, related_name='questions')
+    question_text = models.TextField()
+    marks = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    order = models.PositiveIntegerField(default=0)
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='theory')
+    correct_answer = models.CharField(max_length=10, blank=True, help_text='Stored for records only')
+    teacher_guide = models.TextField(blank=True)
+    subnumbering_style = models.CharField(max_length=20, choices=SUBNUMBERING_STYLES, default='parent_alpha')
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"Q{self.order} ({self.get_question_type_display()}) - {self.section}"
+
+
+class QuestionOption(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='options')
+    option_label = models.CharField(max_length=2)
+    option_text = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['option_label']
+
+    def __str__(self):
+        return f"{self.option_label}) {self.option_text[:60]}"
+
+
+class ApprovalLog(models.Model):
+    ACTION_CHOICES = [
+        ('submit', 'Submit'),
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+        ('return', 'Return for Review'),
+        ('edit', 'Edit'),
+    ]
+
+    exam = models.ForeignKey(ExamPaper, on_delete=models.CASCADE, related_name='approval_logs')
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    comment = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.get_action_display()} by {self.user} on {self.timestamp}"

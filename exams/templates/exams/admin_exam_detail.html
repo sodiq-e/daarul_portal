@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h2>Review Exam Paper</h2>
+      <p class="text-muted">Approve, return, or reject this exam paper.</p>
+    </div>
+    <a class="button" href="{% url 'admin_exam_paper_list' %}">Back to Review List</a>
+  </div>
+
+  <div class="card mb-4 p-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+      <div>
+        <h4>{{ exam_paper.subject }} — {{ exam_paper.school_class }}</h4>
+        <p class="text-muted">{{ exam_paper.academic_session }} | {{ exam_paper.term }}</p>
+      </div>
+      <div class="text-end">
+        <span class="badge-status">{{ exam_paper.get_status_display }}</span>
+        {% if exam_paper.status == 'approved' %}
+        <div class="mt-2"><a class="button" href="javascript:window.print();">Print Preview</a></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-md-4"><strong>Duration</strong><p>{{ exam_paper.duration }}</p></div>
+      <div class="col-md-4"><strong>Total Marks</strong><p>{{ exam_paper.total_marks }}</p></div>
+      <div class="col-md-4"><strong>Submitted</strong><p>{{ exam_paper.submitted_at|date:'M d, Y H:i' }}</p></div>
+    </div>
+
+    {% if exam_paper.instructions %}
+    <div class="mt-4">
+      <strong>General Instructions</strong>
+      <div class="p-3 bg-light rounded mt-2">{{ exam_paper.instructions|linebreaks }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      {% for section in exam_paper.sections.all %}
+      <div class="card mb-3 p-4">
+        <h5>{{ section.title|default:section.get_section_type_display }}</h5>
+        {% if section.instruction %}
+        <p class="text-muted">{{ section.instruction }}</p>
+        {% endif %}
+        <p><strong>Marks Allocation:</strong> {{ section.marks_allocation }}</p>
+
+        {% for question in section.questions.all %}
+        <div class="mb-4">
+          <p><strong>{{ forloop.counter }}.</strong> {{ question.question_text|linebreaks }}</p>
+          {% if question.question_type == 'objective' %}
+          <div class="ms-4 mb-2">
+            <ul>
+              {% for option in question.options.all %}
+              <li>{{ option.option_label }}. {{ option.option_text }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if question.marks %}
+          <p><strong>Marks:</strong> {{ question.marks }}</p>
+          {% endif %}
+          {% if question.teacher_guide %}
+          <div class="p-3 bg-light rounded"><strong>Answer Guide:</strong><br>{{ question.teacher_guide|linebreaks }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card p-4 mb-4">
+        <h5>Review Actions</h5>
+        <form method="post" action="{% url 'admin_exam_paper_action' exam_paper.id %}">
+          {% csrf_token %}
+          {{ review_form.as_p }}
+          <div class="d-grid gap-2">
+            <button name="action" value="approve" class="button" type="submit">Approve</button>
+            <button name="action" value="return" class="button" style="background:#ffc107;color:#222;" type="submit">Return for Review</button>
+            <button name="action" value="reject" class="button" style="background:#dc3545;color:white;" type="submit">Reject</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card p-4">
+        <h5>Approval History</h5>
+        {% if approval_logs %}
+          <ul class="list-unstyled">
+            {% for log in approval_logs %}
+            <li class="mb-3">
+              <strong>{{ log.get_action_display }}</strong>
+              <div class="text-muted">By {{ log.user.get_full_name }} on {{ log.timestamp|date:'M d, Y H:i' }}</div>
+              {% if log.comment %}
+              <div class="mt-2 p-3 bg-light rounded">{{ log.comment|linebreaks }}</div>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">No review actions have been recorded yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

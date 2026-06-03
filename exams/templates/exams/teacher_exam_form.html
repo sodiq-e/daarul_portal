@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+.exam-builder-toolbar {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.section-card, .question-card {
+  border: 1px solid #e1e7ee;
+  border-radius: 10px;
+  background: #fff;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.section-body {
+  margin-top: 12px;
+}
+.question-card {
+  background: #f8fbfc;
+}
+.field-block {
+  margin-bottom: 16px;
+}
+.field-block label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+}
+.field-block input,
+.field-block textarea,
+.field-block select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d8df;
+  border-radius: 8px;
+}
+.builder-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.builder-actions .button {
+  min-width: 180px;
+}
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f2f7fb;
+  color: #0d6efd;
+  font-weight: 600;
+}
+.hidden {
+  display: none !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="mb-1">{{ page_title }}</h2>
+          <p class="text-muted">Build your exam paper section by section and save drafts as you go.</p>
+        </div>
+        <div id="saved-status" class="text-secondary">Not saved yet</div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="field-block">
+            <label for="id_subject">Subject</label>
+            {{ form.subject }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="field-block">
+            <label for="id_school_class">Class</label>
+            {{ form.school_class }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="field-block">
+            <label for="id_term">Term</label>
+            {{ form.term }}
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="field-block">
+            <label for="id_academic_session">Academic Session / Year</label>
+            {{ form.academic_session }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="field-block">
+            <label for="id_duration">Exam Duration</label>
+            {{ form.duration }}
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="field-block">
+            <label for="id_total_marks">Total Marks</label>
+            {{ form.total_marks }}
+          </div>
+        </div>
+      </div>
+
+      <div class="field-block">
+        <label for="id_instructions">General Instructions / Notes</label>
+        {{ form.instructions }}
+      </div>
+
+      <form method="post" id="exam-builder-form">
+        {% csrf_token %}
+        <div class="exam-builder-toolbar">
+          <button id="add-section-btn" type="button" class="button">Add Section</button>
+          <div class="text-muted">Tip: Save frequently. Drafts autosave every 30 seconds.</div>
+        </div>
+
+        <div id="sections-container"></div>
+
+        <div class="builder-actions">
+          <button id="save-draft-btn" type="button" class="button">Save Draft</button>
+          <button id="submit-btn" type="button" class="button" style="background:#0d6efd;color:white;">Submit for Approval</button>
+          <a id="preview-link" href="#" class="button" style="background:#6c757d;color:white;">Preview Exam</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<input type="hidden" id="exam-json" value="{{ exam_json|escapejs }}" />
+<input type="hidden" id="save-draft-url" value="{{ save_draft_url }}" />
+<input type="hidden" id="submit-url" value="{{ submit_url }}" />
+
+{% block extra_js %}
+<script>
+const examJson = JSON.parse(document.getElementById('exam-json').value || '{}');
+const saveDraftUrl = document.getElementById('save-draft-url').value;
+const submitUrl = document.getElementById('submit-url').value;
+const sectionsContainer = document.getElementById('sections-container');
+const savedStatus = document.getElementById('saved-status');
+const previewLink = document.getElementById('preview-link');
+let autosaveTimer;
+
+function initBuilder() {
+  if (examJson && examJson.sections && examJson.sections.length) {
+    examJson.sections.forEach(section => addSection(section));
+  } else {
+    addSection();
+  }
+  if (examJson.id) {
+    previewLink.href = `/exams/exam-papers/${examJson.id}/`;
+    previewLink.classList.remove('disabled');
+  } else {
+    previewLink.href = '#';
+    previewLink.classList.add('disabled');
+  }
+}
+
+function createElementFromHTML(htmlString) {
+  const div = document.createElement('div');
+  div.innerHTML = htmlString.trim();
+  return div.firstChild;
+}
+
+function addSection(sectionData = {}) {
+  const sectionIndex = sectionsContainer.children.length + 1;
+  const sectionCard = document.createElement('div');
+  sectionCard.className = 'section-card';
+  sectionCard.dataset.sectionIndex = sectionIndex;
+  sectionCard.innerHTML = `
+    <div class="section-header">
+      <h4>Section ${sectionIndex}</h4>
+      <div>
+        <button type="button" class="button" data-action="add-question">Add Question</button>
+        <button type="button" class="button" style="background:#dc3545;color:white;" data-action="remove-section">Remove</button>
+      </div>
+    </div>
+    <div class="section-body">
+      <div class="row g-3">
+        <div class="col-md-6 field-block">
+          <label>Section Title</label>
+          <input type="text" class="section-title" value="${sectionData.title || ''}" placeholder="Section A, Section B, etc.">
+        </div>
+        <div class="col-md-6 field-block">
+          <label>Section Type</label>
+          <select class="section-type">
+            <option value="objective" ${sectionData.section_type === 'objective' ? 'selected' : ''}>Objective</option>
+            <option value="theory" ${sectionData.section_type === 'theory' ? 'selected' : ''}>Theory</option>
+            <option value="oral" ${sectionData.section_type === 'oral' ? 'selected' : ''}>Oral</option>
+            <option value="grammar" ${sectionData.section_type === 'grammar' ? 'selected' : ''}>Grammar</option>
+            <option value="comprehension" ${sectionData.section_type === 'comprehension' ? 'selected' : ''}>Comprehension</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-12 field-block">
+          <label>Section Instruction / Important Note</label>
+          <textarea class="section-instruction" rows="3">${sectionData.instruction || ''}</textarea>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6 field-block">
+          <label>Marks Allocation</label>
+          <input type="number" min="0" class="section-marks" value="${sectionData.marks_allocation || 0}" placeholder="Total marks for section">
+        </div>
+      </div>
+      <div class="question-list"></div>
+    </div>
+  `;
+
+  sectionsContainer.appendChild(sectionCard);
+  const questionList = sectionCard.querySelector('.question-list');
+  sectionCard.querySelector('[data-action="add-question"]').addEventListener('click', () => addQuestion(sectionCard));
+  sectionCard.querySelector('[data-action="remove-section"]').addEventListener('click', () => {
+    sectionCard.remove();
+    refreshSectionLabels();
+  });
+
+  if (sectionData.questions && sectionData.questions.length) {
+    sectionData.questions.forEach(question => addQuestion(sectionCard, question));
+  } else {
+    addQuestion(sectionCard);
+  }
+}
+
+function refreshSectionLabels() {
+  Array.from(sectionsContainer.children).forEach((sectionCard, index) => {
+    sectionCard.dataset.sectionIndex = index + 1;
+    sectionCard.querySelector('.section-header h4').textContent = `Section ${index + 1}`;
+  });
+}
+
+function addQuestion(sectionCard, questionData = {}) {
+  const questionList = sectionCard.querySelector('.question-list');
+  const questionIndex = questionList.children.length + 1;
+  const questionType = questionData.question_type || 'objective';
+
+  const questionCard = document.createElement('div');
+  questionCard.className = 'question-card';
+  questionCard.innerHTML = `
+    <div class="section-header">
+      <h5>Question ${questionIndex}</h5>
+      <button type="button" class="button" style="background:#dc3545;color:white;" data-action="remove-question">Remove</button>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6 field-block">
+        <label>Question Type</label>
+        <select class="question-type">
+          <option value="objective" ${questionType === 'objective' ? 'selected' : ''}>Objective</option>
+          <option value="theory" ${questionType === 'theory' ? 'selected' : ''}>Theory</option>
+        </select>
+      </div>
+      <div class="col-md-6 field-block">
+        <label>Marks</label>
+        <input type="number" min="0" class="question-marks" value="${questionData.marks || 0}" placeholder="Marks allocation">
+      </div>
+    </div>
+    <div class="field-block">
+      <label>Question Text</label>
+      <textarea class="question-text" rows="3">${questionData.question_text || ''}</textarea>
+    </div>
+    <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
+      <div class="col-md-4 field-block">
+        <label>Option A</label>
+        <input type="text" class="option-label-a" value="${questionData.options?.[0]?.option_text || ''}" placeholder="Option A">
+      </div>
+      <div class="col-md-4 field-block">
+        <label>Option B</label>
+        <input type="text" class="option-label-b" value="${questionData.options?.[1]?.option_text || ''}" placeholder="Option B">
+      </div>
+      <div class="col-md-4 field-block">
+        <label>Number of Options</label>
+        <select class="option-count">
+          <option value="2">A–B</option>
+          <option value="3" ${questionData.options && questionData.options.length >= 3 ? 'selected' : ''}>A–C</option>
+          <option value="4" ${questionData.options && questionData.options.length >= 4 ? 'selected' : ''}>A–D</option>
+          <option value="5" ${questionData.options && questionData.options.length >= 5 ? 'selected' : ''}>A–E</option>
+        </select>
+      </div>
+    </div>
+    <div class="row g-3 question-option-group ${questionType === 'objective' ? '' : 'hidden'}">
+      <div class="col-md-4 field-block">
+        <label>Option C</label>
+        <input type="text" class="option-label-c" value="${questionData.options?.[2]?.option_text || ''}" placeholder="Option C">
+      </div>
+      <div class="col-md-4 field-block">
+        <label>Option D</label>
+        <input type="text" class="option-label-d" value="${questionData.options?.[3]?.option_text || ''}" placeholder="Option D">
+      </div>
+      <div class="col-md-4 field-block">
+        <label>Option E</label>
+        <input type="text" class="option-label-e" value="${questionData.options?.[4]?.option_text || ''}" placeholder="Option E">
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6 field-block">
+        <label>Correct Answer</label>
+        <input type="text" class="correct-answer" value="${questionData.correct_answer || ''}" placeholder="A, B, C...">
+      </div>
+      <div class="col-md-6 field-block">
+        <label>Sub-question Style</label>
+        <select class="subnumbering-style">
+          <option value="parent_alpha" ${questionData.subnumbering_style === 'parent_alpha' ? 'selected' : ''}>1(a), 1(b), 1(c)</option>
+          <option value="roman" ${questionData.subnumbering_style === 'roman' ? 'selected' : ''}>i, ii, iii</option>
+          <option value="alpha" ${questionData.subnumbering_style === 'alpha' ? 'selected' : ''}>a, b, c</option>
+          <option value="custom" ${questionData.subnumbering_style === 'custom' ? 'selected' : ''}>Custom</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-block">
+      <label>Teacher Answer Guide (optional)</label>
+      <textarea class="teacher-guide" rows="3">${questionData.teacher_guide || ''}</textarea>
+    </div>
+  `;
+
+  questionList.appendChild(questionCard);
+  questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
+    questionCard.remove();
+    refreshQuestionLabels(sectionCard);
+  });
+
+  const typeControl = questionCard.querySelector('.question-type');
+  typeControl.addEventListener('change', () => {
+    const objectiveFields = questionCard.querySelector('.question-objective-fields');
+    const optionGroup = questionCard.querySelector('.question-option-group');
+    if (typeControl.value === 'objective') {
+      objectiveFields.classList.remove('hidden');
+      optionGroup.classList.remove('hidden');
+    } else {
+      objectiveFields.classList.add('hidden');
+      optionGroup.classList.add('hidden');
+    }
+  });
+
+  const optionCount = questionCard.querySelector('.option-count');
+  optionCount.addEventListener('change', () => {
+    updateOptionFields(questionCard, parseInt(optionCount.value, 10));
+  });
+  updateOptionFields(questionCard, parseInt(optionCount.value, 10));
+}
+
+function refreshQuestionLabels(sectionCard) {
+  const questionCards = sectionCard.querySelectorAll('.question-card');
+  questionCards.forEach((card, index) => {
+    card.querySelector('.section-header h5').textContent = `Question ${index + 1}`;
+  });
+}
+
+function updateOptionFields(questionCard, count) {
+  const optionC = questionCard.querySelector('.option-label-c');
+  const optionD = questionCard.querySelector('.option-label-d');
+  const optionE = questionCard.querySelector('.option-label-e');
+  optionC.parentElement.style.display = count >= 3 ? 'block' : 'none';
+  optionD.parentElement.style.display = count >= 4 ? 'block' : 'none';
+  optionE.parentElement.style.display = count >= 5 ? 'block' : 'none';
+}
+
+function gatherPayload() {
+  const payload = {
+    id: examJson.id || null,
+    subject: document.getElementById('id_subject').value,
+    school_class: document.getElementById('id_school_class').value,
+    term: document.getElementById('id_term').value,
+    academic_session: document.getElementById('id_academic_session').value,
+    duration: document.getElementById('id_duration').value,
+    total_marks: document.getElementById('id_total_marks').value,
+    instructions: document.getElementById('id_instructions').value,
+    sections: []
+  };
+
+  Array.from(sectionsContainer.children).forEach(sectionCard => {
+    const sectionPayload = {
+      title: sectionCard.querySelector('.section-title').value,
+      section_type: sectionCard.querySelector('.section-type').value,
+      instruction: sectionCard.querySelector('.section-instruction').value,
+      marks_allocation: sectionCard.querySelector('.section-marks').value,
+      questions: []
+    };
+
+    sectionCard.querySelectorAll('.question-card').forEach(questionCard => {
+      const questionPayload = {
+        question_type: questionCard.querySelector('.question-type').value,
+        question_text: questionCard.querySelector('.question-text').value,
+        marks: questionCard.querySelector('.question-marks').value,
+        correct_answer: questionCard.querySelector('.correct-answer').value,
+        teacher_guide: questionCard.querySelector('.teacher-guide').value,
+        subnumbering_style: questionCard.querySelector('.subnumbering-style').value,
+        options: []
+      };
+      if (questionPayload.question_type === 'objective') {
+        const optionCount = parseInt(questionCard.querySelector('.option-count').value, 10);
+        const optionA = questionCard.querySelector('.option-label-a').value;
+        const optionB = questionCard.querySelector('.option-label-b').value;
+        questionPayload.options.push({ option_label: 'A', option_text: optionA });
+        questionPayload.options.push({ option_label: 'B', option_text: optionB });
+        if (optionCount >= 3) {
+          questionPayload.options.push({ option_label: 'C', option_text: questionCard.querySelector('.option-label-c').value });
+        }
+        if (optionCount >= 4) {
+          questionPayload.options.push({ option_label: 'D', option_text: questionCard.querySelector('.option-label-d').value });
+        }
+        if (optionCount >= 5) {
+          questionPayload.options.push({ option_label: 'E', option_text: questionCard.querySelector('.option-label-e').value });
+        }
+      }
+      sectionPayload.questions.push(questionPayload);
+    });
+
+    payload.sections.push(sectionPayload);
+  });
+
+  return payload;
+}
+
+function sendPayload(url, payload, callback) {
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error || data.errors) {
+        showStatus(data.error || 'Unable to save draft.', true);
+      } else {
+        examJson.id = data.exam_paper_id;
+        previewLink.href = `/exams/exam-papers/${examJson.id}/`;
+        showStatus(`Saved at ${data.saved_at || new Date().toLocaleTimeString()}`);
+      }
+      if (callback) callback(data);
+    })
+    .catch(() => showStatus('Unable to reach server.', true));
+}
+
+function showStatus(message, isError = false) {
+  savedStatus.textContent = message;
+  savedStatus.style.color = isError ? '#dc3545' : '#495057';
+}
+
+function saveDraft() {
+  const payload = gatherPayload();
+  sendPayload(saveDraftUrl, payload);
+}
+
+function submitForApproval() {
+  const payload = gatherPayload();
+  const confirmed = confirm('Submit this exam paper for approval?');
+  if (!confirmed) return;
+  fetch(submitUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error || data.errors) {
+        showStatus(data.error || 'Unable to submit exam.', true);
+      } else {
+        window.location.href = `/exams/exam-papers/${data.exam_paper_id}/`;
+      }
+    })
+    .catch(() => showStatus('Unable to reach server.', true));
+}
+
+document.getElementById('add-section-btn').addEventListener('click', () => addSection());
+document.getElementById('save-draft-btn').addEventListener('click', saveDraft);
+document.getElementById('submit-btn').addEventListener('click', submitForApproval);
+
+window.addEventListener('load', () => {
+  initBuilder();
+  autosaveTimer = setInterval(saveDraft, 30000);
+});
+</script>
+{% endblock %}
+{% endblock %}

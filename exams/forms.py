@@ -1,8 +1,8 @@
 from django import forms
 from .models import (
-    Term, Subject, ClassSubject, ExamType, Exam
+    Term, Subject, ClassSubject, ExamType, Exam, ExamPaper
 )
-from school_classes.models import SchoolClasses
+from school_classes.models import SchoolClasses, ClassTeacher
 
 
 class TermForm(forms.ModelForm):
@@ -38,6 +38,46 @@ class ExamTypeForm(forms.ModelForm):
     class Meta:
         model = ExamType
         fields = ['name', 'assessment_type', 'max_score', 'weight_percentage', 'description', 'is_active']
+
+
+class ExamPaperForm(forms.ModelForm):
+    class Meta:
+        model = ExamPaper
+        fields = [
+            'subject', 'school_class', 'term', 'academic_session',
+            'duration', 'total_marks', 'instructions'
+        ]
+        widgets = {
+            'instructions': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        teacher = kwargs.pop('teacher', None)
+        super().__init__(*args, **kwargs)
+        self.fields['term'].queryset = Term.objects.filter(is_active=True)
+        self.fields['academic_session'].widget.attrs.update({
+            'placeholder': 'e.g., 2024/2025'
+        })
+        self.fields['duration'].widget.attrs.update({
+            'placeholder': 'e.g., 1 Hour, 2 Hours'
+        })
+        if teacher is not None:
+            assigned = ClassTeacher.objects.filter(
+                teacher=teacher,
+                is_active=True
+            )
+            class_ids = assigned.values_list('school_class_id', flat=True).distinct()
+            subject_ids = assigned.values_list('subject_id', flat=True).distinct()
+            self.fields['school_class'].queryset = SchoolClasses.objects.filter(id__in=class_ids)
+            self.fields['subject'].queryset = Subject.objects.filter(id__in=subject_ids, is_active=True)
+
+
+class ExamReviewForm(forms.Form):
+    comment = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Enter review comments...'}),
+        required=False,
+        label='Review Comments'
+    )
 
 
 class ExamForm(forms.ModelForm):
