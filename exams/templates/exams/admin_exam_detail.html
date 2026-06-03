@@ -7,12 +7,13 @@
       <h2>Review Exam Paper</h2>
       <p class="text-muted">Approve, return, or reject this exam paper.</p>
     </div>
-    <a class="button" href="{% url 'admin_exam_paper_list' %}">Back to Review List</a>
-  </div>
-
-  <div class="card mb-4 p-4">
-    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-      <div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <a class="button" href="{% url 'admin_exam_paper_list' %}">Back to Review List</a>
+      {% if exam_paper.status == 'approved' %}
+      <a class="button" href="{% url 'exam_paper_print' exam_paper.id %}">Print Preview</a>
+      <a class="button" href="{% url 'exam_paper_print' exam_paper.id %}?format=pdf">Export PDF</a>
+      {% endif %}
+    </div>
         <h4>{{ exam_paper.subject }} — {{ exam_paper.school_class }}</h4>
         <p class="text-muted">{{ exam_paper.academic_session }} | {{ exam_paper.term }}</p>
       </div>

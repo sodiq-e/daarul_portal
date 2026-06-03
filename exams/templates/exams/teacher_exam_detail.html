@@ -12,16 +12,12 @@
       {% if can_edit %}
       <div class="mt-2"><a class="button" href="{% url 'exam_paper_edit' exam_paper.id %}">Continue Editing</a></div>
       {% endif %}
-    </div>
-  </div>
-
-  <div class="card mb-4 p-4">
-    <h4>Exam Details</h4>
-    <div class="row g-3 mt-2">
-      <div class="col-md-4"><strong>Subject</strong><p>{{ exam_paper.subject }}</p></div>
-      <div class="col-md-4"><strong>Class</strong><p>{{ exam_paper.school_class }}</p></div>
-      <div class="col-md-4"><strong>Term</strong><p>{{ exam_paper.term }}</p></div>
-      <div class="col-md-4"><strong>Session</strong><p>{{ exam_paper.academic_session }}</p></div>
+      {% if exam_paper.status == 'approved' %}
+      <div class="mt-2 d-flex gap-2 justify-content-end flex-wrap">
+        <a class="button" href="{% url 'exam_paper_print' exam_paper.id %}">Print Preview</a>
+        <a class="button" href="{% url 'exam_paper_print' exam_paper.id %}?format=pdf">Export PDF</a>
+      </div>
+      {% endif %}
       <div class="col-md-4"><strong>Duration</strong><p>{{ exam_paper.duration }}</p></div>
       <div class="col-md-4"><strong>Total Marks</strong><p>{{ exam_paper.total_marks }}</p></div>
     </div>

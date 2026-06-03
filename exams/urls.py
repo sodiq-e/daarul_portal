@@ -29,4 +29,5 @@ urlpatterns = [
     path('admin/exam-papers/', views.AdminExamPaperListView.as_view(), name='admin_exam_paper_list'),
     path('admin/exam-papers/<int:pk>/', views.AdminExamPaperDetailView.as_view(), name='admin_exam_paper_detail'),
     path('admin/exam-papers/<int:pk>/action/', views.AdminExamPaperActionView.as_view(), name='admin_exam_paper_action'),
+    path('exam-papers/<int:pk>/print/', views.ExamPaperPrintView.as_view(), name='exam_paper_print'),
 ]

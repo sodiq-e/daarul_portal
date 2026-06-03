@@ -1,7 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
+from django.template.loader import render_to_string
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -10,6 +11,12 @@ from django.utils import timezone
 from django.db import models
 from django.views.decorators.http import require_POST
 import json
+
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
 
 from .models import Subject, Exam, ExamPaper, ExamSection, Question, QuestionOption, ApprovalLog
 from .forms import SubjectForm, ExamForm, ExamPaperForm, ExamReviewForm
@@ -391,6 +398,32 @@ class AdminExamPaperDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVi
         context['review_form'] = ExamReviewForm()
         context['approval_logs'] = self.object.approval_logs.all()
         return context
+
+
+class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
+    def test_func(self):
+        return (
+            user_is_admin(self.request.user) or
+            (hasattr(self.request.user, 'teacher_profile') and
+             ExamPaper.objects.filter(pk=self.kwargs.get('pk'), teacher=self.request.user.teacher_profile).exists())
+        )
+
+    def get(self, request, pk, *args, **kwargs):
+        exam_paper = get_object_or_404(ExamPaper, pk=pk)
+        if exam_paper.status != 'approved' and not user_is_admin(request.user):
+            return HttpResponse('Only approved exam papers can be printed.', status=403)
+
+        context = {'exam_paper': exam_paper}
+        html_string = render_to_string('exams/print_exam_paper.html', context)
+
+        if request.GET.get('format') == 'pdf' and WEASYPRINT_AVAILABLE:
+            html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
+            pdf = html.write_pdf(stylesheets=[])
+            response = HttpResponse(pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="ExamPaper_{exam_paper.id}.pdf"'
+            return response
+
+        return HttpResponse(html_string)
 
 
 @method_decorator([login_required, require_POST], name='dispatch')
