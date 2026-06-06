@@ -162,24 +162,47 @@
 <script>
 console.log('Exam builder script starting...');
 
-const examJson = JSON.parse(document.getElementById('exam-json').value || '{}');
-const classSubjectMap = JSON.parse(document.getElementById('class-subject-map').value || '{}');
-const saveDraftUrl = document.getElementById('save-draft-url').value;
-const submitUrl = document.getElementById('submit-url').value;
-const sectionsContainer = document.getElementById('sections-container');
-const savedStatus = document.getElementById('saved-status');
-const previewLink = document.getElementById('preview-link');
-const subjectSelect = document.getElementById('id_subject');
+let examJson = {};
+let classSubjectMap = {};
+let saveDraftUrl = '';
+let submitUrl = '';
+let sectionsContainer = null;
+let savedStatus = null;
+let previewLink = null;
+let subjectSelect = null;
 let initialSubjectOptions = [];
-
-console.log('Script initialized with examJson:', examJson, 'sectionsContainer:', sectionsContainer);
 let autosaveTimer;
 
-if (subjectSelect) {
-  initialSubjectOptions = Array.from(subjectSelect.options).map(option => ({
-    value: option.value,
-    label: option.textContent.trim(),
-  }));
+function getInputValue(id, defaultValue = '') {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.error(`Exam builder missing DOM element: #${id}`);
+    return defaultValue;
+  }
+  return el.value;
+}
+
+function initializeBuilderElements() {
+  examJson = JSON.parse(getInputValue('exam-json', '{}') || '{}');
+  classSubjectMap = JSON.parse(getInputValue('class-subject-map', '{}') || '{}');
+  saveDraftUrl = getInputValue('save-draft-url');
+  submitUrl = getInputValue('submit-url');
+  sectionsContainer = document.getElementById('sections-container');
+  savedStatus = document.getElementById('saved-status');
+  previewLink = document.getElementById('preview-link');
+  subjectSelect = document.getElementById('id_subject');
+
+  if (subjectSelect) {
+    initialSubjectOptions = Array.from(subjectSelect.options).map(option => ({
+      value: option.value,
+      label: option.textContent.trim(),
+    }));
+  }
+
+  console.log('Exam builder initialized with:', {
+    examJson, classSubjectMap, saveDraftUrl, submitUrl,
+    sectionsContainer, savedStatus, previewLink, subjectSelect
+  });
 }
 
 function populateSubjectOptions(classId) {
@@ -206,7 +229,12 @@ function populateSubjectOptions(classId) {
 function initBuilder() {
   console.log('initBuilder() called, sections container:', sectionsContainer);
   console.log('examJson:', examJson);
-  
+
+  if (!sectionsContainer) {
+    console.error('Exam builder cannot initialize because #sections-container is missing.');
+    return;
+  }
+
   if (examJson && examJson.sections && examJson.sections.length) {
     console.log('Loading', examJson.sections.length, 'sections from examJson');
     examJson.sections.forEach(section => {
@@ -217,13 +245,15 @@ function initBuilder() {
     console.log('No existing sections, adding one default section');
     addSection();
   }
-  
-  if (examJson.id) {
-    previewLink.href = `/exams/exam-papers/${examJson.id}/`;
-    previewLink.classList.remove('disabled');
-  } else {
-    previewLink.href = '#';
-    previewLink.classList.add('disabled');
+
+  if (previewLink) {
+    if (examJson.id) {
+      previewLink.href = `/exams/exam-papers/${examJson.id}/`;
+      previewLink.classList.remove('disabled');
+    } else {
+      previewLink.href = '#';
+      previewLink.classList.add('disabled');
+    }
   }
 }
 
@@ -657,8 +687,12 @@ function sendPayload(url, payload, callback) {
 }
 
 function showStatus(message, isError = false) {
-  savedStatus.textContent = message;
-  savedStatus.style.color = isError ? '#dc3545' : '#495057';
+  if (savedStatus) {
+    savedStatus.textContent = message;
+    savedStatus.style.color = isError ? '#dc3545' : '#495057';
+  } else {
+    console.warn('Exam builder status element missing:', message);
+  }
 }
 
 function saveDraft() {
@@ -721,8 +755,9 @@ function detectDuplicateQuestions(){
 }
 
 onReady(() => {
+  initializeBuilderElements();
   console.log('=== Exam builder ready handler ===');
-  console.log('sectionsContainer element:', document.getElementById('sections-container'));
+  console.log('sectionsContainer element:', sectionsContainer);
 
   // Attach button event listeners after DOM is ready
   const addSectionBtn = document.getElementById('add-section-btn');
