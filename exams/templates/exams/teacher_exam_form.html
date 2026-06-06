@@ -189,6 +189,16 @@ function initializeBuilderElements() {
   classSubjectMap = JSON.parse(getInputValue('class-subject-map', '{}') || '{}');
   saveDraftUrl = getInputValue('save-draft-url');
   submitUrl = getInputValue('submit-url');
+
+  // Fallbacks: if template didn't provide URLs, use known endpoints so fetch doesn't POST to the current page
+  if (!saveDraftUrl) {
+    console.warn('save-draft-url missing, using fallback');
+    saveDraftUrl = '/exams/exam-papers/save-draft/';
+  }
+  if (!submitUrl) {
+    console.warn('submit-url missing, using fallback');
+    submitUrl = '/exams/exam-papers/submit/';
+  }
   sectionsContainer = document.getElementById('sections-container');
   savedStatus = document.getElementById('saved-status');
   previewLink = document.getElementById('preview-link');
