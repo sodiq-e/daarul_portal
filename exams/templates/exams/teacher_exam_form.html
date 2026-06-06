@@ -1231,24 +1231,30 @@ function gatherPayload() {
 function sendPayload(url, payload, callback) {
   fetch(url, {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
     },
     body: JSON.stringify(payload)
   })
-    .then(response => response.json())
-    .then(data => {
-      if (data.error || data.errors) {
-        showStatus(data.error || 'Unable to save draft.', true);
+    .then(response => response.json().then(data => ({ ok: response.ok, data })).catch(() => ({ ok: response.ok, data: null })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        const msg = data && (data.error || data.errors) ? (data.error || JSON.stringify(data.errors)) : 'Server error while saving.';
+        showStatus(msg, true);
       } else {
-        examJson.id = data.exam_paper_id;
-        previewLink.href = `/exams/exam-papers/${examJson.id}/`;
-        showStatus(`Saved at ${data.saved_at || new Date().toLocaleTimeString()}`);
+        if (data && !data.error && !data.errors) {
+          examJson.id = data.exam_paper_id;
+          previewLink.href = `/exams/exam-papers/${examJson.id}/`;
+          showStatus(`Saved at ${data.saved_at || new Date().toLocaleTimeString()}`);
+        } else {
+          showStatus(data && (data.error || 'Unable to save draft.') || 'Saved.', !!(data && (data.error || data.errors)));
+        }
       }
       if (callback) callback(data);
     })
-    .catch(() => showStatus('Unable to reach server.', true));
+    .catch(err => { console.error('sendPayload error', err); showStatus('Unable to reach server.', true); });
 }
 
 function showStatus(message, isError = false) {
@@ -1281,21 +1287,27 @@ function submitForApproval() {
   if (!confirmed) return;
   fetch(submitUrl, {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
     },
     body: JSON.stringify(payload)
   })
-    .then(response => response.json())
-    .then(data => {
-      if (data.error || data.errors) {
-        showStatus(data.error || 'Unable to submit exam.', true);
+    .then(response => response.json().then(data => ({ ok: response.ok, data })).catch(() => ({ ok: response.ok, data: null })))
+    .then(({ ok, data }) => {
+      if (!ok) {
+        const msg = data && (data.error || data.errors) ? (data.error || JSON.stringify(data.errors)) : 'Server error while submitting.';
+        showStatus(msg, true);
       } else {
-        window.location.href = `/exams/exam-papers/${data.exam_paper_id}/`;
+        if (data && !data.error && !data.errors) {
+          window.location.href = `/exams/exam-papers/${data.exam_paper_id}/`;
+        } else {
+          showStatus(data && (data.error || 'Unable to submit exam.') || 'Submitted.', !!(data && (data.error || data.errors)));
+        }
       }
     })
-    .catch(() => showStatus('Unable to reach server.', true));
+    .catch(err => { console.error('submitForApproval error', err); showStatus('Unable to reach server.', true); });
 }
 
 function onReady(fn){
