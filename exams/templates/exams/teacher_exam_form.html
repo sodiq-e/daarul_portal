@@ -159,6 +159,8 @@
 <script src="https://cdn.jsdelivr.net/npm/konva@8/konva.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+console.log('Exam builder script starting...');
+
 const examJson = JSON.parse(document.getElementById('exam-json').value || '{}');
 const classSubjectMap = JSON.parse(document.getElementById('class-subject-map').value || '{}');
 const saveDraftUrl = document.getElementById('save-draft-url').value;
@@ -168,6 +170,8 @@ const savedStatus = document.getElementById('saved-status');
 const previewLink = document.getElementById('preview-link');
 const subjectSelect = document.getElementById('id_subject');
 let initialSubjectOptions = [];
+
+console.log('Script initialized with examJson:', examJson, 'sectionsContainer:', sectionsContainer);
 let autosaveTimer;
 
 if (subjectSelect) {
@@ -199,11 +203,20 @@ function populateSubjectOptions(classId) {
 }
 
 function initBuilder() {
+  console.log('initBuilder() called, sections container:', sectionsContainer);
+  console.log('examJson:', examJson);
+  
   if (examJson && examJson.sections && examJson.sections.length) {
-    examJson.sections.forEach(section => addSection(section));
+    console.log('Loading', examJson.sections.length, 'sections from examJson');
+    examJson.sections.forEach(section => {
+      console.log('Adding section:', section);
+      addSection(section);
+    });
   } else {
+    console.log('No existing sections, adding one default section');
     addSection();
   }
+  
   if (examJson.id) {
     previewLink.href = `/exams/exam-papers/${examJson.id}/`;
     previewLink.classList.remove('disabled');
@@ -220,6 +233,7 @@ function createElementFromHTML(htmlString) {
 }
 
 function addSection(sectionData = {}) {
+  console.log('addSection() called with data:', sectionData);
   const sectionIndex = sectionsContainer.children.length + 1;
   const sectionCard = document.createElement('div');
   sectionCard.className = 'section-card';
@@ -265,6 +279,8 @@ function addSection(sectionData = {}) {
   `;
 
   sectionsContainer.appendChild(sectionCard);
+  console.log('Section card added to container. Container now has', sectionsContainer.children.length, 'sections');
+  
   const questionList = sectionCard.querySelector('.question-list');
   sectionCard.querySelector('[data-action="add-question"]').addEventListener('click', () => addQuestion(sectionCard));
   sectionCard.querySelector('[data-action="remove-section"]').addEventListener('click', () => {
@@ -287,6 +303,7 @@ function refreshSectionLabels() {
 }
 
 function addQuestion(sectionCard, questionData = {}) {
+  console.log('addQuestion() called with data:', questionData);
   const questionList = sectionCard.querySelector('.question-list');
   const questionIndex = questionList.children.length + 1;
   const questionType = questionData.question_type || 'objective';
@@ -383,6 +400,7 @@ function addQuestion(sectionCard, questionData = {}) {
   `;
 
   questionList.appendChild(questionCard);
+  console.log('Question card added to list. List now has', questionList.children.length, 'questions');
   questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
     questionCard.remove();
     refreshQuestionLabels(sectionCard);
@@ -539,12 +557,17 @@ function openChartModal(){
 }
 
 function gatherPayload() {
+  const subject = document.getElementById('id_subject').value;
+  const school_class = document.getElementById('id_school_class').value;
+  const term = document.getElementById('id_term').value;
+  const academic_session = document.getElementById('id_academic_session').value;
+
   const payload = {
     id: examJson.id || null,
-    subject: document.getElementById('id_subject').value,
-    school_class: document.getElementById('id_school_class').value,
-    term: document.getElementById('id_term').value,
-    academic_session: document.getElementById('id_academic_session').value,
+    subject: subject,
+    school_class: school_class,
+    term: term,
+    academic_session: academic_session,
     duration: document.getElementById('id_duration').value,
     total_marks: document.getElementById('id_total_marks').value,
     instructions: document.getElementById('id_instructions').value,
@@ -638,6 +661,16 @@ function showStatus(message, isError = false) {
 }
 
 function saveDraft() {
+  const subject = document.getElementById('id_subject').value;
+  const school_class = document.getElementById('id_school_class').value;
+  const term = document.getElementById('id_term').value;
+  const academic_session = document.getElementById('id_academic_session').value;
+
+  if (!subject || !school_class || !term || !academic_session) {
+    showStatus('Please fill in Subject, Class, Term, and Academic Session before saving.', true);
+    return;
+  }
+
   const payload = gatherPayload();
   sendPayload(saveDraftUrl, payload);
 }
@@ -666,28 +699,40 @@ function submitForApproval() {
 }
 
 window.addEventListener('load', () => {
+  console.log('=== Window load event fired ===');
+  console.log('sectionsContainer element:', document.getElementById('sections-container'));
+  
   // Attach button event listeners after DOM is ready
   const addSectionBtn = document.getElementById('add-section-btn');
   const saveDraftBtn = document.getElementById('save-draft-btn');
   const submitBtn = document.getElementById('submit-btn');
 
-  if (addSectionBtn) addSectionBtn.addEventListener('click', () => addSection());
-  if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
-  if (submitBtn) submitBtn.addEventListener('click', submitForApproval);
+  console.log('Button elements:', { addSectionBtn, saveDraftBtn, submitBtn });
+
+  if (addSectionBtn) addSectionBtn.addEventListener('click', () => { console.log('Add Section clicked'); addSection(); });
+  if (saveDraftBtn) saveDraftBtn.addEventListener('click', () => { console.log('Save Draft clicked'); saveDraft(); });
+  if (submitBtn) submitBtn.addEventListener('click', () => { console.log('Submit clicked'); submitForApproval(); });
 
   // Initialize builder
+  console.log('Calling initBuilder()');
   initBuilder();
+  
   const classSelect = document.getElementById('id_school_class');
   if (classSelect) {
     classSelect.addEventListener('change', () => {
+      console.log('Class selection changed');
       populateSubjectOptions(classSelect.value);
     });
     if (classSelect.value) {
+      console.log('Class has initial value, populating subjects');
       populateSubjectOptions(classSelect.value);
     }
   }
   autosaveTimer = setInterval(saveDraft, 30000);
+  console.log('Autosave timer started');
+  
   setTimeout(() => {
+    console.log('Initializing rich editors and chart/diagram handlers');
     initRichEditors();
     document.querySelectorAll('.question-card').forEach(qc => attachDiagramAndChartHandlers(qc));
   }, 400);
