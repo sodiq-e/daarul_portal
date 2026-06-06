@@ -562,13 +562,23 @@ function gatherPayload() {
 
     sectionCard.querySelectorAll('.question-card').forEach(questionCard => {
       const subquestionCheckbox = questionCard.querySelector('.has-subquestions');
+      const resourceNotesField = questionCard.querySelector('.resource-notes');
+      let resourceNotesValue = '';
+      
+      // Read from CKEditor if initialized, otherwise read from textarea
+      if (resourceNotesField._editor && typeof resourceNotesField._editor.getData === 'function') {
+        resourceNotesValue = resourceNotesField._editor.getData();
+      } else if (resourceNotesField) {
+        resourceNotesValue = resourceNotesField.value || '';
+      }
+      
       const questionPayload = {
         question_type: questionCard.querySelector('.question-type').value,
         question_text: questionCard.querySelector('.question-text').value,
         marks: questionCard.querySelector('.question-marks').value,
         correct_answer: questionCard.querySelector('.correct-answer').value,
         teacher_guide: questionCard.querySelector('.teacher-guide').value,
-        resource_notes: questionCard.querySelector('.resource-notes')?.value || '',
+        resource_notes: resourceNotesValue,
         subnumbering_style: subquestionCheckbox && !subquestionCheckbox.checked ? '' : questionCard.querySelector('.subnumbering-style').value,
         options: []
       };
@@ -655,11 +665,17 @@ function submitForApproval() {
     .catch(() => showStatus('Unable to reach server.', true));
 }
 
-document.getElementById('add-section-btn').addEventListener('click', () => addSection());
-document.getElementById('save-draft-btn').addEventListener('click', saveDraft);
-document.getElementById('submit-btn').addEventListener('click', submitForApproval);
-
 window.addEventListener('load', () => {
+  // Attach button event listeners after DOM is ready
+  const addSectionBtn = document.getElementById('add-section-btn');
+  const saveDraftBtn = document.getElementById('save-draft-btn');
+  const submitBtn = document.getElementById('submit-btn');
+
+  if (addSectionBtn) addSectionBtn.addEventListener('click', () => addSection());
+  if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
+  if (submitBtn) submitBtn.addEventListener('click', submitForApproval);
+
+  // Initialize builder
   initBuilder();
   const classSelect = document.getElementById('id_school_class');
   if (classSelect) {
