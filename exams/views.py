@@ -244,7 +244,7 @@ class TeacherExamPaperListView(LoginRequiredMixin, UserPassesTestMixin, ListView
 
     def get_queryset(self):
         if hasattr(self.request.user, 'teacher_profile'):
-            return ExamPaper.objects.filter(teacher=self.request.user.teacher_profile).order_by('-updated_at')
+            return ExamPaper.objects.filter(teacher=self.request.user).order_by('-updated_at')
         return ExamPaper.objects.none()
 
 
@@ -258,7 +258,7 @@ class TeacherExamPaperDetailView(LoginRequiredMixin, UserPassesTestMixin, Detail
 
     def get_queryset(self):
         if hasattr(self.request.user, 'teacher_profile'):
-            return ExamPaper.objects.filter(teacher=self.request.user.teacher_profile)
+            return ExamPaper.objects.filter(teacher=self.request.user)
         return ExamPaper.objects.none()
 
     def get_context_data(self, **kwargs):
@@ -295,7 +295,7 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
         exam_paper = get_object_or_404(
             ExamPaper,
             pk=kwargs.get('pk'),
-            teacher=self.request.user.teacher_profile
+            teacher=self.request.user
         )
 
         context['form'] = ExamPaperForm(instance=exam_paper, teacher=self.request.user.teacher_profile)
@@ -405,7 +405,7 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
         return (
             user_is_admin(self.request.user) or
             (hasattr(self.request.user, 'teacher_profile') and
-             ExamPaper.objects.filter(pk=self.kwargs.get('pk'), teacher=self.request.user.teacher_profile).exists())
+             ExamPaper.objects.filter(pk=self.kwargs.get('pk'), teacher=self.request.user).exists())
         )
 
     def get(self, request, pk, *args, **kwargs):
@@ -484,7 +484,7 @@ class ExamPaperSaveView(View):
         if payload.get('id'):
             exam_paper = ExamPaper.objects.filter(
                 pk=payload.get('id'),
-                teacher=request.user.teacher_profile
+                teacher=request.user
             ).first()
             if not exam_paper:
                 return JsonResponse({'error': 'Exam paper not found.'}, status=404)
@@ -496,7 +496,7 @@ class ExamPaperSaveView(View):
             return JsonResponse({'errors': form.errors}, status=400)
 
         exam_paper = form.save(commit=False)
-        exam_paper.teacher = request.user.teacher_profile
+        exam_paper.teacher = request.user
         exam_paper.status = 'draft'
         exam_paper.save()
         self._save_sections(exam_paper, payload.get('sections', []))

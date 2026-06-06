@@ -30,6 +30,7 @@ GROQ_FAILURE_THRESHOLD = int(os.getenv('AI_GENERATION_FAILURE_THRESHOLD', '2'))
 GROQ_FAILURE_WINDOW_SECONDS = int(os.getenv('AI_GENERATION_FAILURE_WINDOW_SECONDS', '60'))
 GROQ_COOLDOWN_SECONDS = int(os.getenv('AI_GENERATION_COOLDOWN_SECONDS', '120'))
 GROQ_LOCK_SECONDS = int(os.getenv('AI_GENERATION_LOCK_SECONDS', '30'))
+AI_USE_GROQ = os.getenv('AI_USE_GROQ', 'true').strip().lower() not in ('0', 'false', 'no')
 
 GROQ_FAILURE_KEY = 'cbt:ai:groq:failures'
 GROQ_COOLDOWN_KEY = 'cbt:ai:groq:cooldown'
@@ -95,6 +96,10 @@ def _groq_is_disabled() -> bool:
         return True
     cache.delete(GROQ_COOLDOWN_KEY)
     return False
+
+
+def _should_use_groq() -> bool:
+    return AI_USE_GROQ
 
 
 def _record_groq_failure() -> None:
@@ -219,6 +224,13 @@ def _parse_ai_questions(raw_text: str) -> List[Dict[str, Any]]:
 def _generate_questions(prompt: str, requested_questions: int):
     groq_error = None
     start = time.monotonic()
+
+    if not _should_use_groq():
+        logger.info('[AI] Groq disabled or unavailable; using Gemini provider only.')
+        raw_text = generate_with_gemini(prompt)
+        questions = _parse_ai_questions(raw_text)
+        _log_metadata('gemini', time.monotonic() - start, False, requested_questions)
+        return questions
 
     try:
         raw_text = generate_with_groq(prompt)
