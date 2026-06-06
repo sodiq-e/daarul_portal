@@ -1,0 +1,256 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Exam Paper - Sample Subject</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #111;
+      margin: 0;
+      padding: 28px;
+      background: #fff;
+    }
+    .page {
+      max-width: 794px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .school-header {
+      margin-bottom: 12px;
+    }
+    .school-name {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .school-meta {
+      font-size: 14px;
+      color: #444;
+      margin-bottom: 6px;
+    }
+    .exam-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 12px 0 8px;
+    }
+    .exam-details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .detail-item {
+      border: 1px solid #d6d6d6;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #fafafa;
+      line-height: 1.6;
+    }
+    .detail-item strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #222;
+    }
+    .section {
+      margin-bottom: 28px;
+      page-break-inside: avoid;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .section-instruction {
+      margin-bottom: 14px;
+      border-left: 4px solid #0d6efd;
+      padding-left: 12px;
+      color: #333;
+      background: #f5faff;
+    }
+    .question-item {
+      margin-bottom: 18px;
+      padding-left: 18px;
+    }
+    .question-item p {
+      margin: 0 0 10px;
+    }
+    .question-options {
+      margin-left: 18px;
+      margin-bottom: 10px;
+    }
+    .question-options li {
+      margin-bottom: 6px;
+    }
+    .answer-lines {
+      margin-top: 8px;
+    }
+    .answer-lines span {
+      display: block;
+      border-bottom: 1px solid #d2d2d2;
+      margin: 10px 0;
+      padding: 6px 0;
+    }
+    .footer {
+      margin-top: 32px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #555;
+    }
+    .page-number:after {
+      content: "Page " counter(page);
+    }
+    @page {
+      size: A4 portrait;
+      margin: 20mm;
+      counter-increment: page;
+    }
+    @media print {
+      .page {
+        margin: 0;
+      }
+      .no-print {
+        display: none;
+      }
+      body {
+        background: white;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="school-header">
+        <div class="school-name">School Name</div>
+        <div class="school-meta">School Address</div>
+        <div class="school-meta">Phone: 123-456-7890 | Email: info@example.com</div>
+      </div>
+      <div class="exam-title">Examination Paper</div>
+    </header>
+
+    <div class="exam-details">
+      <div class="detail-item"><strong>Subject</strong>Sample Subject</div>
+      <div class="detail-item"><strong>Class</strong>Sample Class</div>
+      <div class="detail-item"><strong>Term</strong>First Term (2025/2026)</div>
+      <div class="detail-item"><strong>Session</strong>2025/2026</div>
+      <div class="detail-item"><strong>Duration</strong>1 Hour</div>
+      <div class="detail-item"><strong>Total Marks</strong>50</div>
+    </div>
+
+    
+    <div class="section">
+      <div class="section-title">General Instructions</div>
+      <div class="section-instruction">Answer all questions.</div>
+    </div>
+    
+
+    
+    <div class="section">
+      <div class="section-title">Section A</div>
+      
+      <div class="section-instruction">Choose the best answer</div>
+      
+      
+      <div class="question-item">
+        <p><strong>1.</strong> What is 2+2?</p>
+        
+        <ul class="question-options">
+          
+          <li><strong>A.</strong> 4</li>
+          
+          <li><strong>B.</strong> 3</li>
+          
+        </ul>
+        
+        
+        <p><strong>Marks:</strong> 1.00</p>
+        
+        <div class="answer-lines">
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+        </div>
+      </div>
+      
+      <div class="question-item">
+        <p><strong>2.</strong> What is 3+3?</p>
+        
+        <ul class="question-options">
+          
+          <li><strong>A.</strong> 5</li>
+          
+          <li><strong>B.</strong> 6</li>
+          
+        </ul>
+        
+        
+        <p><strong>Marks:</strong> 1.00</p>
+        
+        <div class="answer-lines">
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+        </div>
+      </div>
+      
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Section B</div>
+      
+      <div class="section-instruction">Answer in detail</div>
+      
+      
+      <div class="question-item">
+        <p><strong>1.</strong> Explain photosynthesis.</p>
+        
+        
+        <p><strong>Marks:</strong> 10.00</p>
+        
+        <div class="answer-lines">
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+          <span>&nbsp;</span>
+          
+        </div>
+      </div>
+      
+    </div>
+    
+
+    <div class="footer">
+      <div>Prepared by: </div>
+      <div class="page-number"></div>
+    </div>
+  </div>
+</body>
+</html>

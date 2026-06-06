@@ -148,6 +148,7 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
 <input type="hidden" id="exam-json" value="{{ exam_json|escapejs }}" />
 <input type="hidden" id="class-subject-map" value="{{ class_subject_map|escapejs }}" />
@@ -698,10 +699,31 @@ function submitForApproval() {
     .catch(() => showStatus('Unable to reach server.', true));
 }
 
-window.addEventListener('load', () => {
-  console.log('=== Window load event fired ===');
+function onReady(fn){
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(fn, 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', fn);
+  }
+}
+
+function detectDuplicateQuestions(){
+  const seen = new Set();
+  const duplicates = new Set();
+  document.querySelectorAll('.question-text').forEach(ta => {
+    if (!ta) return;
+    const txt = (ta.value || '').trim().replace(/\s+/g,' ').toLowerCase();
+    if (!txt) return;
+    if (seen.has(txt)) duplicates.add(txt);
+    else seen.add(txt);
+  });
+  return Array.from(duplicates);
+}
+
+onReady(() => {
+  console.log('=== Exam builder ready handler ===');
   console.log('sectionsContainer element:', document.getElementById('sections-container'));
-  
+
   // Attach button event listeners after DOM is ready
   const addSectionBtn = document.getElementById('add-section-btn');
   const saveDraftBtn = document.getElementById('save-draft-btn');
@@ -710,13 +732,21 @@ window.addEventListener('load', () => {
   console.log('Button elements:', { addSectionBtn, saveDraftBtn, submitBtn });
 
   if (addSectionBtn) addSectionBtn.addEventListener('click', () => { console.log('Add Section clicked'); addSection(); });
-  if (saveDraftBtn) saveDraftBtn.addEventListener('click', () => { console.log('Save Draft clicked'); saveDraft(); });
-  if (submitBtn) submitBtn.addEventListener('click', () => { console.log('Submit clicked'); submitForApproval(); });
+  if (saveDraftBtn) saveDraftBtn.addEventListener('click', () => { console.log('Save Draft clicked');
+    const dups = detectDuplicateQuestions();
+    if (dups && dups.length){ showStatus('Duplicate question text detected. Remove duplicates before saving.', true); return; }
+    saveDraft();
+  });
+  if (submitBtn) submitBtn.addEventListener('click', () => { console.log('Submit clicked');
+    const dups = detectDuplicateQuestions();
+    if (dups && dups.length){ showStatus('Duplicate question text detected. Remove duplicates before submitting.', true); return; }
+    submitForApproval();
+  });
 
   // Initialize builder
   console.log('Calling initBuilder()');
   initBuilder();
-  
+
   const classSelect = document.getElementById('id_school_class');
   if (classSelect) {
     classSelect.addEventListener('change', () => {
@@ -730,7 +760,7 @@ window.addEventListener('load', () => {
   }
   autosaveTimer = setInterval(saveDraft, 30000);
   console.log('Autosave timer started');
-  
+
   setTimeout(() => {
     console.log('Initializing rich editors and chart/diagram handlers');
     initRichEditors();
@@ -738,5 +768,4 @@ window.addEventListener('load', () => {
   }, 400);
 });
 </script>
-{% endblock %}
 {% endblock %}
