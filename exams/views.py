@@ -11,6 +11,11 @@ from django.utils import timezone
 from django.db import models
 from django.views.decorators.http import require_POST
 import json
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import uuid
+import imghdr
 
 try:
     from weasyprint import HTML
@@ -18,7 +23,7 @@ try:
 except ImportError:
     WEASYPRINT_AVAILABLE = False
 
-from .models import Subject, Exam, ExamPaper, ExamSection, Question, QuestionOption, ApprovalLog
+from .models import Subject, Exam, ExamPaper, ExamSection, Question, QuestionOption, ApprovalLog, ClassSubject
 from .forms import SubjectForm, ExamForm, ExamPaperForm, ExamReviewForm
 from school_classes.models import SchoolClasses, ClassTeacher
 
@@ -268,6 +273,28 @@ class TeacherExamPaperDetailView(LoginRequiredMixin, UserPassesTestMixin, Detail
         return context
 
 
+def _build_class_subject_map(teacher, extra_school_class=None):
+    class_ids = list(ClassTeacher.objects.filter(
+        teacher=teacher,
+        is_active=True
+    ).values_list('school_class_id', flat=True).distinct())
+
+    if extra_school_class and extra_school_class.pk not in class_ids:
+        class_ids.append(extra_school_class.pk)
+
+    class_subjects = ClassSubject.objects.filter(
+        school_class_id__in=class_ids
+    ).select_related('subject')
+
+    mapping = {}
+    for assignment in class_subjects:
+        mapping.setdefault(str(assignment.school_class_id), []).append({
+            'id': assignment.subject_id,
+            'name': str(assignment.subject),
+        })
+    return mapping
+
+
 class TeacherExamPaperCreateView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'exams/teacher_exam_form.html'
 
@@ -276,8 +303,10 @@ class TeacherExamPaperCreateView(LoginRequiredMixin, UserPassesTestMixin, Templa
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = ExamPaperForm(teacher=self.request.user.teacher_profile)
+        form = ExamPaperForm(teacher=self.request.user.teacher_profile)
+        context['form'] = form
         context['exam_json'] = json.dumps({})
+        context['class_subject_map'] = json.dumps(_build_class_subject_map(self.request.user.teacher_profile))
         context['page_title'] = 'Create Exam Paper'
         context['save_draft_url'] = reverse_lazy('exam_paper_save')
         context['submit_url'] = reverse_lazy('exam_paper_submit')
@@ -300,6 +329,7 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
 
         context['form'] = ExamPaperForm(instance=exam_paper, teacher=self.request.user.teacher_profile)
         context['exam_json'] = json.dumps(self._exam_to_payload(exam_paper))
+        context['class_subject_map'] = json.dumps(_build_class_subject_map(self.request.user.teacher_profile, extra_school_class=exam_paper.school_class))
         context['page_title'] = 'Edit Exam Paper'
         context['save_draft_url'] = reverse_lazy('exam_paper_save')
         context['submit_url'] = reverse_lazy('exam_paper_submit')
@@ -333,6 +363,7 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
                             'question_type': question.question_type,
                             'correct_answer': question.correct_answer,
                             'teacher_guide': question.teacher_guide,
+                            'resource_notes': question.resource_notes,
                             'subnumbering_style': question.subnumbering_style,
                             'options': [
                                 {
@@ -533,7 +564,8 @@ class ExamPaperSaveView(View):
                     question_type=question_data.get('question_type', 'theory'),
                     correct_answer=question_data.get('correct_answer', '').strip(),
                     teacher_guide=question_data.get('teacher_guide', '').strip(),
-                    subnumbering_style=question_data.get('subnumbering_style', 'parent_alpha')
+                    resource_notes=question_data.get('resource_notes', '').strip(),
+                    subnumbering_style=question_data.get('subnumbering_style', '')
                 )
                 for option in question_data.get('options', []):
                     if option.get('option_label'):
@@ -542,6 +574,77 @@ class ExamPaperSaveView(View):
                             option_label=option.get('option_label'),
                             option_text=option.get('option_text', '').strip()
                         )
+
+
+@login_required
+@require_POST
+def upload_image(request):
+    # Permission: optionally require approved profile/group membership
+    require_approved = getattr(settings, 'EXAM_UPLOAD_REQUIRE_APPROVED_PROFILE', True)
+    if require_approved:
+        if not user_profile_approved(request.user):
+            return JsonResponse({'error': 'User profile not approved.'}, status=403)
+
+        if not (user_is_admin(request.user) or user_is_staff(request.user) or hasattr(request.user, 'teacher_profile')):
+            return JsonResponse({'error': 'Permission denied.'}, status=403)
+
+    file_obj = request.FILES.get('upload') or request.FILES.get('file')
+    if not file_obj:
+        return JsonResponse({'error': 'No file provided.'}, status=400)
+
+    # Size limit from settings
+    max_size = getattr(settings, 'EXAM_UPLOAD_MAX_SIZE', 5 * 1024 * 1024)
+    if file_obj.size > max_size:
+        return JsonResponse({'error': f'File too large (max {max_size} bytes).'}, status=400)
+
+    content_type = (file_obj.content_type or '').lower()
+    # Basic content-type check
+    if not content_type.startswith('image/'):
+        return JsonResponse({'error': 'Invalid file type.'}, status=400)
+
+    # Try to guess extension
+    try:
+        ext = imghdr.what(None, h=file_obj.read(512))
+        file_obj.seek(0)
+    except Exception:
+        ext = None
+
+    if not ext:
+        ext = content_type.split('/')[-1]
+
+    ext = ext.lower().lstrip('.')
+    allowed = [e.lower().lstrip('.') for e in getattr(settings, 'EXAM_UPLOAD_WHITELIST', ['png', 'jpg', 'jpeg', 'gif'])]
+    if ext not in allowed:
+        return JsonResponse({'error': 'File extension not allowed.'}, status=400)
+
+    # Optional ClamAV scan
+    if getattr(settings, 'EXAM_UPLOAD_USE_CLAMD', False):
+        try:
+            import clamd
+            cd = clamd.ClamdUnixSocket()
+            # read into memory for scanning
+            data = file_obj.read()
+            file_obj.seek(0)
+            scan_result = cd.instream(data)
+            if scan_result and isinstance(scan_result, dict):
+                # clamd returns {'stream': ('OK', None)} or similar
+                verdict = list(scan_result.values())[0][0]
+                if verdict != 'OK':
+                    return JsonResponse({'error': 'File failed virus scan.'}, status=400)
+        except Exception:
+            # If scanning library not available or fails, continue but log
+            pass
+
+    filename = f"exam_resources/{uuid.uuid4().hex}.{ext}"
+    try:
+        path = default_storage.save(filename, ContentFile(file_obj.read()))
+    except Exception as e:
+        return JsonResponse({'error': 'Failed to save file.'}, status=500)
+
+    media_url = settings.MEDIA_URL.rstrip('/') + '/' + path.lstrip('/')
+    full_url = request.build_absolute_uri(media_url)
+
+    return JsonResponse({'url': full_url})
 
 
 @method_decorator([login_required, require_POST], name='dispatch')

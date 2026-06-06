@@ -61,15 +61,37 @@ class ExamPaperForm(forms.ModelForm):
         self.fields['duration'].widget.attrs.update({
             'placeholder': 'e.g., 1 Hour, 2 Hours'
         })
+
+        selected_class_id = None
+        if self.is_bound:
+            selected_class_id = self.data.get('school_class')
+        elif self.instance and self.instance.pk:
+            selected_class_id = getattr(self.instance.school_class, 'id', None)
+        elif self.initial.get('school_class'):
+            selected_class_id = self.initial.get('school_class')
+
         if teacher is not None:
             assigned = ClassTeacher.objects.filter(
                 teacher=teacher,
                 is_active=True
             )
-            class_ids = assigned.values_list('school_class_id', flat=True).distinct()
-            subject_ids = assigned.values_list('subject_id', flat=True).distinct()
+            class_ids = list(assigned.values_list('school_class_id', flat=True).distinct())
             self.fields['school_class'].queryset = SchoolClasses.objects.filter(id__in=class_ids)
-            self.fields['subject'].queryset = Subject.objects.filter(id__in=subject_ids, is_active=True)
+        else:
+            class_ids = []
+
+        if selected_class_id:
+            self.fields['subject'].queryset = Subject.objects.filter(
+                class_assignments__school_class_id=selected_class_id,
+                is_active=True
+            ).distinct()
+        elif class_ids:
+            self.fields['subject'].queryset = Subject.objects.filter(
+                class_assignments__school_class_id__in=class_ids,
+                is_active=True
+            ).distinct()
+        else:
+            self.fields['subject'].queryset = Subject.objects.filter(is_active=True)
 
 
 class ExamReviewForm(forms.Form):

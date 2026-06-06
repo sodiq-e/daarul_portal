@@ -128,3 +128,10 @@ if not DEBUG:
     }
 
 AI_GENERATION_ENABLED = os.environ.get('AI_GENERATION_ENABLED', 'True').strip().lower() not in ('0', 'false', 'no')
+
+# Exam resource upload settings
+EXAM_UPLOAD_MAX_SIZE = int(os.environ.get('EXAM_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # bytes
+EXAM_UPLOAD_WHITELIST = os.environ.get('EXAM_UPLOAD_WHITELIST', 'png,jpg,jpeg,gif').split(',')
+EXAM_UPLOAD_CLEANUP_DAYS = int(os.environ.get('EXAM_UPLOAD_CLEANUP_DAYS', 90))
+# If set to True and clamd is available, uploaded files will be scanned. Requires python-clamd or similar.
+EXAM_UPLOAD_USE_CLAMD = os.environ.get('EXAM_UPLOAD_USE_CLAMD', 'False').strip().lower() in ('1','true','yes')

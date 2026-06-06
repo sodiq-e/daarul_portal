@@ -150,18 +150,50 @@
 </div>
 
 <input type="hidden" id="exam-json" value="{{ exam_json|escapejs }}" />
+<input type="hidden" id="class-subject-map" value="{{ class_subject_map|escapejs }}" />
 <input type="hidden" id="save-draft-url" value="{{ save_draft_url }}" />
 <input type="hidden" id="submit-url" value="{{ submit_url }}" />
 
 {% block extra_js %}
 <script>
 const examJson = JSON.parse(document.getElementById('exam-json').value || '{}');
+const classSubjectMap = JSON.parse(document.getElementById('class-subject-map').value || '{}');
 const saveDraftUrl = document.getElementById('save-draft-url').value;
 const submitUrl = document.getElementById('submit-url').value;
 const sectionsContainer = document.getElementById('sections-container');
 const savedStatus = document.getElementById('saved-status');
 const previewLink = document.getElementById('preview-link');
+const subjectSelect = document.getElementById('id_subject');
+let initialSubjectOptions = [];
 let autosaveTimer;
+
+if (subjectSelect) {
+  initialSubjectOptions = Array.from(subjectSelect.options).map(option => ({
+    value: option.value,
+    label: option.textContent.trim(),
+  }));
+}
+
+function populateSubjectOptions(classId) {
+  if (!subjectSelect) return;
+  const currentValue = subjectSelect.value;
+  const options = classSubjectMap[classId] || initialSubjectOptions;
+
+  subjectSelect.innerHTML = '';
+  options.forEach(item => {
+    if (!item) return;
+    const value = item.id || item.value;
+    const label = item.name || item.label || value;
+    if (!value) return;
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    if (option.value === currentValue) {
+      option.selected = true;
+    }
+    subjectSelect.appendChild(option);
+  });
+}
 
 function initBuilder() {
   if (examJson && examJson.sections && examJson.sections.length) {
@@ -208,9 +240,8 @@ function addSection(sectionData = {}) {
           <select class="section-type">
             <option value="objective" ${sectionData.section_type === 'objective' ? 'selected' : ''}>Objective</option>
             <option value="theory" ${sectionData.section_type === 'theory' ? 'selected' : ''}>Theory</option>
-            <option value="oral" ${sectionData.section_type === 'oral' ? 'selected' : ''}>Oral</option>
-            <option value="grammar" ${sectionData.section_type === 'grammar' ? 'selected' : ''}>Grammar</option>
-            <option value="comprehension" ${sectionData.section_type === 'comprehension' ? 'selected' : ''}>Comprehension</option>
+            <option value="german" ${sectionData.section_type === 'german' ? 'selected' : ''}>German Questions</option>
+            <option value="other" ${sectionData.section_type === 'other' ? 'selected' : ''}>Custom / Optional</option>
           </select>
         </div>
       </div>
@@ -320,13 +351,26 @@ function addQuestion(sectionCard, questionData = {}) {
         <input type="text" class="correct-answer" value="${questionData.correct_answer || ''}" placeholder="A, B, C...">
       </div>
       <div class="col-md-6 field-block">
-        <label>Sub-question Style</label>
-        <select class="subnumbering-style">
-          <option value="parent_alpha" ${questionData.subnumbering_style === 'parent_alpha' ? 'selected' : ''}>1(a), 1(b), 1(c)</option>
-          <option value="roman" ${questionData.subnumbering_style === 'roman' ? 'selected' : ''}>i, ii, iii</option>
-          <option value="alpha" ${questionData.subnumbering_style === 'alpha' ? 'selected' : ''}>a, b, c</option>
-          <option value="custom" ${questionData.subnumbering_style === 'custom' ? 'selected' : ''}>Custom</option>
-        </select>
+        <label><input type="checkbox" class="has-subquestions" ${questionData.subnumbering_style ? 'checked' : ''}> Enable sub-question numbering</label>
+        <div class="subquestion-style-group ${questionData.subnumbering_style ? '' : 'hidden'}" style="margin-top: 8px;">
+          <select class="subnumbering-style">
+            <option value="" ${!questionData.subnumbering_style ? 'selected' : ''}>No sub-question numbering</option>
+            <option value="parent_alpha" ${questionData.subnumbering_style === 'parent_alpha' ? 'selected' : ''}>1(a), 1(b), 1(c)</option>
+            <option value="roman" ${questionData.subnumbering_style === 'roman' ? 'selected' : ''}>i, ii, iii</option>
+            <option value="alpha" ${questionData.subnumbering_style === 'alpha' ? 'selected' : ''}>a, b, c</option>
+            <option value="custom" ${questionData.subnumbering_style === 'custom' ? 'selected' : ''}>Custom</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-12 field-block">
+        <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button type="button" class="button add-diagram-btn">Add Diagram</button>
+          <button type="button" class="button add-chart-btn">Add Chart</button>
+        </div>
+        <textarea class="resource-notes" rows="3">${questionData.resource_notes || ''}</textarea>
       </div>
     </div>
     <div class="field-block">
@@ -359,6 +403,18 @@ function addQuestion(sectionCard, questionData = {}) {
     updateOptionFields(questionCard, parseInt(optionCount.value, 10));
   });
   updateOptionFields(questionCard, parseInt(optionCount.value, 10));
+
+  const subquestionToggle = questionCard.querySelector('.has-subquestions');
+  const subquestionGroup = questionCard.querySelector('.subquestion-style-group');
+  if (subquestionToggle) {
+    subquestionToggle.addEventListener('change', () => {
+      if (subquestionToggle.checked) {
+        subquestionGroup.classList.remove('hidden');
+      } else {
+        subquestionGroup.classList.add('hidden');
+      }
+    });
+  }
 }
 
 function refreshQuestionLabels(sectionCard) {
@@ -400,15 +456,18 @@ function gatherPayload() {
     };
 
     sectionCard.querySelectorAll('.question-card').forEach(questionCard => {
+      const subquestionCheckbox = questionCard.querySelector('.has-subquestions');
       const questionPayload = {
         question_type: questionCard.querySelector('.question-type').value,
         question_text: questionCard.querySelector('.question-text').value,
         marks: questionCard.querySelector('.question-marks').value,
         correct_answer: questionCard.querySelector('.correct-answer').value,
         teacher_guide: questionCard.querySelector('.teacher-guide').value,
-        subnumbering_style: questionCard.querySelector('.subnumbering-style').value,
+        resource_notes: questionCard.querySelector('.resource-notes')?.value || '',
+        subnumbering_style: subquestionCheckbox && !subquestionCheckbox.checked ? '' : questionCard.querySelector('.subnumbering-style').value,
         options: []
       };
+
       if (questionPayload.question_type === 'objective') {
         const optionCount = parseInt(questionCard.querySelector('.option-count').value, 10);
         const optionA = questionCard.querySelector('.option-label-a').value;
@@ -425,6 +484,7 @@ function gatherPayload() {
           questionPayload.options.push({ option_label: 'E', option_text: questionCard.querySelector('.option-label-e').value });
         }
       }
+
       sectionPayload.questions.push(questionPayload);
     });
 
@@ -496,8 +556,134 @@ document.getElementById('submit-btn').addEventListener('click', submitForApprova
 
 window.addEventListener('load', () => {
   initBuilder();
+  const classSelect = document.getElementById('id_school_class');
+  if (classSelect) {
+    classSelect.addEventListener('change', () => {
+      populateSubjectOptions(classSelect.value);
+    });
+    if (classSelect.value) {
+      populateSubjectOptions(classSelect.value);
+    }
+  }
   autosaveTimer = setInterval(saveDraft, 30000);
 });
+</script>
+<!-- Rich media support: CKEditor, Konva, Chart.js and upload handlers -->
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/konva@8/konva.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function initRichEditors() {
+  document.querySelectorAll('.resource-notes').forEach(ta => {
+    if (ta._editor) return;
+    if (typeof ClassicEditor === 'undefined') return;
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    ClassicEditor.create(ta, {
+      simpleUpload: {
+        uploadUrl: '/exams/exam-papers/upload-image/',
+        headers: {
+          'X-CSRFToken': csrftoken
+        }
+      }
+    }).then(editor => { ta._editor = editor; }).catch(() => {});
+  });
+}
+
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length; const u8arr = new Uint8Array(n);
+  while(n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], {type:mime});
+}
+
+function uploadDataURL(dataURL){
+  const blob = dataURLtoBlob(dataURL);
+  const fd = new FormData();
+  fd.append('upload', blob, 'export.png');
+  const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  return fetch('/exams/exam-papers/upload-image/', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } }).then(r => r.json());
+}
+
+function attachDiagramAndChartHandlers(questionCard){
+  const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
+  const addChartBtn = questionCard.querySelector('.add-chart-btn');
+  const ta = questionCard.querySelector('.resource-notes');
+  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) ta._editor.model.change(writer => { ta._editor.model.insertContent( ta._editor.data.processor.toView(`<img src="${res.url}">`) ); }); else if (ta) ta.value += `\n${res.url}`; } }); }));
+  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) ta._editor.model.change(writer => { ta._editor.model.insertContent( ta._editor.data.processor.toView(`<img src="${res.url}">`) ); }); else if (ta) ta.value += `\n${res.url}`; } }); }));
+}
+
+function openDiagramModal(){
+  return new Promise(resolve => {
+    const modal = document.createElement('div'); modal.style.position='fixed'; modal.style.left=0; modal.style.top=0; modal.style.right=0; modal.style.bottom=0; modal.style.background='rgba(0,0,0,0.6)'; modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
+    const box = document.createElement('div'); box.style.width='800px'; box.style.height='500px'; box.style.background='#fff'; box.style.padding='12px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
+    const stageContainer = document.createElement('div'); stageContainer.style.flex='1'; stageContainer.style.border='1px solid #ddd'; box.appendChild(stageContainer);
+    const controls = document.createElement('div'); controls.style.marginTop='8px';
+    const exportBtn = document.createElement('button'); exportBtn.textContent='Export & Insert'; exportBtn.className='button';
+    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.style.marginLeft='8px';
+    controls.appendChild(exportBtn); controls.appendChild(closeBtn); box.appendChild(controls);
+    modal.appendChild(box); document.body.appendChild(modal);
+    const width = stageContainer.clientWidth || 760; const height = stageContainer.clientHeight || 420;
+    const stage = new Konva.Stage({ container: stageContainer, width, height }); const layer = new Konva.Layer(); stage.add(layer);
+    layer.add(new Konva.Rect({ x:20, y:20, width:100, height:50, fill:'white', stroke:'black' })); layer.draw();
+    exportBtn.addEventListener('click', () => { const dataURL = stage.toDataURL(); document.body.removeChild(modal); resolve(dataURL); });
+    closeBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve(null); });
+  });
+}
+
+function openChartModal(){
+  return new Promise(resolve => {
+    const modal = document.createElement('div'); modal.style.position='fixed'; modal.style.left=0; modal.style.top=0; modal.style.right=0; modal.style.bottom=0; modal.style.background='rgba(0,0,0,0.6)'; modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
+    const box = document.createElement('div'); box.style.width='760px'; box.style.height='560px'; box.style.background='#fff'; box.style.padding='12px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
+
+    // Controls: inputs for labels and values
+    const formRow = document.createElement('div'); formRow.style.display='flex'; formRow.style.gap='8px'; formRow.style.marginBottom='8px';
+    const labelsInput = document.createElement('input'); labelsInput.placeholder='Labels (comma separated) e.g. Jan,Feb,Mar'; labelsInput.style.flex='1';
+    const valuesInput = document.createElement('input'); valuesInput.placeholder='Values (comma separated) e.g. 10,20,30'; valuesInput.style.flex='1';
+    formRow.appendChild(labelsInput); formRow.appendChild(valuesInput);
+    box.appendChild(formRow);
+
+    const canvas = document.createElement('canvas'); canvas.width=700; canvas.height=380; canvas.style.border='1px solid #ddd'; box.appendChild(canvas);
+    const controls = document.createElement('div'); controls.style.marginTop='8px'; controls.style.display='flex'; controls.style.gap='8px'; controls.style.alignItems='center';
+    const renderBtn = document.createElement('button'); renderBtn.textContent='Render Chart'; renderBtn.className='button';
+    const exportBtn = document.createElement('button'); exportBtn.textContent='Export & Insert'; exportBtn.className='button';
+    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.style.marginLeft='8px';
+    controls.appendChild(renderBtn); controls.appendChild(exportBtn); controls.appendChild(closeBtn); box.appendChild(controls);
+
+    modal.appendChild(box); document.body.appendChild(modal);
+    const ctx = canvas.getContext('2d');
+    let chart = new Chart(canvas, { type: 'bar', data: { labels: [], datasets:[{ label: 'Data', data:[], backgroundColor: '#0d6efd' }] }, options: { responsive: true, maintainAspectRatio: false } });
+
+    renderBtn.addEventListener('click', () => {
+      const labels = labelsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+      const values = valuesInput.value.split(',').map(s => parseFloat(s)).filter(v => !isNaN(v));
+      if (!labels.length || !values.length || labels.length !== values.length) {
+        alert('Please provide matching labels and numeric values, comma separated.');
+        return;
+      }
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = values;
+      chart.update();
+    });
+
+    exportBtn.addEventListener('click', () => { const dataURL = canvas.toDataURL(); document.body.removeChild(modal); resolve(dataURL); });
+    closeBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve(null); });
+  });
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => { initRichEditors(); document.querySelectorAll('.question-card').forEach(qc => attachDiagramAndChartHandlers(qc)); }, 400);
+});
+
+// Wrap original addQuestion to attach handlers after creating a new question
+const __origAddQuestion = addQuestion;
+addQuestion = function(sectionCard, questionData) {
+  __origAddQuestion(sectionCard, questionData);
+  const last = sectionCard.querySelector('.question-list').lastElementChild;
+  initRichEditors();
+  if (last) attachDiagramAndChartHandlers(last);
+};
 </script>
 {% endblock %}
 {% endblock %}

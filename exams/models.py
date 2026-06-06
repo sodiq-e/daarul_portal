@@ -145,10 +145,8 @@ class ExamSection(models.Model):
     SECTION_TYPES = [
         ('objective', 'Objective'),
         ('theory', 'Theory'),
-        ('oral', 'Oral'),
-        ('grammar', 'Grammar'),
-        ('comprehension', 'Comprehension'),
-        ('other', 'Other'),
+        ('german', 'German Questions'),
+        ('other', 'Custom / Optional'),
     ]
 
     exam = models.ForeignKey(ExamPaper, on_delete=models.CASCADE, related_name='sections')
@@ -172,9 +170,10 @@ class Question(models.Model):
     ]
 
     SUBNUMBERING_STYLES = [
-        ('parent_alpha', '1(a) 1(b) ...'),
-        ('roman', 'i ii iii'),
-        ('alpha', 'a b c'),
+        ('', 'No sub-question numbering'),
+        ('parent_alpha', '1(a), 1(b), 1(c)'),
+        ('roman', 'i, ii, iii'),
+        ('alpha', 'a, b, c'),
         ('custom', 'Custom'),
     ]
 
@@ -185,7 +184,8 @@ class Question(models.Model):
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='theory')
     correct_answer = models.CharField(max_length=10, blank=True, help_text='Stored for records only')
     teacher_guide = models.TextField(blank=True)
-    subnumbering_style = models.CharField(max_length=20, choices=SUBNUMBERING_STYLES, default='parent_alpha')
+    resource_notes = models.TextField(blank=True)
+    subnumbering_style = models.CharField(max_length=20, choices=SUBNUMBERING_STYLES, blank=True, default='')
 
     class Meta:
         ordering = ['order']
