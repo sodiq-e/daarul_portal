@@ -621,6 +621,10 @@ class DiagramBuilder {
     this.history = [];
     this.historyStep = -1;
     this.isDrawing = false;
+    this.isDragging = false;
+    this.dragOffsetX = 0;
+    this.dragOffsetY = 0;
+    this.drawingPoints = [];
     this.startX = 0;
     this.startY = 0;
     this.gridSize = 20;
@@ -680,6 +684,7 @@ class DiagramBuilder {
       { id: 'triangle', label: '▲ Triangle', icon: '△' },
       { id: 'line', label: '/ Line', icon: '/' },
       { id: 'arrow', label: '→ Arrow', icon: '→' },
+      { id: 'pen', label: '✏ Draw', icon: '✏' },
       { id: 'text', label: 'A Text', icon: 'T' }
     ];
     
@@ -853,6 +858,11 @@ class DiagramBuilder {
     this.stage.on('mousedown', (e) => this.handleMouseDown(e));
     this.stage.on('mousemove', (e) => this.handleMouseMove(e));
     this.stage.on('mouseup', (e) => this.handleMouseUp(e));
+    
+    // Touch support for mobile
+    this.stage.on('touchstart', (e) => this.handleMouseDown(e));
+    this.stage.on('touchmove', (e) => this.handleMouseMove(e));
+    this.stage.on('touchend', (e) => this.handleMouseUp(e));
   }
   
   snapCoord(coord) {
@@ -867,6 +877,9 @@ class DiagramBuilder {
         this.deselectAll();
       } else if (clickedObject.isShape) {
         this.selectObject(clickedObject);
+        this.isDragging = true;
+        this.dragOffsetX = clickedObject.x() - e.evt.offsetX;
+        this.dragOffsetY = clickedObject.y() - e.evt.offsetY;
       }
       return;
     }
@@ -875,6 +888,11 @@ class DiagramBuilder {
     const pos = this.stage.getPointerPosition();
     this.startX = this.snapCoord(pos.x);
     this.startY = this.snapCoord(pos.y);
+    
+    // For pen tool, start freehand drawing
+    if (this.currentTool === 'pen') {
+      this.drawingPoints = [this.startX, this.startY];
+    }
     
     if (this.currentTool === 'text') {
       const text = prompt('Enter text:');
@@ -897,11 +915,44 @@ class DiagramBuilder {
   }
   
   handleMouseMove(e) {
+    // Handle dragging selected object
+    if (this.isDragging && this.selectedObject) {
+      const pos = this.stage.getPointerPosition();
+      this.selectedObject.x(this.snapCoord(pos.x + this.dragOffsetX));
+      this.selectedObject.y(this.snapCoord(pos.y + this.dragOffsetY));
+      this.layer.draw();
+      return;
+    }
+    
     if (!this.isDrawing || this.currentTool === 'text' || this.currentTool === 'select') return;
     
     const pos = this.stage.getPointerPosition();
     const currentX = this.snapCoord(pos.x);
     const currentY = this.snapCoord(pos.y);
+    
+    // Handle pen/freehand drawing
+    if (this.currentTool === 'pen') {
+      this.drawingPoints.push(currentX, currentY);
+      
+      // Remove old preview
+      const children = this.layer.children.filter(c => c._isPreview);
+      children.forEach(c => c.destroy());
+      
+      // Draw freehand line
+      const shape = new Konva.Line({
+        points: this.drawingPoints,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
+        _isPreview: true,
+        isShape: true
+      });
+      
+      this.layer.add(shape);
+      this.layer.draw();
+      return;
+    }
     
     const width = Math.abs(currentX - this.startX);
     const height = Math.abs(currentY - this.startY);
@@ -972,8 +1023,29 @@ class DiagramBuilder {
   }
   
   handleMouseUp(e) {
+    // Stop dragging
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.saveHistory();
+      return;
+    }
+    
     if (!this.isDrawing) return;
     this.isDrawing = false;
+    
+    // Handle pen drawing - finalize the freehand line
+    if (this.currentTool === 'pen') {
+      const previewShapes = this.layer.children.filter(c => c._isPreview);
+      previewShapes.forEach(shape => {
+        shape._isPreview = false;
+      });
+      if (previewShapes.length > 0) {
+        this.layer.draw();
+        this.saveHistory();
+      }
+      this.drawingPoints = [];
+      return;
+    }
     
     const previewShapes = this.layer.children.filter(c => c._isPreview);
     previewShapes.forEach(shape => {
@@ -991,7 +1063,8 @@ class DiagramBuilder {
     this.deselectAll();
     this.selectedObject = obj;
     obj.stroke = '#0d6efd';
-    obj.strokeWidth = (this.lineThickness || 2) + 1;
+    obj.strokeWidth = (this.lineThickness || 2) + 2;
+    this.stage.container().style.cursor = 'grab';
     this.layer.draw();
   }
   
@@ -1000,6 +1073,7 @@ class DiagramBuilder {
       this.selectedObject.stroke = this.strokeColor;
       this.selectedObject.strokeWidth = this.lineThickness || 1;
       this.selectedObject = null;
+      this.stage.container().style.cursor = 'default';
     }
     this.layer.draw();
   }
