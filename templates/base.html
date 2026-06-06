@@ -3518,6 +3518,11 @@ html, body {
           <i class="fas fa-user-shield"></i><span> Teacher Permissions</span>
         </a>
 
+        <a href="{% url 'admin_exam_paper_list' %}" data-tooltip="Exam Review"
+           class="{% if request.resolver_match.url_name in 'admin_exam_paper_list admin_exam_paper_detail admin_exam_paper_action' %}active{% endif %}">
+          <i class="fas fa-file-signature"></i><span> Exam Paper Review</span>
+        </a>
+
         <a href="{% url 'teachers:admin_scheme_list' %}" data-tooltip="Scheme"
            class="{% if request.resolver_match.url_name == 'admin_scheme_list' %}active{% endif %}">
           <i class="fas fa-tasks"></i><span> Scheme Approval</span>
@@ -3572,6 +3577,11 @@ html, body {
         <a href="{% url 'teachers:teacher_scheme_list' %}" data-tooltip="Schemes"
            class="{% if request.resolver_match.url_name == 'teacher_scheme_list' %}active{% endif %}">
           <i class="fas fa-book"></i><span> Scheme of Work</span>
+        </a>
+
+        <a href="{% url 'exam_paper_list' %}" data-tooltip="Exam Papers"
+           class="{% if request.resolver_match.url_name in 'exam_paper_list exam_paper_detail exam_paper_add exam_paper_edit' %}active{% endif %}">
+          <i class="fas fa-file-alt"></i><span> Exam Papers</span>
         </a>
 
         <a href="{% url 'teacher_results_list' %}" data-tooltip="Results"
