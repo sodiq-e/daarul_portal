@@ -556,8 +556,30 @@ function attachDiagramAndChartHandlers(questionCard){
   const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
   const addChartBtn = questionCard.querySelector('.add-chart-btn');
   const ta = questionCard.querySelector('.resource-notes');
-  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) ta._editor.model.change(writer => { ta._editor.model.insertContent( ta._editor.data.processor.toView(`<img src="${res.url}">`) ); }); else if (ta) ta.value += `\n${res.url}`; } }); }));
-  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) ta._editor.model.change(writer => { ta._editor.model.insertContent( ta._editor.data.processor.toView(`<img src="${res.url}">`) ); }); else if (ta) ta.value += `\n${res.url}`; } }); }));
+  
+  function insertImageUrl(editor, url) {
+    try {
+      editor.model.change(writer => {
+        const schema = editor.model.schema;
+        // Try to insert an image element if the schema supports it
+        if (schema.getDefinitions().image) {
+          const image = writer.createElement('image', { src: url });
+          editor.model.insertContent(image);
+        } else {
+          // Fallback: insert as a link or plain text
+          const text = writer.createText(`[Image: ${url}]`);
+          editor.model.insertContent(text);
+        }
+      });
+    } catch (e) {
+      console.error('Error inserting image in editor:', e);
+      // Final fallback: append to textarea
+      if (ta) ta.value += `\n${url}`;
+    }
+  }
+  
+  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }); }));
+  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }); }));
 }
 
 function openDiagramModal(){
