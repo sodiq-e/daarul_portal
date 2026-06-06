@@ -558,28 +558,21 @@ function attachDiagramAndChartHandlers(questionCard){
   const ta = questionCard.querySelector('.resource-notes');
   
   function insertImageUrl(editor, url) {
+    // Safely append URL as text to avoid CKEditor schema/model issues
     try {
-      editor.model.change(writer => {
-        const schema = editor.model.schema;
-        // Try to insert an image element if the schema supports it
-        if (schema.getDefinitions().image) {
-          const image = writer.createElement('image', { src: url });
-          editor.model.insertContent(image);
-        } else {
-          // Fallback: insert as a link or plain text
-          const text = writer.createText(`[Image: ${url}]`);
-          editor.model.insertContent(text);
-        }
-      });
+      if (editor && editor.data) {
+        const currentData = editor.data.get();
+        const imageLink = `<p><a href="${url}" target="_blank">View Image</a></p>`;
+        editor.data.set(currentData + imageLink);
+      }
     } catch (e) {
-      console.error('Error inserting image in editor:', e);
-      // Final fallback: append to textarea
+      console.warn('Could not insert image in editor, appending URL as text:', e);
       if (ta) ta.value += `\n${url}`;
     }
   }
   
-  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }); }));
-  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }); }));
+  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res && res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }).catch(err => { console.error('Diagram upload failed:', err); }); }));
+  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res && res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }).catch(err => { console.error('Chart upload failed:', err); }); }));
 }
 
 function openDiagramModal(){
@@ -1261,19 +1254,27 @@ function gatherPayload() {
 }
 
 function sendPayload(url, payload, callback) {
-  fetch(url, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-    },
-    body: JSON.stringify(payload)
-  })
-    .then(response => response.json().then(data => ({ ok: response.ok, data })).catch(() => ({ ok: response.ok, data: null })))
-    .then(({ ok, data }) => {
+  // Add timeout wrapper for fetch
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Request timeout (30s)')), 30000)
+  );
+  
+  Promise.race([
+    fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: JSON.stringify(payload)
+    }),
+    timeoutPromise
+  ])
+    .then(response => response.json().then(data => ({ ok: response.ok, status: response.status, data })).catch(() => ({ ok: response.ok, status: response.status, data: null })))
+    .then(({ ok, status, data }) => {
       if (!ok) {
-        const msg = data && (data.error || data.errors) ? (data.error || JSON.stringify(data.errors)) : 'Server error while saving.';
+        const msg = data && (data.error || data.errors) ? (data.error || JSON.stringify(data.errors)) : `Server error (HTTP ${status}) while saving.`;
         showStatus(msg, true);
       } else {
         if (data && !data.error && !data.errors) {
@@ -1286,7 +1287,10 @@ function sendPayload(url, payload, callback) {
       }
       if (callback) callback(data);
     })
-    .catch(err => { console.error('sendPayload error', err); showStatus('Unable to reach server.', true); });
+    .catch(err => { 
+      console.error('sendPayload error:', err.message || err); 
+      showStatus(`Failed to save: ${err.message || 'Network error'}`, true); 
+    });
 }
 
 function showStatus(message, isError = false) {
