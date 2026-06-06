@@ -133,11 +133,13 @@
       <form method="post" id="exam-builder-form">
         {% csrf_token %}
         <div class="exam-builder-toolbar">
-          <button id="add-section-btn" type="button" class="button">Add Section</button>
           <div class="text-muted">Tip: Save frequently. Drafts autosave every 30 seconds.</div>
         </div>
 
         <div id="sections-container"></div>
+        <div style="margin-top:12px;text-align:center;">
+          <button id="add-section-btn" type="button" class="button">Add Section</button>
+        </div>
 
         <div class="builder-actions">
           <button id="save-draft-btn" type="button" class="button">Save Draft</button>
@@ -273,7 +275,6 @@ function addSection(sectionData = {}) {
     <div class="section-header">
       <h4>Section ${sectionIndex}</h4>
       <div>
-        <button type="button" class="button" data-action="add-question">Add Question</button>
         <button type="button" class="button" style="background:#dc3545;color:white;" data-action="remove-section">Remove</button>
       </div>
     </div>
@@ -306,6 +307,9 @@ function addSection(sectionData = {}) {
         </div>
       </div>
       <div class="question-list"></div>
+      <div class="question-controls" style="margin-top:8px;">
+        <button type="button" class="button add-question-btn">Add Question</button>
+      </div>
     </div>
   `;
 
@@ -313,11 +317,31 @@ function addSection(sectionData = {}) {
   console.log('Section card added to container. Container now has', sectionsContainer.children.length, 'sections');
   
   const questionList = sectionCard.querySelector('.question-list');
-  sectionCard.querySelector('[data-action="add-question"]').addEventListener('click', () => addQuestion(sectionCard));
+  const addQuestionBtn = sectionCard.querySelector('.add-question-btn');
+  if (addQuestionBtn) addQuestionBtn.addEventListener('click', () => addQuestion(sectionCard));
   sectionCard.querySelector('[data-action="remove-section"]').addEventListener('click', () => {
     sectionCard.remove();
     refreshSectionLabels();
   });
+
+  // When section type changes, update existing question cards to show/hide objective fields
+  const sectionTypeSelect = sectionCard.querySelector('.section-type');
+  if (sectionTypeSelect) {
+    sectionTypeSelect.addEventListener('change', () => {
+      const val = sectionTypeSelect.value;
+      sectionCard.querySelectorAll('.question-card').forEach(qc => {
+        const objectiveFields = qc.querySelector('.question-objective-fields');
+        const optionGroup = qc.querySelector('.question-option-group');
+        if (val === 'objective') {
+          objectiveFields && objectiveFields.classList.remove('hidden');
+          optionGroup && optionGroup.classList.remove('hidden');
+        } else {
+          objectiveFields && objectiveFields.classList.add('hidden');
+          optionGroup && optionGroup.classList.add('hidden');
+        }
+      });
+    });
+  }
 
   if (sectionData.questions && sectionData.questions.length) {
     sectionData.questions.forEach(question => addQuestion(sectionCard, question));
@@ -337,7 +361,9 @@ function addQuestion(sectionCard, questionData = {}) {
   console.log('addQuestion() called with data:', questionData);
   const questionList = sectionCard.querySelector('.question-list');
   const questionIndex = questionList.children.length + 1;
-  const questionType = questionData.question_type || 'objective';
+  // Question type inherits from section-type by default (to reduce per-question clutter)
+  const sectionTypeEl = sectionCard.querySelector('.section-type');
+  const questionType = questionData.question_type || (sectionTypeEl ? sectionTypeEl.value : 'objective');
 
   const questionCard = document.createElement('div');
   questionCard.className = 'question-card';
@@ -347,13 +373,6 @@ function addQuestion(sectionCard, questionData = {}) {
       <button type="button" class="button" style="background:#dc3545;color:white;" data-action="remove-question">Remove</button>
     </div>
     <div class="row g-3">
-      <div class="col-md-6 field-block">
-        <label>Question Type</label>
-        <select class="question-type">
-          <option value="objective" ${questionType === 'objective' ? 'selected' : ''}>Objective</option>
-          <option value="theory" ${questionType === 'theory' ? 'selected' : ''}>Theory</option>
-        </select>
-      </div>
       <div class="col-md-6 field-block">
         <label>Marks</label>
         <input type="number" min="0" class="question-marks" value="${questionData.marks || 0}" placeholder="Marks allocation">
@@ -414,20 +433,23 @@ function addQuestion(sectionCard, questionData = {}) {
         </div>
       </div>
     </div>
-    <div class="row g-3">
-      <div class="col-md-12 field-block">
-        <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
-        <div style="display:flex;gap:8px;margin-bottom:8px;">
-          <button type="button" class="button add-diagram-btn">Add Diagram</button>
-          <button type="button" class="button add-chart-btn">Add Chart</button>
+    <details class="optional-features" style="margin-top:8px;border-left:4px solid #eee;padding-left:12px;background:#fafafa;padding:8px;">
+      <summary style="cursor:pointer;font-weight:600;margin-bottom:6px;">Optional: Resources, Diagrams & Teacher Guide</summary>
+      <div class="row g-3" style="margin-top:6px;">
+        <div class="col-md-12 field-block">
+          <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" class="button add-diagram-btn">Add Diagram</button>
+            <button type="button" class="button add-chart-btn">Add Chart</button>
+          </div>
+          <textarea class="resource-notes" rows="3">${questionData.resource_notes || ''}</textarea>
         </div>
-        <textarea class="resource-notes" rows="3">${questionData.resource_notes || ''}</textarea>
       </div>
-    </div>
-    <div class="field-block">
-      <label>Teacher Answer Guide (optional)</label>
-      <textarea class="teacher-guide" rows="3">${questionData.teacher_guide || ''}</textarea>
-    </div>
+      <div class="field-block" style="margin-top:6px;">
+        <label>Teacher Answer Guide (optional)</label>
+        <textarea class="teacher-guide" rows="3">${questionData.teacher_guide || ''}</textarea>
+      </div>
+    </details>
   `;
 
   questionList.appendChild(questionCard);
@@ -437,18 +459,8 @@ function addQuestion(sectionCard, questionData = {}) {
     refreshQuestionLabels(sectionCard);
   });
 
-  const typeControl = questionCard.querySelector('.question-type');
-  typeControl.addEventListener('change', () => {
-    const objectiveFields = questionCard.querySelector('.question-objective-fields');
-    const optionGroup = questionCard.querySelector('.question-option-group');
-    if (typeControl.value === 'objective') {
-      objectiveFields.classList.remove('hidden');
-      optionGroup.classList.remove('hidden');
-    } else {
-      objectiveFields.classList.add('hidden');
-      optionGroup.classList.add('hidden');
-    }
-  });
+  // Question type is inherited from the parent section's `.section-type`.
+  // Per-question type control removed to reduce UI clutter.
 
   const optionCount = questionCard.querySelector('.option-count');
   optionCount.addEventListener('change', () => {
@@ -490,18 +502,26 @@ function updateOptionFields(questionCard, count) {
 }
 
 function initRichEditors() {
-  document.querySelectorAll('.resource-notes').forEach(ta => {
-    if (ta._editor) return;
+  function initEditorFor(ta) {
+    if (!ta || ta._editor) return;
     if (typeof ClassicEditor === 'undefined') return;
-    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     ClassicEditor.create(ta, {
       simpleUpload: {
         uploadUrl: '/exams/exam-papers/upload-image/',
-        headers: {
-          'X-CSRFToken': csrftoken
-        }
+        headers: { 'X-CSRFToken': csrftoken }
       }
     }).then(editor => { ta._editor = editor; }).catch(() => {});
+  }
+
+  // Lazy-init editors when the details panel is expanded to reduce initial load
+  document.querySelectorAll('.optional-features').forEach(details => {
+    const ta = details.querySelector('.resource-notes');
+    if (!ta) return;
+    if (details.open) initEditorFor(ta);
+    details.addEventListener('toggle', () => {
+      if (details.open) initEditorFor(ta);
+    });
   });
 }
 
@@ -532,20 +552,490 @@ function attachDiagramAndChartHandlers(questionCard){
 
 function openDiagramModal(){
   return new Promise(resolve => {
-    const modal = document.createElement('div'); modal.style.position='fixed'; modal.style.left=0; modal.style.top=0; modal.style.right=0; modal.style.bottom=0; modal.style.background='rgba(0,0,0,0.6)'; modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
-    const box = document.createElement('div'); box.style.width='800px'; box.style.height='500px'; box.style.background='#fff'; box.style.padding='12px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
-    const stageContainer = document.createElement('div'); stageContainer.style.flex='1'; stageContainer.style.border='1px solid #ddd'; box.appendChild(stageContainer);
-    const controls = document.createElement('div'); controls.style.marginTop='8px';
-    const exportBtn = document.createElement('button'); exportBtn.textContent='Export & Insert'; exportBtn.className='button';
-    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.style.marginLeft='8px';
-    controls.appendChild(exportBtn); controls.appendChild(closeBtn); box.appendChild(controls);
-    modal.appendChild(box); document.body.appendChild(modal);
-    const width = stageContainer.clientWidth || 760; const height = stageContainer.clientHeight || 420;
-    const stage = new Konva.Stage({ container: stageContainer, width, height }); const layer = new Konva.Layer(); stage.add(layer);
-    layer.add(new Konva.Rect({ x:20, y:20, width:100, height:50, fill:'white', stroke:'black' })); layer.draw();
-    exportBtn.addEventListener('click', () => { const dataURL = stage.toDataURL(); document.body.removeChild(modal); resolve(dataURL); });
-    closeBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve(null); });
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10001';
+    
+    const box = document.createElement('div');
+    box.style.cssText = 'width:900px;height:650px;background:#fff;padding:0;border-radius:6px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+    
+    // Header with title
+    const header = document.createElement('div');
+    header.style.cssText = 'padding:12px 16px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;align-items:center';
+    header.innerHTML = '<h4 style="margin:0;font-size:16px;font-weight:600">Diagram Builder</h4>';
+    box.appendChild(header);
+    
+    // Toolbar
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'padding:8px 12px;border-bottom:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f9f9f9';
+    box.appendChild(toolbar);
+    
+    // Canvas container
+    const canvasContainer = document.createElement('div');
+    canvasContainer.style.cssText = 'flex:1;border:1px solid #ddd;position:relative;overflow:hidden;background:#fafafa';
+    box.appendChild(canvasContainer);
+    
+    // Footer with buttons
+    const footer = document.createElement('div');
+    footer.style.cssText = 'padding:12px 16px;border-top:1px solid #ddd;display:flex;gap:8px;justify-content:flex-end';
+    box.appendChild(footer);
+    
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+    
+    // Initialize diagram builder
+    const builder = new DiagramBuilder(canvasContainer, toolbar, footer);
+    
+    // Export button
+    const exportBtn = document.createElement('button');
+    exportBtn.textContent = 'Export & Insert';
+    exportBtn.className = 'button';
+    exportBtn.style.background = '#0d6efd';
+    exportBtn.style.color = 'white';
+    exportBtn.addEventListener('click', () => {
+      const dataURL = builder.export();
+      document.body.removeChild(modal);
+      resolve(dataURL);
+    });
+    footer.appendChild(exportBtn);
+    
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Close';
+    closeBtn.className = 'button';
+    closeBtn.addEventListener('click', () => {
+      document.body.removeChild(modal);
+      resolve(null);
+    });
+    footer.appendChild(closeBtn);
   });
+}
+
+class DiagramBuilder {
+  constructor(container, toolbarContainer, footerContainer) {
+    this.container = container;
+    this.toolbarContainer = toolbarContainer;
+    this.width = 880;
+    this.height = 360;
+    this.currentTool = 'select';
+    this.selectedObject = null;
+    this.history = [];
+    this.historyStep = -1;
+    this.isDrawing = false;
+    this.startX = 0;
+    this.startY = 0;
+    this.gridSize = 20;
+    this.snapToGrid = true;
+    this.strokeColor = '#000000';
+    this.fillColor = '#ffffff';
+    this.lineThickness = 2;
+    
+    this.init();
+  }
+  
+  init() {
+    // Create Konva stage
+    this.stage = new Konva.Stage({
+      container: this.container,
+      width: this.width,
+      height: this.height
+    });
+    
+    this.layer = new Konva.Layer();
+    this.stage.add(this.layer);
+    
+    this.drawGrid();
+    this.setupToolbar();
+    this.setupEventHandlers();
+    this.saveHistory();
+  }
+  
+  drawGrid() {
+    const gridLayer = new Konva.Layer();
+    this.stage.add(gridLayer);
+    
+    for (let i = 0; i < this.width; i += this.gridSize) {
+      gridLayer.add(new Konva.Line({
+        points: [i, 0, i, this.height],
+        stroke: '#e0e0e0',
+        strokeWidth: 0.5
+      }));
+    }
+    
+    for (let i = 0; i < this.height; i += this.gridSize) {
+      gridLayer.add(new Konva.Line({
+        points: [0, i, this.width, i],
+        stroke: '#e0e0e0',
+        strokeWidth: 0.5
+      }));
+    }
+    
+    gridLayer.draw();
+  }
+  
+  setupToolbar() {
+    const tools = [
+      { id: 'select', label: '✓ Select', icon: '→' },
+      { id: 'rect', label: '▭ Rectangle', icon: '◻' },
+      { id: 'circle', label: '◯ Circle', icon: '●' },
+      { id: 'triangle', label: '▲ Triangle', icon: '△' },
+      { id: 'line', label: '/ Line', icon: '/' },
+      { id: 'arrow', label: '→ Arrow', icon: '→' },
+      { id: 'text', label: 'A Text', icon: 'T' }
+    ];
+    
+    const toolGroup = document.createElement('div');
+    toolGroup.style.cssText = 'display:flex;gap:4px';
+    
+    tools.forEach(tool => {
+      const btn = document.createElement('button');
+      btn.textContent = tool.label;
+      btn.style.cssText = `padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer`;
+      btn.className = this.currentTool === tool.id ? 'active' : '';
+      
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-tool]').forEach(b => {
+          b.style.background = '#fff';
+          b.style.borderColor = '#ddd';
+        });
+        this.currentTool = tool.id;
+        btn.style.background = '#0d6efd';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#0d6efd';
+      });
+      
+      btn.dataset.tool = tool.id;
+      if (this.currentTool === tool.id) {
+        btn.style.background = '#0d6efd';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#0d6efd';
+      }
+      
+      toolGroup.appendChild(btn);
+    });
+    
+    this.toolbarContainer.appendChild(toolGroup);
+    
+    // Separator
+    this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';
+    this.toolbarContainer.lastChild.style.background = '#ddd';
+    this.toolbarContainer.lastChild.style.height = '24px';
+    
+    // Color & thickness controls
+    const controlsGroup = document.createElement('div');
+    controlsGroup.style.cssText = 'display:flex;gap:8px;align-items:center';
+    
+    // Stroke color
+    const strokeLabel = document.createElement('label');
+    strokeLabel.textContent = 'Stroke: ';
+    strokeLabel.style.cssText = 'font-size:12px;font-weight:600';
+    const strokePicker = document.createElement('input');
+    strokePicker.type = 'color';
+    strokePicker.value = this.strokeColor;
+    strokePicker.style.width = '32px';
+    strokePicker.style.cursor = 'pointer';
+    strokePicker.addEventListener('change', (e) => {
+      this.strokeColor = e.target.value;
+    });
+    strokeLabel.appendChild(strokePicker);
+    controlsGroup.appendChild(strokeLabel);
+    
+    // Fill color
+    const fillLabel = document.createElement('label');
+    fillLabel.textContent = 'Fill: ';
+    fillLabel.style.cssText = 'font-size:12px;font-weight:600';
+    const fillPicker = document.createElement('input');
+    fillPicker.type = 'color';
+    fillPicker.value = this.fillColor;
+    fillPicker.style.width = '32px';
+    fillPicker.style.cursor = 'pointer';
+    fillPicker.addEventListener('change', (e) => {
+      this.fillColor = e.target.value;
+    });
+    fillLabel.appendChild(fillPicker);
+    controlsGroup.appendChild(fillLabel);
+    
+    // Line thickness
+    const thicknessLabel = document.createElement('label');
+    thicknessLabel.textContent = 'Thickness: ';
+    thicknessLabel.style.cssText = 'font-size:12px;font-weight:600';
+    const thicknessSelect = document.createElement('select');
+    thicknessSelect.style.cssText = 'padding:4px 6px;font-size:12px;border:1px solid #ddd;border-radius:4px';
+    [1, 2, 3, 4, 5].forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = `${t}px`;
+      if (t === 2) opt.selected = true;
+      thicknessSelect.appendChild(opt);
+    });
+    thicknessSelect.addEventListener('change', (e) => {
+      this.lineThickness = parseInt(e.target.value);
+    });
+    thicknessLabel.appendChild(thicknessSelect);
+    controlsGroup.appendChild(thicknessLabel);
+    
+    // Grid toggle
+    const gridLabel = document.createElement('label');
+    gridLabel.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer';
+    const gridCheckbox = document.createElement('input');
+    gridCheckbox.type = 'checkbox';
+    gridCheckbox.checked = this.snapToGrid;
+    gridCheckbox.addEventListener('change', (e) => {
+      this.snapToGrid = e.target.checked;
+    });
+    gridLabel.appendChild(gridCheckbox);
+    gridLabel.appendChild(document.createTextNode('Snap to Grid'));
+    controlsGroup.appendChild(gridLabel);
+    
+    this.toolbarContainer.appendChild(controlsGroup);
+    
+    // Separator
+    this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';
+    this.toolbarContainer.lastChild.style.background = '#ddd';
+    this.toolbarContainer.lastChild.style.height = '24px';
+    
+    // Edit controls
+    const editGroup = document.createElement('div');
+    editGroup.style.cssText = 'display:flex;gap:4px';
+    
+    const undoBtn = document.createElement('button');
+    undoBtn.textContent = '↶ Undo';
+    undoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
+    undoBtn.addEventListener('click', () => this.undo());
+    editGroup.appendChild(undoBtn);
+    
+    const redoBtn = document.createElement('button');
+    redoBtn.textContent = '↷ Redo';
+    redoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
+    redoBtn.addEventListener('click', () => this.redo());
+    editGroup.appendChild(redoBtn);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '🗑 Delete';
+    deleteBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;color:#dc3545';
+    deleteBtn.addEventListener('click', () => {
+      if (this.selectedObject) {
+        this.selectedObject.destroy();
+        this.selectedObject = null;
+        this.layer.draw();
+        this.saveHistory();
+      }
+    });
+    editGroup.appendChild(deleteBtn);
+    
+    const bringForwardBtn = document.createElement('button');
+    bringForwardBtn.textContent = '↑ Bring Forward';
+    bringForwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
+    bringForwardBtn.addEventListener('click', () => {
+      if (this.selectedObject) {
+        this.selectedObject.moveUp();
+        this.layer.draw();
+        this.saveHistory();
+      }
+    });
+    editGroup.appendChild(bringForwardBtn);
+    
+    const sendBackwardBtn = document.createElement('button');
+    sendBackwardBtn.textContent = '↓ Send Backward';
+    sendBackwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
+    sendBackwardBtn.addEventListener('click', () => {
+      if (this.selectedObject) {
+        this.selectedObject.moveDown();
+        this.layer.draw();
+        this.saveHistory();
+      }
+    });
+    editGroup.appendChild(sendBackwardBtn);
+    
+    this.toolbarContainer.appendChild(editGroup);
+  }
+  
+  setupEventHandlers() {
+    this.stage.on('mousedown', (e) => this.handleMouseDown(e));
+    this.stage.on('mousemove', (e) => this.handleMouseMove(e));
+    this.stage.on('mouseup', (e) => this.handleMouseUp(e));
+  }
+  
+  snapCoord(coord) {
+    if (!this.snapToGrid) return coord;
+    return Math.round(coord / this.gridSize) * this.gridSize;
+  }
+  
+  handleMouseDown(e) {
+    if (this.currentTool === 'select') {
+      const clickedObject = e.target;
+      if (clickedObject === this.stage) {
+        this.deselectAll();
+      } else if (clickedObject.isShape) {
+        this.selectObject(clickedObject);
+      }
+      return;
+    }
+    
+    this.isDrawing = true;
+    const pos = this.stage.getPointerPosition();
+    this.startX = this.snapCoord(pos.x);
+    this.startY = this.snapCoord(pos.y);
+    
+    if (this.currentTool === 'text') {
+      const text = prompt('Enter text:');
+      if (text) {
+        const konvaText = new Konva.Text({
+          x: this.startX,
+          y: this.startY,
+          text: text,
+          fontSize: 14,
+          fill: this.strokeColor,
+          fontFamily: 'Arial'
+        });
+        konvaText.isShape = true;
+        this.layer.add(konvaText);
+        this.layer.draw();
+        this.saveHistory();
+      }
+      this.isDrawing = false;
+    }
+  }
+  
+  handleMouseMove(e) {
+    if (!this.isDrawing || this.currentTool === 'text' || this.currentTool === 'select') return;
+    
+    const pos = this.stage.getPointerPosition();
+    const currentX = this.snapCoord(pos.x);
+    const currentY = this.snapCoord(pos.y);
+    
+    const width = Math.abs(currentX - this.startX);
+    const height = Math.abs(currentY - this.startY);
+    const x = Math.min(this.startX, currentX);
+    const y = Math.min(this.startY, currentY);
+    
+    // Remove preview object
+    const children = this.layer.children.filter(c => c._isPreview);
+    children.forEach(c => c.destroy());
+    
+    let shape = null;
+    
+    if (this.currentTool === 'rect') {
+      shape = new Konva.Rect({
+        x, y, width, height,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true
+      });
+    } else if (this.currentTool === 'circle') {
+      shape = new Konva.Circle({
+        x: this.startX,
+        y: this.startY,
+        radius: Math.sqrt(width * width + height * height) / 2,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true
+      });
+    } else if (this.currentTool === 'triangle') {
+      shape = new Konva.RegularPolygon({
+        x: this.startX,
+        y: this.startY,
+        sides: 3,
+        radius: Math.sqrt(width * width + height * height) / 2,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true
+      });
+    } else if (this.currentTool === 'line') {
+      shape = new Konva.Line({
+        points: [this.startX, this.startY, currentX, currentY],
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
+        _isPreview: true
+      });
+    } else if (this.currentTool === 'arrow') {
+      shape = new Konva.Arrow({
+        points: [this.startX, this.startY, currentX, currentY],
+        pointerLength: 15,
+        pointerWidth: 15,
+        fill: this.strokeColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true
+      });
+    }
+    
+    if (shape) {
+      shape.isShape = true;
+      this.layer.add(shape);
+      this.layer.draw();
+    }
+  }
+  
+  handleMouseUp(e) {
+    if (!this.isDrawing) return;
+    this.isDrawing = false;
+    
+    const previewShapes = this.layer.children.filter(c => c._isPreview);
+    previewShapes.forEach(shape => {
+      shape._isPreview = false;
+      shape.isShape = true;
+    });
+    
+    if (previewShapes.length > 0) {
+      this.layer.draw();
+      this.saveHistory();
+    }
+  }
+  
+  selectObject(obj) {
+    this.deselectAll();
+    this.selectedObject = obj;
+    obj.stroke = '#0d6efd';
+    obj.strokeWidth = (this.lineThickness || 2) + 1;
+    this.layer.draw();
+  }
+  
+  deselectAll() {
+    if (this.selectedObject) {
+      this.selectedObject.stroke = this.strokeColor;
+      this.selectedObject.strokeWidth = this.lineThickness || 1;
+      this.selectedObject = null;
+    }
+    this.layer.draw();
+  }
+  
+  saveHistory() {
+    this.historyStep++;
+    this.history = this.history.slice(0, this.historyStep);
+    this.history.push(this.layer.toJSON());
+  }
+  
+  undo() {
+    if (this.historyStep > 0) {
+      this.historyStep--;
+      this.restoreHistory();
+    }
+  }
+  
+  redo() {
+    if (this.historyStep < this.history.length - 1) {
+      this.historyStep++;
+      this.restoreHistory();
+    }
+  }
+  
+  restoreHistory() {
+    const json = this.history[this.historyStep];
+    this.layer.destroy();
+    this.layer = Konva.Node.create(json);
+    this.stage.add(this.layer);
+    this.layer.draw();
+    this.deselectAll();
+  }
+  
+  export() {
+    return this.stage.toDataURL({ pixelRatio: 2 });
+  }
 }
 
 function openChartModal(){
@@ -627,7 +1117,8 @@ function gatherPayload() {
       }
       
       const questionPayload = {
-        question_type: questionCard.querySelector('.question-type').value,
+          // inherit question type from the parent section
+          question_type: sectionCard.querySelector('.section-type').value,
         question_text: questionCard.querySelector('.question-text').value,
         marks: questionCard.querySelector('.question-marks').value,
         correct_answer: questionCard.querySelector('.correct-answer').value,
