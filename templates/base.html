@@ -2135,11 +2135,13 @@ html, body {
   visibility: hidden;
   transition: opacity 0.3s ease;
   z-index: 1500;
+  pointer-events: none;
 }
 
 .overlay.show {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 /* ===== CONTENT ===== */
