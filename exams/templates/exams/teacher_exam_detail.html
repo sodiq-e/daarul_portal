@@ -24,7 +24,7 @@
     {% if exam_paper.instructions %}
     <div class="mt-3">
       <strong>General Instructions</strong>
-      <div class="p-3 bg-light rounded mt-2">{{ exam_paper.instructions|linebreaks }}</div>
+      <div class="p-3 bg-light rounded mt-2">{{ exam_paper.instructions|safe }}</div>
     </div>
     {% endif %}
   </div>
@@ -33,13 +33,13 @@
   <div class="card mb-3 p-4">
     <h5>{{ section.title|default:section.get_section_type_display }}</h5>
     {% if section.instruction %}
-    <p class="text-muted">{{ section.instruction }}</p>
+    <div class="text-muted">{{ section.instruction|safe }}</div>
     {% endif %}
     <p><strong>Marks Allocation:</strong> {{ section.marks_allocation }}</p>
 
     {% for question in section.questions.all %}
     <div class="mb-4">
-      <p><strong>{{ forloop.counter }}.</strong> {{ question.question_text|linebreaks }}</p>
+      <div><strong>{{ forloop.counter }}.</strong> <span class="question-text">{{ question.question_text|safe }}</span></div>
       {% if question.question_type == 'objective' %}
       <div class="ms-4 mb-2">
         <ul>
@@ -52,8 +52,11 @@
       {% if question.marks %}
       <p><strong>Marks:</strong> {{ question.marks }}</p>
       {% endif %}
+      {% if question.resource_notes %}
+      <div class="mt-2 p-3 bg-light rounded"><strong>Supplementary Resources:</strong><div>{{ question.resource_notes|safe }}</div></div>
+      {% endif %}
       {% if question.teacher_guide %}
-      <div class="p-3 bg-light rounded"><strong>Answer Guide:</strong><br>{{ question.teacher_guide|linebreaks }}</div>
+      <div class="mt-2 p-3 bg-light rounded"><strong>Answer Guide:</strong><br>{{ question.teacher_guide|safe }}</div>
       {% endif %}
     </div>
     {% endfor %}

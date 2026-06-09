@@ -174,6 +174,7 @@ let previewLink = null;
 let subjectSelect = null;
 let initialSubjectOptions = [];
 let autosaveTimer;
+let activeEditor = null;
 
 function getInputValue(id, defaultValue = '') {
   const el = document.getElementById(id);
@@ -182,6 +183,15 @@ function getInputValue(id, defaultValue = '') {
     return defaultValue;
   }
   return el.value;
+}
+
+function escapeHTML(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function initializeBuilderElements() {
@@ -292,7 +302,7 @@ function addSection(sectionData = {}) {
       <div class="row g-3">
         <div class="col-md-6 field-block">
           <label>Section Title</label>
-          <input type="text" class="section-title" value="${sectionData.title || ''}" placeholder="Section A, Section B, etc.">
+          <input type="text" class="section-title" value="${escapeHTML(sectionData.title || '')}" placeholder="Section A, Section B, etc.">
         </div>
         <div class="col-md-6 field-block">
           <label>Section Type</label>
@@ -307,13 +317,13 @@ function addSection(sectionData = {}) {
       <div class="row g-3">
         <div class="col-md-12 field-block">
           <label>Section Instruction / Important Note</label>
-          <textarea class="section-instruction" rows="3">${sectionData.instruction || ''}</textarea>
+          <textarea class="section-instruction" rows="3">${escapeHTML(sectionData.instruction || '')}</textarea>
         </div>
       </div>
       <div class="row g-3">
         <div class="col-md-6 field-block">
           <label>Marks Allocation</label>
-          <input type="number" min="0" class="section-marks" value="${sectionData.marks_allocation || 0}" placeholder="Total marks for section">
+          <input type="number" min="0" class="section-marks" value="${escapeHTML(sectionData.marks_allocation || 0)}" placeholder="Total marks for section">
         </div>
       </div>
       <div class="question-list"></div>
@@ -375,6 +385,16 @@ function addQuestion(sectionCard, questionData = {}) {
   const sectionTypeEl = sectionCard.querySelector('.section-type');
   const questionType = questionData.question_type || (sectionTypeEl ? sectionTypeEl.value : 'objective');
 
+  const questionTextValue = escapeHTML(questionData.question_text || '');
+  const teacherGuideValue = escapeHTML(questionData.teacher_guide || '');
+  const resourceNotesValue = escapeHTML(questionData.resource_notes || '');
+  const optionAValue = escapeHTML(questionData.options?.[0]?.option_text || '');
+  const optionBValue = escapeHTML(questionData.options?.[1]?.option_text || '');
+  const optionCValue = escapeHTML(questionData.options?.[2]?.option_text || '');
+  const optionDValue = escapeHTML(questionData.options?.[3]?.option_text || '');
+  const optionEValue = escapeHTML(questionData.options?.[4]?.option_text || '');
+  const correctAnswerValue = escapeHTML(questionData.correct_answer || '');
+
   const questionCard = document.createElement('div');
   questionCard.className = 'question-card';
   questionCard.innerHTML = `
@@ -385,21 +405,21 @@ function addQuestion(sectionCard, questionData = {}) {
     <div class="row g-3">
       <div class="col-md-6 field-block">
         <label>Marks</label>
-        <input type="number" min="0" class="question-marks" value="${questionData.marks || 0}" placeholder="Marks allocation">
+        <input type="number" min="0" class="question-marks" value="${escapeHTML(questionData.marks || 0)}" placeholder="Marks allocation">
       </div>
     </div>
     <div class="field-block">
       <label>Question Text</label>
-      <textarea class="question-text" rows="3">${questionData.question_text || ''}</textarea>
+      <textarea class="question-text rich-editor" rows="3">${questionTextValue}</textarea>
     </div>
     <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
       <div class="col-md-4 field-block">
         <label>Option A</label>
-        <input type="text" class="option-label-a" value="${questionData.options?.[0]?.option_text || ''}" placeholder="Option A">
+        <input type="text" class="option-label-a" value="${optionAValue}" placeholder="Option A">
       </div>
       <div class="col-md-4 field-block">
         <label>Option B</label>
-        <input type="text" class="option-label-b" value="${questionData.options?.[1]?.option_text || ''}" placeholder="Option B">
+        <input type="text" class="option-label-b" value="${optionBValue}" placeholder="Option B">
       </div>
       <div class="col-md-4 field-block">
         <label>Number of Options</label>
@@ -414,21 +434,21 @@ function addQuestion(sectionCard, questionData = {}) {
     <div class="row g-3 question-option-group ${questionType === 'objective' ? '' : 'hidden'}">
       <div class="col-md-4 field-block">
         <label>Option C</label>
-        <input type="text" class="option-label-c" value="${questionData.options?.[2]?.option_text || ''}" placeholder="Option C">
+        <input type="text" class="option-label-c" value="${optionCValue}" placeholder="Option C">
       </div>
       <div class="col-md-4 field-block">
         <label>Option D</label>
-        <input type="text" class="option-label-d" value="${questionData.options?.[3]?.option_text || ''}" placeholder="Option D">
+        <input type="text" class="option-label-d" value="${optionDValue}" placeholder="Option D">
       </div>
       <div class="col-md-4 field-block">
         <label>Option E</label>
-        <input type="text" class="option-label-e" value="${questionData.options?.[4]?.option_text || ''}" placeholder="Option E">
+        <input type="text" class="option-label-e" value="${optionEValue}" placeholder="Option E">
       </div>
     </div>
     <div class="row g-3">
       <div class="col-md-6 field-block">
         <label>Correct Answer</label>
-        <input type="text" class="correct-answer" value="${questionData.correct_answer || ''}" placeholder="A, B, C...">
+        <input type="text" class="correct-answer" value="${correctAnswerValue}" placeholder="A, B, C...">
       </div>
       <div class="col-md-6 field-block">
         <label><input type="checkbox" class="has-subquestions" ${questionData.subnumbering_style ? 'checked' : ''}> Enable sub-question numbering</label>
@@ -452,12 +472,12 @@ function addQuestion(sectionCard, questionData = {}) {
             <button type="button" class="button add-diagram-btn">Add Diagram</button>
             <button type="button" class="button add-chart-btn">Add Chart</button>
           </div>
-          <textarea class="resource-notes" rows="3">${questionData.resource_notes || ''}</textarea>
+          <textarea class="resource-notes rich-editor" rows="3">${resourceNotesValue}</textarea>
         </div>
       </div>
       <div class="field-block" style="margin-top:6px;">
         <label>Teacher Answer Guide (optional)</label>
-        <textarea class="teacher-guide" rows="3">${questionData.teacher_guide || ''}</textarea>
+        <textarea class="teacher-guide rich-editor" rows="3">${teacherGuideValue}</textarea>
       </div>
     </details>
   `;
@@ -517,22 +537,52 @@ function initRichEditors() {
     if (typeof ClassicEditor === 'undefined') return;
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
     ClassicEditor.create(ta, {
+      toolbar: [
+        'heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList',
+        'insertTable', 'imageUpload', 'undo', 'redo'
+      ],
+      table: {
+        contentToolbar: [
+          'tableColumn', 'tableRow', 'mergeTableCells',
+          'tableCellProperties', 'tableProperties'
+        ]
+      },
+      image: {
+        toolbar: [
+          'imageTextAlternative', 'imageStyle:full', 'imageStyle:side',
+          'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
+          'resizeImage'
+        ],
+        resizeUnit: '%'
+      },
+      htmlSupport: {
+        allow: [
+          { name: 'img', attributes: true, classes: true, styles: true },
+          { name: 'table', attributes: true, classes: true, styles: true },
+          { name: 'thead', attributes: true, classes: true, styles: true },
+          { name: 'tbody', attributes: true, classes: true, styles: true },
+          { name: 'tr', attributes: true, classes: true, styles: true },
+          { name: 'td', attributes: true, classes: true, styles: true },
+          { name: 'th', attributes: true, classes: true, styles: true },
+          { name: 'figure', attributes: true, classes: true, styles: true },
+          { name: 'figcaption', attributes: true, classes: true, styles: true }
+        ]
+      },
       simpleUpload: {
         uploadUrl: '/exams/exam-papers/upload-image/',
         headers: { 'X-CSRFToken': csrftoken }
       }
-    }).then(editor => { ta._editor = editor; }).catch(() => {});
+    }).then(editor => {
+      ta._editor = editor;
+      activeEditor = editor;
+      editor.editing.view.document.on('focus', () => { activeEditor = editor; });
+      editor.editing.view.document.on('click', () => { activeEditor = editor; });
+    }).catch(err => {
+      console.warn('CKEditor init failed for textarea:', ta, err);
+    });
   }
 
-  // Lazy-init editors when the details panel is expanded to reduce initial load
-  document.querySelectorAll('.optional-features').forEach(details => {
-    const ta = details.querySelector('.resource-notes');
-    if (!ta) return;
-    if (details.open) initEditorFor(ta);
-    details.addEventListener('toggle', () => {
-      if (details.open) initEditorFor(ta);
-    });
-  });
+  document.querySelectorAll('textarea.rich-editor').forEach(ta => initEditorFor(ta));
 }
 
 function dataURLtoBlob(dataurl) {
@@ -556,23 +606,59 @@ function attachDiagramAndChartHandlers(questionCard){
   const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
   const addChartBtn = questionCard.querySelector('.add-chart-btn');
   const ta = questionCard.querySelector('.resource-notes');
-  
-  function insertImageUrl(editor, url) {
-    // Safely append URL as text to avoid CKEditor schema/model issues
+
+  function insertHtml(editor, html) {
     try {
-      if (editor && editor.data) {
-        const currentData = editor.data.get();
-        const imageLink = `<p><a href="${url}" target="_blank">View Image</a></p>`;
-        editor.data.set(currentData + imageLink);
-      }
+      if (!editor || !editor.data) throw new Error('Editor not ready');
+      const viewFragment = editor.data.processor.toView(html);
+      const modelFragment = editor.data.toModel(viewFragment);
+      editor.model.change(writer => {
+        editor.model.insertContent(modelFragment, editor.model.document.selection);
+      });
     } catch (e) {
-      console.warn('Could not insert image in editor, appending URL as text:', e);
-      if (ta) ta.value += `\n${url}`;
+      console.warn('Could not insert HTML into editor, falling back to append:', e);
+      if (ta) {
+        ta.value += `\n${html}`;
+      }
     }
   }
-  
-  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res && res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }).catch(err => { console.error('Diagram upload failed:', err); }); }));
-  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => { if (!dataURL) return; uploadDataURL(dataURL).then(res => { if (res && res.url) { if (ta && ta._editor) { insertImageUrl(ta._editor, res.url); } else if (ta) ta.value += `\n${res.url}`; } }).catch(err => { console.error('Chart upload failed:', err); }); }));
+
+  function insertImageUrl(editor, url, caption = '') {
+    const safeCaption = caption ? `<figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${caption}</figcaption>` : '';
+    const imageHtml = `<figure style="max-width:100%;margin:12px 0;">` +
+      `<img src="${url}" alt="Diagram" style="max-width:100%;height:auto;display:block;" />` +
+      safeCaption +
+      `</figure>`;
+    if (editor) {
+      insertHtml(editor, imageHtml);
+    } else if (ta) {
+      ta.value += `\n${imageHtml}`;
+    }
+  }
+
+  const targetEditor = () => (ta && ta._editor) || activeEditor || null;
+
+  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => {
+    if (!dataURL) return;
+    uploadDataURL(dataURL).then(res => {
+      if (res && res.url) {
+        insertImageUrl(targetEditor(), res.url, 'Diagram');
+      }
+    }).catch(err => {
+      console.error('Diagram upload failed:', err);
+    });
+  }));
+
+  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => {
+    if (!dataURL) return;
+    uploadDataURL(dataURL).then(res => {
+      if (res && res.url) {
+        insertImageUrl(targetEditor(), res.url, 'Chart');
+      }
+    }).catch(err => {
+      console.error('Chart upload failed:', err);
+    });
+  }));
 }
 
 function openDiagramModal(){
@@ -710,6 +796,7 @@ class DiagramBuilder {
       { id: 'line', label: '/ Line', icon: '/' },
       { id: 'arrow', label: '→ Arrow', icon: '→' },
       { id: 'pen', label: '✏ Draw', icon: '✏' },
+      { id: 'eraser', label: '🧽 Eraser', icon: '⛏' },
       { id: 'text', label: 'A Text', icon: 'T' }
     ];
     
@@ -908,6 +995,16 @@ class DiagramBuilder {
       }
       return;
     }
+
+    if (this.currentTool === 'eraser') {
+      this.isDrawing = true;
+      this.isErasing = true;
+      const pos = this.stage.getPointerPosition();
+      if (pos) {
+        this.eraseAt(pos.x, pos.y);
+      }
+      return;
+    }
     
     this.isDrawing = true;
     const pos = this.stage.getPointerPosition();
@@ -955,6 +1052,11 @@ class DiagramBuilder {
     const currentX = this.snapCoord(pos.x);
     const currentY = this.snapCoord(pos.y);
     
+    if (this.currentTool === 'eraser' && this.isErasing) {
+      this.eraseAt(pos.x, pos.y);
+      return;
+    }
+
     // Handle pen/freehand drawing
     if (this.currentTool === 'pen') {
       this.drawingPoints.push(currentX, currentY);
@@ -970,6 +1072,7 @@ class DiagramBuilder {
         strokeWidth: this.lineThickness,
         lineCap: 'round',
         lineJoin: 'round',
+        tension: 0.5,
         _isPreview: true,
         isShape: true
       });
@@ -1071,6 +1174,14 @@ class DiagramBuilder {
       this.drawingPoints = [];
       return;
     }
+
+    if (this.currentTool === 'eraser') {
+      this.isErasing = false;
+      if (this.historyStep < 0 || this.layer.children.length) {
+        this.saveHistory();
+      }
+      return;
+    }
     
     const previewShapes = this.layer.children.filter(c => c._isPreview);
     previewShapes.forEach(shape => {
@@ -1087,8 +1198,10 @@ class DiagramBuilder {
   selectObject(obj) {
     this.deselectAll();
     this.selectedObject = obj;
-    obj.stroke = '#0d6efd';
-    obj.strokeWidth = (this.lineThickness || 2) + 2;
+    if (obj.stroke) {
+      obj.stroke('#0d6efd');
+    }
+    obj.strokeWidth((this.lineThickness || 2) + 2);
     this.stage.container().style.cursor = 'grab';
     this.layer.draw();
   }
@@ -1131,6 +1244,14 @@ class DiagramBuilder {
     this.layer.draw();
     this.deselectAll();
   }
+
+  eraseAt(x, y) {
+    const shape = this.stage.getIntersection({ x, y });
+    if (shape && shape !== this.stage && shape.isShape && !shape._isPreview) {
+      shape.destroy();
+      this.layer.draw();
+    }
+  }
   
   export() {
     return this.stage.toDataURL({ pixelRatio: 2 });
@@ -1140,38 +1261,61 @@ class DiagramBuilder {
 function openChartModal(){
   return new Promise(resolve => {
     const modal = document.createElement('div'); modal.style.position='fixed'; modal.style.left=0; modal.style.top=0; modal.style.right=0; modal.style.bottom=0; modal.style.background='rgba(0,0,0,0.6)'; modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
-    const box = document.createElement('div'); box.style.width='760px'; box.style.height='560px'; box.style.background='#fff'; box.style.padding='12px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
+    const box = document.createElement('div'); box.style.width='780px'; box.style.height='600px'; box.style.background='#fff'; box.style.padding='16px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
 
-    const formRow = document.createElement('div'); formRow.style.display='flex'; formRow.style.gap='8px'; formRow.style.marginBottom='8px';
-    const labelsInput = document.createElement('input'); labelsInput.placeholder='Labels (comma separated) e.g. Jan,Feb,Mar'; labelsInput.style.flex='1';
-    const valuesInput = document.createElement('input'); valuesInput.placeholder='Values (comma separated) e.g. 10,20,30'; valuesInput.style.flex='1';
-    formRow.appendChild(labelsInput); formRow.appendChild(valuesInput);
+    const formRow = document.createElement('div'); formRow.style.display='flex'; formRow.style.gap='8px'; formRow.style.flexWrap='wrap'; formRow.style.marginBottom='10px';
+    const typeSelect = document.createElement('select');
+    ['bar','line','pie','doughnut'].forEach(type => {
+      const opt = document.createElement('option'); opt.value = type; opt.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+      typeSelect.appendChild(opt);
+    });
+    typeSelect.style.flex='0 0 150px';
+    const labelsInput = document.createElement('input'); labelsInput.placeholder='Labels e.g. Jan,Feb,Mar'; labelsInput.style.flex='1';
+    const valuesInput = document.createElement('input'); valuesInput.placeholder='Values e.g. 10,20,30'; valuesInput.style.flex='1';
+    const titleInput = document.createElement('input'); titleInput.placeholder='Chart title (optional)'; titleInput.style.flex='1';
+    formRow.appendChild(typeSelect); formRow.appendChild(labelsInput); formRow.appendChild(valuesInput); formRow.appendChild(titleInput);
     box.appendChild(formRow);
 
-    const canvas = document.createElement('canvas'); canvas.width=700; canvas.height=380; canvas.style.border='1px solid #ddd'; box.appendChild(canvas);
-    const controls = document.createElement('div'); controls.style.marginTop='8px'; controls.style.display='flex'; controls.style.gap='8px'; controls.style.alignItems='center';
+    const canvasWrapper = document.createElement('div'); canvasWrapper.style.flex='1'; canvasWrapper.style.border='1px solid #ddd'; canvasWrapper.style.display='flex'; canvasWrapper.style.alignItems='center'; canvasWrapper.style.justifyContent='center'; canvasWrapper.style.padding='8px';
+    const canvas = document.createElement('canvas'); canvas.width=720; canvas.height=420; canvasWrapper.appendChild(canvas);
+    box.appendChild(canvasWrapper);
+
+    const controls = document.createElement('div'); controls.style.marginTop='10px'; controls.style.display='flex'; controls.style.justifyContent='space-between'; controls.style.alignItems='center';
     const renderBtn = document.createElement('button'); renderBtn.textContent='Render Chart'; renderBtn.className='button';
+    const actionGroup = document.createElement('div'); actionGroup.style.display='flex'; actionGroup.style.gap='8px';
     const exportBtn = document.createElement('button'); exportBtn.textContent='Export & Insert'; exportBtn.className='button';
-    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.style.marginLeft='8px';
-    controls.appendChild(renderBtn); controls.appendChild(exportBtn); controls.appendChild(closeBtn); box.appendChild(controls);
+    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.className='button';
+    actionGroup.appendChild(exportBtn); actionGroup.appendChild(closeBtn);
+    controls.appendChild(renderBtn); controls.appendChild(actionGroup);
+    box.appendChild(controls);
 
     modal.appendChild(box); document.body.appendChild(modal);
     const ctx = canvas.getContext('2d');
-    let chart = new Chart(canvas, { type: 'bar', data: { labels: [], datasets:[{ label: 'Data', data:[], backgroundColor: '#0d6efd' }] }, options: { responsive: true, maintainAspectRatio: false } });
+    let chart = new Chart(canvas, { type: 'bar', data: { labels: [], datasets:[{ label: 'Data', data:[], backgroundColor: '#0d6efd' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: true, text: '' } } } });
 
-    renderBtn.addEventListener('click', () => {
+    const renderChart = () => {
       const labels = labelsInput.value.split(',').map(s => s.trim()).filter(Boolean);
       const values = valuesInput.value.split(',').map(s => parseFloat(s)).filter(v => !isNaN(v));
       if (!labels.length || !values.length || labels.length !== values.length) {
-        alert('Please provide matching labels and numeric values, comma separated.');
+        alert('Please enter matching labels and numeric values.');
         return;
       }
+      chart.config.type = typeSelect.value;
       chart.data.labels = labels;
-      chart.data.datasets[0].data = values;
+      chart.data.datasets = [{ label: titleInput.value || 'Data', data: values, backgroundColor: labels.map(() => '#0d6efd'), borderColor: '#0d6efd', fill: typeSelect.value !== 'line' }];
+      chart.options.plugins.title.text = titleInput.value || '';
       chart.update();
-    });
+    };
 
-    exportBtn.addEventListener('click', () => { const dataURL = canvas.toDataURL(); document.body.removeChild(modal); resolve(dataURL); });
+    renderBtn.addEventListener('click', renderChart);
+    exportBtn.addEventListener('click', () => {
+      renderChart();
+      setTimeout(() => {
+        const dataURL = canvas.toDataURL('image/png');
+        document.body.removeChild(modal);
+        resolve(dataURL);
+      }, 50);
+    });
     closeBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve(null); });
   });
 }
@@ -1194,6 +1338,14 @@ function gatherPayload() {
     sections: []
   };
 
+  function getEditorFieldValue(field) {
+    if (!field) return '';
+    if (field._editor && typeof field._editor.getData === 'function') {
+      return field._editor.getData();
+    }
+    return field.value || '';
+  }
+
   Array.from(sectionsContainer.children).forEach(sectionCard => {
     const sectionPayload = {
       title: sectionCard.querySelector('.section-title').value,
@@ -1205,23 +1357,20 @@ function gatherPayload() {
 
     sectionCard.querySelectorAll('.question-card').forEach(questionCard => {
       const subquestionCheckbox = questionCard.querySelector('.has-subquestions');
+      const questionTextField = questionCard.querySelector('.question-text');
+      const teacherGuideField = questionCard.querySelector('.teacher-guide');
       const resourceNotesField = questionCard.querySelector('.resource-notes');
-      let resourceNotesValue = '';
-      
-      // Read from CKEditor if initialized, otherwise read from textarea
-      if (resourceNotesField._editor && typeof resourceNotesField._editor.getData === 'function') {
-        resourceNotesValue = resourceNotesField._editor.getData();
-      } else if (resourceNotesField) {
-        resourceNotesValue = resourceNotesField.value || '';
-      }
-      
+      const questionTextValue = getEditorFieldValue(questionTextField);
+      const teacherGuideValue = getEditorFieldValue(teacherGuideField);
+      const resourceNotesValue = getEditorFieldValue(resourceNotesField);
+
       const questionPayload = {
           // inherit question type from the parent section
           question_type: sectionCard.querySelector('.section-type').value,
-        question_text: questionCard.querySelector('.question-text').value,
+        question_text: questionTextValue,
         marks: questionCard.querySelector('.question-marks').value,
         correct_answer: questionCard.querySelector('.correct-answer').value,
-        teacher_guide: questionCard.querySelector('.teacher-guide').value,
+        teacher_guide: teacherGuideValue,
         resource_notes: resourceNotesValue,
         subnumbering_style: subquestionCheckbox && !subquestionCheckbox.checked ? '' : questionCard.querySelector('.subnumbering-style').value,
         options: []

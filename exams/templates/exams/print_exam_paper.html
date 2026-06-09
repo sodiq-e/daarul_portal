@@ -86,6 +86,27 @@
     .question-options li {
       margin-bottom: 6px;
     }
+    img {
+      max-width: 100%;
+      height: auto;
+      page-break-inside: avoid;
+      display: block;
+      margin: 8px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      page-break-inside: auto;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: left;
+    }
+    figure {
+      margin: 16px 0;
+    }
     .answer-lines {
       margin-top: 8px;
     }
@@ -146,7 +167,7 @@
     {% if exam_paper.instructions %}
     <div class="section">
       <div class="section-title">General Instructions</div>
-      <div class="section-instruction">{{ exam_paper.instructions|linebreaksbr }}</div>
+      <div class="section-instruction">{{ exam_paper.instructions|safe }}</div>
     </div>
     {% endif %}
 
@@ -154,11 +175,11 @@
     <div class="section">
       <div class="section-title">{{ section.title|default:section.get_section_type_display }}</div>
       {% if section.instruction %}
-      <div class="section-instruction">{{ section.instruction|linebreaksbr }}</div>
+      <div class="section-instruction">{{ section.instruction|safe }}</div>
       {% endif %}
       {% for question in section.questions.all %}
       <div class="question-item">
-        <p><strong>{{ forloop.counter }}.</strong> {{ question.question_text|linebreaksbr }}</p>
+        <div><strong>{{ forloop.counter }}.</strong> <span class="question-text">{{ question.question_text|safe }}</span></div>
         {% if question.question_type == 'objective' %}
         <ul class="question-options">
           {% for option in question.options.all %}
@@ -168,6 +189,9 @@
         {% endif %}
         {% if question.marks %}
         <p><strong>Marks:</strong> {{ question.marks }}</p>
+        {% endif %}
+        {% if question.resource_notes %}
+        <div class="mt-2 p-3 bg-light rounded"><strong>Supplementary Resources:</strong><div>{{ question.resource_notes|safe }}</div></div>
         {% endif %}
         <div class="answer-lines">
           {% for i in "12345" %}
