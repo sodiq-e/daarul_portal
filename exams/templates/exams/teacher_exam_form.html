@@ -484,6 +484,21 @@ function addQuestion(sectionCard, questionData = {}) {
 
   questionList.appendChild(questionCard);
   console.log('Question card added to list. List now has', questionList.children.length, 'questions');
+
+  const questionTextArea = questionCard.querySelector('.question-text');
+  const teacherGuideArea = questionCard.querySelector('.teacher-guide');
+  const resourceNotesArea = questionCard.querySelector('.resource-notes');
+
+  if (questionData.question_text) {
+    questionTextArea.value = questionData.question_text;
+  }
+  if (questionData.teacher_guide) {
+    teacherGuideArea.value = questionData.teacher_guide;
+  }
+  if (questionData.resource_notes) {
+    resourceNotesArea.value = questionData.resource_notes;
+  }
+
   questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
     questionCard.remove();
     refreshQuestionLabels(sectionCard);
@@ -754,9 +769,27 @@ class DiagramBuilder {
       width: this.width,
       height: this.height
     });
+    this.stage.container().style.touchAction = 'none';
+    this.stage.container().style.userSelect = 'none';
+    this.stage.container().style.webkitUserSelect = 'none';
     
     this.layer = new Konva.Layer();
     this.stage.add(this.layer);
+    
+    this.overlayLayer = new Konva.Layer();
+    this.stage.add(this.overlayLayer);
+    
+    this.transformer = new Konva.Transformer({
+      rotateEnabled: false,
+      enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+      ignoreStroke: true,
+      anchorStroke: '#0d6efd',
+      anchorFill: '#fff',
+      anchorSize: 8,
+      borderStroke: '#0d6efd',
+      borderDash: [4, 2]
+    });
+    this.overlayLayer.add(this.transformer);
     
     this.drawGrid();
     this.setupToolbar();
@@ -767,6 +800,7 @@ class DiagramBuilder {
   drawGrid() {
     const gridLayer = new Konva.Layer();
     this.stage.add(gridLayer);
+    gridLayer.moveToBottom();
     
     for (let i = 0; i < this.width; i += this.gridSize) {
       gridLayer.add(new Konva.Line({
@@ -805,6 +839,7 @@ class DiagramBuilder {
     
     tools.forEach(tool => {
       const btn = document.createElement('button');
+      btn.type = 'button';
       btn.textContent = tool.label;
       btn.style.cssText = `padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer`;
       btn.className = this.currentTool === tool.id ? 'active' : '';
@@ -915,18 +950,21 @@ class DiagramBuilder {
     editGroup.style.cssText = 'display:flex;gap:4px';
     
     const undoBtn = document.createElement('button');
+    undoBtn.type = 'button';
     undoBtn.textContent = '↶ Undo';
     undoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     undoBtn.addEventListener('click', () => this.undo());
     editGroup.appendChild(undoBtn);
     
     const redoBtn = document.createElement('button');
+    redoBtn.type = 'button';
     redoBtn.textContent = '↷ Redo';
     redoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     redoBtn.addEventListener('click', () => this.redo());
     editGroup.appendChild(redoBtn);
     
     const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
     deleteBtn.textContent = '🗑 Delete';
     deleteBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;color:#dc3545';
     deleteBtn.addEventListener('click', () => {
@@ -940,6 +978,7 @@ class DiagramBuilder {
     editGroup.appendChild(deleteBtn);
     
     const bringForwardBtn = document.createElement('button');
+    bringForwardBtn.type = 'button';
     bringForwardBtn.textContent = '↑ Bring Forward';
     bringForwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     bringForwardBtn.addEventListener('click', () => {
@@ -952,6 +991,7 @@ class DiagramBuilder {
     editGroup.appendChild(bringForwardBtn);
     
     const sendBackwardBtn = document.createElement('button');
+    sendBackwardBtn.type = 'button';
     sendBackwardBtn.textContent = '↓ Send Backward';
     sendBackwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     sendBackwardBtn.addEventListener('click', () => {
@@ -1008,12 +1048,24 @@ class DiagramBuilder {
     
     this.isDrawing = true;
     const pos = this.stage.getPointerPosition();
+    if (!pos) return;
     this.startX = this.snapCoord(pos.x);
     this.startY = this.snapCoord(pos.y);
     
     // For pen tool, start freehand drawing
     if (this.currentTool === 'pen') {
-      this.drawingPoints = [this.startX, this.startY];
+      this.drawingPoints = [pos.x, pos.y];
+      this.currentLine = new Konva.Line({
+        points: this.drawingPoints,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
+        tension: 0,
+        perfectDrawEnabled: true,
+        isShape: true
+      });
+      this.layer.add(this.currentLine);
     }
     
     if (this.currentTool === 'text') {
@@ -1049,6 +1101,7 @@ class DiagramBuilder {
     if (!this.isDrawing || this.currentTool === 'text' || this.currentTool === 'select') return;
     
     const pos = this.stage.getPointerPosition();
+    if (!pos) return;
     const currentX = this.snapCoord(pos.x);
     const currentY = this.snapCoord(pos.y);
     
@@ -1059,26 +1112,11 @@ class DiagramBuilder {
 
     // Handle pen/freehand drawing
     if (this.currentTool === 'pen') {
-      this.drawingPoints.push(currentX, currentY);
-      
-      // Remove old preview
-      const children = this.layer.children.filter(c => c._isPreview);
-      children.forEach(c => c.destroy());
-      
-      // Draw freehand line
-      const shape = new Konva.Line({
-        points: this.drawingPoints,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        lineCap: 'round',
-        lineJoin: 'round',
-        tension: 0.5,
-        _isPreview: true,
-        isShape: true
-      });
-      
-      this.layer.add(shape);
-      this.layer.draw();
+      if (this.currentLine) {
+        this.drawingPoints.push(pos.x, pos.y);
+        this.currentLine.points(this.drawingPoints);
+        this.layer.batchDraw();
+      }
       return;
     }
     
@@ -1163,12 +1201,8 @@ class DiagramBuilder {
     
     // Handle pen drawing - finalize the freehand line
     if (this.currentTool === 'pen') {
-      const previewShapes = this.layer.children.filter(c => c._isPreview);
-      previewShapes.forEach(shape => {
-        shape._isPreview = false;
-      });
-      if (previewShapes.length > 0) {
-        this.layer.draw();
+      if (this.currentLine) {
+        this.currentLine = null;
         this.saveHistory();
       }
       this.drawingPoints = [];
@@ -1177,9 +1211,7 @@ class DiagramBuilder {
 
     if (this.currentTool === 'eraser') {
       this.isErasing = false;
-      if (this.historyStep < 0 || this.layer.children.length) {
-        this.saveHistory();
-      }
+      this.saveHistory();
       return;
     }
     
@@ -1198,19 +1230,15 @@ class DiagramBuilder {
   selectObject(obj) {
     this.deselectAll();
     this.selectedObject = obj;
-    if (obj.stroke) {
-      obj.stroke('#0d6efd');
-    }
-    obj.strokeWidth((this.lineThickness || 2) + 2);
+    this.transformer.nodes([obj]);
     this.stage.container().style.cursor = 'grab';
     this.layer.draw();
   }
   
   deselectAll() {
     if (this.selectedObject) {
-      this.selectedObject.stroke = this.strokeColor;
-      this.selectedObject.strokeWidth = this.lineThickness || 1;
       this.selectedObject = null;
+      this.transformer.nodes([]);
       this.stage.container().style.cursor = 'default';
     }
     this.layer.draw();
@@ -1241,6 +1269,14 @@ class DiagramBuilder {
     this.layer.destroy();
     this.layer = Konva.Node.create(json);
     this.stage.add(this.layer);
+    if (this.overlayLayer) {
+      this.layer.moveBelow(this.overlayLayer);
+    }
+    if (this.transformer && this.overlayLayer) {
+      this.transformer.detach();
+      this.overlayLayer.add(this.transformer);
+      this.overlayLayer.draw();
+    }
     this.layer.draw();
     this.deselectAll();
   }
@@ -1281,10 +1317,10 @@ function openChartModal(){
     box.appendChild(canvasWrapper);
 
     const controls = document.createElement('div'); controls.style.marginTop='10px'; controls.style.display='flex'; controls.style.justifyContent='space-between'; controls.style.alignItems='center';
-    const renderBtn = document.createElement('button'); renderBtn.textContent='Render Chart'; renderBtn.className='button';
+    const renderBtn = document.createElement('button'); renderBtn.type = 'button'; renderBtn.textContent='Render Chart'; renderBtn.className='button';
     const actionGroup = document.createElement('div'); actionGroup.style.display='flex'; actionGroup.style.gap='8px';
-    const exportBtn = document.createElement('button'); exportBtn.textContent='Export & Insert'; exportBtn.className='button';
-    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.className='button';
+    const exportBtn = document.createElement('button'); exportBtn.type = 'button'; exportBtn.textContent='Export & Insert'; exportBtn.className='button';
+    const closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.textContent='Close'; closeBtn.className='button';
     actionGroup.appendChild(exportBtn); actionGroup.appendChild(closeBtn);
     controls.appendChild(renderBtn); controls.appendChild(actionGroup);
     box.appendChild(controls);
