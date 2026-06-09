@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from school_classes.models import SchoolClasses
+from ckeditor.fields import RichTextField
 
 
 class Term(models.Model):
@@ -120,6 +121,13 @@ class ExamPaper(models.Model):
         ('returned', 'Returned for Review'),
     ]
 
+    APPROVAL_STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='exam_papers')
     school_class = models.ForeignKey(SchoolClasses, on_delete=models.CASCADE, related_name='exam_papers')
     teacher = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='created_exams')
@@ -127,8 +135,11 @@ class ExamPaper(models.Model):
     academic_session = models.CharField(max_length=20, help_text='e.g., 2023/2024')
     duration = models.CharField(max_length=50, blank=True)
     total_marks = models.PositiveIntegerField(default=100)
-    instructions = models.TextField(blank=True)
+    instructions = RichTextField(blank=True, help_text='Instructions for students')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    approval_status = models.CharField(max_length=20, choices=APPROVAL_STATUS_CHOICES, default='draft')
+    approval_notes = models.TextField(blank=True, help_text='Admin notes on approval/rejection')
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_exams')
     submitted_at = models.DateTimeField(null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -138,7 +149,7 @@ class ExamPaper(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.subject} - {self.school_class} ({self.academic_session}) [{self.get_status_display()}]"
+        return f"{self.subject} - {self.school_class} ({self.academic_session}) [{self.get_approval_status_display()}]"
 
 
 class ExamSection(models.Model):
@@ -178,13 +189,14 @@ class Question(models.Model):
     ]
 
     section = models.ForeignKey(ExamSection, on_delete=models.CASCADE, related_name='questions')
-    question_text = models.TextField()
+    question_text = RichTextField(help_text='Question text with support for images, diagrams, tables, and math')
     marks = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='theory')
     correct_answer = models.CharField(max_length=10, blank=True, help_text='Stored for records only')
-    teacher_guide = models.TextField(blank=True)
-    resource_notes = models.TextField(blank=True)
+    teacher_guide = RichTextField(blank=True, help_text='Teacher guide with suggested answers, diagrams, and solutions')
+    answer_explanation = RichTextField(blank=True, help_text='Explanation shown to students after submission')
+    resource_notes = RichTextField(blank=True, help_text='Additional supplementary resources and notes')
     subnumbering_style = models.CharField(max_length=20, choices=SUBNUMBERING_STYLES, blank=True, default='')
 
     class Meta:

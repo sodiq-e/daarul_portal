@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'admin_interface',
     'colorfield',
+    'ckeditor',
 
     'settingsapp',
     'accounts',
@@ -97,6 +98,105 @@ import os
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# CKEditor Configuration for Exam Papers
+CKEDITOR_CONFIGS = {
+    'default': {
+        'skin': 'moono',
+        'toolbar_ExamPaper': [
+            {
+                'name': 'basicstyles',
+                'items': ['Bold', 'Italic', 'Underline', 'Strike', '-', 'RemoveFormat']
+            },
+            {
+                'name': 'paragraph',
+                'items': ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock']
+            },
+            {
+                'name': 'links',
+                'items': ['Link', 'Unlink']
+            },
+            {
+                'name': 'insert',
+                'items': ['Image', 'Table', '-', 'SpecialChar']
+            },
+            {
+                'name': 'styles',
+                'items': ['Styles', 'Format', 'FontSize']
+            },
+            {
+                'name': 'colors',
+                'items': ['TextColor', 'BGColor']
+            },
+            {
+                'name': 'tools',
+                'items': ['Maximize', 'ShowBlocks']
+            },
+        ],
+        'toolbar_Question': [
+            {
+                'name': 'document',
+                'items': ['Source', '-', 'Save', 'NewPage', 'DocProps', 'Preview', 'Print', '-', 'Templates']
+            },
+            {
+                'name': 'editing',
+                'items': ['Find', 'Replace', '-', 'SelectAll', '-', 'SpellChecker', 'Scayt']
+            },
+            {
+                'name': 'forms',
+                'items': ['Form', 'Checkbox', 'Radio', 'TextField', 'Textarea', 'Select', 'Button', 'ImageButton', 'HiddenField']
+            },
+            '/',
+            {
+                'name': 'basicstyles',
+                'items': ['Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat']
+            },
+            {
+                'name': 'paragraph',
+                'items': ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'Blockquote', 'CreateDiv', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock', '-', 'BidiLtr', 'BidiRtl']
+            },
+            {
+                'name': 'links',
+                'items': ['Link', 'Unlink', 'Anchor']
+            },
+            {
+                'name': 'insert',
+                'items': ['Image', 'Flash', 'Table', '-', 'SpecialChar', 'Iframe']
+            },
+            '/',
+            {
+                'name': 'styles',
+                'items': ['Styles', 'Format', 'Font', 'FontSize']
+            },
+            {
+                'name': 'colors',
+                'items': ['TextColor', 'BGColor']
+            },
+            {
+                'name': 'tools',
+                'items': ['Maximize', 'ShowBlocks']
+            },
+            {
+                'name': 'about',
+                'items': ['About']
+            }
+        ],
+        'toolbar': 'Question',
+        'height': 400,
+        'width': '100%',
+        'tabSpaces': 4,
+        'allowedContent': True,
+        'contentsCss': ['/static/css/ckeditor-content.css'],
+        'removePlugins': 'elementspath',
+        'filebrowserUploadUrl': '/ckeditor/upload/',
+        'filebrowserBrowseUrl': '/ckeditor/browse/',
+        'extraPlugins': ['mathjax'],
+        'mathJaxLib': 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML',
+    }
+}
+
+# Session configuration
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Email Configuration for Password Reset
 # For development, use console backend (emails printed to console)

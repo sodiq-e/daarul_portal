@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Approved Exams - Ready for Export{% endblock %}
+
+{% block extra_css %}
+<style>
+    .export-card {
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        transition: box-shadow 0.3s ease;
+    }
+    
+    .export-card:hover {
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+    
+    .export-card-header {
+        background: #f8f9fa;
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .export-card-title {
+        font-size: 16px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .export-card-meta {
+        color: #666;
+        font-size: 13px;
+        margin-top: 5px;
+    }
+    
+    .export-card-body {
+        padding: 15px;
+    }
+    
+    .exam-info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+    }
+    
+    .exam-info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .exam-info-label {
+        color: #666;
+        font-weight: 500;
+    }
+    
+    .exam-info-value {
+        color: #333;
+        text-align: right;
+    }
+    
+    .export-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .export-btn {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .badge-approved {
+        background: #28a745;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    
+    .no-exams-alert {
+        background: #e8f4f8;
+        border: 1px solid #b8e0f0;
+        padding: 20px;
+        border-radius: 4px;
+        text-align: center;
+        color: #0c6b87;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Approved Exam Papers</h1>
+        <a href="{% url 'exam_approval_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-hourglass-half"></i> Pending Approval
+        </a>
+    </div>
+    
+    {% if exams %}
+    <div class="row">
+        {% for exam in exams %}
+        <div class="col-lg-6 col-xl-4">
+            <div class="export-card">
+                <div class="export-card-header">
+                    <div>
+                        <div class="export-card-title">{{ exam.subject.name }}</div>
+                        <div class="export-card-meta">{{ exam.school_class }} | {{ exam.term }}</div>
+                    </div>
+                    <span class="badge-approved">Approved</span>
+                </div>
+                
+                <div class="export-card-body">
+                    <div class="exam-info-row">
+                        <span class="exam-info-label">Teacher:</span>
+                        <span class="exam-info-value">{{ exam.teacher.get_full_name|default:exam.teacher.username }}</span>
+                    </div>
+                    
+                    <div class="exam-info-row">
+                        <span class="exam-info-label">Approved By:</span>
+                        <span class="exam-info-value">{{ exam.approved_by.get_full_name|default:exam.approved_by.username }}</span>
+                    </div>
+                    
+                    <div class="exam-info-row">
+                        <span class="exam-info-label">Approval Date:</span>
+                        <span class="exam-info-value">{{ exam.approved_at|date:"SHORT_DATE_FORMAT" }}</span>
+                    </div>
+                    
+                    <div class="exam-info-row">
+                        <span class="exam-info-label">Academic Year:</span>
+                        <span class="exam-info-value">{{ exam.academic_session }}</span>
+                    </div>
+                    
+                    <div class="exam-info-row">
+                        <span class="exam-info-label">Total Marks:</span>
+                        <span class="exam-info-value">{{ exam.total_marks }}</span>
+                    </div>
+                    
+                    <div class="exam-info-row">
+                        <span class="exam-info-label">Duration:</span>
+                        <span class="exam-info-value">{{ exam.duration|default:"N/A" }}</span>
+                    </div>
+                    
+                    <!-- Export Actions -->
+                    <div class="export-actions">
+                        <a href="{% url 'exam_paper_preview' exam.pk %}" class="btn btn-sm btn-outline-primary export-btn">
+                            <i class="fas fa-eye"></i> Preview
+                        </a>
+                        <form method="post" action="{% url 'exam_paper_export' exam.pk %}" class="export-btn" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="docx">
+                            <input type="hidden" name="include_answers" value="on">
+                            <input type="hidden" name="include_marks" value="on">
+                            <button type="submit" class="btn btn-sm btn-outline-success export-btn" title="Export as Word document with answers">
+                                <i class="fas fa-file-word"></i> DOCX
+                            </button>
+                        </form>
+                        <form method="post" action="{% url 'exam_paper_export' exam.pk %}" class="export-btn" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="format" value="pdf">
+                            <input type="hidden" name="include_answers" value="on">
+                            <input type="hidden" name="include_marks" value="on">
+                            <button type="submit" class="btn btn-sm btn-outline-danger export-btn" title="Export as PDF with answers">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% else %}
+    <div class="no-exams-alert">
+        <i class="fas fa-check-circle" style="font-size: 28px; margin-bottom: 10px; display: block;"></i>
+        <strong>No Approved Exams</strong>
+        <p style="margin-top: 10px; margin-bottom: 0;">
+            All submitted exams are either pending review or have been rejected. Check the "Pending Approval" tab to review new submissions.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Approval History - {{ exam.subject.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 30px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #ddd;
+    }
+    
+    .timeline-item {
+        margin-bottom: 30px;
+        padding-left: 100px;
+        position: relative;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: 10px;
+        top: 5px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid #ddd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 18px;
+        color: #666;
+        z-index: 1;
+    }
+    
+    .timeline-item.submit .timeline-marker {
+        border-color: #0066cc;
+        background: #e6f0ff;
+        color: #0066cc;
+    }
+    
+    .timeline-item.approve .timeline-marker {
+        border-color: #28a745;
+        background: #e6ffe6;
+        color: #28a745;
+    }
+    
+    .timeline-item.reject .timeline-marker {
+        border-color: #dc3545;
+        background: #ffe6e6;
+        color: #dc3545;
+    }
+    
+    .timeline-item.return .timeline-marker {
+        border-color: #ffc107;
+        background: #fff9e6;
+        color: #ffc107;
+    }
+    
+    .timeline-content {
+        background: #f9f9f9;
+        border-left: 3px solid #ddd;
+        padding: 15px;
+        border-radius: 4px;
+    }
+    
+    .timeline-item.submit .timeline-content {
+        border-left-color: #0066cc;
+        background: #f0f6ff;
+    }
+    
+    .timeline-item.approve .timeline-content {
+        border-left-color: #28a745;
+        background: #f0fff0;
+    }
+    
+    .timeline-item.reject .timeline-content {
+        border-left-color: #dc3545;
+        background: #fff0f0;
+    }
+    
+    .timeline-item.return .timeline-content {
+        border-left-color: #ffc107;
+        background: #fffaf0;
+    }
+    
+    .timeline-action {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+    
+    .timeline-action.submit {
+        color: #0066cc;
+    }
+    
+    .timeline-action.approve {
+        color: #28a745;
+    }
+    
+    .timeline-action.reject {
+        color: #dc3545;
+    }
+    
+    .timeline-action.return {
+        color: #ffc107;
+    }
+    
+    .timeline-user {
+        color: #666;
+        font-size: 13px;
+        margin-bottom: 5px;
+    }
+    
+    .timeline-timestamp {
+        color: #999;
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+    
+    .timeline-comment {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 3px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #555;
+        line-height: 1.5;
+    }
+    
+    .exam-info-card {
+        background: white;
+        border-radius: 4px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-badge.draft {
+        background: #e2e8f0;
+        color: #2d3748;
+    }
+    
+    .status-badge.pending {
+        background: #fff5e6;
+        color: #92400e;
+    }
+    
+    .status-badge.approved {
+        background: #e6ffe6;
+        color: #22863a;
+    }
+    
+    .status-badge.rejected {
+        background: #ffe6e6;
+        color: #cb2431;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Approval History</h1>
+        <a href="{% url 'exam_paper_detail' exam.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Exam
+        </a>
+    </div>
+    
+    <!-- Exam Information -->
+    <div class="exam-info-card">
+        <h5 class="mb-3">Exam Details</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-2">
+                    <strong>Subject:</strong> {{ exam.subject.name }}
+                </div>
+                <div class="mb-2">
+                    <strong>Class:</strong> {{ exam.school_class }}
+                </div>
+                <div class="mb-2">
+                    <strong>Term:</strong> {{ exam.term }}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-2">
+                    <strong>Created:</strong> {{ exam.created_at|date:"SHORT_DATE_FORMAT H:i" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Current Status:</strong>
+                    <span class="status-badge {{ exam.approval_status }}">
+                        {{ exam.get_approval_status_display|upper }}
+                    </span>
+                </div>
+                <div class="mb-2">
+                    <strong>Teacher:</strong> {{ exam.teacher.get_full_name|default:exam.teacher.username }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Timeline -->
+    {% if approval_logs %}
+    <div class="exam-info-card">
+        <h5 class="mb-4">Approval Timeline</h5>
+        
+        <div class="timeline">
+            {% for log in approval_logs %}
+            <div class="timeline-item {{ log.action }}">
+                <div class="timeline-marker">
+                    {% if log.action == 'submit' %}
+                    <i class="fas fa-arrow-up"></i>
+                    {% elif log.action == 'approve' %}
+                    <i class="fas fa-check"></i>
+                    {% elif log.action == 'reject' %}
+                    <i class="fas fa-times"></i>
+                    {% elif log.action == 'return' %}
+                    <i class="fas fa-redo"></i>
+                    {% else %}
+                    <i class="fas fa-edit"></i>
+                    {% endif %}
+                </div>
+                
+                <div class="timeline-content">
+                    <div class="timeline-action {{ log.action }}">
+                        {% if log.action == 'submit' %}
+                        📤 Submitted for Approval
+                        {% elif log.action == 'approve' %}
+                        ✓ Approved
+                        {% elif log.action == 'reject' %}
+                        ✗ Rejected
+                        {% elif log.action == 'return' %}
+                        ↻ Returned for Review
+                        {% elif log.action == 'edit' %}
+                        ✎ Edited
+                        {% else %}
+                        {{ log.get_action_display|upper }}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="timeline-user">
+                        <strong>{{ log.user.get_full_name|default:log.user.username }}</strong>
+                    </div>
+                    
+                    <div class="timeline-timestamp">
+                        {{ log.timestamp|date:"SHORT_DATE_FORMAT" }} at {{ log.timestamp|time:"H:i" }}
+                    </div>
+                    
+                    {% if log.comment %}
+                    <div class="timeline-comment">
+                        <strong>Notes:</strong>
+                        <div style="margin-top: 5px;">
+                            {{ log.comment|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        No approval history yet. This exam may still be in draft status.
+    </div>
+    {% endif %}
+    
+    <!-- Current Status Summary -->
+    <div class="exam-info-card">
+        <h5 class="mb-3">Current Status Summary</h5>
+        
+        {% if exam.approval_status == 'draft' %}
+        <div class="alert alert-secondary">
+            <i class="fas fa-pencil-alt"></i>
+            <strong>Draft Mode</strong> - Teacher is still editing this exam. Once ready, teacher can submit for approval.
+        </div>
+        {% elif exam.approval_status == 'pending' %}
+        <div class="alert alert-info">
+            <i class="fas fa-hourglass-half"></i>
+            <strong>Pending Approval</strong> - Exam has been submitted and is awaiting admin review.
+            <br><small>Submitted: {{ exam.submitted_at|date:"SHORT_DATE_FORMAT H:i" }}</small>
+        </div>
+        {% elif exam.approval_status == 'approved' %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <strong>Approved</strong> - Exam has been approved and is ready for export and printing.
+            <br><small>Approved by {{ exam.approved_by.get_full_name|default:exam.approved_by.username }} on {{ exam.approved_at|date:"SHORT_DATE_FORMAT H:i" }}</small>
+            {% if exam.approval_notes %}
+            <div style="margin-top: 10px; background: white; padding: 10px; border-radius: 3px;">
+                <strong>Approval Notes:</strong>
+                <div style="margin-top: 5px;">
+                    {{ exam.approval_notes|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% elif exam.approval_status == 'rejected' %}
+        <div class="alert alert-danger">
+            <i class="fas fa-times-circle"></i>
+            <strong>Rejected</strong> - This exam was rejected. Teacher may edit and resubmit.
+            {% if exam.approval_notes %}
+            <div style="margin-top: 10px; background: white; padding: 10px; border-radius: 3px;">
+                <strong>Rejection Reason:</strong>
+                <div style="margin-top: 5px;">
+                    {{ exam.approval_notes|linebreaks }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

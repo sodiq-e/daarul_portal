@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import exam_workflow_views
 
 urlpatterns = [
     # Subjects
@@ -26,7 +27,19 @@ urlpatterns = [
     path('exam-papers/submit/', views.ExamPaperSubmitView.as_view(), name='exam_paper_submit'),
     path('exam-papers/upload-image/', views.upload_image, name='exam_upload_image'),
 
-    # Admin review workflow
+    # New simplified workflow with CKEditor
+    path('papers/<int:pk>/preview/', exam_workflow_views.ExamPaperPreviewView.as_view(), name='exam_paper_preview'),
+    path('papers/<int:pk>/submit/', exam_workflow_views.ExamPaperSubmitForApprovalView.as_view(), name='exam_paper_submit_approval'),
+    path('papers/<int:pk>/approval/', exam_workflow_views.ExamApprovalDetailView.as_view(), name='exam_approval_detail'),
+    path('papers/<int:pk>/approval-action/', exam_workflow_views.ExamApprovalActionView.as_view(), name='exam_approval_action'),
+    path('papers/<int:pk>/export/', exam_workflow_views.ExamPaperExportView.as_view(), name='exam_paper_export'),
+    path('papers/<int:pk>/history/', exam_workflow_views.ExamApprovalHistoryView.as_view(), name='exam_approval_history'),
+    
+    # Admin lists
+    path('admin/approval/', exam_workflow_views.PendingExamApprovalListView.as_view(), name='exam_approval_list'),
+    path('admin/approved/', exam_workflow_views.ApprovedExamsListView.as_view(), name='exam_approved_list'),
+
+    # Admin review workflow (legacy)
     path('admin/exam-papers/', views.AdminExamPaperListView.as_view(), name='admin_exam_paper_list'),
     path('admin/exam-papers/<int:pk>/', views.AdminExamPaperDetailView.as_view(), name='admin_exam_paper_detail'),
     path('admin/exam-papers/<int:pk>/action/', views.AdminExamPaperActionView.as_view(), name='admin_exam_paper_action'),

@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Review - {{ exam.subject.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .exam-content {
+        background: white;
+        padding: 30px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    
+    .exam-header {
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .exam-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .exam-meta {
+        color: #666;
+        font-size: 14px;
+        margin-top: 10px;
+    }
+    
+    .section-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+        margin-top: 30px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .question-block {
+        background: #f9f9f9;
+        padding: 15px;
+        margin: 15px 0;
+        border-left: 4px solid #007bff;
+        border-radius: 4px;
+    }
+    
+    .question-number {
+        font-weight: bold;
+        color: #007bff;
+        font-size: 16px;
+        display: inline-block;
+        min-width: 30px;
+    }
+    
+    .question-marks {
+        float: right;
+        background: #007bff;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .teacher-guide {
+        background: #e7f3ff;
+        border-left: 4px solid #0066cc;
+        padding: 12px;
+        margin: 10px 0 10px 20px;
+        border-radius: 3px;
+        font-size: 14px;
+    }
+    
+    .teacher-guide-label {
+        font-weight: bold;
+        color: #0066cc;
+        margin-bottom: 5px;
+    }
+    
+    .answer-explanation {
+        background: #f0f8ff;
+        border-left: 4px solid #4169e1;
+        padding: 12px;
+        margin: 10px 0 10px 20px;
+        border-radius: 3px;
+        font-size: 14px;
+    }
+    
+    .answer-explanation-label {
+        font-weight: bold;
+        color: #4169e1;
+        margin-bottom: 5px;
+    }
+    
+    .approval-panel {
+        background: #fff9e6;
+        border: 2px solid #ffc107;
+        padding: 20px;
+        border-radius: 4px;
+        margin-top: 30px;
+    }
+    
+    .approval-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 20px;
+    }
+    
+    .approval-history {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    
+    .approval-log-item {
+        border-bottom: 1px solid #eee;
+        padding: 10px 0;
+    }
+    
+    .approval-log-item:last-child {
+        border-bottom: none;
+    }
+    
+    .approval-action {
+        font-weight: bold;
+        display: inline-block;
+        min-width: 80px;
+    }
+    
+    .approval-action.approve {
+        color: #28a745;
+    }
+    
+    .approval-action.reject {
+        color: #dc3545;
+    }
+    
+    .approval-action.return {
+        color: #ffc107;
+    }
+    
+    .approval-timestamp {
+        color: #999;
+        font-size: 12px;
+    }
+    
+    .approval-comment {
+        margin-top: 5px;
+        font-size: 13px;
+        padding-left: 10px;
+        border-left: 3px solid #ddd;
+        color: #555;
+    }
+    
+    .sticky-approval {
+        position: sticky;
+        top: 100px;
+        z-index: 100;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Main Content -->
+            <a href="{% url 'exam_approval_list' %}" class="btn btn-outline-secondary mb-3">
+                <i class="fas fa-arrow-left"></i> Back to Pending List
+            </a>
+            
+            <div class="exam-content">
+                <!-- Exam Header -->
+                <div class="exam-header">
+                    <div class="exam-title">{{ exam.subject.name }}</div>
+                    <div class="exam-meta">
+                        <strong>Class:</strong> {{ exam.school_class }} |
+                        <strong>Term:</strong> {{ exam.term }} |
+                        <strong>Academic Year:</strong> {{ exam.academic_session }}
+                    </div>
+                    <div class="exam-meta">
+                        <strong>Teacher:</strong> {{ exam.teacher.get_full_name|default:exam.teacher.username }} |
+                        <strong>Duration:</strong> {{ exam.duration|default:"N/A" }} |
+                        <strong>Total Marks:</strong> {{ exam.total_marks }}
+                    </div>
+                    <div class="exam-meta">
+                        <strong>Submitted:</strong> {{ exam.submitted_at|date:"SHORT_DATETIME_FORMAT" }}
+                    </div>
+                </div>
+                
+                <!-- Exam Instructions -->
+                {% if exam.instructions %}
+                <div style="background: #f0f0f0; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                    <strong style="color: #333;">Instructions to Students:</strong>
+                    <div style="margin-top: 10px; color: #555;">
+                        {{ exam.instructions|safe }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Sections and Questions -->
+                {% for section_data in sections_data %}
+                <div class="section-block">
+                    <div class="section-title">
+                        {{ section_data.object.get_section_type_display }}
+                        {% if section_data.object.marks_allocation %}
+                        <span style="color: #666; font-size: 14px; font-weight: normal;">
+                            ({{ section_data.object.marks_allocation }} marks)
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if section_data.object.instruction %}
+                    <div style="background: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 3px;">
+                        {{ section_data.object.instruction|safe }}
+                    </div>
+                    {% endif %}
+                    
+                    {% for question in section_data.questions %}
+                    <div class="question-block">
+                        <div>
+                            <span class="question-number">{{ forloop.counter }}.</span>
+                            {{ question.text|safe }}
+                            {% if question.marks %}
+                            <span class="question-marks">{{ question.marks }} marks</span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Multiple Choice Options -->
+                        {% if question.options %}
+                        <div style="margin-left: 20px; margin-top: 10px;">
+                            {% for option in question.options %}
+                            <div style="margin: 5px 0;">
+                                <strong>{{ option.option_label }}.</strong> {{ option.option_text|safe }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Teacher Guide -->
+                        {% if question.teacher_guide %}
+                        <div class="teacher-guide">
+                            <div class="teacher-guide-label"><i class="fas fa-book"></i> Teacher Guide / Solution:</div>
+                            {{ question.teacher_guide|safe }}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Answer Explanation -->
+                        {% if question.answer_explanation %}
+                        <div class="answer-explanation">
+                            <div class="answer-explanation-label"><i class="fas fa-lightbulb"></i> Student Explanation:</div>
+                            {{ question.answer_explanation|safe }}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Resource Notes -->
+                        {% if question.resource_notes %}
+                        <div style="background: #f9f9f9; border-left: 3px solid #999; padding: 10px; margin: 10px 0 10px 20px; font-size: 13px;">
+                            <strong>Resources:</strong>
+                            {{ question.resource_notes|safe }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Approval Form -->
+            <div class="approval-panel sticky-approval">
+                <div class="approval-title">
+                    <i class="fas fa-clipboard-check"></i> Approval Decision
+                </div>
+                
+                <form method="post" action="{% url 'exam_approval_action' exam.pk %}">
+                    {% csrf_token %}
+                    
+                    <!-- Action Selection -->
+                    <div class="form-group">
+                        <label class="font-weight-bold">Action:</label>
+                        <div>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" class="custom-control-input" id="action-approve" name="action" value="approve" required>
+                                <label class="custom-control-label" for="action-approve">
+                                    <i class="fas fa-check-circle text-success"></i> Approve
+                                </label>
+                            </div>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" class="custom-control-input" id="action-return" name="action" value="return">
+                                <label class="custom-control-label" for="action-return">
+                                    <i class="fas fa-redo text-warning"></i> Return for Review
+                                </label>
+                            </div>
+                            <div class="custom-control custom-radio">
+                                <input type="radio" class="custom-control-input" id="action-reject" name="action" value="reject">
+                                <label class="custom-control-label" for="action-reject">
+                                    <i class="fas fa-times-circle text-danger"></i> Reject
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="form-group">
+                        <label class="font-weight-bold" for="approval_notes">Notes / Feedback:</label>
+                        {{ form.approval_notes }}
+                    </div>
+                    
+                    <!-- Submit -->
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-save"></i> Submit Decision
+                    </button>
+                </form>
+                
+                <!-- Approval History -->
+                {% if approval_logs %}
+                <div class="approval-history">
+                    <strong style="color: #666;">Approval History:</strong>
+                    <div style="margin-top: 10px;">
+                        {% for log in approval_logs %}
+                        <div class="approval-log-item">
+                            <span class="approval-action {% if log.action == 'approve' %}approve{% elif log.action == 'reject' %}reject{% else %}return{% endif %}">
+                                {{ log.get_action_display|upper }}
+                            </span>
+                            <div class="approval-timestamp">
+                                by {{ log.user.get_full_name|default:log.user.username }}
+                                on {{ log.timestamp|date:"SHORT_DATE_FORMAT H:i" }}
+                            </div>
+                            {% if log.comment %}
+                            <div class="approval-comment">
+                                {{ log.comment }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

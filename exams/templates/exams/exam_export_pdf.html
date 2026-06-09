@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            color: #000;
+            margin: 0;
+            padding: 2cm;
+            background: white;
+            line-height: 1.4;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2cm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 1cm;
+        }
+        
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .exam-info {
+            font-size: 11px;
+            margin: 3px 0;
+        }
+        
+        .instructions {
+            margin: 1cm 0;
+            padding: 0.5cm;
+            border-left: 3px solid #000;
+            padding-left: 1cm;
+            font-size: 11px;
+        }
+        
+        .instructions-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .section {
+            page-break-inside: avoid;
+            margin: 1cm 0 0.5cm 0;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 0.3cm;
+            text-decoration: underline;
+        }
+        
+        .section-info {
+            font-size: 11px;
+            margin-bottom: 0.3cm;
+            color: #333;
+        }
+        
+        .question {
+            margin: 0.5cm 0;
+            page-break-inside: avoid;
+        }
+        
+        .question-number {
+            font-weight: bold;
+            display: inline;
+        }
+        
+        .question-marks {
+            float: right;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        
+        .question-text {
+            font-size: 11px;
+            margin-bottom: 3px;
+        }
+        
+        .option {
+            margin-left: 1.5cm;
+            margin-bottom: 2px;
+            font-size: 11px;
+        }
+        
+        .option-label {
+            font-weight: bold;
+            min-width: 20px;
+            display: inline-block;
+        }
+        
+        .answer-space {
+            border-top: 1px dotted #000;
+            height: 1.5cm;
+            margin: 0.3cm 0;
+        }
+        
+        .teacher-guide {
+            background: none;
+            border-left: 3px solid #333;
+            padding-left: 0.5cm;
+            margin: 0.3cm 0 0.3cm 1.5cm;
+            font-size: 10px;
+            color: #333;
+        }
+        
+        .teacher-guide-label {
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 3px;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0.3cm 0;
+            font-size: 11px;
+        }
+        
+        th, td {
+            border: 1px solid #000;
+            padding: 3px 5px;
+            text-align: left;
+        }
+        
+        th {
+            background: #f0f0f0;
+            font-weight: bold;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">{{ exam.subject.name }}</div>
+        <div class="exam-info">Class: {{ exam.school_class }}</div>
+        <div class="exam-info">{{ exam.term }} ({{ exam.academic_session }})</div>
+        <div class="exam-info">Duration: {{ exam.duration|default:"N/A" }} | Total Marks: {{ exam.total_marks }}</div>
+    </div>
+    
+    {% if exam.instructions %}
+    <div class="instructions">
+        <div class="instructions-label">Instructions:</div>
+        {{ exam.instructions|safe }}
+    </div>
+    {% endif %}
+    
+    {% for section in sections %}
+    <div class="section">
+        <div class="section-title">{{ section.type }}</div>
+        
+        {% if section.title %}
+        <div class="section-info"><strong>{{ section.title }}</strong></div>
+        {% endif %}
+        
+        {% if section.instruction %}
+        <div class="section-info">
+            {{ section.instruction|safe }}
+        </div>
+        {% endif %}
+        
+        {% if section.marks_allocation %}
+        <div class="section-info"><strong>Total Marks for this Section: {{ section.marks_allocation }}</strong></div>
+        {% endif %}
+        
+        {% for question in section.questions %}
+        <div class="question">
+            <div class="question-text">
+                <span class="question-number">{{ question.number }}.</span>
+                {{ question.text|safe }}
+                {% if question.marks %}
+                <span class="question-marks">[{{ question.marks }} marks]</span>
+                {% endif %}
+            </div>
+            
+            {% if question.options %}
+            {% for option in question.options %}
+            <div class="option">
+                <span class="option-label">{{ option.label }}.</span> {{ option.text|safe }}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="answer-space"></div>
+            {% endif %}
+            
+            {% if question.teacher_guide %}
+            <div class="teacher-guide">
+                <div class="teacher-guide-label">Teacher Guide / Solution:</div>
+                {{ question.teacher_guide|safe }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</body>
+</html>

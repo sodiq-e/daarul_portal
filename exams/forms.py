@@ -1,8 +1,9 @@
 from django import forms
 from .models import (
-    Term, Subject, ClassSubject, ExamType, Exam, ExamPaper
+    Term, Subject, ClassSubject, ExamType, Exam, ExamPaper, ExamSection, Question, QuestionOption
 )
 from school_classes.models import SchoolClasses, ClassTeacher
+from ckeditor.widgets import CKEditorWidget
 
 
 class TermForm(forms.ModelForm):
@@ -48,7 +49,9 @@ class ExamPaperForm(forms.ModelForm):
             'duration', 'total_marks', 'instructions'
         ]
         widgets = {
-            'instructions': forms.Textarea(attrs={'rows': 4}),
+            'instructions': CKEditorWidget(attrs={
+                'class': 'form-control',
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -56,10 +59,12 @@ class ExamPaperForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['term'].queryset = Term.objects.filter(is_active=True)
         self.fields['academic_session'].widget.attrs.update({
-            'placeholder': 'e.g., 2024/2025'
+            'placeholder': 'e.g., 2024/2025',
+            'class': 'form-control'
         })
         self.fields['duration'].widget.attrs.update({
-            'placeholder': 'e.g., 1 Hour, 2 Hours'
+            'placeholder': 'e.g., 1 Hour, 2 Hours',
+            'class': 'form-control'
         })
 
         selected_class_id = None
@@ -128,4 +133,145 @@ class AssignSubjectsForm(forms.Form):
         required=False,
         initial=True,
         label="Make all selected subjects compulsory"
+    )
+
+
+class ExamSectionForm(forms.ModelForm):
+    """Form for creating and editing exam sections"""
+    class Meta:
+        model = ExamSection
+        fields = ['title', 'section_type', 'instruction', 'marks_allocation', 'order']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., Section A - Objective Questions'
+            }),
+            'section_type': forms.Select(attrs={'class': 'form-control'}),
+            'instruction': CKEditorWidget(attrs={'class': 'form-control'}),
+            'marks_allocation': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'placeholder': 'Total marks for this section'
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+            }),
+        }
+
+
+class QuestionForm(forms.ModelForm):
+    """Form for creating and editing exam questions with rich content"""
+    class Meta:
+        model = Question
+        fields = [
+            'question_text', 'marks', 'question_type', 'correct_answer',
+            'teacher_guide', 'answer_explanation', 'resource_notes',
+            'subnumbering_style', 'order'
+        ]
+        widgets = {
+            'question_text': CKEditorWidget(attrs={
+                'class': 'form-control',
+            }),
+            'teacher_guide': CKEditorWidget(attrs={
+                'class': 'form-control',
+            }),
+            'answer_explanation': CKEditorWidget(attrs={
+                'class': 'form-control',
+            }),
+            'resource_notes': CKEditorWidget(attrs={
+                'class': 'form-control',
+            }),
+            'marks': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.25',
+                'min': '0',
+                'placeholder': 'e.g., 5'
+            }),
+            'question_type': forms.Select(attrs={'class': 'form-control'}),
+            'correct_answer': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'For objective questions (A, B, C, D, etc.)',
+            }),
+            'subnumbering_style': forms.Select(attrs={'class': 'form-control'}),
+            'order': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+            }),
+        }
+
+
+class QuestionOptionForm(forms.ModelForm):
+    """Form for creating and editing multiple choice options"""
+    class Meta:
+        model = QuestionOption
+        fields = ['option_label', 'option_text']
+        widgets = {
+            'option_label': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'A',
+                'maxlength': '2',
+                'style': 'max-width: 60px;'
+            }),
+            'option_text': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Enter option text'
+            }),
+        }
+
+
+class ExamApprovalForm(forms.ModelForm):
+    """Form for admin approval/rejection of exam papers"""
+    ACTION_CHOICES = [
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+        ('return', 'Return for Review'),
+    ]
+    
+    action = forms.ChoiceField(
+        choices=ACTION_CHOICES,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Approval Action'
+    )
+
+    class Meta:
+        model = ExamPaper
+        fields = ['approval_notes']
+        widgets = {
+            'approval_notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Enter approval notes, feedback, or reasons for rejection...'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['approval_notes'].label = 'Notes'
+
+
+class ExamExportForm(forms.Form):
+    """Form for exporting exam papers"""
+    FORMAT_CHOICES = [
+        ('pdf', 'PDF'),
+        ('docx', 'Word (DOCX)'),
+    ]
+    
+    format = forms.ChoiceField(
+        choices=FORMAT_CHOICES,
+        widget=forms.RadioSelect,
+        label='Export Format'
+    )
+    
+    include_answers = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Include teacher guide and answers'
+    )
+    
+    include_marks = forms.BooleanField(
+        required=False,
+        initial=True,
+        label='Include mark allocations'
     )
