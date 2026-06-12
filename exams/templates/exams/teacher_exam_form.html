@@ -385,9 +385,9 @@ function addQuestion(sectionCard, questionData = {}) {
   const sectionTypeEl = sectionCard.querySelector('.section-type');
   const questionType = questionData.question_type || (sectionTypeEl ? sectionTypeEl.value : 'objective');
 
-  const questionTextValue = escapeHTML(questionData.question_text || '');
-  const teacherGuideValue = escapeHTML(questionData.teacher_guide || '');
-  const resourceNotesValue = escapeHTML(questionData.resource_notes || '');
+  const questionTextValue = questionData.question_text || '';
+  const teacherGuideValue = questionData.teacher_guide || '';
+  const resourceNotesValue = questionData.resource_notes || '';
   const optionAValue = escapeHTML(questionData.options?.[0]?.option_text || '');
   const optionBValue = escapeHTML(questionData.options?.[1]?.option_text || '');
   const optionCValue = escapeHTML(questionData.options?.[2]?.option_text || '');
@@ -395,6 +395,7 @@ function addQuestion(sectionCard, questionData = {}) {
   const optionEValue = escapeHTML(questionData.options?.[4]?.option_text || '');
   const correctAnswerValue = escapeHTML(questionData.correct_answer || '');
 
+  const uniqueId = Math.random().toString(36).substring(2, 10);
   const questionCard = document.createElement('div');
   questionCard.className = 'question-card';
   questionCard.innerHTML = `
@@ -410,7 +411,11 @@ function addQuestion(sectionCard, questionData = {}) {
     </div>
     <div class="field-block">
       <label>Question Text</label>
-      <textarea class="question-text rich-editor" rows="3">${questionTextValue}</textarea>
+      <div class="question-text-actions" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <button type="button" class="button button-small diagram-btn" style="background:#0d6efd;color:white;">Add Diagram</button>
+        <button type="button" class="button button-small chart-btn" style="background:#198754;color:white;">Add Chart</button>
+      </div>
+      <textarea id="question-text-${uniqueId}" class="question-text rich-editor" rows="4"></textarea>
     </div>
     <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
       <div class="col-md-4 field-block">
@@ -464,20 +469,14 @@ function addQuestion(sectionCard, questionData = {}) {
       </div>
     </div>
     <details class="optional-features" style="margin-top:8px;border-left:4px solid #eee;padding-left:12px;background:#fafafa;padding:8px;">
-      <summary style="cursor:pointer;font-weight:600;margin-bottom:6px;">Optional: Resources, Diagrams & Teacher Guide</summary>
-      <div class="row g-3" style="margin-top:6px;">
-        <div class="col-md-12 field-block">
-          <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button type="button" class="button add-diagram-btn">Add Diagram</button>
-            <button type="button" class="button add-chart-btn">Add Chart</button>
-          </div>
-          <textarea class="resource-notes rich-editor" rows="3">${resourceNotesValue}</textarea>
-        </div>
-      </div>
+      <summary style="cursor:pointer;font-weight:600;margin-bottom:6px;">Optional: Teacher Answer Guide</summary>
       <div class="field-block" style="margin-top:6px;">
         <label>Teacher Answer Guide (optional)</label>
-        <textarea class="teacher-guide rich-editor" rows="3">${teacherGuideValue}</textarea>
+        <textarea id="teacher-guide-${uniqueId}" class="teacher-guide rich-editor" rows="3"></textarea>
+      </div>
+      <div class="field-block" style="margin-top:6px;">
+        <label>Supplementary Resources / Notes (optional)</label>
+        <textarea id="resource-notes-${uniqueId}" class="resource-notes rich-editor" rows="3" placeholder="Enter URLs, resource notes, diagrams or supporting hints."></textarea>
       </div>
     </details>
   `;
@@ -487,16 +486,16 @@ function addQuestion(sectionCard, questionData = {}) {
 
   const questionTextArea = questionCard.querySelector('.question-text');
   const teacherGuideArea = questionCard.querySelector('.teacher-guide');
-  const resourceNotesArea = questionCard.querySelector('.resource-notes');
 
-  if (questionData.question_text) {
-    questionTextArea.value = questionData.question_text;
+  if (questionTextArea) {
+    questionTextArea.value = questionData.question_text || '';
   }
-  if (questionData.teacher_guide) {
-    teacherGuideArea.value = questionData.teacher_guide;
+  if (teacherGuideArea) {
+    teacherGuideArea.value = questionData.teacher_guide || '';
   }
-  if (questionData.resource_notes) {
-    resourceNotesArea.value = questionData.resource_notes;
+  const resourceNotesArea = questionCard.querySelector('.resource-notes');
+  if (resourceNotesArea) {
+    resourceNotesArea.value = questionData.resource_notes || '';
   }
 
   questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
@@ -525,9 +524,39 @@ function addQuestion(sectionCard, questionData = {}) {
     });
   }
 
-  // Initialize rich editor and media handlers for new question cards
+  // Initialize rich editor for new question cards
   initRichEditors();
-  attachDiagramAndChartHandlers(questionCard);
+
+  const diagramButton = questionCard.querySelector('.diagram-btn');
+  const chartButton = questionCard.querySelector('.chart-btn');
+  const questionTextEditor = () => {
+    if (questionTextArea && questionTextArea._editor) return questionTextArea._editor;
+    return activeEditor;
+  };
+
+  const insertMedia = (modalOpener, label) => {
+    const editor = questionTextEditor();
+    modalOpener().then(dataURL => {
+      if (!dataURL) return;
+      uploadDataURL(dataURL).then(res => {
+        if (res && res.url) {
+          const html = `<figure style="max-width:100%;margin:12px 0;"><img src="${res.url}" alt="${label}" style="max-width:100%;height:auto;display:block;" /><figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${label}</figcaption></figure>`;
+          if (editor && editor.model) {
+            insertHtmlToEditor(editor, html);
+          } else if (questionTextArea) {
+            questionTextArea.value += `\n${html}`;
+          }
+        }
+      }).catch(err => console.error(`${label} upload failed:`, err));
+    });
+  };
+
+  if (diagramButton) {
+    diagramButton.addEventListener('click', () => insertMedia(openDiagramModal, 'Diagram'));
+  }
+  if (chartButton) {
+    chartButton.addEventListener('click', () => insertMedia(openChartModal, 'Chart'));
+  }
 }
 
 function refreshQuestionLabels(sectionCard) {
@@ -546,48 +575,46 @@ function updateOptionFields(questionCard, count) {
   optionE.parentElement.style.display = count >= 5 ? 'block' : 'none';
 }
 
+function insertHtmlToEditor(editor, html) {
+  if (!editor || !editor.model) return;
+  const viewFragment = editor.data.processor.toView(html);
+  const modelFragment = editor.data.toModel(viewFragment);
+  editor.model.change(writer => {
+    editor.model.insertContent(modelFragment, editor.model.document.selection);
+  });
+}
+
 function initRichEditors() {
+  if (typeof ClassicEditor === 'undefined') {
+    console.warn('CKEditor 5 not loaded. Rich editor initialization skipped.');
+    return;
+  }
+
   function initEditorFor(ta) {
     if (!ta || ta._editor) return;
-    if (typeof ClassicEditor === 'undefined') return;
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    ClassicEditor.create(ta, {
+    const config = {
       toolbar: [
-        'heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList',
-        'insertTable', 'imageUpload', 'undo', 'redo'
+        'heading', '|', 'bold', 'italic', 'underline', 'strikethrough', 'removeFormat', '|',
+        'bulletedList', 'numberedList', 'blockQuote', '|', 'link', '|',
+        'insertTable', 'imageUpload', '|',
+        'undo', 'redo'
       ],
-      table: {
-        contentToolbar: [
-          'tableColumn', 'tableRow', 'mergeTableCells',
-          'tableCellProperties', 'tableProperties'
-        ]
-      },
-      image: {
-        toolbar: [
-          'imageTextAlternative', 'imageStyle:full', 'imageStyle:side',
-          'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight',
-          'resizeImage'
-        ],
-        resizeUnit: '%'
-      },
-      htmlSupport: {
-        allow: [
-          { name: 'img', attributes: true, classes: true, styles: true },
-          { name: 'table', attributes: true, classes: true, styles: true },
-          { name: 'thead', attributes: true, classes: true, styles: true },
-          { name: 'tbody', attributes: true, classes: true, styles: true },
-          { name: 'tr', attributes: true, classes: true, styles: true },
-          { name: 'td', attributes: true, classes: true, styles: true },
-          { name: 'th', attributes: true, classes: true, styles: true },
-          { name: 'figure', attributes: true, classes: true, styles: true },
-          { name: 'figcaption', attributes: true, classes: true, styles: true }
-        ]
-      },
+      extraPlugins: [],
       simpleUpload: {
         uploadUrl: '/exams/exam-papers/upload-image/',
         headers: { 'X-CSRFToken': csrftoken }
+      },
+      image: {
+        toolbar: [ 'imageTextAlternative', 'imageStyle:full', 'imageStyle:side' ],
+        resizeUnit: '%'
+      },
+      table: {
+        contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells' ]
       }
-    }).then(editor => {
+    };
+
+    ClassicEditor.create(ta, config).then(editor => {
       ta._editor = editor;
       activeEditor = editor;
       editor.editing.view.document.on('focus', () => { activeEditor = editor; });
@@ -617,64 +644,6 @@ function uploadDataURL(dataURL){
   return fetch('/exams/exam-papers/upload-image/', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } }).then(r => r.json());
 }
 
-function attachDiagramAndChartHandlers(questionCard){
-  const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
-  const addChartBtn = questionCard.querySelector('.add-chart-btn');
-  const ta = questionCard.querySelector('.resource-notes');
-
-  function insertHtml(editor, html) {
-    try {
-      if (!editor || !editor.data) throw new Error('Editor not ready');
-      const viewFragment = editor.data.processor.toView(html);
-      const modelFragment = editor.data.toModel(viewFragment);
-      editor.model.change(writer => {
-        editor.model.insertContent(modelFragment, editor.model.document.selection);
-      });
-    } catch (e) {
-      console.warn('Could not insert HTML into editor, falling back to append:', e);
-      if (ta) {
-        ta.value += `\n${html}`;
-      }
-    }
-  }
-
-  function insertImageUrl(editor, url, caption = '') {
-    const safeCaption = caption ? `<figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${caption}</figcaption>` : '';
-    const imageHtml = `<figure style="max-width:100%;margin:12px 0;">` +
-      `<img src="${url}" alt="Diagram" style="max-width:100%;height:auto;display:block;" />` +
-      safeCaption +
-      `</figure>`;
-    if (editor) {
-      insertHtml(editor, imageHtml);
-    } else if (ta) {
-      ta.value += `\n${imageHtml}`;
-    }
-  }
-
-  const targetEditor = () => (ta && ta._editor) || activeEditor || null;
-
-  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => {
-    if (!dataURL) return;
-    uploadDataURL(dataURL).then(res => {
-      if (res && res.url) {
-        insertImageUrl(targetEditor(), res.url, 'Diagram');
-      }
-    }).catch(err => {
-      console.error('Diagram upload failed:', err);
-    });
-  }));
-
-  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => {
-    if (!dataURL) return;
-    uploadDataURL(dataURL).then(res => {
-      if (res && res.url) {
-        insertImageUrl(targetEditor(), res.url, 'Chart');
-      }
-    }).catch(err => {
-      console.error('Chart upload failed:', err);
-    });
-  }));
-}
 
 function openDiagramModal(){
   return new Promise(resolve => {
@@ -834,38 +803,59 @@ class DiagramBuilder {
       { id: 'text', label: 'A Text', icon: 'T' }
     ];
     
-    const toolGroup = document.createElement('div');
-    toolGroup.style.cssText = 'display:flex;gap:4px';
-    
+    this.toolbarContainer.appendChild(this.toolbox);
+  }
+
+  buildToolButtons() {
+    this.toolButtonsContainer.innerHTML = '';
+    const categories = {
+      basic: [
+        { id: 'select', label: 'Select' },
+        { id: 'rect', label: 'Rectangle' },
+        { id: 'circle', label: 'Circle' },
+        { id: 'triangle', label: 'Triangle' },
+        { id: 'diamond', label: 'Diamond' }
+      ],
+      arrows: [
+        { id: 'line', label: 'Line' },
+        { id: 'arrow', label: 'Arrow' }
+      ],
+      flow: [
+        { id: 'process', label: 'Process' },
+        { id: 'decision', label: 'Decision' },
+        { id: 'text', label: 'Text' }
+      ],
+      tools: [
+        { id: 'pen', label: 'Draw' },
+        { id: 'eraser', label: 'Eraser' }
+      ]
+    };
+
+    const tools = categories[this.currentCategory] || categories.basic;
     tools.forEach(tool => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.textContent = tool.label;
-      btn.style.cssText = `padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer`;
-      btn.className = this.currentTool === tool.id ? 'active' : '';
-      
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-tool]').forEach(b => {
-          b.style.background = '#fff';
-          b.style.borderColor = '#ddd';
-        });
-        this.currentTool = tool.id;
-        btn.style.background = '#0d6efd';
-        btn.style.color = 'white';
-        btn.style.borderColor = '#0d6efd';
-      });
-      
-      btn.dataset.tool = tool.id;
+      btn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
       if (this.currentTool === tool.id) {
         btn.style.background = '#0d6efd';
         btn.style.color = 'white';
         btn.style.borderColor = '#0d6efd';
       }
-      
-      toolGroup.appendChild(btn);
+      btn.addEventListener('click', () => {
+        this.currentTool = tool.id;
+        this.toolButtonsContainer.querySelectorAll('button').forEach(button => {
+          button.style.background = '#fff';
+          button.style.color = 'black';
+          button.style.borderColor = '#ddd';
+        });
+        btn.style.background = '#0d6efd';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#0d6efd';
+      });
+      this.toolButtonsContainer.appendChild(btn);
     });
-    
-    this.toolbarContainer.appendChild(toolGroup);
+  }
     
     // Separator
     this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';

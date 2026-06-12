@@ -5,6 +5,10 @@ Handles PDF and DOCX export for exam papers with formatting preservation.
 """
 
 from io import BytesIO
+from urllib.parse import urlparse
+from urllib.request import urlopen
+from urllib.error import URLError, HTTPError
+from django.conf import settings
 from django.http import FileResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -13,6 +17,7 @@ from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+import os
 import re
 from html.parser import HTMLParser
 
@@ -132,6 +137,76 @@ def set_cell_border(cell, **kwargs):
     tcPr.append(tcBorders)
 
 
+def fetch_image_bytes(src):
+    if not src:
+        return None
+    src = src.strip()
+    if src.startswith('//'):
+        src = 'https:' + src
+    parsed = urlparse(src)
+    try:
+        if parsed.scheme in ('http', 'https'):
+            return urlopen(src, timeout=10).read()
+        if src.startswith('/'):
+            local_path = os.path.join(settings.BASE_DIR, src.lstrip('/'))
+            if os.path.exists(local_path):
+                with open(local_path, 'rb') as f:
+                    return f.read()
+    except (URLError, HTTPError, OSError):
+        return None
+    return None
+
+
+def add_html_to_doc(doc, html, style_name=None, left_indent=0):
+    if not html:
+        return
+
+    # Simple table support
+    table_match = re.search(r'<table.*?>(.*?)</table>', html, flags=re.S)
+    if table_match:
+        table_html = table_match.group(1)
+        rows = re.findall(r'<tr.*?>(.*?)</tr>', table_html, flags=re.S)
+        if rows:
+            first_row_cells = re.findall(r'<t[dh].*?>(.*?)</t[dh]>', rows[0], flags=re.S)
+            table = doc.add_table(rows=len(rows), cols=len(first_row_cells))
+            table.style = 'Table Grid'
+            for row_idx, row_html in enumerate(rows):
+                cells = re.findall(r'<t[dh].*?>(.*?)</t[dh]>', row_html, flags=re.S)
+                for col_idx, cell_html in enumerate(cells):
+                    text = strip_html_tags(cell_html)
+                    cell = table.cell(row_idx, col_idx)
+                    cell.text = text
+                    if row_idx == 0:
+                        set_cell_border(cell, top=True, left=True, bottom=True, right=True)
+            return
+
+    parts = re.split(r'(<img[^>]+>)', html, flags=re.I)
+    for part in parts:
+        if not part:
+            continue
+        if part.lower().startswith('<img'):
+            src_match = re.search(r'src=["\']([^"\']+)["\']', part)
+            if src_match:
+                image_bytes = fetch_image_bytes(src_match.group(1))
+                if image_bytes:
+                    image_stream = BytesIO(image_bytes)
+                    try:
+                        paragraph = doc.add_paragraph()
+                        run = paragraph.add_run()
+                        run.add_picture(image_stream, width=Inches(4))
+                    except Exception:
+                        doc.add_paragraph('[Image could not be loaded]')
+            continue
+        text = strip_html_tags(part)
+        if not text:
+            continue
+        paragraph = doc.add_paragraph(text)
+        if style_name:
+            paragraph.style = style_name
+        if left_indent:
+            paragraph.paragraph_format.left_indent = Inches(left_indent)
+
+
 def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
     """
     Export exam paper to DOCX format
@@ -176,8 +251,7 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
     # Add instructions
     if exam_paper.instructions:
         doc.add_heading('Instructions', level=2)
-        instructions_text = strip_html_tags(exam_paper.instructions)
-        doc.add_paragraph(instructions_text)
+        add_html_to_doc(doc, exam_paper.instructions)
     
     doc.add_paragraph()  # Spacing
     
@@ -188,8 +262,7 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
         
         # Section instruction
         if section.instruction:
-            section_inst_text = strip_html_tags(section.instruction)
-            doc.add_paragraph(section_inst_text, style='List Bullet')
+            add_html_to_doc(doc, section.instruction, style_name='List Bullet')
         
         if include_marks and section.marks_allocation:
             doc.add_paragraph(f"Total Marks for this Section: {section.marks_allocation}")
@@ -198,27 +271,26 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
         
         # Questions
         for q_idx, question in enumerate(section.questions.all(), 1):
-            # Question number and text
             q_para = doc.add_paragraph(style='List Number')
             q_num_run = q_para.add_run(f"{q_idx}. ")
             q_num_run.bold = True
             
-            q_text = strip_html_tags(question.question_text)
-            q_para.add_run(q_text)
-            
-            # Question marks
             if include_marks and question.marks:
                 marks_para = doc.add_paragraph(f"[{question.marks} marks]")
                 marks_para.paragraph_format.left_indent = Inches(0.5)
             
-            # Teacher guide (if requested)
+            # Question content with formatting and images
+            if question.question_text:
+                add_html_to_doc(doc, question.question_text, left_indent=0)
+            
             if include_answers and question.teacher_guide:
                 doc.add_paragraph("Teacher Guide:", style='Heading 3')
-                guide_text = strip_html_tags(question.teacher_guide)
-                guide_para = doc.add_paragraph(guide_text)
-                guide_para.paragraph_format.left_indent = Inches(0.5)
+                add_html_to_doc(doc, question.teacher_guide, left_indent=0.5)
             
-            # Options (for objective questions)
+            if question.resource_notes:
+                doc.add_paragraph("Supplementary Resources:", style='Heading 4')
+                add_html_to_doc(doc, question.resource_notes, left_indent=0.5)
+            
             if question.options.exists():
                 for option in question.options.all():
                     option_para = doc.add_paragraph(style='List Bullet 2')

@@ -49,8 +49,10 @@ class ExamPaperForm(forms.ModelForm):
             'duration', 'total_marks', 'instructions'
         ]
         widgets = {
-            'instructions': CKEditorWidget(attrs={
-                'class': 'form-control',
+            'instructions': forms.Textarea(attrs={
+                'class': 'form-control rich-editor',
+                'rows': 6,
+                'placeholder': 'Enter general instructions, diagrams, images, tables or math expressions here.'
             }),
         }
 
