@@ -855,13 +855,12 @@ class DiagramBuilder {
       });
       this.toolButtonsContainer.appendChild(btn);
     });
-  }
-    
+
     // Separator
     this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';
     this.toolbarContainer.lastChild.style.background = '#ddd';
     this.toolbarContainer.lastChild.style.height = '24px';
-    
+
     // Color & thickness controls
     const controlsGroup = document.createElement('div');
     controlsGroup.style.cssText = 'display:flex;gap:8px;align-items:center';
