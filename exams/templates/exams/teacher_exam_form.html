@@ -625,13 +625,26 @@ function initRichEditors() {
   function initEditorFor(ta) {
     if (!ta || ta._editor) return;
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    const requestedToolbar = [
+      'heading', '|', 'bold', 'italic', 'underline', 'strikethrough', 'removeFormat', '|',
+      'bulletedList', 'numberedList', 'blockQuote', '|', 'link', '|',
+      'insertTable', 'imageUpload', '|',
+      'undo', 'redo'
+    ];
+
+    // Filter toolbar items based on available built-in plugins to avoid 'item-unavailable' warnings
+    let toolbarToUse = requestedToolbar;
+    try {
+      if (ClassicEditor.builtinPlugins && ClassicEditor.builtinPlugins.length) {
+        const available = ClassicEditor.builtinPlugins.map(p => (p.pluginName || p.name || '').toString().toLowerCase()).join(' ');
+        toolbarToUse = requestedToolbar.filter(it => it === '|' || available.includes(it.toString().toLowerCase()));
+      }
+    } catch (e) {
+      console.warn('Could not filter toolbar items:', e);
+    }
+
     const config = {
-      toolbar: [
-        'heading', '|', 'bold', 'italic', 'underline', 'strikethrough', 'removeFormat', '|',
-        'bulletedList', 'numberedList', 'blockQuote', '|', 'link', '|',
-        'insertTable', 'imageUpload', '|',
-        'undo', 'redo'
-      ],
+      toolbar: toolbarToUse,
       extraPlugins: [],
       simpleUpload: {
         uploadUrl: '/exams/exam-papers/upload-image/',
@@ -847,7 +860,15 @@ class DiagramBuilder {
       { id: 'text', label: 'A Text', icon: 'T' }
     ];
     
+    // Build toolbox elements
+    this.toolbox = document.createElement('div');
+    this.toolbox.style.cssText = 'display:flex;align-items:center;gap:8px';
+    this.toolButtonsContainer = document.createElement('div');
+    this.toolButtonsContainer.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+    this.toolbox.appendChild(this.toolButtonsContainer);
     this.toolbarContainer.appendChild(this.toolbox);
+    // Populate initial tool buttons
+    this.buildToolButtons();
   }
 
   buildToolButtons() {
