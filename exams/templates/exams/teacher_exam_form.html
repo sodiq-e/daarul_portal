@@ -584,6 +584,38 @@ function insertHtmlToEditor(editor, html) {
   });
 }
 
+function attachDiagramAndChartHandlers(questionCard) {
+  if (!questionCard) return;
+  const diagramButton = questionCard.querySelector('.diagram-btn');
+  const chartButton = questionCard.querySelector('.chart-btn');
+  const questionTextArea = questionCard.querySelector('.question-text');
+
+  const questionTextEditor = () => {
+    if (questionTextArea && questionTextArea._editor) return questionTextArea._editor;
+    return activeEditor;
+  };
+
+  const insertMedia = (modalOpener, label) => {
+    const editor = questionTextEditor();
+    modalOpener().then(dataURL => {
+      if (!dataURL) return;
+      uploadDataURL(dataURL).then(res => {
+        if (res && res.url) {
+          const html = `<figure style="max-width:100%;margin:12px 0;"><img src="${res.url}" alt="${label}" style="max-width:100%;height:auto;display:block;" /><figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${label}</figcaption></figure>`;
+          if (editor && editor.model) {
+            insertHtmlToEditor(editor, html);
+          } else if (questionTextArea) {
+            questionTextArea.value += `\n${html}`;
+          }
+        }
+      }).catch(err => console.error(`${label} upload failed:`, err));
+    });
+  };
+
+  if (diagramButton) diagramButton.addEventListener('click', () => insertMedia(openDiagramModal, 'Diagram'));
+  if (chartButton) chartButton.addEventListener('click', () => insertMedia(openChartModal, 'Chart'));
+}
+
 function initRichEditors() {
   if (typeof ClassicEditor === 'undefined') {
     console.warn('CKEditor 5 not loaded. Rich editor initialization skipped.');
@@ -621,6 +653,18 @@ function initRichEditors() {
       editor.editing.view.document.on('click', () => { activeEditor = editor; });
     }).catch(err => {
       console.warn('CKEditor init failed for textarea:', ta, err);
+      // Retry with a safer, minimal toolbar set in case the build lacks some plugins
+      const fallbackConfig = Object.assign({}, config, {
+        toolbar: ['heading', '|', 'bold', 'italic', 'link', '|', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
+      });
+      ClassicEditor.create(ta, fallbackConfig).then(editor => {
+        ta._editor = editor;
+        activeEditor = editor;
+        editor.editing.view.document.on('focus', () => { activeEditor = editor; });
+        editor.editing.view.document.on('click', () => { activeEditor = editor; });
+      }).catch(err2 => {
+        console.warn('CKEditor init failed on fallback for textarea:', ta, err2);
+      });
     });
   }
 
