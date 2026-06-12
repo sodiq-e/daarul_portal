@@ -388,6 +388,7 @@ function addQuestion(sectionCard, questionData = {}) {
   const questionTextValue = questionData.question_text || '';
   const teacherGuideValue = questionData.teacher_guide || '';
   const resourceNotesValue = questionData.resource_notes || '';
+  const diagramJsonValue = questionData.diagram_json || '';
   const optionAValue = escapeHTML(questionData.options?.[0]?.option_text || '');
   const optionBValue = escapeHTML(questionData.options?.[1]?.option_text || '');
   const optionCValue = escapeHTML(questionData.options?.[2]?.option_text || '');
@@ -478,9 +479,9 @@ function addQuestion(sectionCard, questionData = {}) {
         <label>Supplementary Resources / Notes (optional)</label>
         <textarea id="resource-notes-${uniqueId}" class="resource-notes rich-editor" rows="3" placeholder="Enter URLs, resource notes, diagrams or supporting hints."></textarea>
       </div>
+      <textarea id="diagram-json-${uniqueId}" class="diagram-json-data hidden"></textarea>
     </details>
   `;
-
   questionList.appendChild(questionCard);
   console.log('Question card added to list. List now has', questionList.children.length, 'questions');
 
@@ -494,8 +495,12 @@ function addQuestion(sectionCard, questionData = {}) {
     teacherGuideArea.value = questionData.teacher_guide || '';
   }
   const resourceNotesArea = questionCard.querySelector('.resource-notes');
+  const diagramJsonArea = questionCard.querySelector('.diagram-json-data');
   if (resourceNotesArea) {
     resourceNotesArea.value = questionData.resource_notes || '';
+  }
+  if (diagramJsonArea) {
+    diagramJsonArea.value = diagramJsonValue || '';
   }
 
   questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
@@ -584,6 +589,31 @@ function insertHtmlToEditor(editor, html) {
   });
 }
 
+function extractDiagramJsonFromNotes(notes) {
+  if (!notes) return '';
+  const match = notes.match(/<!--\s*DIAGRAM_JSON_START\s*([\s\S]*?)\s*DIAGRAM_JSON_END\s*-->/);
+  return match ? match[1].trim() : '';
+}
+
+function stripDiagramJsonFromNotes(notes) {
+  if (!notes) return '';
+  return notes.replace(/<!--\s*DIAGRAM_JSON_START\s*[\s\S]*?\s*DIAGRAM_JSON_END\s*-->/g, '').trim();
+}
+
+function embedDiagramJsonIntoNotes(notes, json) {
+  const cleanNotes = stripDiagramJsonFromNotes(notes || '');
+  const encoded = json ? json : '';
+  return `${cleanNotes}${cleanNotes ? '\n' : ''}<!-- DIAGRAM_JSON_START\n${encoded}\nDIAGRAM_JSON_END -->`;
+}
+
+function updateResourceNotesEditor(field, editor, value) {
+  if (!field) return;
+  if (editor && typeof editor.setData === 'function') {
+    editor.setData(value);
+  }
+  field.value = value;
+}
+
 function attachDiagramAndChartHandlers(questionCard) {
   if (!questionCard) return;
   const diagramButton = questionCard.querySelector('.diagram-btn');
@@ -595,24 +625,34 @@ function attachDiagramAndChartHandlers(questionCard) {
     return activeEditor;
   };
 
-  const insertMedia = (modalOpener, label) => {
+  const insertMedia = (modalOpener, label, isDiagram = false) => {
     const editor = questionTextEditor();
-    modalOpener().then(dataURL => {
-      if (!dataURL) return;
-      uploadDataURL(dataURL).then(res => {
-        if (res && res.url) {
-          const html = `<figure style="max-width:100%;margin:12px 0;"><img src="${res.url}" alt="${label}" style="max-width:100%;height:auto;display:block;" /><figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${label}</figcaption></figure>`;
-          if (editor && editor.model) {
-            insertHtmlToEditor(editor, html);
-          } else if (questionTextArea) {
-            questionTextArea.value += `\n${html}`;
+    modalOpener(questionCard).then(result => {
+      if (!result) return;
+      if (result.action === 'image' && result.dataURL) {
+        uploadDataURL(result.dataURL).then(res => {
+          if (res && res.url) {
+            const html = `<figure style="max-width:100%;margin:12px 0;"><img src="${res.url}" alt="${label}" style="max-width:100%;height:auto;display:block;" /><figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${label}</figcaption></figure>`;
+            if (editor && editor.model) {
+              insertHtmlToEditor(editor, html);
+            } else if (questionTextArea) {
+              questionTextArea.value += `\n${html}`;
+            }
           }
-        }
-      }).catch(err => console.error(`${label} upload failed:`, err));
+        }).catch(err => console.error(`${label} upload failed:`, err));
+      } else if (isDiagram && result.action === 'json' && result.json) {
+        const resourceNotesField = questionCard.querySelector('.resource-notes');
+        const resourceNotesEditor = resourceNotesField ? resourceNotesField._editor : null;
+        const currentNotes = resourceNotesField ? (resourceNotesEditor ? resourceNotesEditor.getData() : resourceNotesField.value) : '';
+        const newNotes = embedDiagramJsonIntoNotes(currentNotes, result.json);
+        updateResourceNotesEditor(resourceNotesField, resourceNotesEditor, newNotes);
+        const diagramJsonField = questionCard.querySelector('.diagram-json-data');
+        if (diagramJsonField) diagramJsonField.value = result.json;
+      }
     });
   };
 
-  if (diagramButton) diagramButton.addEventListener('click', () => insertMedia(openDiagramModal, 'Diagram'));
+  if (diagramButton) diagramButton.addEventListener('click', () => insertMedia(openDiagramModal, 'Diagram', true));
   if (chartButton) chartButton.addEventListener('click', () => insertMedia(openChartModal, 'Chart'));
 }
 
@@ -862,11 +902,38 @@ class DiagramBuilder {
     
     // Build toolbox elements
     this.toolbox = document.createElement('div');
-    this.toolbox.style.cssText = 'display:flex;align-items:center;gap:8px';
+    this.toolbox.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+
+    // Category selector
+    this.categorySelect = document.createElement('select');
+    ['basic','arrows','flow','tools'].forEach(cat => {
+      const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+      this.categorySelect.appendChild(opt);
+    });
+    this.categorySelect.value = this.currentCategory;
+    this.categorySelect.addEventListener('change', (e) => { this.currentCategory = e.target.value; this.buildToolButtons(); });
+    this.toolbox.appendChild(this.categorySelect);
+
     this.toolButtonsContainer = document.createElement('div');
     this.toolButtonsContainer.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
     this.toolbox.appendChild(this.toolButtonsContainer);
+
+    // Hidden image file input for inserting images onto canvas
+    this._imageInput = document.createElement('input');
+    this._imageInput.type = 'file';
+    this._imageInput.accept = 'image/*';
+    this._imageInput.style.display = 'none';
+    this._imageInput.addEventListener('change', (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = (e2) => { this.addImageFromDataURL(e2.target.result); ev.target.value = ''; };
+      reader.readAsDataURL(f);
+    });
+    this.toolbarContainer.appendChild(this._imageInput);
+
     this.toolbarContainer.appendChild(this.toolbox);
+
     // Populate initial tool buttons
     this.buildToolButtons();
   }
@@ -892,7 +959,8 @@ class DiagramBuilder {
       ],
       tools: [
         { id: 'pen', label: 'Draw' },
-        { id: 'eraser', label: 'Eraser' }
+        { id: 'eraser', label: 'Eraser' },
+        { id: 'image', label: 'Image' }
       ]
     };
 
@@ -917,6 +985,11 @@ class DiagramBuilder {
         btn.style.background = '#0d6efd';
         btn.style.color = 'white';
         btn.style.borderColor = '#0d6efd';
+        // Special handling for image button
+        if (tool.id === 'image') {
+          // trigger hidden file input
+          if (this._imageInput) this._imageInput.click();
+        }
       });
       this.toolButtonsContainer.appendChild(btn);
     });
@@ -1233,6 +1306,29 @@ class DiagramBuilder {
         strokeWidth: this.lineThickness,
         _isPreview: true
       });
+    } else if (this.currentTool === 'diamond' || this.currentTool === 'decision') {
+      // Diamond/Decision shape as a rotated square (regular polygon with 4 sides)
+      shape = new Konva.RegularPolygon({
+        x: (this.startX + currentX) / 2,
+        y: (this.startY + currentY) / 2,
+        sides: 4,
+        radius: Math.max(width, height) / 2,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        rotation: 45,
+        _isPreview: true
+      });
+    } else if (this.currentTool === 'process') {
+      // Process is a rounded rectangle
+      shape = new Konva.Rect({
+        x, y, width, height,
+        cornerRadius: 10,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true
+      });
     }
     
     if (shape) {
@@ -1346,6 +1442,25 @@ class DiagramBuilder {
   export() {
     return this.stage.toDataURL({ pixelRatio: 2 });
   }
+
+  addImageFromDataURL(dataURL, x=null, y=null) {
+    const img = new window.Image();
+    img.onload = () => {
+      const kimg = new Konva.Image({
+        x: x !== null ? x : (this.width - img.width / 2) / 2,
+        y: y !== null ? y : (this.height - img.height / 2) / 2,
+        image: img,
+        width: img.width / 2,
+        height: img.height / 2,
+        draggable: true,
+        isShape: true
+      });
+      this.layer.add(kimg);
+      this.layer.draw();
+      this.saveHistory();
+    };
+    img.src = dataURL;
+  }
 }
 
 function openChartModal(){
@@ -1450,9 +1565,11 @@ function gatherPayload() {
       const questionTextField = questionCard.querySelector('.question-text');
       const teacherGuideField = questionCard.querySelector('.teacher-guide');
       const resourceNotesField = questionCard.querySelector('.resource-notes');
+      const diagramJsonField = questionCard.querySelector('.diagram-json-data');
       const questionTextValue = getEditorFieldValue(questionTextField);
       const teacherGuideValue = getEditorFieldValue(teacherGuideField);
       const resourceNotesValue = getEditorFieldValue(resourceNotesField);
+      const diagramJsonValue = diagramJsonField ? diagramJsonField.value : '';
 
       const questionPayload = {
           // inherit question type from the parent section
@@ -1462,6 +1579,7 @@ function gatherPayload() {
         correct_answer: questionCard.querySelector('.correct-answer').value,
         teacher_guide: teacherGuideValue,
         resource_notes: resourceNotesValue,
+        diagram_json: diagramJsonValue,
         subnumbering_style: subquestionCheckbox && !subquestionCheckbox.checked ? '' : questionCard.querySelector('.subnumbering-style').value,
         options: []
       };
