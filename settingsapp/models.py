@@ -15,7 +15,7 @@ class SchoolSettings(models.Model):
         null=True
     )
 
-    logo = models.ImageField(
+    logo = models.CloudinaryField(
         upload_to='logos/',
         blank=True,
         null=True
@@ -88,7 +88,7 @@ class SchoolSettings(models.Model):
         blank=True,
         help_text="Description text for the video placeholder on homepage"
     )
-    homepage_video = models.FileField(
+    homepage_video = models.CloudinaryField(
         upload_to='videos/',
         blank=True,
         null=True
