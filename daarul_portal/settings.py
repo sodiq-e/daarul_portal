@@ -109,9 +109,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': os.environ.get('da7ow7upe'),
-    'API_KEY': os.environ.get('183483428583157'),
-    'API_SECRET': os.environ.get('Y6-oaGrH9i2XV8T-99M3AILoek8'),
+    'CLOUD_NAME': 'da7ow7upe',
+    'API_KEY': '183483428583157',
+    'API_SECRET': 'Y6-oaGrH9i2XV8T-99M3AILoek8',
 }
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
