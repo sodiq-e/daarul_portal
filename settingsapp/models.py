@@ -1,4 +1,5 @@
 from django.db import models
+from cloudinary.models import CloudinaryField
 
 class SchoolSettings(models.Model):
     school_name = models.CharField(
