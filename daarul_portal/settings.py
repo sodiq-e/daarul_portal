@@ -21,6 +21,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+     'cloudinary'
+     'cloudinary_storage',
+]
 
     'rest_framework',
     'admin_interface',
@@ -95,6 +98,8 @@ SCHOOL_NAME = 'Daarul Bayaan Islamic School'
 SCHOOL_MOTTO = 'Knowledge for the fear of God'
 SCHOOL_LOGO = '/static/img/logo.png'
 
+
+
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = 'login'
 
@@ -103,6 +108,14 @@ import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('da7ow7upe'),
+    'API_KEY': os.environ.get('183483428583157'),
+    'API_SECRET': os.environ.get('Y6-oaGrH9i2XV8T-99M3AILoek8'),
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # CKEditor Configuration for Exam Papers
 CKEDITOR_CONFIGS = {
     'default': {
