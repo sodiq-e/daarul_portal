@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    'whitenoise.middleware.security.SecurityMiddleware',
 ]
 ROOT_URLCONF = 'daarul_portal.urls'
 TEMPLATES = [
@@ -89,6 +89,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SCHOOL_NAME = 'Daarul Bayaan Islamic School'
 SCHOOL_MOTTO = 'Knowledge for the fear of God'
@@ -238,3 +239,4 @@ EXAM_UPLOAD_WHITELIST = os.environ.get('EXAM_UPLOAD_WHITELIST', 'png,jpg,jpeg,gi
 EXAM_UPLOAD_CLEANUP_DAYS = int(os.environ.get('EXAM_UPLOAD_CLEANUP_DAYS', 90))
 # If set to True and clamd is available, uploaded files will be scanned. Requires python-clamd or similar.
 EXAM_UPLOAD_USE_CLAMD = os.environ.get('EXAM_UPLOAD_USE_CLAMD', 'False').strip().lower() in ('1','true','yes')
+
