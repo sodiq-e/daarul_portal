@@ -10,9 +10,9 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = [
     "daarulbayaan.pythonanywhere.com",
     "127.0.0.1",
-    "localhost"
-    "onrender.com"
-    "daarul-portal.onrender.com"
+    "localhost",
+    "onrender.com",
+    "daarul-portal.onrender.com",
 ]
 INSTALLED_APPS = [
     'django.contrib.admin',
