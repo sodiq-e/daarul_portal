@@ -15,7 +15,8 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import uuid
-import imghdr
+from PIL import Image
+from io import BytesIO
 
 try:
     from weasyprint import HTML
@@ -69,7 +70,7 @@ class SelectClassForSubjectsView(LoginRequiredMixin, UserPassesTestMixin, Templa
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
+
         # Get classes based on user role
         if user_is_admin(user):
             # Admins can see all classes
@@ -81,13 +82,13 @@ class SelectClassForSubjectsView(LoginRequiredMixin, UserPassesTestMixin, Templa
                 is_active=True
             ).values_list('school_class_id', flat=True).distinct()
             classes = SchoolClasses.objects.filter(id__in=assigned_class_ids).order_by('class_name')
-        
+
         context['classes'] = classes
         return context
 
     def post(self, request, *args, **kwargs):
         class_id = request.POST.get('school_class')
-        
+
         if class_id:
             return redirect('school_classes:class_subjects_list', class_id=class_id)
         else:
@@ -604,7 +605,8 @@ def upload_image(request):
 
     # Try to guess extension
     try:
-        ext = imghdr.what(None, h=file_obj.read(512))
+        image = Image.open(BytesIO(file_obj.read()))
+        ext = image.format.lower()
         file_obj.seek(0)
     except Exception:
         ext = None

@@ -16,13 +16,12 @@ class SchoolSettings(models.Model):
         null=True
     )
 
-    logo = models.CloudinaryField(
-        upload_to='logos/',
+    logo = CloudinaryField(
+        'image',
+        folder='logos',
         blank=True,
         null=True
     )
-
-    # Theme colors
     primary_color = models.CharField(
         max_length=7,
         default="#4b2e83",
@@ -89,8 +88,9 @@ class SchoolSettings(models.Model):
         blank=True,
         help_text="Description text for the video placeholder on homepage"
     )
-    homepage_video = models.CloudinaryField(
-        upload_to='videos/',
+    homepage_video = CloudinaryField(
+        'videos',
+        folder='videos',
         blank=True,
         null=True
     )
@@ -302,15 +302,17 @@ class GalleryImage(models.Model):
         related_name='gallery_images'
     )
 
-    image = models.ImageField(
-    upload_to='gallery/images/',
+    image = CloudinaryField(
+    'image',
+    folder='gallery/images',
     blank=True,
     null=True,
     help_text="Upload image (optional)"
     )
 
-    video = models.FileField(
-    upload_to='gallery/videos/',
+    video = CloudinaryField(
+    'video',
+    folder='gallery/videos',
     blank=True,
     null=True,
     help_text="Upload video (optional)"
