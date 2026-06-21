@@ -2687,7 +2687,7 @@ html, body {
   }
 
   /* ===== MOBILE CONTENT FIXES ===== */
-  
+
   /* Remove text truncation */
   * {
     text-overflow: unset !important;
@@ -3260,7 +3260,7 @@ html, body {
       <span>Theme Settings</span>
       <button class="theme-customizer-close" onclick="document.getElementById('themeCustomizer').classList.remove('show')">✕</button>
     </div>
-    
+
     <div class="theme-customizer-section">
       <div class="theme-customizer-section-title">Preset Themes</div>
       <div id="themePresets"></div>
@@ -3292,7 +3292,7 @@ html, body {
       <span>⌨️ Keyboard Shortcuts</span>
       <button class="shortcuts-panel-close" onclick="document.getElementById('shortcutsPanel').classList.remove('show'); document.getElementById('shortcutsOverlay').classList.remove('show')">✕</button>
     </div>
-    
+
     <div class="shortcuts-group">
       <div class="shortcuts-group-title">Navigation</div>
       <div class="shortcut-item">
@@ -3371,7 +3371,7 @@ html, body {
     <!-- LEFT: Logo -->
     <div class="header-left">
       {% if school_logo %}
-        <img src="{{ school_logo }}" style="height:60px;">
+        <img src="{{ school_logo.url }}" style="height:60px;">
       {% else %}
         <img src="{% static 'img/logo.png' %}" style="height:60px;">
       {% endif %}
@@ -3847,7 +3847,7 @@ class Toast {
 
   show() {
     const container = document.getElementById('toastContainer');
-    
+
     const icons = {
       success: '✓',
       error: '✕',
@@ -4018,9 +4018,9 @@ function saveSidebarMenuState() {
 menuBtn.addEventListener('click', function(e) {
   e.preventDefault();
   e.stopPropagation();
-  
+
   const screenWidth = window.innerWidth;
-  
+
   if (screenWidth < 1024) {
     // Mobile: toggle drawer
     sidebar.classList.toggle('active');
@@ -4069,14 +4069,14 @@ if (logoutBtn) {
 // ===== COLLAPSIBLE MENU SECTIONS =====
 function toggleMenu(header) {
   const content = header.nextElementSibling;
-  
+
   if (!content || !content.classList.contains('menu-content')) {
     return;
   }
 
   // Toggle active state on header
   header.classList.toggle('active');
-  
+
   // Toggle collapsed state on content
   content.classList.toggle('collapsed');
   saveSidebarMenuState();
@@ -4086,13 +4086,13 @@ function toggleMenu(header) {
 document.addEventListener('DOMContentLoaded', function() {
   // Find any active link and expand its parent section
   const activeLink = document.querySelector('.sidebar a.active');
-  
+
   if (activeLink) {
     let parent = activeLink.closest('.menu-content');
     if (parent) {
       // Expand the parent content
       parent.classList.remove('collapsed');
-      
+
       // Mark the header as active
       const header = parent.previousElementSibling;
       if (header && header.classList.contains('menu-header')) {
@@ -4674,7 +4674,7 @@ class ThemeManager {
 
   applyAccessibility(settings) {
     const body = document.body;
-    
+
     if (settings.highContrast) {
       body.setAttribute('data-accessibility', 'high-contrast');
     } else {
@@ -4845,8 +4845,8 @@ class CommandPalette {
 
   filter() {
     const query = this.input.value.toLowerCase();
-    const filtered = this.commands.filter(cmd => 
-      cmd.title.toLowerCase().includes(query) || 
+    const filtered = this.commands.filter(cmd =>
+      cmd.title.toLowerCase().includes(query) ||
       cmd.description.toLowerCase().includes(query)
     );
 
@@ -4874,7 +4874,7 @@ class CommandPalette {
   updateSelection() {
     const items = this.resultsContainer.querySelectorAll('.command-item');
     this.selectedIndex = Math.max(0, Math.min(this.selectedIndex, items.length - 1));
-    
+
     items.forEach((item, idx) => {
       item.classList.toggle('selected', idx === this.selectedIndex);
     });
@@ -4949,7 +4949,7 @@ document.addEventListener('click', (e) => {
     e.stopPropagation();
     const dropdown = toggle.closest('.dropdown');
     const menu = dropdown.querySelector('.dropdown-menu');
-    
+
     document.querySelectorAll('.dropdown-menu.show').forEach(m => {
       if (m !== menu) m.classList.remove('show');
     });
