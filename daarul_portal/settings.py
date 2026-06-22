@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -78,10 +79,9 @@ TEMPLATES = [
 ]
 WSGI_APPLICATION = 'daarul_portal.wsgi.application'
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.parse(
+        os.environ.get("DATABASE_URL")
+    )
 }
 AUTH_PASSWORD_VALIDATORS = []
 LANGUAGE_CODE = 'en-us'
@@ -103,9 +103,17 @@ LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = 'login'
 
 import os
+import cloudinary
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+cloudinary.config(
+    cloud_name="da7ow7upe",
+    api_key="1834834285833157",
+    api_secret="Y6-oaGrH9i2XV8T-99M3AILoek8",
+    secure=True
+)
 
 
 CLOUDINARY_STORAGE = {
