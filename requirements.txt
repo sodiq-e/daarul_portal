@@ -14,6 +14,7 @@ asn1crypto==1.5.1
 asttokens==3.0.0
 async-lru==2.0.4
 attrs==24.2.0
+audioop-lts==0.2.1
 autocommand==2.2.2
 autograd==1.7.0
 autograd-gamma==0.5.0
@@ -134,6 +135,7 @@ formulaic==1.1.0
 fqdn==1.5.1
 frozendict==2.4.4
 fsspec==2024.6.1
+GDAL==3.9.3
 Genshi==0.7.9
 geographiclib==2.0
 geopy==2.4.1
@@ -347,6 +349,7 @@ python-json-logger==3.2.1
 python-Levenshtein==0.26.1
 python-magic==0.4.27
 python-mimeparse==2.0.0
+python-poppler==0.4.1
 python-slugify==8.0.4
 pytz==2025.2
 PyWavelets==1.7.0
