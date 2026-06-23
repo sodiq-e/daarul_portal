@@ -14,7 +14,6 @@ asn1crypto==1.5.1
 asttokens==3.0.0
 async-lru==2.0.4
 attrs==24.2.0
-audioop-lts==0.2.1
 autocommand==2.2.2
 autograd==1.7.0
 autograd-gamma==0.5.0
@@ -135,7 +134,6 @@ formulaic==1.1.0
 fqdn==1.5.1
 frozendict==2.4.4
 fsspec==2024.6.1
-GDAL==3.9.3
 Genshi==0.7.9
 geographiclib==2.0
 geopy==2.4.1
@@ -284,7 +282,7 @@ peewee==3.17.8
 pep8==1.7.1
 persistent==6.0
 pexpect==4.9.0
-pillow==12.0.0
+pillow==10.4.0
 plaster==1.1.2
 plaster-pastedeploy==1.0.1
 platformdirs==4.3.6
@@ -349,7 +347,6 @@ python-json-logger==3.2.1
 python-Levenshtein==0.26.1
 python-magic==0.4.27
 python-mimeparse==2.0.0
-python-poppler==0.4.1
 python-slugify==8.0.4
 pytz==2025.2
 PyWavelets==1.7.0
