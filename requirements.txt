@@ -1,5 +1,9 @@
 clamd==1.0.2
 cloudinary
+django-admin-interface
+djangorestframework
+django-colorfield
+django-ckeditor
 django-cloudinary-storage
 dj_database_url==3.1.2
 Django==5.1.3
