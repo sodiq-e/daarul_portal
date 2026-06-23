@@ -140,7 +140,6 @@ geopy==2.4.1
 gevent==24.11.1
 gitdb==4.0.11
 GitPython==3.1.43
-glpk==0.4.8
 gmplot==1.4.1
 google-api-core==2.24.0
 google-api-python-client==2.156.0
@@ -308,7 +307,6 @@ pure_eval==0.2.3
 py-cpuinfo==9.0.0
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
-PyAudio==0.2.14
 pybind11==2.13.6
 pycairo==1.26.1
 pycparser==2.22
