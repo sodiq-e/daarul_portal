@@ -4,14 +4,17 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Attendance Record</h1>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
         <div>
+            <h1>Attendance Record</h1>
+            <p class="text-muted mb-0">Details for the selected student attendance entry.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a href="{% url 'attendance_list' %}" class="btn btn-secondary btn-sm">Back to List</a>
             {% if can_modify %}
-            <a href="{% url 'attendance_edit' attendance_record.pk %}" class="btn btn-warning">Edit</a>
-            <a href="{% url 'attendance_delete' attendance_record.pk %}" class="btn btn-danger">Delete</a>
+            <a href="{% url 'attendance_edit' attendance_record.pk %}" class="btn btn-warning btn-sm">Edit</a>
+            <a href="{% url 'attendance_delete' attendance_record.pk %}" class="btn btn-danger btn-sm">Delete</a>
             {% endif %}
-            <a href="{% url 'attendance_list' %}" class="btn btn-secondary">Back to List</a>
         </div>
     </div>
 

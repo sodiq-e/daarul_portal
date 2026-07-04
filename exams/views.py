@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.db import models
 from django.views.decorators.http import require_POST
 import json
+import os
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -27,6 +28,7 @@ except ImportError:
 from .models import Subject, Exam, ExamPaper, ExamSection, Question, QuestionOption, ApprovalLog, ClassSubject
 from .forms import SubjectForm, ExamForm, ExamPaperForm, ExamReviewForm
 from school_classes.models import SchoolClasses, ClassTeacher
+from settingsapp.models import SchoolSettings
 
 
 def user_profile_approved(user):
@@ -434,10 +436,16 @@ class AdminExamPaperDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVi
 
 class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
+        exam_paper = ExamPaper.objects.filter(pk=self.kwargs.get('pk')).first()
+        if not exam_paper:
+            return False
         return (
             user_is_admin(self.request.user) or
-            (hasattr(self.request.user, 'teacher_profile') and
-             ExamPaper.objects.filter(pk=self.kwargs.get('pk'), teacher=self.request.user).exists())
+            (
+                user_profile_approved(self.request.user) and
+                hasattr(self.request.user, 'teacher_profile') and
+                exam_paper.teacher == self.request.user
+            )
         )
 
     def get(self, request, pk, *args, **kwargs):
@@ -445,8 +453,32 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
         if exam_paper.status != 'approved' and not user_is_admin(request.user):
             return HttpResponse('Only approved exam papers can be printed.', status=403)
 
-        context = {'exam_paper': exam_paper}
-        html_string = render_to_string('exams/print_exam_paper.html', context)
+        font_size = request.GET.get('font_size', '12pt')
+        if font_size not in ['10pt', '11pt', '12pt', '13pt', '14pt', '15pt']:
+            font_size = '12pt'
+
+        school_settings = SchoolSettings.objects.first()
+        school_name = school_settings.school_name if school_settings else 'School Name'
+        school_address = school_settings.school_address if school_settings else ''
+        school_phone = school_settings.school_phone if school_settings else ''
+        school_email = school_settings.school_email if school_settings else ''
+        school_logo = school_settings.logo.url if school_settings and school_settings.logo else None
+        motto = school_settings.motto if school_settings else ''
+
+        context = {
+            'exam_paper': exam_paper,
+            'font_size': font_size,
+            'school_name': school_name,
+            'school_address': school_address,
+            'school_phone': school_phone,
+            'school_email': school_email,
+            'school_logo': school_logo,
+            'motto': motto,
+            'SCHOOL_NAME': school_name,
+            'SCHOOL_ADDRESS': school_address,
+            'SCHOOL_CONTACT': ' '.join(filter(None, [school_phone, school_email])),
+        }
+        html_string = render_to_string('exams/print_exam_paper.html', context, request=request)
 
         if request.GET.get('format') == 'pdf' and WEASYPRINT_AVAILABLE:
             html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
@@ -644,9 +676,13 @@ def upload_image(request):
         return JsonResponse({'error': 'Failed to save file.'}, status=500)
 
     media_url = settings.MEDIA_URL.rstrip('/') + '/' + path.lstrip('/')
-    full_url = request.build_absolute_uri(media_url)
 
-    return JsonResponse({'url': full_url})
+    return JsonResponse({
+        'url': media_url,
+        'fileName': os.path.basename(path),
+        'uploaded': True,
+        'default': media_url,
+    })
 
 
 @method_decorator([login_required, require_POST], name='dispatch')

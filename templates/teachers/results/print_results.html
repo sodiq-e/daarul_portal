@@ -1,16 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load form_filters %}
 
 {% block title %}Print Results{% endblock %}
 
 {% block content %}
-<style media="print">
-    @page {
-        size: A4 landscape;
-        margin: 0.5cm;
-    }
-</style>
-
 <div class="container mt-4">
     <div class="row">
         <div class="col-md-12">
@@ -46,7 +40,7 @@
                                     {% for subject in class_subjects %}
                                     <td class="text-center">
                                         {% if data.subject_scores|get_item:subject.subject.name %}
-                                            {{ data.subject_scores|get_item:subject.subject.name.total_score }}
+                                            {{ data.subject_scores|get_item:subject.subject.name|get_item:'total_score' }}
                                         {% endif %}
                                     </td>
                                     {% endfor %}

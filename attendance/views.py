@@ -9,10 +9,35 @@ from django.http import HttpResponseForbidden, JsonResponse
 from datetime import date
 from django.db.models import Count, Q
 from django.utils.decorators import method_decorator
-from .models import AttendanceRecord, AttendanceSession
+from .models import AttendanceRecord, AttendanceSession, AttendanceHoliday, AttendanceSettings
 from .forms import AttendanceRecordForm
 from students.models import Student
 from school_classes.models import SchoolClasses, ClassTeacher, Teacher
+from exams.models import Term
+
+
+def get_attendance_settings():
+    """Get or create attendance settings"""
+    settings, created = AttendanceSettings.objects.get_or_create(pk=1)
+    return settings
+
+
+def is_holiday(check_date):
+    """Check if a given date is a holiday"""
+    return AttendanceHoliday.objects.filter(
+        is_active=True,
+        start_date__lte=check_date,
+        end_date__gte=check_date
+    ).exists()
+
+
+def get_holiday_for_date(check_date):
+    """Get holiday record for a given date"""
+    return AttendanceHoliday.objects.filter(
+        is_active=True,
+        start_date__lte=check_date,
+        end_date__gte=check_date
+    ).first()
 
 
 def user_profile_approved(user):
@@ -46,6 +71,24 @@ def teacher_has_permission(teacher, permission_code):
         return perm
     except:
         return False
+
+
+def get_term_for_date(attendance_date):
+    """Return the configured term for the given date, if any."""
+    return Term.objects.filter(
+        start_date__isnull=False,
+        end_date__isnull=False,
+        start_date__lte=attendance_date,
+        end_date__gte=attendance_date
+    ).first()
+
+
+def attendance_terms_configured():
+    return Term.objects.filter(
+        is_active=True,
+        start_date__isnull=False,
+        end_date__isnull=False
+    ).exists()
 
 
 class AttendanceRecordListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -156,6 +199,21 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
             selected_date = date.today()
 
         context['selected_date'] = selected_date
+        context['selected_term'] = get_term_for_date(selected_date)
+        context['term_date_restriction_enabled'] = attendance_terms_configured()
+        context['attendance_settings'] = get_attendance_settings()
+        
+        # Check for holidays
+        holiday = get_holiday_for_date(selected_date)
+        context['holiday'] = holiday
+        context['is_holiday'] = holiday is not None
+        context['date_allowed'] = True
+
+        if context['term_date_restriction_enabled'] and not context['selected_term']:
+            context['date_allowed'] = False
+            context['term_date_message'] = (
+                'Attendance can only be marked within configured term resumption and closing dates.'
+            )
 
         # Get class if specified
         class_id = self.request.GET.get('class_id')
@@ -172,7 +230,20 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
                         school_class=school_class,
                         date=selected_date
                     )
-                    context['attendance_map'] = {record.student_id: record for record in active_records}
+                    attendance_map = {record.student_id: record for record in active_records}
+                    
+                    # Attach attendance record directly to each student for easier template access
+                    for student in context['students']:
+                        student.attendance_record = attendance_map.get(student.id)
+                    
+                    context['attendance_map'] = attendance_map
+                    context['selected_session'] = AttendanceSession.objects.filter(
+                        school_class=school_class,
+                        date=selected_date
+                    ).first()
+                    context['day_type'] = (
+                        context['selected_session'].day_type if context['selected_session'] else 'school_day'
+                    )
             except SchoolClasses.DoesNotExist:
                 pass
 
@@ -196,34 +267,80 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
             except ValueError:
                 attendance_date = date.today()
 
+            selected_term = get_term_for_date(attendance_date)
+            if attendance_terms_configured() and not selected_term:
+                messages.error(request, 'Attendance can only be marked on dates inside configured term resumption and closing dates.')
+                return redirect('teacher_mark_attendance')
+
+            day_type = request.POST.get('day_type', 'school_day')
+            students = Student.objects.filter(student_class=school_class, status='active')
             present_count = 0
             absent_count = 0
 
-            # Process attendance for each student
-            students = Student.objects.filter(student_class=school_class, status='active')
-            for student in students:
-                morning_present = request.POST.get(f'student_{student.id}_morning') == 'on'
-                afternoon_present = request.POST.get(f'student_{student.id}_afternoon') == 'on'
-                notes = request.POST.get(f'notes_{student.id}', '')
-
-                attendance, created = AttendanceRecord.objects.update_or_create(
-                    student=student,
-                    date=attendance_date,
+            if day_type != 'school_day':
+                # Mark the day as a holiday/break for this class and remove any attendance records
+                AttendanceRecord.objects.filter(school_class=school_class, date=attendance_date).delete()
+                total_students = len(students)
+                session, created = AttendanceSession.objects.update_or_create(
                     school_class=school_class,
+                    date=attendance_date,
                     defaults={
-                        'morning_present': morning_present,
-                        'afternoon_present': afternoon_present,
-                        'marked_by': request.user,
-                        'notes': notes
+                        'teacher': teacher,
+                        'total_students': total_students,
+                        'present_count': 0,
+                        'absent_count': 0,
+                        'day_type': day_type,
                     }
                 )
+                messages.success(request, f'{session.get_day_type_display()} recorded for {school_class} on {attendance_date}.')
+                return redirect('teacher_mark_attendance')
+
+            # Process attendance for each student on a school day
+            for student in students:
+                # Check if attendance record already exists
+                try:
+                    attendance = AttendanceRecord.objects.get(
+                        student=student,
+                        date=attendance_date,
+                        school_class=school_class
+                    )
+                    # Record exists - only update fields that are explicitly being set
+                    # Preserve fields that weren't explicitly changed
+                    morning_field = f'student_{student.id}_morning'
+                    afternoon_field = f'student_{student.id}_afternoon'
+                    
+                    if morning_field in request.POST:
+                        attendance.morning_present = request.POST.get(morning_field) == 'on'
+                    
+                    if afternoon_field in request.POST:
+                        attendance.afternoon_present = request.POST.get(afternoon_field) == 'on'
+                    
+                    # Update notes and marked_by
+                    attendance.notes = request.POST.get(f'notes_{student.id}', '')
+                    attendance.marked_by = request.user
+                    attendance.save()
+                    
+                except AttendanceRecord.DoesNotExist:
+                    # New record - create with provided values
+                    morning_present = request.POST.get(f'student_{student.id}_morning') == 'on'
+                    afternoon_present = request.POST.get(f'student_{student.id}_afternoon') == 'on'
+                    notes = request.POST.get(f'notes_{student.id}', '')
+                    
+                    attendance = AttendanceRecord.objects.create(
+                        student=student,
+                        date=attendance_date,
+                        school_class=school_class,
+                        morning_present=morning_present,
+                        afternoon_present=afternoon_present,
+                        marked_by=request.user,
+                        notes=notes
+                    )
 
                 if attendance.present:
                     present_count += 1
                 else:
                     absent_count += 1
 
-            # Create or update attendance session
             session, created = AttendanceSession.objects.update_or_create(
                 school_class=school_class,
                 date=attendance_date,
@@ -231,7 +348,8 @@ class TeacherAttendanceMarkView(LoginRequiredMixin, UserPassesTestMixin, Templat
                     'teacher': teacher,
                     'total_students': len(students),
                     'present_count': present_count,
-                    'absent_count': absent_count
+                    'absent_count': absent_count,
+                    'day_type': 'school_day',
                 }
             )
 
@@ -538,4 +656,42 @@ class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
         except Student.DoesNotExist:
             context['error'] = 'Student profile not found.'
             
+        return context
+
+
+class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Display and manage attendance settings"""
+    template_name = 'attendance/attendance_settings.html'
+    
+    def test_func(self):
+        """Only staff/admin can view"""
+        return self.request.user.is_staff or self.request.user.is_superuser
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get or create attendance settings
+        settings, created = AttendanceSettings.objects.get_or_create(pk=1)
+        context['settings'] = settings
+        
+        # Get all active and inactive holidays
+        context['holidays'] = AttendanceHoliday.objects.all().order_by('-start_date')
+        context['active_holidays'] = AttendanceHoliday.objects.filter(is_active=True).count()
+        context['inactive_holidays'] = AttendanceHoliday.objects.filter(is_active=False).count()
+        
+        # Calculate upcoming holidays (from today onwards)
+        from django.utils import timezone
+        today = timezone.now().date()
+        context['upcoming_holidays'] = AttendanceHoliday.objects.filter(
+            is_active=True,
+            start_date__gte=today
+        ).order_by('start_date')
+        
+        # Calculate ongoing holidays (currently active)
+        context['ongoing_holidays'] = AttendanceHoliday.objects.filter(
+            is_active=True,
+            start_date__lte=today,
+            end_date__gte=today
+        ).order_by('start_date')
+        
         return context

@@ -1,201 +1,140 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block title %}Preview - {{ exam.subject.name }} - {{ exam.school_class }}{% endblock %}
+{% block title %}Exam Paper Preview{% endblock %}
 
 {% block extra_css %}
 <style>
-    .exam-paper {
-        background: white;
-        color: black;
-        padding: 2cm;
-        margin: 20px auto;
-        max-width: 21cm;
-        min-height: 29.7cm;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        font-family: 'Times New Roman', serif;
-        line-height: 1.6;
-    }
-    
-    .exam-header {
-        text-align: center;
-        margin-bottom: 2cm;
-        border-bottom: 2px solid black;
-        padding-bottom: 1cm;
-    }
-    
-    .exam-title {
-        font-size: 20px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    
-    .exam-info {
-        font-size: 11px;
-        margin: 3px 0;
-    }
-    
-    .exam-instructions {
-        background: none;
-        border-left: 3px solid black;
-        padding-left: 1cm;
-        margin: 1cm 0;
-        font-size: 11px;
-    }
-    
-    .section-title {
-        font-size: 14px;
-        font-weight: bold;
-        margin-top: 1cm;
-        margin-bottom: 0.5cm;
-        text-decoration: underline;
-    }
-    
-    .question {
-        margin: 0.5cm 0;
-        page-break-inside: avoid;
-    }
-    
-    .question-text {
-        margin-bottom: 3px;
-    }
-    
-    .question-marks {
-        float: right;
-        font-weight: bold;
-        font-size: 10px;
-    }
-    
-    .question-option {
-        margin-left: 1.5cm;
-        margin-bottom: 2px;
-        font-size: 11px;
-    }
-    
-    .answer-space {
-        border-top: 1px dotted black;
-        height: 2cm;
-        margin: 0.5cm 0;
-    }
-    
-    .no-print {
-        display: block;
-        background: #f8f9fa;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 4px;
-    }
-    
-    @media print {
-        .no-print {
-            display: none;
-        }
-        .exam-paper {
-            box-shadow: none;
-            margin: 0;
-            padding: 0;
-        }
-    }
+.report-card {
+  max-width: 900px;
+  margin: 0 auto;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+.header-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+.header-grid h2 {
+  margin-bottom: 0.5rem;
+}
+.header-grid p {
+  margin: 0;
+}
+.report-card-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.meta-box {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px;
+}
+.section-title {
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.section-instruction {
+  color: #475569;
+  margin-bottom: 14px;
+}
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+@media (max-width: 768px) {
+  .header-grid,
+  .report-card-meta {
+    grid-template-columns: 1fr;
+  }
+  .option-grid {
+    grid-template-columns: 1fr;
+  }
+  .header-grid {
+    text-align: left;
+  }
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .report-card {
+    border-color: #ccc;
+  }
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="no-print">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <h3>{{ exam.subject.name }} - {{ exam.school_class }}</h3>
-                <p class="text-muted">{{ exam.term }} | {{ exam.academic_session }} | Status: <span class="badge badge-info">{{ exam.get_approval_status_display }}</span></p>
-            </div>
-            <div class="btn-group" role="group">
-                <a href="{% url 'exam_paper_detail' exam.pk %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Edit
-                </a>
-                {% if can_submit %}
-                <form method="post" action="{% url 'exam_paper_submit_approval' exam.pk %}" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-paper-plane"></i> Submit for Approval
-                    </button>
-                </form>
-                {% endif %}
-                <button onclick="window.print()" class="btn btn-outline-primary">
-                    <i class="fas fa-print"></i> Print / Save PDF
-                </button>
-            </div>
-        </div>
-        
-        {% if exam.approval_status == 'pending' %}
-        <div class="alert alert-info">
-            <i class="fas fa-hourglass-half"></i> This exam is pending admin approval.
-        </div>
-        {% elif exam.approval_status == 'rejected' %}
-        <div class="alert alert-danger">
-            <i class="fas fa-times-circle"></i> This exam was rejected. Feedback: {{ exam.approval_notes }}
-        </div>
-        {% elif exam.approval_status == 'approved' %}
-        <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i> This exam has been approved by {{ exam.approved_by }} on {{ exam.approved_at|date:"SHORT_DATE_FORMAT" }}
+<div class="container-fluid mt-3 mb-5">
+  <div class="no-print mb-3 d-flex gap-2">
+    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Preview</button>
+    <a href="{% url 'exam_paper_detail' exam.pk %}" class="btn btn-secondary">← Back to Edit</a>
+  </div>
+
+  <div class="report-card">
+    <div class="header-grid">
+      <div>
+        <h2>Exam Paper Preview</h2>
+        <p class="text-muted mb-1">{{ exam.subject.name|default:exam.subject }} — {{ exam.school_class }} • {{ exam.academic_session }}</p>
+        <p class="text-muted">Term: {{ exam.term }}</p>
+      </div>
+      <div style="text-align: right;">
+        {% if SCHOOL_LOGO %}
+        <img src="{{ SCHOOL_LOGO }}" alt="{{ SCHOOL_NAME }}" style="max-height: 64px; width: auto; display: block; margin-left: auto;" />
+        {% endif %}
+        <h5 class="mb-1">{{ SCHOOL_NAME|default:'School Name' }}</h5>
+        {% if SCHOOL_ADDRESS %}<p class="text-muted mb-1">{{ SCHOOL_ADDRESS }}</p>{% endif %}
+        {% if SCHOOL_CONTACT %}<p class="text-muted mb-0">{{ SCHOOL_CONTACT }}</p>{% endif %}
+      </div>
+    </div>
+
+    <div class="report-card-meta">
+      <div class="meta-box"><strong>Subject</strong><div>{{ exam.subject.name|default:exam.subject }}</div></div>
+      <div class="meta-box"><strong>Class</strong><div>{{ exam.school_class }}</div></div>
+      <div class="meta-box"><strong>Term</strong><div>{{ exam.term }}</div></div>
+      <div class="meta-box"><strong>Session</strong><div>{{ exam.academic_session }}</div></div>
+      <div class="meta-box"><strong>Duration</strong><div>{{ exam.duration|default:'N/A' }}</div></div>
+      <div class="meta-box"><strong>Total Marks</strong><div>{{ exam.total_marks }}</div></div>
+    </div>
+
+    {% if exam.instructions %}
+    <div class="alert alert-light border-start border-primary py-3 px-3 mb-4">{{ exam.instructions|linebreaksbr }}</div>
+    {% endif %}
+
+    {% for section_data in sections_data %}
+    <div class="mb-4">
+      <div class="section-title">{{ section_data.object.title|default:section_data.object.get_section_type_display }}</div>
+      {% if section_data.object.instruction %}
+      <div class="section-instruction">{{ section_data.object.instruction }}</div>
+      {% endif %}
+      {% for question in section_data.questions %}
+      <div class="mb-3">
+        <div><strong>{{ forloop.counter }}.</strong> {{ question.text|safe }}</div>
+        {% if question.resource_notes %}
+        <div class="alert alert-secondary py-2 px-3 mt-2">{{ question.resource_notes|safe }}</div>
+        {% endif %}
+        {% if question.options %}
+        <div class="option-grid">
+          {% for option in question.options %}
+          <div><strong>{{ option.option_label }}.</strong> {{ option.option_text }}</div>
+          {% endfor %}
         </div>
         {% endif %}
+      </div>
+      {% endfor %}
     </div>
-    
-    <!-- Exam Paper Content -->
-    <div class="exam-paper">
-        <!-- Header -->
-        <div class="exam-header">
-            <div class="exam-title">{{ exam.subject.name }}</div>
-            <div class="exam-info">Class: {{ exam.school_class }}</div>
-            <div class="exam-info">{{ exam.term }} ({{ exam.academic_session }})</div>
-            <div class="exam-info">Duration: {{ exam.duration|default:"N/A" }} | Total Marks: {{ exam.total_marks }}</div>
-        </div>
-        
-        <!-- Instructions -->
-        {% if exam.instructions %}
-        <div class="exam-instructions">
-            <strong>Instructions:</strong>
-            {{ exam.instructions|safe }}
-        </div>
-        {% endif %}
-        
-        <!-- Sections and Questions -->
-        {% for section_data in sections_data %}
-        <div class="section">
-            <div class="section-title">{{ section_data.object.get_section_type_display }}</div>
-            
-            {% if section_data.object.instruction %}
-            <p style="font-size: 11px; margin-bottom: 0.5cm;">
-                {{ section_data.object.instruction|safe }}
-            </p>
-            {% endif %}
-            
-            {% if section_data.object.marks_allocation %}
-            <p style="font-weight: bold; font-size: 11px;">Total Marks: {{ section_data.object.marks_allocation }}</p>
-            {% endif %}
-            
-            {% for question in section_data.questions %}
-            <div class="question">
-                <div class="question-text">
-                    <strong>{{ forloop.counter }}.</strong>
-                    {{ question.text|safe }}
-                    {% if question.marks %}
-                    <span class="question-marks">[{{ question.marks }} marks]</span>
-                    {% endif %}
-                </div>
-                
-                {% if question.options %}
-                {% for option in question.options %}
-                <div class="question-option">
-                    <strong>{{ option.option_label }}.</strong> {{ option.option_text|safe }}
-                </div>
-                {% endfor %}
-                {% else %}
-                <div class="answer-space"></div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

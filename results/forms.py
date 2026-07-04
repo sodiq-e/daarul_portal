@@ -176,3 +176,7 @@ class ReportCardCommentForm(forms.ModelForm):
         labels = {
             'comment': 'Report Card Comment'
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['comment'].required = False

@@ -16,4 +16,7 @@ urlpatterns = [
     
     # Student Attendance Views
     path('my-attendance/', views.StudentAttendanceHistoryView.as_view(), name='student_attendance_history'),
+    
+    # Admin Attendance Settings View
+    path('settings/', views.AttendanceSettingsView.as_view(), name='attendance_settings'),
 ]

@@ -1,39 +1,74 @@
 {% extends 'base.html' %}
 
+{% block extra_css %}
+<style>
+  .exam-option-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+    margin: 8px 0 10px 1rem;
+  }
+  .exam-option-grid .option-item {
+    padding: 2px 0;
+  }
+  @media (max-width: 768px) {
+    .exam-option-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-start mb-4">
+<div class="container py-4" style="background:#fff; border-radius:8px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
     <div>
-      <h2>Exam Paper Preview</h2>
-      <p class="text-muted">{{ exam_paper.subject }} — {{ exam_paper.school_class }} • {{ exam_paper.academic_session }}</p>
+      <h2 style="margin-bottom:6px;">Saved Exam Paper</h2>
+      <p class="text-muted mb-1">{{ exam_paper.subject }} — {{ exam_paper.school_class }} • {{ exam_paper.academic_session }}</p>
+      <p class="text-muted mb-0">Term: {{ exam_paper.term }}</p>
     </div>
-    <div class="text-end">
+    <div class="d-flex flex-column align-items-end gap-2">
       <span class="badge-status">{{ exam_paper.get_status_display }}</span>
-      {% if can_edit %}
-      <div class="mt-2"><a class="button" href="{% url 'exam_paper_edit' exam_paper.id %}">Continue Editing</a></div>
-      {% endif %}
-      {% if exam_paper.status == 'approved' %}
-      <div class="mt-2 d-flex gap-2 justify-content-end flex-wrap">
-        <a class="button" href="{% url 'exam_paper_print' exam_paper.id %}">Print Preview</a>
-        <a class="button" href="{% url 'exam_paper_print' exam_paper.id %}?format=pdf">Export PDF</a>
+      <div class="d-flex flex-wrap gap-2 justify-content-end">
+        {% if can_edit %}
+        <a class="button" href="{% url 'exam_paper_edit' exam_paper.id %}">Continue Editing</a>
+        {% endif %}
+        <a class="button" id="examPreviewBtn" href="{% url 'exam_paper_preview' exam_paper.id %}">Preview</a>
+        <a class="button" id="examPrintBtn" href="{% url 'exam_paper_print' exam_paper.id %}">Print Preview</a>
+        <a class="button" id="examPdfBtn" href="{% url 'exam_paper_print' exam_paper.id %}?format=pdf">Export PDF</a>
       </div>
-      {% endif %}
-      <div class="col-md-4"><strong>Duration</strong><p>{{ exam_paper.duration }}</p></div>
-      <div class="col-md-4"><strong>Total Marks</strong><p>{{ exam_paper.total_marks }}</p></div>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <label class="m-0 small">Font size:</label>
+        <select id="examPrintFontSize" class="form-select form-select-sm" style="width:auto; min-width:120px;">
+          <option value="10pt">10pt</option>
+          <option value="11pt">11pt</option>
+          <option value="12pt" selected>12pt</option>
+          <option value="13pt">13pt</option>
+          <option value="14pt">14pt</option>
+          <option value="15pt">15pt</option>
+        </select>
+      </div>
     </div>
-    {% if exam_paper.instructions %}
-    <div class="mt-3">
-      <strong>General Instructions</strong>
-      <div class="p-3 bg-light rounded mt-2">{{ exam_paper.instructions|safe }}</div>
-    </div>
-    {% endif %}
   </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4"><strong>Duration</strong><p>{{ exam_paper.duration }}</p></div>
+    <div class="col-md-4"><strong>Total Marks</strong><p>{{ exam_paper.total_marks }}</p></div>
+    <div class="col-md-4"><strong>Updated</strong><p>{{ exam_paper.updated_at|date:'M d, Y H:i' }}</p></div>
+  </div>
+
+  {% if exam_paper.instructions %}
+  <div class="mt-3">
+    <strong>General Instructions</strong>
+    <div class="p-3 bg-light rounded mt-2">{{ exam_paper.instructions|linebreaks }}</div>
+  </div>
+  {% endif %}
 
   {% for section in exam_paper.sections.all %}
   <div class="card mb-3 p-4">
     <h5>{{ section.title|default:section.get_section_type_display }}</h5>
     {% if section.instruction %}
-    <div class="text-muted">{{ section.instruction|safe }}</div>
+    <p class="text-muted">{{ section.instruction }}</p>
     {% endif %}
     <p><strong>Marks Allocation:</strong> {{ section.marks_allocation }}</p>
 
@@ -41,12 +76,10 @@
     <div class="mb-4">
       <div><strong>{{ forloop.counter }}.</strong> <span class="question-text">{{ question.question_text|safe }}</span></div>
       {% if question.question_type == 'objective' %}
-      <div class="ms-4 mb-2">
-        <ul>
-          {% for option in question.options.all %}
-          <li>{{ option.option_label }}. {{ option.option_text }}</li>
-          {% endfor %}
-        </ul>
+      <div class="exam-option-grid">
+        {% for option in question.options.all %}
+        <div class="option-item"><strong>{{ option.option_label }}.</strong> {{ option.option_text }}</div>
+        {% endfor %}
       </div>
       {% endif %}
       {% if question.marks %}
@@ -65,4 +98,35 @@
   <p class="text-muted">No sections have been added to this exam yet.</p>
   {% endfor %}
 </div>
+
+<script>
+(function(){
+  var fontSizeSelect = document.getElementById('examPrintFontSize');
+  if (!fontSizeSelect) return;
+  var printBtn = document.getElementById('examPrintBtn');
+  var pdfBtn = document.getElementById('examPdfBtn');
+  var previewBtn = document.getElementById('examPreviewBtn');
+
+  function updateLinks() {
+    var size = fontSizeSelect.value;
+    if (printBtn) {
+      var url = new URL(printBtn.href, window.location.origin);
+      url.searchParams.set('font_size', size);
+      printBtn.href = url.toString();
+    }
+    if (pdfBtn) {
+      var url = new URL(pdfBtn.href, window.location.origin);
+      url.searchParams.set('font_size', size);
+      pdfBtn.href = url.toString();
+    }
+    if (previewBtn) {
+      var url = new URL(previewBtn.href, window.location.origin);
+      url.searchParams.set('font_size', size);
+      previewBtn.href = url.toString();
+    }
+  }
+  fontSizeSelect.addEventListener('change', updateLinks);
+  updateLinks();
+})();
+</script>
 {% endblock %}

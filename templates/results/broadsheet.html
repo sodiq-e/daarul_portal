@@ -5,48 +5,6 @@
 {% block title %}Class Broadsheet - {{ school_class }} - {{ term }}{% endblock %}
 
 {% block content %}
-<style media="print">
-    @page {
-        size: A4 landscape;
-        margin: 0.5cm;
-    }
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    body {
-        font-family: Arial, sans-serif;
-        background: white;
-        color: #000;
-    }
-    .no-print {
-        display: none;
-    }
-    .broadsheet-container {
-        page-break-after: always;
-        padding: 10mm;
-        background: white;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    th, td {
-        border: 1px solid #333;
-        padding: 4px;
-        font-size: 10px;
-    }
-    th {
-        background: #2c3e50;
-        color: white;
-        font-weight: bold;
-    }
-    tr:nth-child(even) {
-        background: #f9f9f9;
-    }
-</style>
-
 <div class="container-fluid mt-3 mb-5">
     <!-- Control Buttons -->
     <div class="no-print mb-3">
@@ -181,8 +139,4 @@
 </div>
 
 <script>
-    window.addEventListener('beforeprint', function() {
-        document.body.style.background = 'white';
-    });
-</script>
 {% endblock %}

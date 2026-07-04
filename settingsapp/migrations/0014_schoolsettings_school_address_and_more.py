@@ -23,6 +23,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='schoolsettings',
             name='school_phone',
-            field=models.CharField(blank=True, default='+234 (0) 123 456 7890', help_text='School contact phone number', max_length=20, null=True),
+            field=models.CharField(blank=True, default='+234 (0) 123 456 7890', help_text='School contact phone number', max_length=255, null=True),
         ),
     ]

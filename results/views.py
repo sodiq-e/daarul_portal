@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
@@ -9,6 +10,7 @@ from django.utils.decorators import method_decorator
 from students.models import Student
 from exams.models import Term, ClassSubject
 from school_classes.models import SchoolClasses, ClassTeacher, Teacher
+from attendance.models import AttendanceRecord
 from .models import (
     StudentResult, TermResult, ResultTemplate,
     GradeScale, Promotion, ReportCardComment, StudentConduct
@@ -228,12 +230,31 @@ def class_results(request, class_id, term_id):
             'term_result': term_result,
         })
 
+    can_print_broadsheet = False
+    broadsheet_url = None
+
+    if request.user.is_staff or request.user.is_superuser:
+        can_print_broadsheet = True
+        broadsheet_url = reverse('broadsheet', args=[class_id, term_id])
+    elif user_is_staff(request.user):
+        try:
+            teacher = request.user.teacher_profile
+            if ClassTeacher.objects.filter(teacher=teacher, school_class=school_class).exists():
+                from school_classes.models import TeacherPermission
+                if teacher_has_permission(teacher, 'print_broadsheet'):
+                    can_print_broadsheet = True
+                    broadsheet_url = reverse('teacher_print_broadsheet', args=[class_id, term_id])
+        except Exception:
+            pass
+
     context = {
         'school_class': school_class,
         'term': term,
         'result_template': result_template,
         'student_results': student_results,
         'can_modify': user_is_staff(request.user),
+        'can_print_broadsheet': can_print_broadsheet,
+        'broadsheet_url': broadsheet_url,
     }
 
     return render(request, 'results/class_results.html', context)
@@ -289,6 +310,18 @@ def student_report_card(request, student_id, term_id):
         term=term
     ).first()
 
+    # Attendance summary for the term
+    attendance_records = AttendanceRecord.objects.filter(
+        student=student,
+        date__gte=term.start_date,
+        date__lte=term.end_date
+    ) if term.start_date and term.end_date else AttendanceRecord.objects.none()
+
+    attendance_sessions = attendance_records.count()
+    attended_sessions = sum(record.present_sessions for record in attendance_records)
+    total_sessions = attendance_sessions * 2
+    attendance_percentage = round((attended_sessions / total_sessions) * 100, 2) if total_sessions > 0 else None
+
     context = {
         'student': student,
         'term': term,
@@ -296,6 +329,11 @@ def student_report_card(request, student_id, term_id):
         'results': results,
         'term_result': term_result,
         'student_conduct': student_conduct,
+        'attendance_records': attendance_records,
+        'attendance_sessions': attendance_sessions,
+        'attendance_total_sessions': total_sessions,
+        'attended_sessions': attended_sessions,
+        'attendance_percentage': attendance_percentage,
     }
 
     return render(request, 'results/student_report_card.html', context)
@@ -562,6 +600,14 @@ def teacher_class_results(request, class_id, term_id):
             'term_result': term_result,
         })
 
+    can_print_broadsheet = False
+    broadsheet_url = None
+    from school_classes.models import TeacherPermission
+    if teacher_has_permission(teacher, 'print_broadsheet'):
+        if ClassTeacher.objects.filter(teacher=teacher, school_class=school_class).exists():
+            can_print_broadsheet = True
+            broadsheet_url = reverse('teacher_print_broadsheet', args=[class_id, term_id])
+
     context = {
         'school_class': school_class,
         'term': term,
@@ -569,6 +615,8 @@ def teacher_class_results(request, class_id, term_id):
         'student_results': student_results,
         'can_edit': True,  # Show bulk entry button if teacher is assigned to class
         'can_print': teacher_has_permission(teacher, 'print_results'),
+        'can_print_broadsheet': can_print_broadsheet,
+        'broadsheet_url': broadsheet_url,
     }
 
     return render(request, 'teachers/results/teacher_class_results.html', context)
@@ -1019,27 +1067,91 @@ def teacher_edit_report_card(request, student_id, term_id):
         teacher=teacher
     ).first()
 
-    from .forms import ReportCardCommentForm
-
-    if request.method == 'POST':
-        form = ReportCardCommentForm(request.POST, instance=report_comment)
-        if form.is_valid():
-            comment = form.save(commit=False)
-            comment.term_result = term_result
-            comment.teacher = teacher
-            comment.created_by = request.user
-            comment.save()
-            messages.success(request, 'Report card comment saved successfully.')
-            return redirect('teacher_class_results', class_id=student.student_class.id, term_id=term.id)
-    else:
-        form = ReportCardCommentForm(instance=report_comment)
-
     # Get student results for display
     results = StudentResult.objects.filter(
         student=student,
         term=term,
         result_template=result_template
     ).select_related('class_subject__subject').order_by('class_subject__order')
+
+    from .forms import ReportCardCommentForm
+
+    if request.method == 'POST':
+        form = ReportCardCommentForm(request.POST, instance=report_comment)
+        score_errors = []
+        saved_subjects = []
+        results_updated = False
+
+        for result in results:
+            test_score_raw = request.POST.get(f'test_{result.id}', '').strip()
+            exam_score_raw = request.POST.get(f'exam_{result.id}', '').strip()
+            result_changed = False
+
+            if test_score_raw != '':
+                try:
+                    test_score = float(test_score_raw)
+                except ValueError:
+                    score_errors.append(f'Invalid test score for {result.class_subject.subject.name}.')
+                else:
+                    if test_score < 0 or test_score > result.result_template.test_max_score:
+                        score_errors.append(
+                            f'Test score for {result.class_subject.subject.name} must be between 0 and {result.result_template.test_max_score}.'
+                        )
+                    else:
+                        result.test_score = test_score
+                        result_changed = True
+
+            if exam_score_raw != '':
+                try:
+                    exam_score = float(exam_score_raw)
+                except ValueError:
+                    score_errors.append(f'Invalid exam score for {result.class_subject.subject.name}.')
+                else:
+                    if exam_score < 0 or exam_score > result.result_template.exam_max_score:
+                        score_errors.append(
+                            f'Exam score for {result.class_subject.subject.name} must be between 0 and {result.result_template.exam_max_score}.'
+                        )
+                    else:
+                        result.exam_score = exam_score
+                        result_changed = True
+
+            if result_changed:
+                result.entered_by = request.user
+                result.save()
+                saved_subjects.append(result.class_subject.subject.name)
+                results_updated = True
+
+        if score_errors:
+            for error in score_errors:
+                messages.error(request, error)
+
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.term_result = term_result
+            comment.teacher = teacher
+            comment.created_by = request.user
+            if comment.comment or report_comment:
+                comment.save()
+        else:
+            messages.error(request, 'Please correct the comment form errors below.')
+
+        if results_updated and not score_errors:
+            TermResult.objects.filter(
+                student=student,
+                term=term,
+                result_template=result_template
+            ).update(is_complete=False, completed_at=None)
+            if saved_subjects:
+                subject_list = ', '.join(saved_subjects)
+                messages.success(request, f'Saved scores for: {subject_list}.')
+            else:
+                messages.success(request, 'Report card updated successfully.')
+            return redirect('teacher_class_results', class_id=student.student_class.id, term_id=term.id)
+
+        if not results_updated and (not form.is_valid() or not form.cleaned_data.get('comment', '').strip()):
+            messages.info(request, 'No changes detected to save.')
+    else:
+        form = ReportCardCommentForm(instance=report_comment)
 
     # Get student conduct data
     student_conduct = StudentConduct.objects.filter(

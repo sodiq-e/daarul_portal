@@ -27,6 +27,7 @@ class UploadImageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn('url', data)
+        self.assertTrue(data['url'].startswith(settings.MEDIA_URL))
 
     def test_upload_invalid_type(self):
         self.client.login(username='uploader', password='pass')

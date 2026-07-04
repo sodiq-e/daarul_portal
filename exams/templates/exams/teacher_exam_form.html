@@ -194,6 +194,13 @@ function escapeHTML(value) {
     .replace(/'/g, '&#39;');
 }
 
+function escapeTemplateText(value) {
+  return String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${');
+}
+
 function initializeBuilderElements() {
   examJson = JSON.parse(getInputValue('exam-json', '{}') || '{}');
   classSubjectMap = JSON.parse(getInputValue('class-subject-map', '{}') || '{}');
@@ -385,10 +392,9 @@ function addQuestion(sectionCard, questionData = {}) {
   const sectionTypeEl = sectionCard.querySelector('.section-type');
   const questionType = questionData.question_type || (sectionTypeEl ? sectionTypeEl.value : 'objective');
 
-  const questionTextValue = questionData.question_text || '';
-  const teacherGuideValue = questionData.teacher_guide || '';
-  const resourceNotesValue = questionData.resource_notes || '';
-  const diagramJsonValue = questionData.diagram_json || '';
+  const questionTextValue = escapeTemplateText(questionData.question_text || '');
+  const teacherGuideValue = escapeTemplateText(questionData.teacher_guide || '');
+  const resourceNotesValue = escapeTemplateText(questionData.resource_notes || '');
   const optionAValue = escapeHTML(questionData.options?.[0]?.option_text || '');
   const optionBValue = escapeHTML(questionData.options?.[1]?.option_text || '');
   const optionCValue = escapeHTML(questionData.options?.[2]?.option_text || '');
@@ -396,7 +402,6 @@ function addQuestion(sectionCard, questionData = {}) {
   const optionEValue = escapeHTML(questionData.options?.[4]?.option_text || '');
   const correctAnswerValue = escapeHTML(questionData.correct_answer || '');
 
-  const uniqueId = Math.random().toString(36).substring(2, 10);
   const questionCard = document.createElement('div');
   questionCard.className = 'question-card';
   questionCard.innerHTML = `
@@ -412,11 +417,7 @@ function addQuestion(sectionCard, questionData = {}) {
     </div>
     <div class="field-block">
       <label>Question Text</label>
-      <div class="question-text-actions" style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-        <button type="button" class="button button-small diagram-btn" style="background:#0d6efd;color:white;">Add Diagram</button>
-        <button type="button" class="button button-small chart-btn" style="background:#198754;color:white;">Add Chart</button>
-      </div>
-      <textarea id="question-text-${uniqueId}" class="question-text rich-editor" rows="4"></textarea>
+      <textarea class="question-text rich-editor" rows="3">${questionTextValue}</textarea>
     </div>
     <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
       <div class="col-md-4 field-block">
@@ -470,39 +471,26 @@ function addQuestion(sectionCard, questionData = {}) {
       </div>
     </div>
     <details class="optional-features" style="margin-top:8px;border-left:4px solid #eee;padding-left:12px;background:#fafafa;padding:8px;">
-      <summary style="cursor:pointer;font-weight:600;margin-bottom:6px;">Optional: Teacher Answer Guide</summary>
+      <summary style="cursor:pointer;font-weight:600;margin-bottom:6px;">Optional: Resources, Diagrams & Teacher Guide</summary>
+      <div class="row g-3" style="margin-top:6px;">
+        <div class="col-md-12 field-block">
+          <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" class="button add-diagram-btn">Add Diagram</button>
+            <button type="button" class="button add-chart-btn">Add Chart</button>
+          </div>
+          <textarea class="resource-notes rich-editor" rows="3">${resourceNotesValue}</textarea>
+        </div>
+      </div>
       <div class="field-block" style="margin-top:6px;">
         <label>Teacher Answer Guide (optional)</label>
-        <textarea id="teacher-guide-${uniqueId}" class="teacher-guide rich-editor" rows="3"></textarea>
+        <textarea class="teacher-guide rich-editor" rows="3">${teacherGuideValue}</textarea>
       </div>
-      <div class="field-block" style="margin-top:6px;">
-        <label>Supplementary Resources / Notes (optional)</label>
-        <textarea id="resource-notes-${uniqueId}" class="resource-notes rich-editor" rows="3" placeholder="Enter URLs, resource notes, diagrams or supporting hints."></textarea>
-      </div>
-      <textarea id="diagram-json-${uniqueId}" class="diagram-json-data hidden"></textarea>
     </details>
   `;
+
   questionList.appendChild(questionCard);
   console.log('Question card added to list. List now has', questionList.children.length, 'questions');
-
-  const questionTextArea = questionCard.querySelector('.question-text');
-  const teacherGuideArea = questionCard.querySelector('.teacher-guide');
-
-  if (questionTextArea) {
-    questionTextArea.value = questionData.question_text || '';
-  }
-  if (teacherGuideArea) {
-    teacherGuideArea.value = questionData.teacher_guide || '';
-  }
-  const resourceNotesArea = questionCard.querySelector('.resource-notes');
-  const diagramJsonArea = questionCard.querySelector('.diagram-json-data');
-  if (resourceNotesArea) {
-    resourceNotesArea.value = questionData.resource_notes || '';
-  }
-  if (diagramJsonArea) {
-    diagramJsonArea.value = diagramJsonValue || '';
-  }
-
   questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
     questionCard.remove();
     refreshQuestionLabels(sectionCard);
@@ -529,39 +517,9 @@ function addQuestion(sectionCard, questionData = {}) {
     });
   }
 
-  // Initialize rich editor for new question cards
+  // Initialize rich editor and media handlers for new question cards
   initRichEditors();
-
-  const diagramButton = questionCard.querySelector('.diagram-btn');
-  const chartButton = questionCard.querySelector('.chart-btn');
-  const questionTextEditor = () => {
-    if (questionTextArea && questionTextArea._editor) return questionTextArea._editor;
-    return activeEditor;
-  };
-
-  const insertMedia = (modalOpener, label) => {
-    const editor = questionTextEditor();
-    modalOpener().then(dataURL => {
-      if (!dataURL) return;
-      uploadDataURL(dataURL).then(res => {
-        if (res && res.url) {
-          const html = `<figure style="max-width:100%;margin:12px 0;"><img src="${res.url}" alt="${label}" style="max-width:100%;height:auto;display:block;" /><figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${label}</figcaption></figure>`;
-          if (editor && editor.model) {
-            insertHtmlToEditor(editor, html);
-          } else if (questionTextArea) {
-            questionTextArea.value += `\n${html}`;
-          }
-        }
-      }).catch(err => console.error(`${label} upload failed:`, err));
-    });
-  };
-
-  if (diagramButton) {
-    diagramButton.addEventListener('click', () => insertMedia(openDiagramModal, 'Diagram'));
-  }
-  if (chartButton) {
-    chartButton.addEventListener('click', () => insertMedia(openChartModal, 'Chart'));
-  }
+  attachDiagramAndChartHandlers(questionCard);
 }
 
 function refreshQuestionLabels(sectionCard) {
@@ -580,144 +538,30 @@ function updateOptionFields(questionCard, count) {
   optionE.parentElement.style.display = count >= 5 ? 'block' : 'none';
 }
 
-function insertHtmlToEditor(editor, html) {
-  if (!editor || !editor.model) return;
-  const viewFragment = editor.data.processor.toView(html);
-  const modelFragment = editor.data.toModel(viewFragment);
-  editor.model.change(writer => {
-    editor.model.insertContent(modelFragment, editor.model.document.selection);
-  });
-}
-
-function extractDiagramJsonFromNotes(notes) {
-  if (!notes) return '';
-  const match = notes.match(/<!--\s*DIAGRAM_JSON_START\s*([\s\S]*?)\s*DIAGRAM_JSON_END\s*-->/);
-  return match ? match[1].trim() : '';
-}
-
-function stripDiagramJsonFromNotes(notes) {
-  if (!notes) return '';
-  return notes.replace(/<!--\s*DIAGRAM_JSON_START\s*[\s\S]*?\s*DIAGRAM_JSON_END\s*-->/g, '').trim();
-}
-
-function embedDiagramJsonIntoNotes(notes, json) {
-  const cleanNotes = stripDiagramJsonFromNotes(notes || '');
-  const encoded = json ? json : '';
-  return `${cleanNotes}${cleanNotes ? '\n' : ''}<!-- DIAGRAM_JSON_START\n${encoded}\nDIAGRAM_JSON_END -->`;
-}
-
-function updateResourceNotesEditor(field, editor, value) {
-  if (!field) return;
-  if (editor && typeof editor.setData === 'function') {
-    editor.setData(value);
-  }
-  field.value = value;
-}
-
-function attachDiagramAndChartHandlers(questionCard) {
-  if (!questionCard) return;
-  const diagramButton = questionCard.querySelector('.diagram-btn');
-  const chartButton = questionCard.querySelector('.chart-btn');
-  const questionTextArea = questionCard.querySelector('.question-text');
-
-  const questionTextEditor = () => {
-    if (questionTextArea && questionTextArea._editor) return questionTextArea._editor;
-    return activeEditor;
-  };
-
-  const insertMedia = (modalOpener, label, isDiagram = false) => {
-    const editor = questionTextEditor();
-    modalOpener(questionCard).then(result => {
-      if (!result) return;
-      if (result.action === 'image' && result.dataURL) {
-        uploadDataURL(result.dataURL).then(res => {
-          if (res && res.url) {
-            const html = `<figure style="max-width:100%;margin:12px 0;"><img src="${res.url}" alt="${label}" style="max-width:100%;height:auto;display:block;" /><figcaption style="text-align:center;font-size:0.92em;color:#444;margin-top:6px;">${label}</figcaption></figure>`;
-            if (editor && editor.model) {
-              insertHtmlToEditor(editor, html);
-            } else if (questionTextArea) {
-              questionTextArea.value += `\n${html}`;
-            }
-          }
-        }).catch(err => console.error(`${label} upload failed:`, err));
-      } else if (isDiagram && result.action === 'json' && result.json) {
-        const resourceNotesField = questionCard.querySelector('.resource-notes');
-        const resourceNotesEditor = resourceNotesField ? resourceNotesField._editor : null;
-        const currentNotes = resourceNotesField ? (resourceNotesEditor ? resourceNotesEditor.getData() : resourceNotesField.value) : '';
-        const newNotes = embedDiagramJsonIntoNotes(currentNotes, result.json);
-        updateResourceNotesEditor(resourceNotesField, resourceNotesEditor, newNotes);
-        const diagramJsonField = questionCard.querySelector('.diagram-json-data');
-        if (diagramJsonField) diagramJsonField.value = result.json;
-      }
-    });
-  };
-
-  if (diagramButton) diagramButton.addEventListener('click', () => insertMedia(openDiagramModal, 'Diagram', true));
-  if (chartButton) chartButton.addEventListener('click', () => insertMedia(openChartModal, 'Chart'));
-}
-
 function initRichEditors() {
-  if (typeof ClassicEditor === 'undefined') {
-    console.warn('CKEditor 5 not loaded. Rich editor initialization skipped.');
-    return;
-  }
-
   function initEditorFor(ta) {
     if (!ta || ta._editor) return;
+    if (typeof ClassicEditor === 'undefined') return;
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    const requestedToolbar = [
-      'heading', '|', 'bold', 'italic', 'underline', 'strikethrough', 'removeFormat', '|',
-      'bulletedList', 'numberedList', 'blockQuote', '|', 'link', '|',
-      'insertTable', 'imageUpload', '|',
-      'undo', 'redo'
-    ];
-
-    // Filter toolbar items based on available built-in plugins to avoid 'item-unavailable' warnings
-    let toolbarToUse = requestedToolbar;
-    try {
-      if (ClassicEditor.builtinPlugins && ClassicEditor.builtinPlugins.length) {
-        const available = ClassicEditor.builtinPlugins.map(p => (p.pluginName || p.name || '').toString().toLowerCase()).join(' ');
-        toolbarToUse = requestedToolbar.filter(it => it === '|' || available.includes(it.toString().toLowerCase()));
-      }
-    } catch (e) {
-      console.warn('Could not filter toolbar items:', e);
-    }
-
-    const config = {
-      toolbar: toolbarToUse,
-      extraPlugins: [],
+    ClassicEditor.create(ta, {
+      toolbar: ['heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'insertTable', 'imageUpload', 'undo', 'redo'],
+      table: {
+        contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+      },
+      image: {
+        toolbar: ['imageTextAlternative', 'imageStyle:full', 'imageStyle:side']
+      },
       simpleUpload: {
         uploadUrl: '/exams/exam-papers/upload-image/',
         headers: { 'X-CSRFToken': csrftoken }
-      },
-      image: {
-        toolbar: [ 'imageTextAlternative', 'imageStyle:full', 'imageStyle:side' ],
-        resizeUnit: '%'
-      },
-      table: {
-        contentToolbar: [ 'tableColumn', 'tableRow', 'mergeTableCells' ]
       }
-    };
-
-    ClassicEditor.create(ta, config).then(editor => {
+    }).then(editor => {
       ta._editor = editor;
       activeEditor = editor;
       editor.editing.view.document.on('focus', () => { activeEditor = editor; });
       editor.editing.view.document.on('click', () => { activeEditor = editor; });
     }).catch(err => {
       console.warn('CKEditor init failed for textarea:', ta, err);
-      // Retry with a safer, minimal toolbar set in case the build lacks some plugins
-      const fallbackConfig = Object.assign({}, config, {
-        toolbar: ['heading', '|', 'bold', 'italic', 'link', '|', 'bulletedList', 'numberedList', '|', 'undo', 'redo']
-      });
-      ClassicEditor.create(ta, fallbackConfig).then(editor => {
-        ta._editor = editor;
-        activeEditor = editor;
-        editor.editing.view.document.on('focus', () => { activeEditor = editor; });
-        editor.editing.view.document.on('click', () => { activeEditor = editor; });
-      }).catch(err2 => {
-        console.warn('CKEditor init failed on fallback for textarea:', ta, err2);
-      });
     });
   }
 
@@ -741,6 +585,81 @@ function uploadDataURL(dataURL){
   return fetch('/exams/exam-papers/upload-image/', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } }).then(r => r.json());
 }
 
+function attachDiagramAndChartHandlers(questionCard){
+  const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
+  const addChartBtn = questionCard.querySelector('.add-chart-btn');
+  const ta = questionCard.querySelector('.resource-notes');
+
+  function insertHtml(editor, html) {
+    try {
+      if (!editor) throw new Error('Editor not ready');
+      if (typeof editor.execute === 'function') {
+        editor.execute('insertHtml', html);
+        editor.editing.view.focus();
+        return;
+      }
+      if (editor.model && typeof editor.model.change === 'function') {
+        editor.model.change(writer => {
+          const viewFragment = editor.data.processor.toView(html);
+          const modelFragment = editor.data.toModel(viewFragment);
+          writer.insert(modelFragment, editor.model.document.selection);
+        });
+        editor.editing.view.focus();
+        return;
+      }
+      if (typeof editor.setData === 'function') {
+        const current = editor.getData() || '';
+        editor.setData(current + html);
+        editor.editing.view.focus();
+        return;
+      }
+      if (editor.data && typeof editor.data.set === 'function') {
+        const current = editor.data.get() || '';
+        editor.data.set(current + html);
+        return;
+      }
+      throw new Error('Editor API not available');
+    } catch (e) {
+      console.warn('Could not insert HTML into editor, falling back to append:', e);
+      if (ta) {
+        ta.value += `\n${html}`;
+      }
+    }
+  }
+
+  function insertImageUrl(editor, url) {
+    const imageHtml = `<img src="${url}" alt="Diagram" style="max-width:100%;height:auto;" />`;
+    if (editor) {
+      insertHtml(editor, imageHtml);
+    } else if (ta) {
+      ta.value += `\n${url}`;
+    }
+  }
+
+  const targetEditor = () => activeEditor || (ta && ta._editor) || null;
+
+  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => {
+    if (!dataURL) return;
+    uploadDataURL(dataURL).then(res => {
+      if (res && res.url) {
+        insertImageUrl(targetEditor(), res.url);
+      }
+    }).catch(err => {
+      console.error('Diagram upload failed:', err);
+    });
+  }));
+
+  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => {
+    if (!dataURL) return;
+    uploadDataURL(dataURL).then(res => {
+      if (res && res.url) {
+        insertImageUrl(targetEditor(), res.url);
+      }
+    }).catch(err => {
+      console.error('Chart upload failed:', err);
+    });
+  }));
+}
 
 function openDiagramModal(){
   return new Promise(resolve => {
@@ -835,27 +754,9 @@ class DiagramBuilder {
       width: this.width,
       height: this.height
     });
-    this.stage.container().style.touchAction = 'none';
-    this.stage.container().style.userSelect = 'none';
-    this.stage.container().style.webkitUserSelect = 'none';
     
     this.layer = new Konva.Layer();
     this.stage.add(this.layer);
-    
-    this.overlayLayer = new Konva.Layer();
-    this.stage.add(this.overlayLayer);
-    
-    this.transformer = new Konva.Transformer({
-      rotateEnabled: false,
-      enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
-      ignoreStroke: true,
-      anchorStroke: '#0d6efd',
-      anchorFill: '#fff',
-      anchorSize: 8,
-      borderStroke: '#0d6efd',
-      borderDash: [4, 2]
-    });
-    this.overlayLayer.add(this.transformer);
     
     this.drawGrid();
     this.setupToolbar();
@@ -866,7 +767,6 @@ class DiagramBuilder {
   drawGrid() {
     const gridLayer = new Konva.Layer();
     this.stage.add(gridLayer);
-    gridLayer.moveToBottom();
     
     for (let i = 0; i < this.width; i += this.gridSize) {
       gridLayer.add(new Konva.Line({
@@ -896,109 +796,46 @@ class DiagramBuilder {
       { id: 'line', label: '/ Line', icon: '/' },
       { id: 'arrow', label: '→ Arrow', icon: '→' },
       { id: 'pen', label: '✏ Draw', icon: '✏' },
-      { id: 'eraser', label: '🧽 Eraser', icon: '⛏' },
       { id: 'text', label: 'A Text', icon: 'T' }
     ];
     
-    // Build toolbox elements
-    this.toolbox = document.createElement('div');
-    this.toolbox.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-
-    // Category selector
-    this.categorySelect = document.createElement('select');
-    ['basic','arrows','flow','tools'].forEach(cat => {
-      const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
-      this.categorySelect.appendChild(opt);
-    });
-    this.categorySelect.value = this.currentCategory;
-    this.categorySelect.addEventListener('change', (e) => { this.currentCategory = e.target.value; this.buildToolButtons(); });
-    this.toolbox.appendChild(this.categorySelect);
-
-    this.toolButtonsContainer = document.createElement('div');
-    this.toolButtonsContainer.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
-    this.toolbox.appendChild(this.toolButtonsContainer);
-
-    // Hidden image file input for inserting images onto canvas
-    this._imageInput = document.createElement('input');
-    this._imageInput.type = 'file';
-    this._imageInput.accept = 'image/*';
-    this._imageInput.style.display = 'none';
-    this._imageInput.addEventListener('change', (ev) => {
-      const f = ev.target.files && ev.target.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = (e2) => { this.addImageFromDataURL(e2.target.result); ev.target.value = ''; };
-      reader.readAsDataURL(f);
-    });
-    this.toolbarContainer.appendChild(this._imageInput);
-
-    this.toolbarContainer.appendChild(this.toolbox);
-
-    // Populate initial tool buttons
-    this.buildToolButtons();
-  }
-
-  buildToolButtons() {
-    this.toolButtonsContainer.innerHTML = '';
-    const categories = {
-      basic: [
-        { id: 'select', label: 'Select' },
-        { id: 'rect', label: 'Rectangle' },
-        { id: 'circle', label: 'Circle' },
-        { id: 'triangle', label: 'Triangle' },
-        { id: 'diamond', label: 'Diamond' }
-      ],
-      arrows: [
-        { id: 'line', label: 'Line' },
-        { id: 'arrow', label: 'Arrow' }
-      ],
-      flow: [
-        { id: 'process', label: 'Process' },
-        { id: 'decision', label: 'Decision' },
-        { id: 'text', label: 'Text' }
-      ],
-      tools: [
-        { id: 'pen', label: 'Draw' },
-        { id: 'eraser', label: 'Eraser' },
-        { id: 'image', label: 'Image' }
-      ]
-    };
-
-    const tools = categories[this.currentCategory] || categories.basic;
+    const toolGroup = document.createElement('div');
+    toolGroup.style.cssText = 'display:flex;gap:4px';
+    
     tools.forEach(tool => {
       const btn = document.createElement('button');
-      btn.type = 'button';
       btn.textContent = tool.label;
-      btn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
+      btn.style.cssText = `padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer`;
+      btn.className = this.currentTool === tool.id ? 'active' : '';
+      
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-tool]').forEach(b => {
+          b.style.background = '#fff';
+          b.style.borderColor = '#ddd';
+        });
+        this.currentTool = tool.id;
+        btn.style.background = '#0d6efd';
+        btn.style.color = 'white';
+        btn.style.borderColor = '#0d6efd';
+      });
+      
+      btn.dataset.tool = tool.id;
       if (this.currentTool === tool.id) {
         btn.style.background = '#0d6efd';
         btn.style.color = 'white';
         btn.style.borderColor = '#0d6efd';
       }
-      btn.addEventListener('click', () => {
-        this.currentTool = tool.id;
-        this.toolButtonsContainer.querySelectorAll('button').forEach(button => {
-          button.style.background = '#fff';
-          button.style.color = 'black';
-          button.style.borderColor = '#ddd';
-        });
-        btn.style.background = '#0d6efd';
-        btn.style.color = 'white';
-        btn.style.borderColor = '#0d6efd';
-        // Special handling for image button
-        if (tool.id === 'image') {
-          // trigger hidden file input
-          if (this._imageInput) this._imageInput.click();
-        }
-      });
-      this.toolButtonsContainer.appendChild(btn);
+      
+      toolGroup.appendChild(btn);
     });
-
+    
+    this.toolbarContainer.appendChild(toolGroup);
+    
     // Separator
     this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';
     this.toolbarContainer.lastChild.style.background = '#ddd';
     this.toolbarContainer.lastChild.style.height = '24px';
-
+    
     // Color & thickness controls
     const controlsGroup = document.createElement('div');
     controlsGroup.style.cssText = 'display:flex;gap:8px;align-items:center';
@@ -1077,21 +914,18 @@ class DiagramBuilder {
     editGroup.style.cssText = 'display:flex;gap:4px';
     
     const undoBtn = document.createElement('button');
-    undoBtn.type = 'button';
     undoBtn.textContent = '↶ Undo';
     undoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     undoBtn.addEventListener('click', () => this.undo());
     editGroup.appendChild(undoBtn);
     
     const redoBtn = document.createElement('button');
-    redoBtn.type = 'button';
     redoBtn.textContent = '↷ Redo';
     redoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     redoBtn.addEventListener('click', () => this.redo());
     editGroup.appendChild(redoBtn);
     
     const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
     deleteBtn.textContent = '🗑 Delete';
     deleteBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;color:#dc3545';
     deleteBtn.addEventListener('click', () => {
@@ -1105,7 +939,6 @@ class DiagramBuilder {
     editGroup.appendChild(deleteBtn);
     
     const bringForwardBtn = document.createElement('button');
-    bringForwardBtn.type = 'button';
     bringForwardBtn.textContent = '↑ Bring Forward';
     bringForwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     bringForwardBtn.addEventListener('click', () => {
@@ -1118,7 +951,6 @@ class DiagramBuilder {
     editGroup.appendChild(bringForwardBtn);
     
     const sendBackwardBtn = document.createElement('button');
-    sendBackwardBtn.type = 'button';
     sendBackwardBtn.textContent = '↓ Send Backward';
     sendBackwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     sendBackwardBtn.addEventListener('click', () => {
@@ -1162,37 +994,15 @@ class DiagramBuilder {
       }
       return;
     }
-
-    if (this.currentTool === 'eraser') {
-      this.isDrawing = true;
-      this.isErasing = true;
-      const pos = this.stage.getPointerPosition();
-      if (pos) {
-        this.eraseAt(pos.x, pos.y);
-      }
-      return;
-    }
     
     this.isDrawing = true;
     const pos = this.stage.getPointerPosition();
-    if (!pos) return;
     this.startX = this.snapCoord(pos.x);
     this.startY = this.snapCoord(pos.y);
     
     // For pen tool, start freehand drawing
     if (this.currentTool === 'pen') {
-      this.drawingPoints = [pos.x, pos.y];
-      this.currentLine = new Konva.Line({
-        points: this.drawingPoints,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        lineCap: 'round',
-        lineJoin: 'round',
-        tension: 0,
-        perfectDrawEnabled: true,
-        isShape: true
-      });
-      this.layer.add(this.currentLine);
+      this.drawingPoints = [this.startX, this.startY];
     }
     
     if (this.currentTool === 'text') {
@@ -1228,22 +1038,30 @@ class DiagramBuilder {
     if (!this.isDrawing || this.currentTool === 'text' || this.currentTool === 'select') return;
     
     const pos = this.stage.getPointerPosition();
-    if (!pos) return;
     const currentX = this.snapCoord(pos.x);
     const currentY = this.snapCoord(pos.y);
     
-    if (this.currentTool === 'eraser' && this.isErasing) {
-      this.eraseAt(pos.x, pos.y);
-      return;
-    }
-
     // Handle pen/freehand drawing
     if (this.currentTool === 'pen') {
-      if (this.currentLine) {
-        this.drawingPoints.push(pos.x, pos.y);
-        this.currentLine.points(this.drawingPoints);
-        this.layer.batchDraw();
-      }
+      this.drawingPoints.push(currentX, currentY);
+      
+      // Remove old preview
+      const children = this.layer.children.filter(c => c._isPreview);
+      children.forEach(c => c.destroy());
+      
+      // Draw freehand line
+      const shape = new Konva.Line({
+        points: this.drawingPoints,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
+        _isPreview: true,
+        isShape: true
+      });
+      
+      this.layer.add(shape);
+      this.layer.draw();
       return;
     }
     
@@ -1306,29 +1124,6 @@ class DiagramBuilder {
         strokeWidth: this.lineThickness,
         _isPreview: true
       });
-    } else if (this.currentTool === 'diamond' || this.currentTool === 'decision') {
-      // Diamond/Decision shape as a rotated square (regular polygon with 4 sides)
-      shape = new Konva.RegularPolygon({
-        x: (this.startX + currentX) / 2,
-        y: (this.startY + currentY) / 2,
-        sides: 4,
-        radius: Math.max(width, height) / 2,
-        fill: this.fillColor,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        rotation: 45,
-        _isPreview: true
-      });
-    } else if (this.currentTool === 'process') {
-      // Process is a rounded rectangle
-      shape = new Konva.Rect({
-        x, y, width, height,
-        cornerRadius: 10,
-        fill: this.fillColor,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        _isPreview: true
-      });
     }
     
     if (shape) {
@@ -1351,17 +1146,15 @@ class DiagramBuilder {
     
     // Handle pen drawing - finalize the freehand line
     if (this.currentTool === 'pen') {
-      if (this.currentLine) {
-        this.currentLine = null;
+      const previewShapes = this.layer.children.filter(c => c._isPreview);
+      previewShapes.forEach(shape => {
+        shape._isPreview = false;
+      });
+      if (previewShapes.length > 0) {
+        this.layer.draw();
         this.saveHistory();
       }
       this.drawingPoints = [];
-      return;
-    }
-
-    if (this.currentTool === 'eraser') {
-      this.isErasing = false;
-      this.saveHistory();
       return;
     }
     
@@ -1380,15 +1173,17 @@ class DiagramBuilder {
   selectObject(obj) {
     this.deselectAll();
     this.selectedObject = obj;
-    this.transformer.nodes([obj]);
+    obj.stroke = '#0d6efd';
+    obj.strokeWidth = (this.lineThickness || 2) + 2;
     this.stage.container().style.cursor = 'grab';
     this.layer.draw();
   }
   
   deselectAll() {
     if (this.selectedObject) {
+      this.selectedObject.stroke = this.strokeColor;
+      this.selectedObject.strokeWidth = this.lineThickness || 1;
       this.selectedObject = null;
-      this.transformer.nodes([]);
       this.stage.container().style.cursor = 'default';
     }
     this.layer.draw();
@@ -1419,108 +1214,71 @@ class DiagramBuilder {
     this.layer.destroy();
     this.layer = Konva.Node.create(json);
     this.stage.add(this.layer);
-    if (this.overlayLayer) {
-      this.layer.moveBelow(this.overlayLayer);
-    }
-    if (this.transformer && this.overlayLayer) {
-      this.transformer.detach();
-      this.overlayLayer.add(this.transformer);
-      this.overlayLayer.draw();
-    }
     this.layer.draw();
     this.deselectAll();
-  }
-
-  eraseAt(x, y) {
-    const shape = this.stage.getIntersection({ x, y });
-    if (shape && shape !== this.stage && shape.isShape && !shape._isPreview) {
-      shape.destroy();
-      this.layer.draw();
-    }
   }
   
   export() {
     return this.stage.toDataURL({ pixelRatio: 2 });
-  }
-
-  addImageFromDataURL(dataURL, x=null, y=null) {
-    const img = new window.Image();
-    img.onload = () => {
-      const kimg = new Konva.Image({
-        x: x !== null ? x : (this.width - img.width / 2) / 2,
-        y: y !== null ? y : (this.height - img.height / 2) / 2,
-        image: img,
-        width: img.width / 2,
-        height: img.height / 2,
-        draggable: true,
-        isShape: true
-      });
-      this.layer.add(kimg);
-      this.layer.draw();
-      this.saveHistory();
-    };
-    img.src = dataURL;
   }
 }
 
 function openChartModal(){
   return new Promise(resolve => {
     const modal = document.createElement('div'); modal.style.position='fixed'; modal.style.left=0; modal.style.top=0; modal.style.right=0; modal.style.bottom=0; modal.style.background='rgba(0,0,0,0.6)'; modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center';
-    const box = document.createElement('div'); box.style.width='780px'; box.style.height='600px'; box.style.background='#fff'; box.style.padding='16px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
+    const box = document.createElement('div'); box.style.width='760px'; box.style.height='560px'; box.style.background='#fff'; box.style.padding='12px'; box.style.borderRadius='6px'; box.style.display='flex'; box.style.flexDirection='column';
 
-    const formRow = document.createElement('div'); formRow.style.display='flex'; formRow.style.gap='8px'; formRow.style.flexWrap='wrap'; formRow.style.marginBottom='10px';
-    const typeSelect = document.createElement('select');
-    ['bar','line','pie','doughnut'].forEach(type => {
-      const opt = document.createElement('option'); opt.value = type; opt.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-      typeSelect.appendChild(opt);
-    });
-    typeSelect.style.flex='0 0 150px';
-    const labelsInput = document.createElement('input'); labelsInput.placeholder='Labels e.g. Jan,Feb,Mar'; labelsInput.style.flex='1';
-    const valuesInput = document.createElement('input'); valuesInput.placeholder='Values e.g. 10,20,30'; valuesInput.style.flex='1';
-    const titleInput = document.createElement('input'); titleInput.placeholder='Chart title (optional)'; titleInput.style.flex='1';
-    formRow.appendChild(typeSelect); formRow.appendChild(labelsInput); formRow.appendChild(valuesInput); formRow.appendChild(titleInput);
+    const formRow = document.createElement('div'); formRow.style.display='flex'; formRow.style.gap='8px'; formRow.style.marginBottom='8px'; formRow.style.flexWrap='wrap';
+    const labelsInput = document.createElement('input'); labelsInput.placeholder='Labels (comma separated) e.g. Jan,Feb,Mar'; labelsInput.style.flex='1';
+    const valuesInput = document.createElement('input'); valuesInput.placeholder='Values (comma separated) e.g. 10,20,30'; valuesInput.style.flex='1';
+    const chartTypeSelect = document.createElement('select'); chartTypeSelect.innerHTML = '<option value="bar">Bar</option><option value="line">Line</option><option value="pie">Pie</option><option value="doughnut">Doughnut</option>'; chartTypeSelect.style.minWidth='110px';
+    formRow.appendChild(labelsInput); formRow.appendChild(valuesInput); formRow.appendChild(chartTypeSelect);
     box.appendChild(formRow);
 
-    const canvasWrapper = document.createElement('div'); canvasWrapper.style.flex='1'; canvasWrapper.style.border='1px solid #ddd'; canvasWrapper.style.display='flex'; canvasWrapper.style.alignItems='center'; canvasWrapper.style.justifyContent='center'; canvasWrapper.style.padding='8px';
-    const canvas = document.createElement('canvas'); canvas.width=720; canvas.height=420; canvasWrapper.appendChild(canvas);
-    box.appendChild(canvasWrapper);
-
-    const controls = document.createElement('div'); controls.style.marginTop='10px'; controls.style.display='flex'; controls.style.justifyContent='space-between'; controls.style.alignItems='center';
-    const renderBtn = document.createElement('button'); renderBtn.type = 'button'; renderBtn.textContent='Render Chart'; renderBtn.className='button';
-    const actionGroup = document.createElement('div'); actionGroup.style.display='flex'; actionGroup.style.gap='8px';
-    const exportBtn = document.createElement('button'); exportBtn.type = 'button'; exportBtn.textContent='Export & Insert'; exportBtn.className='button';
-    const closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.textContent='Close'; closeBtn.className='button';
-    actionGroup.appendChild(exportBtn); actionGroup.appendChild(closeBtn);
-    controls.appendChild(renderBtn); controls.appendChild(actionGroup);
-    box.appendChild(controls);
+    const canvas = document.createElement('canvas'); canvas.width=700; canvas.height=380; canvas.style.border='1px solid #ddd'; box.appendChild(canvas);
+    const controls = document.createElement('div'); controls.style.marginTop='8px'; controls.style.display='flex'; controls.style.gap='8px'; controls.style.alignItems='center';
+    const renderBtn = document.createElement('button'); renderBtn.textContent='Render Chart'; renderBtn.className='button';
+    const exportBtn = document.createElement('button'); exportBtn.textContent='Export & Insert'; exportBtn.className='button';
+    const closeBtn = document.createElement('button'); closeBtn.textContent='Close'; closeBtn.style.marginLeft='8px';
+    controls.appendChild(renderBtn); controls.appendChild(exportBtn); controls.appendChild(closeBtn); box.appendChild(controls);
 
     modal.appendChild(box); document.body.appendChild(modal);
-    const ctx = canvas.getContext('2d');
-    let chart = new Chart(canvas, { type: 'bar', data: { labels: [], datasets:[{ label: 'Data', data:[], backgroundColor: '#0d6efd' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true }, title: { display: true, text: '' } } } });
+    const palette = ['#0d6efd','#198754','#dc3545','#fd7e14','#6f42c1','#20c997','#ffc107','#6c757d'];
+    const buildColors = (count) => Array.from({length: count}, (_, i) => palette[i % palette.length]);
+    let chart = new Chart(canvas, { type: 'bar', data: { labels: [], datasets:[{ label: 'Data', data:[], backgroundColor: [], borderColor: [], borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false } });
 
-    const renderChart = () => {
+    renderBtn.addEventListener('click', () => {
       const labels = labelsInput.value.split(',').map(s => s.trim()).filter(Boolean);
       const values = valuesInput.value.split(',').map(s => parseFloat(s)).filter(v => !isNaN(v));
       if (!labels.length || !values.length || labels.length !== values.length) {
-        alert('Please enter matching labels and numeric values.');
+        alert('Please provide matching labels and numeric values, comma separated.');
         return;
       }
-      chart.config.type = typeSelect.value;
-      chart.data.labels = labels;
-      chart.data.datasets = [{ label: titleInput.value || 'Data', data: values, backgroundColor: labels.map(() => '#0d6efd'), borderColor: '#0d6efd', fill: typeSelect.value !== 'line' }];
-      chart.options.plugins.title.text = titleInput.value || '';
-      chart.update();
-    };
-
-    renderBtn.addEventListener('click', renderChart);
-    exportBtn.addEventListener('click', () => {
-      renderChart();
-      setTimeout(() => {
-        const dataURL = canvas.toDataURL('image/png');
-        document.body.removeChild(modal);
-        resolve(dataURL);
-      }, 50);
+      const chartType = chartTypeSelect.value;
+      chart.destroy();
+      chart = new Chart(canvas, {
+        type: chartType,
+        data: {
+          labels,
+          datasets:[{
+            label: 'Data',
+            data: values,
+            backgroundColor: buildColors(labels.length),
+            borderColor: buildColors(labels.length),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: chartType === 'pie' || chartType === 'doughnut' }
+          }
+        }
+      });
     });
+
+    exportBtn.addEventListener('click', () => { const dataURL = canvas.toDataURL(); document.body.removeChild(modal); resolve(dataURL); });
     closeBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve(null); });
   });
 }
@@ -1565,11 +1323,9 @@ function gatherPayload() {
       const questionTextField = questionCard.querySelector('.question-text');
       const teacherGuideField = questionCard.querySelector('.teacher-guide');
       const resourceNotesField = questionCard.querySelector('.resource-notes');
-      const diagramJsonField = questionCard.querySelector('.diagram-json-data');
       const questionTextValue = getEditorFieldValue(questionTextField);
       const teacherGuideValue = getEditorFieldValue(teacherGuideField);
       const resourceNotesValue = getEditorFieldValue(resourceNotesField);
-      const diagramJsonValue = diagramJsonField ? diagramJsonField.value : '';
 
       const questionPayload = {
           // inherit question type from the parent section
@@ -1579,7 +1335,6 @@ function gatherPayload() {
         correct_answer: questionCard.querySelector('.correct-answer').value,
         teacher_guide: teacherGuideValue,
         resource_notes: resourceNotesValue,
-        diagram_json: diagramJsonValue,
         subnumbering_style: subquestionCheckbox && !subquestionCheckbox.checked ? '' : questionCard.querySelector('.subnumbering-style').value,
         options: []
       };

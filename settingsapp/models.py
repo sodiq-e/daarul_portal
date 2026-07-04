@@ -1,5 +1,5 @@
 from django.db import models
-from cloudinary.models import CloudinaryField
+#from cloudinary.models import CloudinaryField
 
 class SchoolSettings(models.Model):
     school_name = models.CharField(
@@ -16,11 +16,16 @@ class SchoolSettings(models.Model):
         null=True
     )
 
-    logo = CloudinaryField(
-        'image',
-        folder='logos',
-        blank=True,
-        null=True
+    # logo = CloudinaryField(
+    #     'image',
+    #     folder='logos',
+    #     blank=True,
+    #     null=True
+    # )
+    logo = models.ImageField(
+    upload_to='logos/',
+    blank=True,
+    null=True
     )
     primary_color = models.CharField(
         max_length=7,
@@ -88,13 +93,18 @@ class SchoolSettings(models.Model):
         blank=True,
         help_text="Description text for the video placeholder on homepage"
     )
-    homepage_video = CloudinaryField(
-        'videos',
-        folder='videos',
-        blank=True,
-        null=True
-    )
+    # homepage_video = CloudinaryField(
+    #     'videos',
+    #     folder='videos',
+    #     blank=True,
+    #     null=True
+    # )
 
+    homepage_video = models.FileField(
+    upload_to='videos/',
+    blank=True,
+    null=True
+    )
     homepage_video_url = models.URLField(
         blank=True,
         null=True
@@ -154,7 +164,7 @@ class SchoolSettings(models.Model):
     )
 
     school_phone = models.CharField(
-        max_length=20,
+        max_length=255,
         default="+234 (0) 123 456 7890",
         blank=True,
         null=True,
@@ -302,17 +312,15 @@ class GalleryImage(models.Model):
         related_name='gallery_images'
     )
 
-    image = CloudinaryField(
-    'image',
-    folder='gallery/images',
+    image = models.ImageField(
+    upload_to='gallery/images/',
     blank=True,
     null=True,
     help_text="Upload image (optional)"
     )
 
-    video = CloudinaryField(
-    'video',
-    folder='gallery/videos',
+    video = models.FileField(
+    upload_to='gallery/videos/',
     blank=True,
     null=True,
     help_text="Upload video (optional)"

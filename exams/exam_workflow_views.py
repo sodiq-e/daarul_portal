@@ -86,6 +86,7 @@ class ExamPaperPreviewView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context['sections_data'] = sections_data
         context['can_submit'] = exam.approval_status == 'draft' and exam.teacher == self.request.user
         context['can_approve'] = exam.approval_status == 'pending' and user_is_admin(self.request.user)
+        context['font_size'] = self.request.GET.get('font_size', '12pt')
         
         return context
 

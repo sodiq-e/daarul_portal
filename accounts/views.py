@@ -5,6 +5,7 @@ from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmVie
 from django.contrib.auth.forms import PasswordResetForm
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.generic import FormView
@@ -88,6 +89,18 @@ class CustomLoginView(FormView):
     template_name = 'accounts/login.html'
     success_url = reverse_lazy('home')
 
+    def is_ajax(self):
+        return self.request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+    def json_success(self, message, redirect_url=None):
+        data = {'success': True, 'message': message}
+        if redirect_url:
+            data['redirect_url'] = redirect_url
+        return JsonResponse(data)
+
+    def json_error(self, errors, status=200):
+        return JsonResponse({'success': False, 'errors': errors}, status=status)
+
     def form_valid(self, form):
         username = form.cleaned_data.get('username')
         password = form.cleaned_data.get('password')
@@ -101,23 +114,64 @@ class CustomLoginView(FormView):
                     if profile.is_approved:
                         login(self.request, user)
                         messages.success(self.request, f'Welcome back, {user.username}!')
+                        if self.is_ajax():
+                            return self.json_success(
+                                f'Welcome back, {user.username}!',
+                                redirect_url=str(self.get_success_url())
+                            )
                         return super().form_valid(form)
                     else:
-                        messages.error(
-                            self.request,
-                            'Your account is pending admin approval. Please wait for an administrator to review and approve your registration.'
-                        )
+                        error_message = 'Your account is pending admin approval. Please wait for an administrator to review and approve your registration.'
+                        messages.error(self.request, error_message)
+                        if self.is_ajax():
+                            return self.json_error([error_message])
                         return self.form_invalid(form)
                 except Profile.DoesNotExist:
-                    messages.error(self.request, 'Your profile is not set up properly. Please contact an administrator.')
+                    error_message = 'Your profile is not set up properly. Please contact an administrator.'
+                    messages.error(self.request, error_message)
+                    if self.is_ajax():
+                        return self.json_error([error_message])
                     return self.form_invalid(form)
             else:
-                messages.error(self.request, 'Your account is inactive. Please contact an administrator.')
+                error_message = 'Your account is inactive. Please contact an administrator.'
+                messages.error(self.request, error_message)
+                if self.is_ajax():
+                    return self.json_error([error_message])
                 return self.form_invalid(form)
         else:
-            messages.error(self.request, 'Invalid username or password.')
+            error_message = 'Invalid username or password.'
+            messages.error(self.request, error_message)
+            if self.is_ajax():
+                return self.json_error([error_message])
             return self.form_invalid(form)
 
     def form_invalid(self, form):
         """Render form with error messages"""
+        username = (form.data.get('username') or '').strip()
+        password = form.data.get('password')
+
+        errors = []
+        if not username:
+            errors.append('Please enter your username.')
+        if not password:
+            errors.append('Please enter your password.')
+
+        if username and password:
+            try:
+                user = User.objects.get(username=username)
+                if not user.check_password(password):
+                    errors.append('The password entered for this account is incorrect.')
+                elif not user.is_active:
+                    errors.append('Your account is inactive. Please contact an administrator.')
+                else:
+                    errors.append('Unable to log in. Please check your details and try again.')
+            except User.DoesNotExist:
+                errors.append('No account was found with that username.')
+
+        for error in errors:
+            messages.error(self.request, error)
+
+        if self.is_ajax():
+            return self.json_error(errors)
+
         return self.render_to_response(self.get_context_data(form=form))

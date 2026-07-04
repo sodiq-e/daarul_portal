@@ -14,11 +14,18 @@
             {% if result_template %}
                 <div class="alert alert-info">
                     <strong>Result Template:</strong> {{ result_template }}
-                    {% if can_edit %}
-                        <a href="{% url 'bulk_result_entry' class_id=school_class.id term_id=term.id %}" class="btn btn-primary btn-sm float-end">
+                    <div class="float-end">
+                        {% if can_print_broadsheet and broadsheet_url %}
+                        <a href="{{ broadsheet_url }}" class="btn btn-outline-primary btn-sm me-2">
+                            🖨️ Print Broadsheet
+                        </a>
+                        {% endif %}
+                        {% if can_edit %}
+                        <a href="{% url 'bulk_result_entry' class_id=school_class.id term_id=term.id %}" class="btn btn-primary btn-sm">
                             📊 Bulk Entry for All Students
                         </a>
-                    {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
                 
                 {% if student_results %}

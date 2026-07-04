@@ -4,101 +4,105 @@
 
 {% block title %}Report Card - {{ student.full_name }}{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
     /* Keep header visible on screen */
     .report-card > div:first-child {
         display: block;
     }
 </style>
-
 <style media="print">
-    @page {
-        size: A4 portrait;
-        margin: 1cm;
-    }
-    
-    * {
-        margin: 0 !important;
-        padding: 0 !important;
-        box-sizing: border-box;
-    }
-    
-    body {
-        font-family: Arial, sans-serif;
-        background: transparent !important;
-        color: #000;
-    }
-    
+    .sidebar,
+    .mobile-bottom-nav,
+    .breadcrumb,
+    .breadcrumb-navigation,
+    .page-loader,
+    .announcement-ticker,
+    .theme-customizer,
+    .toast-container,
+    nav,
+    aside,
+    footer,
     .no-print {
         display: none !important;
     }
-    
-    /* Hide the report card's custom header - base header will show instead */
-    .report-card > div:first-child {
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .container-fluid,
+    .report-card,
+    .content,
+    .layout,
+    .page-content,
+    .page-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: auto !important;
+        max-width: 100% !important;
+    }
+
+    .print-watermark {
         display: none !important;
     }
-    
-    .report-card {
+
+    header {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
         page-break-after: avoid !important;
-        padding: 0 !important;
-        background: transparent !important;
+    }
+
+    .header-container,
+    .header-left,
+    .header-center {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+    }
+
+    .header-right,
+    .menu-btn,
+    .theme-toggle,
+    .accessibility-toggle,
+    .command-palette,
+    .overlay,
+    .page-loader,
+    .announcement-ticker,
+    .toast-container {
+        display: none !important;
+    }
+
+    .report-card {
         border: none !important;
-        max-width: 100% !important;
-        margin: 0 !important;
-        font-size: 11px;
+        background: transparent !important;
+        page-break-inside: avoid !important;
+        page-break-after: avoid !important;
     }
-    
-    .report-card h3 {
-        font-size: 13px !important;
-        margin: 10px 0 8px 0 !important;
-        padding: 0 !important;
+
+    .report-card-header {
+        display: none !important;
     }
-    
-    .report-card div {
+
+    .report-card table,
+    .report-card h3,
+    .report-card p,
+    .report-card td,
+    .report-card th {
         page-break-inside: avoid !important;
     }
-    
-    .report-card table {
-        page-break-inside: avoid !important;
-        font-size: 11px !important;
-        margin: 8px 0 !important;
-    }
-    
-    .report-card th,
-    .report-card td {
-        padding: 6px !important;
-        border: 1px solid #999 !important;
-    }
-    
+
     .report-card hr {
-        margin: 8px 0 !important;
-        border: 1px solid #ddd !important;
-    }
-    
-    .container-fluid {
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    
-    /* Watermark positioning for print */
-    .print-watermark {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        width: 300px;
-        height: 300px;
-        transform: translate(-50%, -50%);
-        z-index: 0;
-        opacity: 0.08;
-        background-image: url('{{ school_logo }}');
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-        pointer-events: none;
+        page-break-after: avoid !important;
     }
 </style>
+{% endblock %}
 
+{% block content %}
 <div class="container-fluid mt-3 mb-5">
     <!-- Print Watermark -->
     <div class="print-watermark"></div>
@@ -117,13 +121,7 @@
 
     <!-- Report Card Container -->
     <div class="report-card" style="max-width: 900px; margin: 0 auto; background: white; border: 1px solid #ddd; padding: 20px; font-family: Arial, sans-serif;">
-        
-        <!-- School Header (Hidden in Print) -->
-        <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 12px;">
-            <h2 style="margin: 0; color: #2c3e50; font-size: 20px; font-weight: bold;">DAARUL BAYAAN SCHOOL</h2>
-            <p style="margin: 2px 0; color: #666; font-size: 12px;">Dedicated to Islamic & Academic Excellence</p>
-            <p style="margin: 0; color: #666; font-size: 11px;">📞 +234 XXX XXXX XXX | 📧 info@daarulbayaan.edu.ng</p>
-        </div>
+      
 
         <!-- Student Information -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; font-size: 12px;">
@@ -224,6 +222,34 @@
             </div>
         {% endif %}
 
+        {% if attendance_records %}
+        <div style="border: 1px solid #ddd; padding: 12px; background: #ffffff; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="font-size: 12px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📊 Term Attendance Summary</h3>
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; font-size: 11px;">
+                <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                    <p style="margin: 0; color: #666;">Days Marked</p>
+                    <p style="margin: 6px 0 0; font-weight: bold; color: #2c3e50;">{{ attendance_sessions|default:'0' }}</p>
+                </div>
+                <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                    <p style="margin: 0; color: #666;">Total Sessions</p>
+                    <p style="margin: 6px 0 0; font-weight: bold; color: #2c3e50;">{{ attendance_total_sessions|default:'0' }}</p>
+                </div>
+                <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                    <p style="margin: 0; color: #666;">Sessions Attended</p>
+                    <p style="margin: 6px 0 0; font-weight: bold; color: #2c3e50;">{{ attended_sessions|default:'0' }}</p>
+                </div>
+                <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                    <p style="margin: 0; color: #666;">Attendance %</p>
+                    <p style="margin: 6px 0 0; font-weight: bold; color: #2c3e50;">{% if attendance_percentage %}{{ attendance_percentage }}%{% else %}N/A{% endif %}</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div style="background: #e8f5e9; border: 1px solid #4caf50; padding: 10px 12px; margin-bottom: 15px; font-size: 11px; border-radius: 3px;">
+            <p style="margin: 0; color: #2e7d32;">✓ No attendance records yet for this term.</p>
+        </div>
+        {% endif %}
+
         <hr style="border: 0.5px solid #ddd; margin: 6px 0;">
 
         <!-- Conduct & Behavior Assessment -->
@@ -287,15 +313,6 @@
     </div>
 </div>
 
-<script>
-    // Print stylesheet handling
-    window.addEventListener('beforeprint', function() {
-        document.body.style.background = 'white';
-    });
-    
-    window.addEventListener('afterprint', function() {
-        document.body.style.background = '';
-    });
-</script>
+
 
 {% endblock %}

@@ -85,10 +85,15 @@
     /* ===== TOAST NOTIFICATIONS ===== */
     .toast-container {
       position: fixed;
-      bottom: 20px;
+      top: 20px;
       right: 20px;
-      z-index: 9998;
+      z-index: 99999;
       max-width: 400px;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
     }
 
     .toast {
@@ -154,6 +159,10 @@
 
     .toast-close:hover {
       color: #333;
+    }
+
+    .print-watermark {
+      display: none;
     }
 
     @keyframes slideInRight {
@@ -2817,6 +2826,18 @@ html, body {
 
 /* ===== PRINT STYLES ===== */
 @media print {
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+}
+html,
+body {
+    width: auto !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    height: auto !important;
+}
   /* Hide all interactive elements */
   #menuBtn,
   .sidebar,
@@ -2879,6 +2900,8 @@ html, body {
   body {
     width: auto !important;
     min-width: auto !important;
+    min-height: auto !important;
+    height: auto !important;
   }
 
   .content,
@@ -2896,7 +2919,7 @@ html, body {
     padding: 12px 20px !important;
   }
 
-  /* Force desktop-style grid layout for printed pages */
+  /* Force desktop-style grid layout for printed pages
   .row {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -2931,7 +2954,31 @@ html, body {
   .d-flex {
     display: flex !important;
     flex-wrap: wrap !important;
-  }
+  } */
+
+  /* Stable print layout */
+.row,
+.d-flex,
+.flex-row,
+.flex-column,
+.container,
+.container-fluid,
+.card,
+[class*="col-"] {
+
+    display: block !important;
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    float: none !important;
+
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
 
   .justify-content-between {
     justify-content: space-between !important;
@@ -2945,9 +2992,9 @@ html, body {
     align-items: center !important;
   }
 
-  .text-center {
+  /* .text-center {
     text-align: left !important;
-  }
+  } */
 
   .card,
   .box,
@@ -2978,9 +3025,9 @@ html, body {
     text-align: left !important;
   }
 
-  .page-break {
+  /* .page-break {
     page-break-before: always !important;
-  }
+  } */
 
   .no-break {
     page-break-inside: avoid !important;
@@ -2992,14 +3039,9 @@ html, body {
     padding: 0 !important;
   }
 
-  /* Header styling for print */
+  /* Hide the site header in print so content prints on the first page and does not split into a header-only page */
   header {
-    background: white !important;
-    color: black !important;
-    border-bottom: 2px solid #333 !important;
-    margin-bottom: 20px !important;
-    padding: 15px 20px !important;
-    page-break-after: avoid !important;
+    display: none !important;
   }
 
   .header-container {
@@ -3062,31 +3104,142 @@ html, body {
 
   /* Content area */
   .content {
-    background: white !important;
+    background: transparent !important;
     padding: 20px !important;
     margin: 0 !important;
   }
 
-  /* Logo watermark for document background - Print only */
+  /* Print watermark and clean page chrome */
   body {
-    position: relative;
+    background: transparent !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  body::after {
-    content: '';
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 350px;
-    height: 350px;
-    background-image: url('{{ school_logo }}');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    opacity: 0.08;
-    z-index: -1;
-    pointer-events: none;
+  .print-watermark {
+    display: none;
+  }
+
+  .container,
+  .content,
+  .card,
+  .box,
+  [class*="container"],
+  [class*="wrapper"] {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @media print {
+    .print-watermark {
+      display: block !important;
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 0 !important;
+      opacity: 0.08 !important;
+      pointer-events: none !important;
+      mix-blend-mode: multiply !important;
+    }
+
+    *,
+    *::before,
+    *::after {
+      background: transparent !important;
+      box-shadow: none !important;
+      filter: none !important;
+      text-shadow: none !important;
+      color: black !important;
+      page-break-after: auto !important;
+      page-break-before: auto !important;
+      page-break-inside: auto !important;
+      break-after: auto !important;
+      break-before: auto !important;
+      break-inside: auto !important;
+    }
+
+    body > *:not(.print-watermark) {
+      position: relative !important;
+      z-index: 1 !important;
+    }
+
+    body,
+    .container,
+    .content,
+    .layout,
+    .page-content,
+    .page-wrapper,
+    .container-fluid,
+    .card,
+    .box,
+    [class*="container"],
+    [class*="wrapper"],
+    .report-card,
+    .print-application-container,
+    .print-container,
+    .row,
+    .col,
+    .table-responsive,
+    .card-header,
+    .card-body,
+    .card-footer {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    header,
+    .header,
+    .site-header,
+    .main-header,
+    .navbar,
+    .breadcrumb,
+    .breadcrumb-navigation,
+    .page-loader,
+    .announcement-ticker,
+    .theme-customizer,
+    .toast-container,
+    .overlay,
+    .sidebar,
+    .mobile-bottom-nav,
+    .command-palette,
+    nav,
+    aside,
+    footer,
+    button,
+    [type="button"],
+    [type="submit"],
+    .no-print {
+      display: none !important;
+    }
+
+    .content {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .container {
+      margin: 0 auto !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    html,
+    body {
+      width: auto !important;
+      min-width: auto !important;
+      min-height: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+  }
+
+  .print-watermark img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    filter: brightness(1) !important;
   }
 
   /* Tables styling for print */
@@ -3121,10 +3274,10 @@ html, body {
   }
 
   /* Remove background colors from elements */
-  div, span, p, li {
+  /* div, span, p, li {
     background: transparent !important;
     color: black !important;
-  }
+  } */
 
   /* Card and box styling for print */
   .card,
@@ -3133,13 +3286,13 @@ html, body {
   [class*="wrapper"] {
     border: 1px solid #ccc !important;
     page-break-inside: avoid !important;
-    background: white !important;
+    background: transparent !important;
   }
 
   /* Page breaks */
-  .page-break {
+  /* .page-break {
     page-break-before: always !important;
-  }
+  } */
 
   .no-break {
     page-break-inside: avoid !important;
@@ -3244,6 +3397,10 @@ html, body {
 
   <!-- ✅ TOAST CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
+
+  <div class="print-watermark">
+    <img src="{% if school_logo %}{{ school_logo }}{% else %}{% static 'img/logo.png' %}{% endif %}" alt="" aria-hidden="true">
+  </div>
 
   <!-- ✅ BACK TO TOP BUTTON -->
   <button id="scrollTopBtn" title="Back to top">↑</button>
@@ -3412,7 +3569,6 @@ html, body {
 
 
 
-        </header>
               <div class="overlay" id="overlay"></div>
 
 <!-- ✅ MOBILE BOTTOM NAVIGATION -->
@@ -3888,6 +4044,26 @@ class Toast {
 window.showToast = (title, message, type = 'info', duration = 5000) => {
   return new Toast(title, message, type, duration);
 };
+
+{% if messages %}
+(function() {
+  function displayMessages() {
+    {% for message in messages %}
+      showToast(
+        '{{ message.level_tag|capfirst|escapejs }}',
+        '{{ message|escapejs }}',
+        '{{ message.level_tag|default:"info"|escapejs }}'
+      );
+    {% endfor %}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', displayMessages);
+  } else {
+    displayMessages();
+  }
+})();
+{% endif %}
 
 // Global command palette function
 window.openCommandPalette = () => {

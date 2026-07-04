@@ -7,14 +7,16 @@
     <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 30px; font-size: 28px;">Login</h2>
 
     {% if messages %}
-      {% for message in messages %}
-        <div style="padding: 12px; margin-bottom: 15px; border-radius: 6px; {% if message.level_tag == 'error' %}background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% elif message.level_tag == 'success' %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% else %}background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe;{% endif %}" style="font-weight: 500;">
-          {{ message }}
-        </div>
-      {% endfor %}
+      <div style="margin-bottom: 20px;">
+        {% for message in messages %}
+          <div style="padding: 12px; border-radius: 8px; margin-bottom: 10px; font-weight: 500; {% if message.level_tag == 'error' %}background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% elif message.level_tag == 'success' %}background: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% else %}background: #cfe2ff; color: #084298; border: 1px solid #b6d4fe;{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
     {% endif %}
 
-    <form method="post">
+    <form method="post" id="loginForm">
       {% csrf_token %}
 
       <div style="margin-bottom: 15px;">
@@ -35,6 +37,7 @@
       </button>
     </form>
 
+    <div id="loginErrors" style="display:none; margin-top:20px;"></div>
 
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #ddd;">
 
@@ -59,11 +62,90 @@
   document.addEventListener('DOMContentLoaded', function() {
     var passwordInput = document.getElementById('id_password');
     var toggle = document.getElementById('togglePassword');
+    var loginForm = document.getElementById('loginForm');
+    var loginErrors = document.getElementById('loginErrors');
+
+    function clearErrors() {
+      if (loginErrors) {
+        loginErrors.style.display = 'none';
+        loginErrors.innerHTML = '';
+      }
+    }
+
+    function showError(message) {
+      clearErrors();
+      if (typeof window.showToast === 'function') {
+        window.showToast('Error', message, 'error');
+      }
+      loginErrors.style.display = 'block';
+      loginErrors.innerHTML = '<div style="padding: 12px; border-radius: 8px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 12px;">' + message + '</div>';
+    }
+
     if (passwordInput && toggle) {
       toggle.addEventListener('click', function() {
         var type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
         passwordInput.setAttribute('type', type);
         toggle.textContent = type === 'password' ? 'Show' : 'Hide';
+      });
+    }
+
+    function getCSRFToken() {
+      var input = loginForm.querySelector('input[name="csrfmiddlewaretoken"]');
+      return input ? input.value : null;
+    }
+
+    if (loginForm) {
+      loginForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        clearErrors();
+
+        var url = loginForm.action || window.location.href;
+        var body = new URLSearchParams(new FormData(loginForm)).toString();
+        var csrfToken = getCSRFToken();
+
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            'X-CSRFToken': csrfToken || ''
+          },
+          body: body,
+          credentials: 'same-origin'
+        })
+          .then(function(response) {
+            return response.text().then(function(text) {
+              var json = null;
+              try {
+                json = JSON.parse(text);
+              } catch (e) {
+                console.error('Login JSON parse failed:', e, text);
+              }
+              return {status: response.status, json: json, text: text};
+            });
+          })
+          .then(function(result) {
+            console.log('Login fetch result', result.status, result.text);
+            var response = result.json;
+            if (response && response.success) {
+              window.location.href = response.redirect_url || '/';
+              return;
+            }
+            if (response && response.errors && response.errors.length) {
+              showError(response.errors[0]);
+              return;
+            }
+            if (result.status === 400 || result.status === 422) {
+              showError('Login failed. Please check your username and password.');
+              return;
+            }
+            showError('Login request failed. Please try again.');
+          })
+          .catch(function(error) {
+            console.error('Login AJAX fetch failed:', error);
+            showError('Network error. Please check your connection and try again.');
+          });
       });
     }
   });

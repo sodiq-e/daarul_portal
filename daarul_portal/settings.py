@@ -78,11 +78,19 @@ TEMPLATES = [
     },
 ]
 WSGI_APPLICATION = 'daarul_portal.wsgi.application'
+# DATABASES = {
+#     'default': dj_database_url.parse(
+#        # os.environ.get("DATABASE_URL")
+#        "postgresql://neondb_owner:npg_l8rZEM6wNiho@ep-raspy-shadow-ahxv2ikr.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+#     )
+# }
 DATABASES = {
-    'default': dj_database_url.parse(
-        os.environ.get("DATABASE_URL")
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
 AUTH_PASSWORD_VALIDATORS = []
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Lagos'
@@ -103,26 +111,27 @@ LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = 'login'
 
 import os
-import cloudinary
+#import cloudinary
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+STATIC_URL
 
-cloudinary.config(
-    cloud_name="da7ow7upe",
-    api_key="1834834285833157",
-    api_secret="Y6-oaGrH9i2XV8T-99M3AILoek8",
-    secure=True
-)
+# cloudinary.config(
+#     cloud_name="da7ow7upe",
+#     api_key="1834834285833157",
+#     api_secret="Y6-oaGrH9i2XV8T-99M3AILoek8",
+#     secure=True
+# )
 
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'da7ow7upe',
-    'API_KEY': '183483428583157',
-    'API_SECRET': 'Y6-oaGrH9i2XV8T-99M3AILoek8',
-}
+# CLOUDINARY_STORAGE = {
+#     'CLOUD_NAME': 'da7ow7upe',
+#     'API_KEY': '183483428583157',
+#     'API_SECRET': 'Y6-oaGrH9i2XV8T-99M3AILoek8',
+# }
 
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+#DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # CKEditor Configuration for Exam Papers
 CKEDITOR_CONFIGS = {
     'default': {
@@ -240,13 +249,13 @@ DEFAULT_FROM_EMAIL = 'noreply@daaraulportal.com'
 
 # Security settings for production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
     SECURE_BROWSER_XSS_FILTER = True
-    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 31536000))  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    SECURE_HSTS_SECONDS = 0 #int(os.environ.get('SECURE_HSTS_SECONDS', 31536000))  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
     SECURE_CONTENT_SECURITY_POLICY = {
         "default-src": ("'self'",),
     }

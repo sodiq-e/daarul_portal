@@ -34,6 +34,17 @@
                     </div>
                     
                     <hr>
+
+                    {% if messages %}
+                    <div class="mb-3">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     
                     {% if results %}
                         <form method="POST">
@@ -54,8 +65,12 @@
                                         {% for result in results %}
                                         <tr>
                                             <td>{{ result.class_subject.subject.name }}</td>
-                                            <td><input type="number" class="form-control" value="{{ result.test_score }}" disabled></td>
-                                            <td><input type="number" class="form-control" value="{{ result.exam_score }}" disabled></td>
+                                            <td>
+                                                <input type="number" name="test_{{ result.id }}" class="form-control" value="{{ result.test_score }}" min="0" step="0.5">
+                                            </td>
+                                            <td>
+                                                <input type="number" name="exam_{{ result.id }}" class="form-control" value="{{ result.exam_score }}" min="0" step="0.5">
+                                            </td>
                                             <td>{{ result.total_score }}</td>
                                             <td>{{ result.grade }}</td>
                                         </tr>
