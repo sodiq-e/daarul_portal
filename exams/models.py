@@ -17,6 +17,7 @@ class Term(models.Model):
     academic_year = models.CharField(max_length=20, help_text="e.g., 2023/2024")
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
+    next_term_begins_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
 
     class Meta:

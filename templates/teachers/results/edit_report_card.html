@@ -102,6 +102,30 @@
                                         <strong>Teacher Notes:</strong><br>{{ student_conduct.teacher_notes|linebreaks }}
                                     </div>
                                     {% endif %}
+                                    <hr>
+                                    <h6>Manual Attendance Override (optional)</h6>
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label">Attendance %</label>
+                                            <input type="number" step="0.01" min="0" max="100" name="manual_attendance_percentage_{{ student.id }}" class="form-control" value="{{ student_conduct.manual_attendance_percentage }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Sessions Attended</label>
+                                            <input type="number" min="0" name="manual_attendance_sessions_attended_{{ student.id }}" class="form-control" value="{{ student_conduct.manual_attendance_sessions_attended }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Total Sessions</label>
+                                            <input type="number" min="0" name="manual_attendance_total_sessions_{{ student.id }}" class="form-control" value="{{ student_conduct.manual_attendance_total_sessions }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Days Marked</label>
+                                            <input type="number" min="0" name="manual_attendance_days_marked_{{ student.id }}" class="form-control" value="{{ student_conduct.manual_attendance_days_marked }}">
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <label class="form-label">Override Note</label>
+                                        <textarea name="manual_attendance_note_{{ student.id }}" class="form-control" rows="2">{{ student_conduct.manual_attendance_note }}</textarea>
+                                    </div>
                                 </div>
                             </div>
                             {% else %}

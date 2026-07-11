@@ -129,11 +129,18 @@
                 <p style="margin: 3px 0;"><strong>Student Name:</strong> {{ student.full_name|upper }}</p>
                 <p style="margin: 3px 0;"><strong>Admission No:</strong> {{ student.admission_no }}</p>
                 <p style="margin: 3px 0;"><strong>Gender:</strong> {{ student.get_gender_display }}</p>
+                <p style="margin: 3px 0; margin-top:6px;"><strong>School Begins:</strong> {% if term.start_date %}{{ term.start_date|date:"j M Y" }}{% else %}N/A{% endif %}</p>
             </div>
+
             <div>
                 <p style="margin: 3px 0;"><strong>Class:</strong> {{ student.student_class }}</p>
                 <p style="margin: 3px 0;"><strong>Term:</strong> {{ term.name }}</p>
                 <p style="margin: 3px 0;"><strong>Session:</strong> {% now 'Y' %}</p>
+                <p style="margin: 3px 0; margin-top:6px;"><strong>School Ends:</strong> {% if term.end_date %}{{ term.end_date|date:"j M Y" }}{% else %}N/A{% endif %}</p>
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+                <p style="margin: 3px 0;"><strong>Next Term Begins:</strong> {% if term.next_term_begins_date %}{{ term.next_term_begins_date|date:"j M Y" }}{% else %}N/A{% endif %}</p>
             </div>
         </div>
 
@@ -141,6 +148,13 @@
 
         <!-- Academic Performance -->
         <h3 style="font-size: 13px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;">📚 ACADEMIC PERFORMANCE</h3>
+        <!-- Result Template Summary -->
+        {% if result_template %}
+        <div style="border: 1px solid #eee; padding: 8px; margin-bottom: 12px; font-size: 11px; background: #fafafa;">
+            <strong>Result Template:</strong> {{ result_template.name }} — Test Max: {{ result_template.test_max_score }}, Exam Max: {{ result_template.exam_max_score }}. 
+            {% if result_template.show_percentage %}Shows % {% endif %}{% if result_template.show_grade_points %}| Shows Grade Points {% endif %}{% if result_template.show_remarks %}| Shows Remarks{% endif %}
+        </div>
+        {% endif %}
         
         {% if results %}
             <div style="overflow-x: auto; margin-bottom: 15px;">
@@ -222,7 +236,7 @@
             </div>
         {% endif %}
 
-        {% if attendance_records %}
+        {% if has_attendance %}
         <div style="border: 1px solid #ddd; padding: 12px; background: #ffffff; margin-bottom: 15px; border-radius: 4px;">
             <h3 style="font-size: 12px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">📊 Term Attendance Summary</h3>
             <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; font-size: 11px;">
@@ -240,7 +254,7 @@
                 </div>
                 <div style="border: 1px solid #ddd; padding: 10px; text-align: center;">
                     <p style="margin: 0; color: #666;">Attendance %</p>
-                    <p style="margin: 6px 0 0; font-weight: bold; color: #2c3e50;">{% if attendance_percentage %}{{ attendance_percentage }}%{% else %}N/A{% endif %}</p>
+                    <p style="margin: 6px 0 0; font-weight: bold; color: #2c3e50;">{% if attendance_percentage_str %}{{ attendance_percentage_str }}%{% else %}N/A{% endif %}</p>
                 </div>
             </div>
         </div>

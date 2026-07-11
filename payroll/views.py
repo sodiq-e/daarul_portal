@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from .models import SchoolExpense, SchoolFee, StudentInvoice, StudentPayment, Staff, Payslip, SalaryComponent, PayrollDashboard
+from exams.models import Term
+from students.models import Student
 from .forms import SchoolExpenseForm, SchoolFeeForm, StudentInvoiceForm, StudentPaymentForm
 
 
@@ -160,6 +162,29 @@ class StudentInvoiceListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def test_func(self):
         return staff_can_manage(self.request.user)
 
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('student', 'fee', 'term')
+        academic_session = self.request.GET.get('academic_session')
+        term_id = self.request.GET.get('term')
+        student_id = self.request.GET.get('student')
+
+        if academic_session:
+            qs = qs.filter(academic_session=academic_session)
+
+        if term_id:
+            try:
+                qs = qs.filter(term__id=int(term_id))
+            except ValueError:
+                pass
+
+        if student_id:
+            try:
+                qs = qs.filter(student__id=int(student_id))
+            except ValueError:
+                pass
+
+        return qs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         invoices = self.get_queryset()
@@ -167,7 +192,106 @@ class StudentInvoiceListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context['total_paid'] = sum(inv.total_paid for inv in invoices)
         context['total_balance'] = sum(inv.balance for inv in invoices)
         context['owing_count'] = sum(1 for inv in invoices if inv.is_owing)
+        context['academic_sessions'] = StudentInvoice.objects.order_by('academic_session').values_list('academic_session', flat=True).distinct()
+        context['terms'] = Term.objects.order_by('academic_year', 'name').all()
+        context['students'] = Student.objects.order_by('surname', 'other_names').all()
+        context['selected_academic_session'] = self.request.GET.get('academic_session', '')
+        context['selected_term'] = self.request.GET.get('term', '')
+        context['selected_student'] = self.request.GET.get('student', '')
         return context
+
+
+@login_required
+def print_invoices(request):
+    """Print invoices filtered by students, academic session, and/or term.
+
+    GET parameters:
+    - students: comma-separated student IDs (optional)
+    - academic_session: string (optional)
+    - term: term id (optional)
+    - all: if present and true, ignore student selection and print all
+    """
+    if not staff_can_manage(request.user):
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        messages.error(request, 'You do not have permission to print invoices.')
+        return redirect('invoice_list')
+
+    qs = StudentInvoice.objects.select_related('student', 'term').all()
+
+    students_param = request.GET.get('students')
+    academic_session = request.GET.get('academic_session')
+    term_param = request.GET.get('term')
+    all_flag = request.GET.get('all')
+
+    if students_param and not all_flag:
+        try:
+            ids = [int(x) for x in students_param.split(',') if x.strip()]
+            qs = qs.filter(student__id__in=ids)
+        except ValueError:
+            pass
+
+    if academic_session:
+        qs = qs.filter(academic_session=academic_session)
+
+    if term_param:
+        try:
+            term_id = int(term_param)
+            qs = qs.filter(term__id=term_id)
+        except ValueError:
+            pass
+
+    # Group invoices by student for printing
+    invoices_by_student = {}
+    for inv in qs.order_by('student__surname', 'issued_date'):
+        invoices_by_student.setdefault(inv.student, []).append(inv)
+
+    from django.shortcuts import render
+    return render(request, 'payroll/print_invoices.html', {'invoices_by_student': invoices_by_student})
+
+
+@login_required
+def print_receipts(request):
+    """Print student receipts filtered by students, academic session, and/or term.
+
+    GET parameters same as print_invoices but operates on StudentPayment.
+    """
+    if not staff_can_manage(request.user):
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        messages.error(request, 'You do not have permission to print receipts.')
+        return redirect('payment_list')
+
+    qs = StudentPayment.objects.select_related('student', 'invoice').all()
+
+    students_param = request.GET.get('students')
+    academic_session = request.GET.get('academic_session')
+    term_param = request.GET.get('term')
+    all_flag = request.GET.get('all')
+
+    if students_param and not all_flag:
+        try:
+            ids = [int(x) for x in students_param.split(',') if x.strip()]
+            qs = qs.filter(student__id__in=ids)
+        except ValueError:
+            pass
+
+    if academic_session:
+        qs = qs.filter(invoice__academic_session=academic_session)
+
+    if term_param:
+        try:
+            term_id = int(term_param)
+            qs = qs.filter(invoice__term__id=term_id)
+        except ValueError:
+            pass
+
+    receipts_by_student = {}
+    for r in qs.order_by('student__surname', 'payment_date'):
+        receipts_by_student.setdefault(r.student, []).append(r)
+
+    from django.shortcuts import render
+    return render(request, 'payroll/print_receipts.html', {'receipts_by_student': receipts_by_student})
 
 
 class StudentInvoiceDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
@@ -228,10 +352,39 @@ class StudentPaymentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def test_func(self):
         return staff_can_manage(self.request.user)
 
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('student', 'invoice', 'invoice__term')
+        academic_session = self.request.GET.get('academic_session')
+        term_id = self.request.GET.get('term')
+        student_id = self.request.GET.get('student')
+
+        if academic_session:
+            qs = qs.filter(invoice__academic_session=academic_session)
+
+        if term_id:
+            try:
+                qs = qs.filter(invoice__term__id=int(term_id))
+            except ValueError:
+                pass
+
+        if student_id:
+            try:
+                qs = qs.filter(student__id=int(student_id))
+            except ValueError:
+                pass
+
+        return qs
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         payments = self.get_queryset()
         context['total_payments'] = payments.aggregate(total=Sum('amount'))['total'] or 0
+        context['academic_sessions'] = StudentInvoice.objects.order_by('academic_session').values_list('academic_session', flat=True).distinct()
+        context['terms'] = Term.objects.order_by('academic_year', 'name').all()
+        context['students'] = Student.objects.order_by('surname', 'other_names').all()
+        context['selected_academic_session'] = self.request.GET.get('academic_session', '')
+        context['selected_term'] = self.request.GET.get('term', '')
+        context['selected_student'] = self.request.GET.get('student', '')
         return context
 
 

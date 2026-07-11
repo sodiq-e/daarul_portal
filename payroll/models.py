@@ -181,6 +181,9 @@ class StudentInvoice(models.Model):
     issued_date = models.DateField()
     due_date = models.DateField()
     amount_due = models.DecimalField(max_digits=12, decimal_places=2)
+    # Optional academic session and term for filtering and reporting
+    academic_session = models.CharField(max_length=20, blank=True, help_text='e.g., 2023/2024')
+    term = models.ForeignKey('exams.Term', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(

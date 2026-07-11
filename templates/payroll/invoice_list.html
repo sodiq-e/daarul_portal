@@ -11,9 +11,44 @@
         </div>
         <div>
             <a href="{% url 'invoice_add' %}" class="btn btn-primary no-print">Create Invoice</a>
-            <button onclick="window.print()" class="btn btn-secondary no-print">Print Invoice List</button>
+            <a href="{% url 'print_invoices' %}" class="btn btn-secondary no-print">Print Invoices</a>
+            <button onclick="window.print()" class="btn btn-outline-secondary no-print">Print Invoice List</button>
         </div>
     </div>
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Student</label>
+            <select name="student" class="form-select">
+                <option value="">All Students</option>
+                {% for student in students %}
+                <option value="{{ student.id }}" {% if student.id|stringformat:'s' == selected_student %}selected{% endif %}>{{ student }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Academic Session</label>
+            <select name="academic_session" class="form-select">
+                <option value="">All Sessions</option>
+                {% for session in academic_sessions %}
+                <option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Term</label>
+            <select name="term" class="form-select">
+                <option value="">All Terms</option>
+                {% for term in terms %}
+                <option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'invoice_list' %}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </form>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">

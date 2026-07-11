@@ -9,7 +9,7 @@ from ckeditor.widgets import CKEditorWidget
 class TermForm(forms.ModelForm):
     class Meta:
         model = Term
-        fields = ['name', 'display_name', 'academic_year', 'is_active']
+        fields = ['name', 'display_name', 'academic_year', 'start_date', 'end_date', 'next_term_begins_date', 'is_active']
 
 
 class SubjectForm(forms.ModelForm):

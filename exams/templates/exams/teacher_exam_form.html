@@ -591,6 +591,10 @@ function uploadDataURL(dataURL){
 }
 
 function attachDiagramAndChartHandlers(questionCard){
+  // Prevent double-attaching handlers when this is called multiple times
+  if (!questionCard || questionCard.dataset.diagramHandlersAttached) return;
+  questionCard.dataset.diagramHandlersAttached = '1';
+
   const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
   const addChartBtn = questionCard.querySelector('.add-chart-btn');
   const ta = questionCard.querySelector('.resource-notes');
@@ -598,12 +602,8 @@ function attachDiagramAndChartHandlers(questionCard){
   function insertHtml(editor, html) {
     try {
       if (!editor) throw new Error('Editor not ready');
-      if (typeof editor.execute === 'function') {
-        editor.execute('insertHtml', html);
-        editor.editing.view.focus();
-        return;
-      }
-      if (editor.model && typeof editor.model.change === 'function') {
+      if (editor.model && typeof editor.model.change === 'function' && editor.data && editor.data.processor) {
+        // Convert HTML to view, then to model and insert at selection
         editor.model.change(writer => {
           const viewFragment = editor.data.processor.toView(html);
           const modelFragment = editor.data.toModel(viewFragment);
@@ -613,14 +613,9 @@ function attachDiagramAndChartHandlers(questionCard){
         return;
       }
       if (typeof editor.setData === 'function') {
-        const current = editor.getData() || '';
+        const current = editor.getData ? (editor.getData() || '') : '';
         editor.setData(current + html);
-        editor.editing.view.focus();
-        return;
-      }
-      if (editor.data && typeof editor.data.set === 'function') {
-        const current = editor.data.get() || '';
-        editor.data.set(current + html);
+        editor.editing && editor.editing.view && editor.editing.view.focus();
         return;
       }
       throw new Error('Editor API not available');
@@ -634,20 +629,38 @@ function attachDiagramAndChartHandlers(questionCard){
 
  function insertImageUrl(editor, url) {
     if (!editor) {
-        if (ta) ta.value += `\n${url}`;
+        if (ta) ta.value += `\n<img src="${url}" />`;
         return;
     }
 
-    editor.execute('insertImage', {
-        source: {
-            src: url
-        }
-    });
+    try {
+      // Prefer model insertion (works reliably across CKEditor builds)
+      if (editor.model && typeof editor.model.change === 'function') {
+        editor.model.change(writer => {
+          // Use imageBlock for block images; fallback to image
+          const imageElement = writer.createElement('imageBlock', { src: url });
+          editor.model.insertContent(imageElement, editor.model.document.selection);
+        });
+        editor.editing.view.focus();
+        return;
+      }
 
-    editor.editing.view.focus();
+      // As a fallback, try the registered command
+      if (typeof editor.execute === 'function') {
+        try { editor.execute('imageInsert', { source: url }); editor.editing.view.focus(); return; } catch(e) {}
+        try { editor.execute('insertImage', { source: { src: url } }); editor.editing.view.focus(); return; } catch(e) {}
+      }
+
+      // Last resort: append raw img HTML to the textarea
+      if (ta) ta.value += `\n<img src="${url}" />`;
+    } catch (e) {
+      console.warn('Failed to insert image into editor, falling back to textarea:', e);
+      if (ta) ta.value += `\n<img src="${url}" />`;
+    }
 }
 
-  const targetEditor = () => activeEditor || (ta && ta._editor) || null;
+  // Prefer the specific textarea's editor instance, then the globally active editor
+  const targetEditor = () => (ta && ta._editor) || activeEditor || null;
 
   if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => {
     if (!dataURL) return;
@@ -752,6 +765,7 @@ class DiagramBuilder {
     this.gridSize = 20;
     this.snapToGrid = true;
     this.strokeColor = '#000000';
+    this.previewShape = null;
     this.fillColor = '#ffffff';
     this.lineThickness = 2;
 
@@ -776,11 +790,16 @@ class DiagramBuilder {
   }
 
   drawGrid() {
-    const gridLayer = new Konva.Layer();
-    this.stage.add(gridLayer);
+    // Prevent adding multiple grid layers
+    if (this.gridLayer) {
+      console.log('DiagramBuilder.drawGrid: gridLayer already exists, skipping');
+      return;
+    }
+    this.gridLayer = new Konva.Layer();
+    this.stage.add(this.gridLayer);
 
     for (let i = 0; i < this.width; i += this.gridSize) {
-      gridLayer.add(new Konva.Line({
+      this.gridLayer.add(new Konva.Line({
         points: [i, 0, i, this.height],
         stroke: '#e0e0e0',
         strokeWidth: 0.5
@@ -788,14 +807,14 @@ class DiagramBuilder {
     }
 
     for (let i = 0; i < this.height; i += this.gridSize) {
-      gridLayer.add(new Konva.Line({
+      this.gridLayer.add(new Konva.Line({
         points: [0, i, this.width, i],
         stroke: '#e0e0e0',
         strokeWidth: 0.5
       }));
     }
 
-    gridLayer.draw();
+    this.gridLayer.draw();
   }
 
   setupToolbar() {
@@ -977,6 +996,14 @@ class DiagramBuilder {
   }
 
   setupEventHandlers() {
+    // Remove any previously attached handlers to avoid duplicate firing
+    try {
+      this.stage && this.stage.off && this.stage.off();
+      console.log('DiagramBuilder.setupEventHandlers: removed existing stage handlers');
+    } catch (e) {
+      console.warn('DiagramBuilder.setupEventHandlers: error removing handlers', e);
+    }
+
     this.stage.on('mousedown', (e) => this.handleMouseDown(e));
     this.stage.on('mousemove', (e) => this.handleMouseMove(e));
     this.stage.on('mouseup', (e) => this.handleMouseUp(e));
@@ -990,6 +1017,82 @@ class DiagramBuilder {
   snapCoord(coord) {
     if (!this.snapToGrid) return coord;
     return Math.round(coord / this.gridSize) * this.gridSize;
+  }
+
+  clearPreviewShapes() {
+    if (!this.layer) return;
+    if (this.previewShape && this.previewShape.getParent()) {
+      console.log('DiagramBuilder.clearPreviewShapes: destroying previewShape');
+      this.previewShape.destroy();
+    }
+    this.previewShape = null;
+  }
+
+  createPreviewShape(tool, startX, startY, currentX, currentY) {
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+    const x = Math.min(startX, currentX);
+    const y = Math.min(startY, currentY);
+
+    if (tool === 'rect') {
+      return new Konva.Rect({
+        x, y, width, height,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'circle') {
+      return new Konva.Circle({
+        x: startX,
+        y: startY,
+        radius: Math.sqrt(width * width + height * height) / 2,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'triangle') {
+      return new Konva.RegularPolygon({
+        x: startX,
+        y: startY,
+        sides: 3,
+        radius: Math.sqrt(width * width + height * height) / 2,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'line') {
+      return new Konva.Line({
+        points: [startX, startY, currentX, currentY],
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'arrow') {
+      return new Konva.Arrow({
+        points: [startX, startY, currentX, currentY],
+        pointerLength: 15,
+        pointerWidth: 15,
+        fill: this.strokeColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    return null;
   }
 
   handleMouseDown(e) {
@@ -1006,6 +1109,7 @@ class DiagramBuilder {
       return;
     }
 
+    this.clearPreviewShapes();
     this.isDrawing = true;
     const pos = this.stage.getPointerPosition();
     this.startX = this.snapCoord(pos.x);
@@ -1014,6 +1118,17 @@ class DiagramBuilder {
     // For pen tool, start freehand drawing
     if (this.currentTool === 'pen') {
       this.drawingPoints = [this.startX, this.startY];
+      this.previewShape = new Konva.Line({
+        points: this.drawingPoints,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
+        _isPreview: true,
+        isShape: true
+      });
+      this.layer.add(this.previewShape);
+      this.layer.draw();
     }
 
     if (this.currentTool === 'text') {
@@ -1052,94 +1167,51 @@ class DiagramBuilder {
     const currentX = this.snapCoord(pos.x);
     const currentY = this.snapCoord(pos.y);
 
-    // Handle pen/freehand drawing
     if (this.currentTool === 'pen') {
       this.drawingPoints.push(currentX, currentY);
-
-      // Remove old preview
-      const children = this.layer.children.filter(c => c._isPreview);
-      children.forEach(c => c.destroy());
-
-      // Draw freehand line
-      const shape = new Konva.Line({
-        points: this.drawingPoints,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        lineCap: 'round',
-        lineJoin: 'round',
-        _isPreview: true,
-        isShape: true
-      });
-
-      this.layer.add(shape);
+      if (this.previewShape) {
+        this.previewShape.points(this.drawingPoints);
+      } else {
+        this.previewShape = new Konva.Line({
+          points: this.drawingPoints,
+          stroke: this.strokeColor,
+          strokeWidth: this.lineThickness,
+          lineCap: 'round',
+          lineJoin: 'round',
+          _isPreview: true,
+          isShape: true
+        });
+        this.layer.add(this.previewShape);
+      }
       this.layer.draw();
       return;
     }
 
-    const width = Math.abs(currentX - this.startX);
-    const height = Math.abs(currentY - this.startY);
-    const x = Math.min(this.startX, currentX);
-    const y = Math.min(this.startY, currentY);
+    if (!this.previewShape) {
+      this.previewShape = this.createPreviewShape(this.currentTool, this.startX, this.startY, currentX, currentY);
+      if (this.previewShape) {
+        this.layer.add(this.previewShape);
+      }
+    } else {
+      const width = Math.abs(currentX - this.startX);
+      const height = Math.abs(currentY - this.startY);
+      const x = Math.min(this.startX, currentX);
+      const y = Math.min(this.startY, currentY);
 
-    // Remove preview object
-    const children = this.layer.children.filter(c => c._isPreview);
-    children.forEach(c => c.destroy());
-
-    let shape = null;
-
-    if (this.currentTool === 'rect') {
-      shape = new Konva.Rect({
-        x, y, width, height,
-        fill: this.fillColor,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        _isPreview: true
-      });
-    } else if (this.currentTool === 'circle') {
-      shape = new Konva.Circle({
-        x: this.startX,
-        y: this.startY,
-        radius: Math.sqrt(width * width + height * height) / 2,
-        fill: this.fillColor,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        _isPreview: true
-      });
-    } else if (this.currentTool === 'triangle') {
-      shape = new Konva.RegularPolygon({
-        x: this.startX,
-        y: this.startY,
-        sides: 3,
-        radius: Math.sqrt(width * width + height * height) / 2,
-        fill: this.fillColor,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        _isPreview: true
-      });
-    } else if (this.currentTool === 'line') {
-      shape = new Konva.Line({
-        points: [this.startX, this.startY, currentX, currentY],
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        lineCap: 'round',
-        lineJoin: 'round',
-        _isPreview: true
-      });
-    } else if (this.currentTool === 'arrow') {
-      shape = new Konva.Arrow({
-        points: [this.startX, this.startY, currentX, currentY],
-        pointerLength: 15,
-        pointerWidth: 15,
-        fill: this.strokeColor,
-        stroke: this.strokeColor,
-        strokeWidth: this.lineThickness,
-        _isPreview: true
-      });
+      if (this.currentTool === 'rect') {
+        this.previewShape.width(width);
+        this.previewShape.height(height);
+        this.previewShape.x(x);
+        this.previewShape.y(y);
+      } else if (this.currentTool === 'circle' || this.currentTool === 'triangle') {
+        const radius = Math.sqrt(width * width + height * height) / 2;
+        this.previewShape.radius(radius);
+      } else if (this.currentTool === 'line' || this.currentTool === 'arrow') {
+        this.previewShape.points([this.startX, this.startY, currentX, currentY]);
+      }
     }
 
-    if (shape) {
-      shape.isShape = true;
-      this.layer.add(shape);
+    if (this.previewShape) {
       this.layer.draw();
     }
   }
@@ -1157,10 +1229,16 @@ class DiagramBuilder {
 
     // Handle pen drawing - finalize the freehand line
     if (this.currentTool === 'pen') {
-      const previewShapes = this.layer.children.filter(c => c._isPreview);
+      const previewShapes = this.layer.getChildren().toArray().filter(c => c._isPreview);
       previewShapes.forEach(shape => {
         shape._isPreview = false;
+        shape.isShape = true;
       });
+      if (this.previewShape && this.previewShape._isPreview) {
+        this.previewShape._isPreview = false;
+        this.previewShape.isShape = true;
+        this.previewShape = null;
+      }
       if (previewShapes.length > 0) {
         this.layer.draw();
         this.saveHistory();
@@ -1169,11 +1247,16 @@ class DiagramBuilder {
       return;
     }
 
-    const previewShapes = this.layer.children.filter(c => c._isPreview);
+    const previewShapes = this.layer.getChildren().toArray().filter(c => c._isPreview);
     previewShapes.forEach(shape => {
       shape._isPreview = false;
       shape.isShape = true;
     });
+    if (this.previewShape && this.previewShape._isPreview) {
+      this.previewShape._isPreview = false;
+      this.previewShape.isShape = true;
+      this.previewShape = null;
+    }
 
     if (previewShapes.length > 0) {
       this.layer.draw();
@@ -1182,6 +1265,7 @@ class DiagramBuilder {
   }
 
   selectObject(obj) {
+    console.log('DiagramBuilder.selectObject: selecting object', obj);
     this.deselectAll();
     this.selectedObject = obj;
     obj.stroke = '#0d6efd';
@@ -1192,6 +1276,7 @@ class DiagramBuilder {
 
   deselectAll() {
     if (this.selectedObject) {
+      console.log('DiagramBuilder.deselectAll: deselecting object', this.selectedObject);
       this.selectedObject.stroke = this.strokeColor;
       this.selectedObject.strokeWidth = this.lineThickness || 1;
       this.selectedObject = null;
@@ -1201,9 +1286,20 @@ class DiagramBuilder {
   }
 
   saveHistory() {
-    this.historyStep++;
-    this.history = this.history.slice(0, this.historyStep);
-    this.history.push(this.layer.toJSON());
+    try {
+      const json = this.layer.toJSON();
+      // Avoid pushing duplicate consecutive states
+      if (this.history.length > 0 && this.history[this.history.length - 1] === json) {
+        console.log('DiagramBuilder.saveHistory: state unchanged, skipping push');
+        return;
+      }
+      this.historyStep++;
+      this.history = this.history.slice(0, this.historyStep);
+      this.history.push(json);
+      console.log('DiagramBuilder.saveHistory: saved history step', this.historyStep, 'history length', this.history.length);
+    } catch (e) {
+      console.warn('DiagramBuilder.saveHistory: failed to serialize layer', e);
+    }
   }
 
   undo() {
@@ -1221,12 +1317,20 @@ class DiagramBuilder {
   }
 
   restoreHistory() {
+    console.log('DiagramBuilder.restoreHistory: restoring step', this.historyStep);
     const json = this.history[this.historyStep];
-    this.layer.destroy();
-    this.layer = Konva.Node.create(json);
-    this.stage.add(this.layer);
-    this.layer.draw();
-    this.deselectAll();
+    try {
+      if (this.layer) {
+        this.layer.destroy();
+      }
+      this.layer = Konva.Node.create(json);
+      this.stage.add(this.layer);
+      this.layer.draw();
+      console.log('DiagramBuilder.restoreHistory: restored, layer children count', this.layer.getChildren().length);
+      this.deselectAll();
+    } catch (e) {
+      console.error('DiagramBuilder.restoreHistory: failed to restore history', e);
+    }
   }
 
   export() {

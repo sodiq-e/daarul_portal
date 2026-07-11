@@ -19,6 +19,55 @@ class AttendanceSettingsQuerySet(models.QuerySet):
         return self.order_by('-updated_at').first()
 
 
+class StudentAttendanceSettings(models.Model):
+    """Settings specific to student attendance (separate from staff settings)."""
+    enable_student_attendance = models.BooleanField(
+        default=True,
+        help_text='Enable student attendance features in the portal.'
+    )
+    require_daily_checkin = models.BooleanField(
+        default=False,
+        help_text='Require students to check in daily via the portal/mobile app.'
+    )
+    allow_parent_reason_submission = models.BooleanField(
+        default=True,
+        help_text='Allow parents/guardians to submit reasons for absence.'
+    )
+    absence_threshold_warning = models.PositiveIntegerField(
+        default=5,
+        help_text='Number of absent days in a term before warning is triggered.'
+    )
+    active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Student Attendance Setting'
+        verbose_name_plural = 'Student Attendance Settings'
+        ordering = ['-updated_at']
+
+    def save(self, *args, **kwargs):
+        if self.active:
+            StudentAttendanceSettings.objects.exclude(pk=self.pk).update(active=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_current(cls):
+        current = cls.objects.filter(active=True).first()
+        if current:
+            return current
+        # return a fallback defaults object (not saved)
+        return cls(
+            enable_student_attendance=True,
+            require_daily_checkin=False,
+            allow_parent_reason_submission=True,
+            absence_threshold_warning=5,
+            active=True,
+        )
+
+    def __str__(self):
+        return f"Student Attendance Settings (active={self.active})"
+
+
 class AttendanceSettings(models.Model):
     school_latitude = models.DecimalField(
         max_digits=9,

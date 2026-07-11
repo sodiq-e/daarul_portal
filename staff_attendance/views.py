@@ -15,8 +15,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .forms import AttendanceSettingsForm
-from .models import AttendanceSettings, StaffAttendance, calculate_distance_meters
+from .forms import AttendanceSettingsForm, StudentAttendanceSettingsForm
+from .models import AttendanceSettings, StudentAttendanceSettings, StaffAttendance, calculate_distance_meters
 
 
 class StaffAttendanceDashboardView(LoginRequiredMixin, TemplateView):
@@ -130,6 +130,32 @@ class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     def form_valid(self, form):
         form.save()
         messages.success(self.request, 'Staff attendance settings have been saved.')
+        return super().form_valid(form)
+
+
+class StudentAttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, FormView):
+    template_name = 'staff_attendance/student_settings_form.html'
+    form_class = StudentAttendanceSettingsForm
+    success_url = reverse_lazy('staff_attendance:student_settings')
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get_initial(self):
+        active = StudentAttendanceSettings.get_current()
+        if getattr(active, 'pk', None):
+            return {
+                'enable_student_attendance': active.enable_student_attendance,
+                'require_daily_checkin': active.require_daily_checkin,
+                'allow_parent_reason_submission': active.allow_parent_reason_submission,
+                'absence_threshold_warning': active.absence_threshold_warning,
+                'active': active.active,
+            }
+        return super().get_initial()
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, 'Student attendance settings have been saved.')
         return super().form_valid(form)
 
 

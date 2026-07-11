@@ -695,3 +695,62 @@ class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         ).order_by('start_date')
         
         return context
+
+
+@method_decorator(login_required, name='dispatch')
+class AdminStudentAttendanceView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Admin page to manage student attendance settings and populate class stats"""
+    template_name = 'attendance/admin_student_settings.html'
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from school_classes.models import SchoolClasses
+        from django.utils import timezone
+        classes = SchoolClasses.objects.all().order_by('class_name')
+        context['classes'] = classes
+
+        class_id = self.request.GET.get('class_id')
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+        populate = self.request.GET.get('populate')
+
+        context['selected_class_id'] = class_id
+        context['start_date'] = start_date
+        context['end_date'] = end_date
+
+        # If populate requested, compute stats for selected class or all classes
+        if populate:
+            from students.models import Student
+            from .models import AttendanceRecord
+
+            target_classes = classes if not class_id or class_id == 'all' else classes.filter(pk=class_id)
+            stats = []
+            for school_class in target_classes:
+                students = Student.objects.filter(student_class=school_class, status='active')
+                class_records = AttendanceRecord.objects.filter(school_class=school_class)
+                if start_date:
+                    class_records = class_records.filter(date__gte=start_date)
+                if end_date:
+                    class_records = class_records.filter(date__lte=end_date)
+
+                total_days = class_records.values('date').distinct().count()
+                total_students = students.count()
+                total_half_sessions = total_days * total_students * 2 if total_days and total_students else 0
+                present_sessions = sum(r.present_sessions for r in class_records) if class_records.exists() else 0
+
+                percentage = round((present_sessions / total_half_sessions * 100), 2) if total_half_sessions else 0
+
+                stats.append({
+                    'class': school_class,
+                    'total_days': total_days,
+                    'total_students': total_students,
+                    'present_sessions': present_sessions,
+                    'attendance_percentage': percentage,
+                })
+
+            context['stats'] = stats
+
+        return context

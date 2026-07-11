@@ -12,9 +12,11 @@ urlpatterns = [
     path('invoices/', views.StudentInvoiceListView.as_view(), name='invoice_list'),
     path('invoices/add/', views.StudentInvoiceCreateView.as_view(), name='invoice_add'),
     path('invoices/<int:pk>/', views.StudentInvoiceDetailView.as_view(), name='invoice_detail'),
+    path('invoices/print/', views.print_invoices, name='print_invoices'),
     path('payments/add/', views.StudentPaymentCreateView.as_view(), name='payment_add'),
     path('payments/<int:pk>/', views.StudentPaymentDetailView.as_view(), name='payment_detail'),
     path('payments/', views.StudentPaymentListView.as_view(), name='payment_list'),
+    path('payments/print/', views.print_receipts, name='print_receipts'),
     
     # Teacher Payroll Views
     path('teacher/payroll/', views.TeacherPayrollView.as_view(), name='teacher_payroll'),

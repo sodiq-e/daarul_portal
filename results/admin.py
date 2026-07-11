@@ -76,6 +76,16 @@ class StudentConductAdmin(admin.ModelAdmin):
         ('Notes', {
             'fields': ('teacher_notes',)
         }),
+        ('Manual Attendance Override', {
+            'fields': (
+                'manual_attendance_days_marked',
+                'manual_attendance_sessions_attended',
+                'manual_attendance_total_sessions',
+                'manual_attendance_percentage',
+                'manual_attendance_note',
+            ),
+            'classes': ('collapse',)
+        }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)

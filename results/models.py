@@ -371,6 +371,32 @@ class StudentConduct(models.Model):
         blank=True,
         help_text='General teacher comments about student progress'
     )
+    manual_attendance_days_marked = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Manual fallback for the number of days attendance was marked'
+    )
+    manual_attendance_sessions_attended = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Manual fallback for the number of sessions attended'
+    )
+    manual_attendance_total_sessions = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Manual fallback for the total number of sessions in the term'
+    )
+    manual_attendance_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Manual fallback attendance percentage'
+    )
+    manual_attendance_note = models.TextField(
+        blank=True,
+        help_text='Optional note explaining manual attendance override'
+    )
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

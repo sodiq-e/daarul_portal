@@ -317,10 +317,24 @@ def student_report_card(request, student_id, term_id):
         date__lte=term.end_date
     ) if term.start_date and term.end_date else AttendanceRecord.objects.none()
 
+    # Calculate automatic attendance if records exist
     attendance_sessions = attendance_records.count()
     attended_sessions = sum(record.present_sessions for record in attendance_records)
     total_sessions = attendance_sessions * 2
     attendance_percentage = round((attended_sessions / total_sessions) * 100, 2) if total_sessions > 0 else None
+
+    # Fallback to manual override stored on StudentConduct when automatic data missing
+    if (attendance_percentage is None or attendance_sessions == 0) and student_conduct:
+        if student_conduct.manual_attendance_percentage is not None:
+            attendance_percentage = float(student_conduct.manual_attendance_percentage)
+            attended_sessions = student_conduct.manual_attendance_sessions_attended or attended_sessions
+            total_sessions = student_conduct.manual_attendance_total_sessions or total_sessions
+            attendance_sessions = student_conduct.manual_attendance_days_marked or attendance_sessions
+
+    # Determine whether we have attendance data to show (automatic or manual)
+    has_attendance = (attendance_sessions > 0) or (
+        student_conduct is not None and getattr(student_conduct, 'manual_attendance_percentage', None) is not None
+    ) or (attendance_percentage is not None)
 
     context = {
         'student': student,
@@ -334,7 +348,10 @@ def student_report_card(request, student_id, term_id):
         'attendance_total_sessions': total_sessions,
         'attended_sessions': attended_sessions,
         'attendance_percentage': attendance_percentage,
+        'has_attendance': has_attendance,
     }
+    # Prepare a string for display that preserves 0 as valid value
+    context['attendance_percentage_str'] = None if attendance_percentage is None else str(attendance_percentage)
 
     return render(request, 'results/student_report_card.html', context)
 
@@ -896,6 +913,36 @@ def bulk_result_entry(request, class_id, term_id):
                     student_conduct.participation = participation
                 if teacher_notes:
                     student_conduct.teacher_notes = teacher_notes
+
+                # Manual attendance override fields
+                manual_att_pct = request.POST.get(f'manual_attendance_percentage_{student.id}', '').strip()
+                manual_sessions_attended = request.POST.get(f'manual_attendance_sessions_attended_{student.id}', '').strip()
+                manual_total_sessions = request.POST.get(f'manual_attendance_total_sessions_{student.id}', '').strip()
+                manual_days_marked = request.POST.get(f'manual_attendance_days_marked_{student.id}', '').strip()
+                manual_note = request.POST.get(f'manual_attendance_note_{student.id}', '').strip()
+
+                if manual_att_pct != '':
+                    try:
+                        student_conduct.manual_attendance_percentage = float(manual_att_pct)
+                    except ValueError:
+                        pass
+                if manual_sessions_attended != '':
+                    try:
+                        student_conduct.manual_attendance_sessions_attended = int(manual_sessions_attended)
+                    except ValueError:
+                        pass
+                if manual_total_sessions != '':
+                    try:
+                        student_conduct.manual_attendance_total_sessions = int(manual_total_sessions)
+                    except ValueError:
+                        pass
+                if manual_days_marked != '':
+                    try:
+                        student_conduct.manual_attendance_days_marked = int(manual_days_marked)
+                    except ValueError:
+                        pass
+                if manual_note != '':
+                    student_conduct.manual_attendance_note = manual_note
                 
                 student_conduct.entered_by = request.user
                 student_conduct.save()
