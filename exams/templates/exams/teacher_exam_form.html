@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% load static %}
 
@@ -342,7 +343,7 @@ function addSection(sectionData = {}) {
 
   sectionsContainer.appendChild(sectionCard);
   console.log('Section card added to container. Container now has', sectionsContainer.children.length, 'sections');
-  
+
   const questionList = sectionCard.querySelector('.question-list');
   const addQuestionBtn = sectionCard.querySelector('.add-question-btn');
   if (addQuestionBtn) addQuestionBtn.addEventListener('click', () => addQuestion(sectionCard));
@@ -417,6 +418,10 @@ function addQuestion(sectionCard, questionData = {}) {
     </div>
     <div class="field-block">
       <label>Question Text</label>
+       <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" class="button add-diagram-btn">Add Diagram</button>
+            <button type="button" class="button add-chart-btn">Add Chart</button>
+          </div>
       <textarea class="question-text rich-editor" rows="3">${questionTextValue}</textarea>
     </div>
     <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
@@ -627,14 +632,20 @@ function attachDiagramAndChartHandlers(questionCard){
     }
   }
 
-  function insertImageUrl(editor, url) {
-    const imageHtml = `<img src="${url}" alt="Diagram" style="max-width:100%;height:auto;" />`;
-    if (editor) {
-      insertHtml(editor, imageHtml);
-    } else if (ta) {
-      ta.value += `\n${url}`;
+ function insertImageUrl(editor, url) {
+    if (!editor) {
+        if (ta) ta.value += `\n${url}`;
+        return;
     }
-  }
+
+    editor.execute('insertImage', {
+        source: {
+            src: url
+        }
+    });
+
+    editor.editing.view.focus();
+}
 
   const targetEditor = () => activeEditor || (ta && ta._editor) || null;
 
@@ -665,37 +676,37 @@ function openDiagramModal(){
   return new Promise(resolve => {
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10001';
-    
+
     const box = document.createElement('div');
     box.style.cssText = 'width:900px;height:650px;background:#fff;padding:0;border-radius:6px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
-    
+
     // Header with title
     const header = document.createElement('div');
     header.style.cssText = 'padding:12px 16px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;align-items:center';
     header.innerHTML = '<h4 style="margin:0;font-size:16px;font-weight:600">Diagram Builder</h4>';
     box.appendChild(header);
-    
+
     // Toolbar
     const toolbar = document.createElement('div');
     toolbar.style.cssText = 'padding:8px 12px;border-bottom:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f9f9f9';
     box.appendChild(toolbar);
-    
+
     // Canvas container
     const canvasContainer = document.createElement('div');
     canvasContainer.style.cssText = 'flex:1;border:1px solid #ddd;position:relative;overflow:hidden;background:#fafafa';
     box.appendChild(canvasContainer);
-    
+
     // Footer with buttons
     const footer = document.createElement('div');
     footer.style.cssText = 'padding:12px 16px;border-top:1px solid #ddd;display:flex;gap:8px;justify-content:flex-end';
     box.appendChild(footer);
-    
+
     modal.appendChild(box);
     document.body.appendChild(modal);
-    
+
     // Initialize diagram builder
     const builder = new DiagramBuilder(canvasContainer, toolbar, footer);
-    
+
     // Export button
     const exportBtn = document.createElement('button');
     exportBtn.textContent = 'Export & Insert';
@@ -708,7 +719,7 @@ function openDiagramModal(){
       resolve(dataURL);
     });
     footer.appendChild(exportBtn);
-    
+
     // Close button
     const closeBtn = document.createElement('button');
     closeBtn.textContent = 'Close';
@@ -743,10 +754,10 @@ class DiagramBuilder {
     this.strokeColor = '#000000';
     this.fillColor = '#ffffff';
     this.lineThickness = 2;
-    
+
     this.init();
   }
-  
+
   init() {
     // Create Konva stage
     this.stage = new Konva.Stage({
@@ -754,20 +765,20 @@ class DiagramBuilder {
       width: this.width,
       height: this.height
     });
-    
+
     this.layer = new Konva.Layer();
     this.stage.add(this.layer);
-    
+
     this.drawGrid();
     this.setupToolbar();
     this.setupEventHandlers();
     this.saveHistory();
   }
-  
+
   drawGrid() {
     const gridLayer = new Konva.Layer();
     this.stage.add(gridLayer);
-    
+
     for (let i = 0; i < this.width; i += this.gridSize) {
       gridLayer.add(new Konva.Line({
         points: [i, 0, i, this.height],
@@ -775,7 +786,7 @@ class DiagramBuilder {
         strokeWidth: 0.5
       }));
     }
-    
+
     for (let i = 0; i < this.height; i += this.gridSize) {
       gridLayer.add(new Konva.Line({
         points: [0, i, this.width, i],
@@ -783,10 +794,10 @@ class DiagramBuilder {
         strokeWidth: 0.5
       }));
     }
-    
+
     gridLayer.draw();
   }
-  
+
   setupToolbar() {
     const tools = [
       { id: 'select', label: '✓ Select', icon: '→' },
@@ -798,16 +809,16 @@ class DiagramBuilder {
       { id: 'pen', label: '✏ Draw', icon: '✏' },
       { id: 'text', label: 'A Text', icon: 'T' }
     ];
-    
+
     const toolGroup = document.createElement('div');
     toolGroup.style.cssText = 'display:flex;gap:4px';
-    
+
     tools.forEach(tool => {
       const btn = document.createElement('button');
       btn.textContent = tool.label;
       btn.style.cssText = `padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer`;
       btn.className = this.currentTool === tool.id ? 'active' : '';
-      
+
       btn.addEventListener('click', () => {
         document.querySelectorAll('[data-tool]').forEach(b => {
           b.style.background = '#fff';
@@ -818,28 +829,28 @@ class DiagramBuilder {
         btn.style.color = 'white';
         btn.style.borderColor = '#0d6efd';
       });
-      
+
       btn.dataset.tool = tool.id;
       if (this.currentTool === tool.id) {
         btn.style.background = '#0d6efd';
         btn.style.color = 'white';
         btn.style.borderColor = '#0d6efd';
       }
-      
+
       toolGroup.appendChild(btn);
     });
-    
+
     this.toolbarContainer.appendChild(toolGroup);
-    
+
     // Separator
     this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';
     this.toolbarContainer.lastChild.style.background = '#ddd';
     this.toolbarContainer.lastChild.style.height = '24px';
-    
+
     // Color & thickness controls
     const controlsGroup = document.createElement('div');
     controlsGroup.style.cssText = 'display:flex;gap:8px;align-items:center';
-    
+
     // Stroke color
     const strokeLabel = document.createElement('label');
     strokeLabel.textContent = 'Stroke: ';
@@ -854,7 +865,7 @@ class DiagramBuilder {
     });
     strokeLabel.appendChild(strokePicker);
     controlsGroup.appendChild(strokeLabel);
-    
+
     // Fill color
     const fillLabel = document.createElement('label');
     fillLabel.textContent = 'Fill: ';
@@ -869,7 +880,7 @@ class DiagramBuilder {
     });
     fillLabel.appendChild(fillPicker);
     controlsGroup.appendChild(fillLabel);
-    
+
     // Line thickness
     const thicknessLabel = document.createElement('label');
     thicknessLabel.textContent = 'Thickness: ';
@@ -888,7 +899,7 @@ class DiagramBuilder {
     });
     thicknessLabel.appendChild(thicknessSelect);
     controlsGroup.appendChild(thicknessLabel);
-    
+
     // Grid toggle
     const gridLabel = document.createElement('label');
     gridLabel.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer';
@@ -901,30 +912,30 @@ class DiagramBuilder {
     gridLabel.appendChild(gridCheckbox);
     gridLabel.appendChild(document.createTextNode('Snap to Grid'));
     controlsGroup.appendChild(gridLabel);
-    
+
     this.toolbarContainer.appendChild(controlsGroup);
-    
+
     // Separator
     this.toolbarContainer.appendChild(document.createElement('div')).style.width = '1px';
     this.toolbarContainer.lastChild.style.background = '#ddd';
     this.toolbarContainer.lastChild.style.height = '24px';
-    
+
     // Edit controls
     const editGroup = document.createElement('div');
     editGroup.style.cssText = 'display:flex;gap:4px';
-    
+
     const undoBtn = document.createElement('button');
     undoBtn.textContent = '↶ Undo';
     undoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     undoBtn.addEventListener('click', () => this.undo());
     editGroup.appendChild(undoBtn);
-    
+
     const redoBtn = document.createElement('button');
     redoBtn.textContent = '↷ Redo';
     redoBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
     redoBtn.addEventListener('click', () => this.redo());
     editGroup.appendChild(redoBtn);
-    
+
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = '🗑 Delete';
     deleteBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer;color:#dc3545';
@@ -937,7 +948,7 @@ class DiagramBuilder {
       }
     });
     editGroup.appendChild(deleteBtn);
-    
+
     const bringForwardBtn = document.createElement('button');
     bringForwardBtn.textContent = '↑ Bring Forward';
     bringForwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
@@ -949,7 +960,7 @@ class DiagramBuilder {
       }
     });
     editGroup.appendChild(bringForwardBtn);
-    
+
     const sendBackwardBtn = document.createElement('button');
     sendBackwardBtn.textContent = '↓ Send Backward';
     sendBackwardBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
@@ -961,26 +972,26 @@ class DiagramBuilder {
       }
     });
     editGroup.appendChild(sendBackwardBtn);
-    
+
     this.toolbarContainer.appendChild(editGroup);
   }
-  
+
   setupEventHandlers() {
     this.stage.on('mousedown', (e) => this.handleMouseDown(e));
     this.stage.on('mousemove', (e) => this.handleMouseMove(e));
     this.stage.on('mouseup', (e) => this.handleMouseUp(e));
-    
+
     // Touch support for mobile
     this.stage.on('touchstart', (e) => this.handleMouseDown(e));
     this.stage.on('touchmove', (e) => this.handleMouseMove(e));
     this.stage.on('touchend', (e) => this.handleMouseUp(e));
   }
-  
+
   snapCoord(coord) {
     if (!this.snapToGrid) return coord;
     return Math.round(coord / this.gridSize) * this.gridSize;
   }
-  
+
   handleMouseDown(e) {
     if (this.currentTool === 'select') {
       const clickedObject = e.target;
@@ -994,17 +1005,17 @@ class DiagramBuilder {
       }
       return;
     }
-    
+
     this.isDrawing = true;
     const pos = this.stage.getPointerPosition();
     this.startX = this.snapCoord(pos.x);
     this.startY = this.snapCoord(pos.y);
-    
+
     // For pen tool, start freehand drawing
     if (this.currentTool === 'pen') {
       this.drawingPoints = [this.startX, this.startY];
     }
-    
+
     if (this.currentTool === 'text') {
       const text = prompt('Enter text:');
       if (text) {
@@ -1024,7 +1035,7 @@ class DiagramBuilder {
       this.isDrawing = false;
     }
   }
-  
+
   handleMouseMove(e) {
     // Handle dragging selected object
     if (this.isDragging && this.selectedObject) {
@@ -1034,21 +1045,21 @@ class DiagramBuilder {
       this.layer.draw();
       return;
     }
-    
+
     if (!this.isDrawing || this.currentTool === 'text' || this.currentTool === 'select') return;
-    
+
     const pos = this.stage.getPointerPosition();
     const currentX = this.snapCoord(pos.x);
     const currentY = this.snapCoord(pos.y);
-    
+
     // Handle pen/freehand drawing
     if (this.currentTool === 'pen') {
       this.drawingPoints.push(currentX, currentY);
-      
+
       // Remove old preview
       const children = this.layer.children.filter(c => c._isPreview);
       children.forEach(c => c.destroy());
-      
+
       // Draw freehand line
       const shape = new Konva.Line({
         points: this.drawingPoints,
@@ -1059,23 +1070,23 @@ class DiagramBuilder {
         _isPreview: true,
         isShape: true
       });
-      
+
       this.layer.add(shape);
       this.layer.draw();
       return;
     }
-    
+
     const width = Math.abs(currentX - this.startX);
     const height = Math.abs(currentY - this.startY);
     const x = Math.min(this.startX, currentX);
     const y = Math.min(this.startY, currentY);
-    
+
     // Remove preview object
     const children = this.layer.children.filter(c => c._isPreview);
     children.forEach(c => c.destroy());
-    
+
     let shape = null;
-    
+
     if (this.currentTool === 'rect') {
       shape = new Konva.Rect({
         x, y, width, height,
@@ -1125,14 +1136,14 @@ class DiagramBuilder {
         _isPreview: true
       });
     }
-    
+
     if (shape) {
       shape.isShape = true;
       this.layer.add(shape);
       this.layer.draw();
     }
   }
-  
+
   handleMouseUp(e) {
     // Stop dragging
     if (this.isDragging) {
@@ -1140,10 +1151,10 @@ class DiagramBuilder {
       this.saveHistory();
       return;
     }
-    
+
     if (!this.isDrawing) return;
     this.isDrawing = false;
-    
+
     // Handle pen drawing - finalize the freehand line
     if (this.currentTool === 'pen') {
       const previewShapes = this.layer.children.filter(c => c._isPreview);
@@ -1157,19 +1168,19 @@ class DiagramBuilder {
       this.drawingPoints = [];
       return;
     }
-    
+
     const previewShapes = this.layer.children.filter(c => c._isPreview);
     previewShapes.forEach(shape => {
       shape._isPreview = false;
       shape.isShape = true;
     });
-    
+
     if (previewShapes.length > 0) {
       this.layer.draw();
       this.saveHistory();
     }
   }
-  
+
   selectObject(obj) {
     this.deselectAll();
     this.selectedObject = obj;
@@ -1178,7 +1189,7 @@ class DiagramBuilder {
     this.stage.container().style.cursor = 'grab';
     this.layer.draw();
   }
-  
+
   deselectAll() {
     if (this.selectedObject) {
       this.selectedObject.stroke = this.strokeColor;
@@ -1188,27 +1199,27 @@ class DiagramBuilder {
     }
     this.layer.draw();
   }
-  
+
   saveHistory() {
     this.historyStep++;
     this.history = this.history.slice(0, this.historyStep);
     this.history.push(this.layer.toJSON());
   }
-  
+
   undo() {
     if (this.historyStep > 0) {
       this.historyStep--;
       this.restoreHistory();
     }
   }
-  
+
   redo() {
     if (this.historyStep < this.history.length - 1) {
       this.historyStep++;
       this.restoreHistory();
     }
   }
-  
+
   restoreHistory() {
     const json = this.history[this.historyStep];
     this.layer.destroy();
@@ -1217,7 +1228,7 @@ class DiagramBuilder {
     this.layer.draw();
     this.deselectAll();
   }
-  
+
   export() {
     return this.stage.toDataURL({ pixelRatio: 2 });
   }
@@ -1367,10 +1378,10 @@ function gatherPayload() {
 
 function sendPayload(url, payload, callback) {
   // Add timeout wrapper for fetch
-  const timeoutPromise = new Promise((_, reject) => 
+  const timeoutPromise = new Promise((_, reject) =>
     setTimeout(() => reject(new Error('Request timeout (30s)')), 30000)
   );
-  
+
   Promise.race([
     fetch(url, {
       method: 'POST',
@@ -1399,9 +1410,9 @@ function sendPayload(url, payload, callback) {
       }
       if (callback) callback(data);
     })
-    .catch(err => { 
-      console.error('sendPayload error:', err.message || err); 
-      showStatus(`Failed to save: ${err.message || 'Network error'}`, true); 
+    .catch(err => {
+      console.error('sendPayload error:', err.message || err);
+      showStatus(`Failed to save: ${err.message || 'Network error'}`, true);
     });
 }
 
@@ -1529,3 +1540,6 @@ onReady(() => {
 });
 </script>
 {% endblock %}
+
+
+
