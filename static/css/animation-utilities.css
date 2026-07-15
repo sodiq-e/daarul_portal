@@ -1,0 +1,477 @@
+/* ============================================================
+   GLOBAL ANIMATION SYSTEM - UTILITY CLASSES
+   ============================================================
+   Reusable animation utility classes for any element.
+   Add to HTML: class="reveal card-hover btn-premium"
+   Works with dynamic Django content automatically.
+============================================================ */
+
+/* ===== REVEAL ANIMATIONS (Scroll-based) ===== */
+.reveal,
+.reveal-left,
+.reveal-right,
+.reveal-scale,
+.stagger-parent > .stagger-item {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--anim-duration-base) var(--anim-easing-base),
+              transform var(--anim-duration-base) var(--anim-easing-base);
+}
+
+.reveal.active,
+.reveal-left.active,
+.reveal-right.active,
+.reveal-scale.active,
+.stagger-parent > .stagger-item.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Reveal from left */
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.reveal-left.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Reveal from right */
+.reveal-right {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.reveal-right.active {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Reveal with scale */
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
+}
+
+.reveal-scale.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* ===== STAGGER PARENT-CHILD ANIMATIONS ===== */
+.stagger-parent {
+  --stagger-delay: 100ms;
+}
+
+/* Each child gets incremental delay */
+.stagger-parent > .stagger-item:nth-child(1) {
+  transition-delay: calc(0 * var(--stagger-delay));
+}
+
+.stagger-parent > .stagger-item:nth-child(2) {
+  transition-delay: calc(1 * var(--stagger-delay));
+}
+
+.stagger-parent > .stagger-item:nth-child(3) {
+  transition-delay: calc(2 * var(--stagger-delay));
+}
+
+.stagger-parent > .stagger-item:nth-child(4) {
+  transition-delay: calc(3 * var(--stagger-delay));
+}
+
+.stagger-parent > .stagger-item:nth-child(5) {
+  transition-delay: calc(4 * var(--stagger-delay));
+}
+
+.stagger-parent > .stagger-item:nth-child(n+6) {
+  transition-delay: calc(5 * var(--stagger-delay));
+}
+
+/* ===== CARD HOVER - PREMIUM BANKING STYLE ===== */
+.card-hover {
+  transition: transform var(--anim-duration-base) var(--anim-easing-smooth),
+              box-shadow var(--anim-duration-base) var(--anim-easing-smooth),
+              border-color var(--anim-duration-base) var(--anim-easing-smooth),
+              background-color var(--anim-duration-base) var(--anim-easing-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-color, #4F46E5);
+}
+
+/* Subtle glow on hover */
+.card-hover:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--glow-color-accent);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ===== BUTTON PREMIUM - BANKING STYLE ===== */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--anim-duration-fast) var(--anim-easing-smooth),
+              box-shadow var(--anim-duration-fast) var(--anim-easing-smooth),
+              background-color var(--anim-duration-fast) var(--anim-easing-smooth),
+              color var(--anim-duration-fast) var(--anim-easing-smooth);
+  box-shadow: var(--shadow-base);
+}
+
+.btn-premium:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-premium:active {
+  transform: scale(0.98);
+}
+
+/* Optional ripple effect for buttons */
+.btn-premium.ripple-effect::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.btn-premium.ripple-effect:active::after {
+  animation: ripple var(--anim-duration-slow) ease-out;
+}
+
+/* ===== IMAGE HOVER - GALLERY STYLE ===== */
+.image-hover {
+  overflow: hidden;
+  border-radius: 8px;
+  transition: box-shadow var(--anim-duration-base) var(--anim-easing-smooth);
+  box-shadow: var(--shadow-base);
+}
+
+.image-hover img {
+  transition: transform var(--anim-duration-base) var(--anim-easing-smooth);
+  display: block;
+}
+
+.image-hover:hover img {
+  transform: scale(1.03);
+}
+
+.image-hover:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===== LINK HOVER - MODERN STYLE ===== */
+.link-hover {
+  position: relative;
+  text-decoration: none;
+  transition: color var(--anim-duration-fast) var(--anim-easing-smooth);
+}
+
+.link-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  transition: width var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.link-hover:hover::after {
+  width: 100%;
+}
+
+/* ===== ICON HOVER - SMOOTH ROTATION ===== */
+.icon-hover {
+  transition: transform var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.icon-hover:hover {
+  transform: rotate(5deg) scale(1.1);
+}
+
+/* ===== GLASS CARD - FROSTED GLASS EFFECT ===== */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+  transition: all var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(31, 38, 135, 0.25);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* ===== HERO SECTION ANIMATIONS ===== */
+.hero-section {
+  --hero-duration: var(--anim-duration-hero);
+}
+
+.hero-heading {
+  animation: heroHeadingSlideUp var(--hero-duration) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+.hero-subtitle {
+  animation: heroParagraphFadeIn calc(var(--hero-duration) * 1.2) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+.hero-buttons {
+  animation: heroButtonsSlideUp calc(var(--hero-duration) * 1.4) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+.hero-media {
+  animation: heroMediaSlideInRight calc(var(--hero-duration) * 1.6) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+/* ===== FADE IN ANIMATIONS ===== */
+.fade-in {
+  animation: fadeIn var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+.fade-in-slow {
+  animation: fadeIn var(--anim-duration-slow) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+/* ===== SCALE IN ANIMATIONS ===== */
+.scale-in {
+  animation: scaleIn var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+/* ===== SLIDE UP ANIMATIONS ===== */
+.slide-up {
+  animation: slideUpIn var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+.slide-up-slow {
+  animation: slideUpIn var(--anim-duration-slow) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+/* ===== BACK-TO-TOP BUTTON ===== */
+#scrollTopBtn {
+  animation: scaleInButton var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+#scrollTopBtn.visible {
+  animation: scaleInButton var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+  opacity: 1;
+}
+
+#scrollTopBtn.hidden {
+  animation: scaleOutButton var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+  opacity: 0;
+}
+
+/* ===== VIDEO CONTAINER ===== */
+.video-container,
+.video-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: var(--shadow-base);
+  transition: box-shadow var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.video-container:hover,
+.video-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.video-container video,
+.video-card video,
+.video-container iframe,
+.video-card iframe {
+  transition: transform var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.video-container:hover video,
+.video-card:hover video,
+.video-container:hover iframe,
+.video-card:hover iframe {
+  transform: scale(1.01);
+}
+
+/* Play button elegance */
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--anim-duration-base) var(--anim-easing-smooth);
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+}
+
+.play-button:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+  background: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.play-button::after {
+  content: '▶';
+  color: var(--primary-color);
+  font-size: 24px;
+  margin-left: 4px;
+}
+
+/* ===== FORM INPUTS - SMOOTH FOCUS ===== */
+.form-input,
+input,
+textarea,
+select {
+  transition: border-color var(--anim-duration-fast) var(--anim-easing-smooth),
+              box-shadow var(--anim-duration-fast) var(--anim-easing-smooth),
+              background-color var(--anim-duration-fast) var(--anim-easing-smooth);
+}
+
+.form-input:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: var(--shadow-base);
+}
+
+/* ===== TABLE ROWS - HOVER ANIMATIONS ===== */
+tbody tr {
+  transition: background-color var(--anim-duration-fast) var(--anim-easing-smooth),
+              transform var(--anim-duration-fast) var(--anim-easing-smooth),
+              box-shadow var(--anim-duration-fast) var(--anim-easing-smooth);
+}
+
+tbody tr:hover {
+  transform: scaleX(1.01);
+  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.1);
+}
+
+/* ===== ANNOUNCEMENT TICKER ===== */
+.announcement-ticker {
+  animation: slideDownIn var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.announcement-ticker.hide {
+  animation: slideUpOut var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+}
+
+/* ===== BADGE ANIMATIONS ===== */
+.badge {
+  animation: scaleIn var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.badge.pulse {
+  animation: glowPulse 2s infinite;
+}
+
+/* ===== SPINNER/LOADER ANIMATIONS ===== */
+.spinner {
+  animation: shimmer 2s infinite;
+}
+
+/* ===== NOTIFICATION ANIMATIONS ===== */
+.notification {
+  animation: slideRightIn var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.notification.removing {
+  animation: slideUpOut var(--anim-duration-base) var(--anim-easing-smooth) forwards;
+}
+
+/* ===== MODAL/DIALOG ANIMATIONS ===== */
+.modal-overlay,
+.dialog-overlay {
+  animation: fadeIn var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+.modal-content,
+.dialog-content {
+  animation: scaleIn var(--anim-duration-base) var(--anim-easing-smooth);
+}
+
+/* ===== DROPDOWN ANIMATIONS ===== */
+.dropdown-menu {
+  animation: slideDownIn var(--anim-duration-fast) var(--anim-easing-smooth);
+  transform-origin: top;
+}
+
+/* ===== BREADCRUMB ANIMATIONS ===== */
+.breadcrumb a {
+  transition: color var(--anim-duration-fast) var(--anim-easing-smooth);
+}
+
+/* ===== ACCESSIBILITY: SMOOTH FOCUS ===== */
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: 4px;
+  transition: outline-offset var(--anim-duration-fast) var(--anim-easing-smooth);
+}
+
+/* ===== UTILITY: DISABLE ANIMATIONS ===== */
+.no-animation {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ===== UTILITY: ANIMATION DELAYS ===== */
+.delay-100 { animation-delay: 100ms; transition-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; transition-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; transition-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; transition-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; transition-delay: 500ms; }
+
+/* ===== UTILITY: ANIMATION SPEED ===== */
+.anim-fast {
+  animation-duration: var(--anim-duration-fast);
+  transition-duration: var(--anim-duration-fast);
+}
+
+.anim-base {
+  animation-duration: var(--anim-duration-base);
+  transition-duration: var(--anim-duration-base);
+}
+
+.anim-slow {
+  animation-duration: var(--anim-duration-slow);
+  transition-duration: var(--anim-duration-slow);
+}

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 <!-- 🔥 Dynamic Pages Section -->
-<section class="dynamic-pages">
+<section class="dynamic-pages reveal">
   <h2>Latest Updates</h2>
 
   {% for page in pages %}
-    <div class="dynamic-page-block">
+    <div class="dynamic-page-block card-hover reveal">
       <h3>{{ page.title }}</h3>
 
       {% for item in page.contents.all %}
@@ -12,7 +12,7 @@
           <h4>{{ item.title }}</h4>
 
           {% if item.image %}
-            <img src="{{ item.image.url }}" style="max-width:100%; border-radius:10px; margin-bottom:10px;">
+            <img src="{{ item.image.url }}" style="max-width:100%; border-radius:10px; margin-bottom:10px;" class="image-hover">
           {% endif %}
 
           <p>{{ item.body }}</p>
@@ -30,17 +30,17 @@
 <section class="welcome-hero">
   <div class="hero-copy">
 
-    <h1>Welcome to  Daarul Bayaan  Portal</h1>
-    <p>{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone. We provide a balanced education that combines Western and Islamic studies, including modern fields such as STEM and Robotics." }}</p>
+    <h1 class="hero-heading">Welcome to  Daarul Bayaan  Portal</h1>
+    <p class="hero-subtitle">{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone. We provide a balanced education that combines Western and Islamic studies, including modern fields such as STEM and Robotics." }}</p>
     <div class="hero-actions">
-      <a href="{% url 'student_application' %}" class="button secondary">Apply for Admission</a>
-      <a href="{% url 'contact' %}" class="button secondary">📧 Contact Us</a>
+      <a href="{% url 'student_application' %}" class="button secondary btn-premium">Apply for Admission</a>
+      <a href="{% url 'contact' %}" class="button secondary btn-premium">📧 Contact Us</a>
       <!-- Sign In and Create Account moved to dropdown menu -->
     </div>
   </div>
   <div class="hero-media">
-  <div class="video-card">
-    <div class="video-label">Portal Demo</div>
+  <div class="video-card card-hover">
+    <div class="video-label">School Videos</div>
 
   <div class="video-placeholder">
 
@@ -84,72 +84,72 @@
     {% endif %}
   </div>
 
-  <div class="navigation-grid">
+  <div class="navigation-grid stagger-parent">
     {% if user.is_staff %}
       <!-- ADMIN NAVIGATION -->
-      <a href="/admin/" class="nav-card admin-card">
-        <div class="nav-icon">🔐</div>
+      <a href="/admin/" class="nav-card admin-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">🔐</div>
         <h3>Admin Panel</h3>
         <p>Access school management dashboard</p>
       </a>
-      <a href="{% url 'school_settings' %}" class="nav-card admin-card">
-        <div class="nav-icon">⚙️</div>
+      <a href="{% url 'school_settings' %}" class="nav-card admin-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">⚙️</div>
         <h3>Portal Settings</h3>
         <p>Configure school branding and themes</p>
       </a>
-      <a href="{% url 'school_classes:class_list' %}" class="nav-card admin-card">
-        <div class="nav-icon">📚</div>
+      <a href="{% url 'school_classes:class_list' %}" class="nav-card admin-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📚</div>
         <h3>Classes</h3>
         <p>Manage school classes</p>
       </a>
-      <a href="/results/" class="nav-card admin-card">
-        <div class="nav-icon">📊</div>
+      <a href="/results/" class="nav-card admin-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📊</div>
         <h3>Results</h3>
         <p>View student results and grades</p>
       </a>
-      <a href="{% url 'promotions_list' %}" class="nav-card admin-card">
-        <div class="nav-icon">⬆️</div>
+      <a href="{% url 'promotions_list' %}" class="nav-card admin-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">⬆️</div>
         <h3>Promotions</h3>
         <p>Manage student promotions</p>
       </a>
-      <a href="{% url 'payroll_dashboard' %}" class="nav-card admin-card">
-        <div class="nav-icon">💼</div>
+      <a href="{% url 'payroll_dashboard' %}" class="nav-card admin-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">💼</div>
         <h3>Finance</h3>
         <p>Manage invoices, payments, and school expenses</p>
       </a>
     {% else %}
       <!-- STUDENT PORTAL -->
       {% if user.student_profile %}
-      <a href="{% url 'student_portal_dashboard' %}" class="nav-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-        <div class="nav-icon">🎓</div>
+      <a href="{% url 'student_portal_dashboard' %}" class="nav-card card-hover stagger-item" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="nav-icon icon-hover">🎓</div>
         <h3>Student Portal</h3>
         <p>Access your academic information</p>
       </a>
-      <a href="{% url 'student_portal_profile' %}" class="nav-card">
-        <div class="nav-icon">👤</div>
+      <a href="{% url 'student_portal_profile' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">👤</div>
         <h3>My Profile</h3>
         <p>View your personal information</p>
       </a>
-      <a href="{% url 'student_portal_results' %}" class="nav-card">
-        <div class="nav-icon">📊</div>
+      <a href="{% url 'student_portal_results' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📊</div>
         <h3>My Results</h3>
         <p>Check your grades and academic performance</p>
       </a>
-      <a href="{% url 'student_portal_fees' %}" class="nav-card">
-        <div class="nav-icon">💰</div>
+      <a href="{% url 'student_portal_fees' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">💰</div>
         <h3>School Fees</h3>
         <p>View invoices and payment history</p>
       </a>
       {% endif %}
 
-      <a href="{% url 'subject_list' %}" class="nav-card">
-        <div class="nav-icon">📝</div>
+      <a href="{% url 'subject_list' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📝</div>
         <h3>Subjects</h3>
         <p>View the school's subject list</p>
       </a>
 
-      <a href="{% url 'profile' %}" class="nav-card">
-        <div class="nav-icon">⚙️</div>
+      <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">⚙️</div>
         <h3>Account Settings</h3>
         <p>Manage your account and preferences</p>
       </a>
@@ -159,32 +159,32 @@
 
 {% endif %}
 
-<section class="portal-overview">
+<section class="portal-overview reveal">
   <h2>What You Can Do on This Portal</h2>
 
-  <div class="overview-grid">
+  <div class="overview-grid stagger-parent">
 
-    <a href="/results/" class="overview-card">
+    <a href="/results/" class="overview-card card-hover stagger-item">
       <h3>Access academic records</h3>
       <p>View your results, grades, and progress reports from one secure location.</p>
     </a>
 
-    <a href="{% url 'school_classes:class_list' %}" class="overview-card">
+    <a href="{% url 'school_classes:class_list' %}" class="overview-card card-hover stagger-item">
       <h3>View class schedules</h3>
       <p>Check timetables, subject details, and classroom assignments at a glance.</p>
     </a>
 
-    <a href="{% url 'student_list' %}" class="overview-card">
+    <a href="{% url 'student_list' %}" class="overview-card card-hover stagger-item">
       <h3>Receive school updates</h3>
       <p>Stay informed with announcements, news, and important school events.</p>
     </a>
 
-   <a href="{% url 'contact' %}" class="overview-card">
+   <a href="{% url 'contact' %}" class="overview-card card-hover stagger-item">
         <h3>Communicate easily</h3>
         <p>Message teachers and school management through the portal's secure channels.</p>
     </a>
 
-    <a href="{% url 'profile' %}" class="overview-card">
+    <a href="{% url 'profile' %}" class="overview-card card-hover stagger-item">
       <h3>Manage your profile</h3>
       <p>Update your account information and keep your profile current.</p>
     </a>
@@ -194,18 +194,18 @@
 
 <!-- Getting Started section removed; login/signup now in dropdown menu -->
 
-<section class="important-notice">
+<section class="important-notice reveal">
   <h2>Important Notice</h2>
   <p>Your login details are personal and should not be shared with anyone. Keep your credentials safe to protect your academic information.</p>
 </section>
 
-<section class="help-section">
+<section class="help-section reveal">
   <h2>Need Help?</h2>
-  <p>If you experience any difficulty accessing your account or navigating the portal, please contact the school administration for assistance.</p>
+  <p>If you experience any difficulty accessing your account or navigating the portal, please contact the school administration for assistance using "Contact us" icon above or call: 08145430107.</p>
   <p>We are committed to providing a seamless and efficient digital experience. Thank you for being part of our community.</p>
 </section>
 
-<section class="gallery-section">
+<section class="gallery-section reveal">
   <div class="section-header">
     <h2>Portal Gallery</h2>
     <p>Browse highlights from the portal and explore the types of information available.</p>
@@ -215,12 +215,12 @@
       {% for image in gallery_images %}
         <div class="slide {% if forloop.first %}active{% endif %}">
           {% if image.video %}
-  <video width="100%" height="250" controls style="border-radius:10px; margin-bottom:15px;">
+  <video width="100%" height="250" controls style="border-radius:10px; margin-bottom:15px;" class="card-hover">
     <source src="{{ image.video.url }}" type="video/mp4">
   </video>
 
 {% elif image.image %}
-  <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:100%; height:auto; border-radius:10px; margin-bottom:15px;">
+  <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:100%; height:auto; border-radius:10px; margin-bottom:15px;" class="image-hover">
 {% endif %}
           <h3>{{ image.title }}</h3>
           <p>{{ image.description }}</p>
@@ -242,8 +242,8 @@
     {% endif %}
   </div>
   <div class="slider-controls">
-    <button id="prevSlide" type="button">← Previous</button>
-    <button id="nextSlide" type="button">Next →</button>
+    <button id="prevSlide" type="button" class="btn-premium">← Previous</button>
+    <button id="nextSlide" type="button" class="btn-premium">Next →</button>
   </div>
 </section>
 
