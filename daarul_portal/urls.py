@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from settingsapp import views as settings_views
 from django.shortcuts import render
 from django.contrib.auth import views as auth_views
 from django.conf import settings
@@ -34,6 +35,7 @@ urlpatterns = [
     path('results/', include('results.urls')),
     path('results-admin/', include('results.admin_urls')),
     path('settings/', include('settingsapp.urls')),
+    path('gallery/', settings_views.gallery, name='gallery'),
     path('classes/', include((class_urlpatterns, 'school_classes'))),
     path('students/', include('students.urls')),
     path('student/cbt/', include('cbt.student_urls')),

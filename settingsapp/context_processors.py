@@ -1,4 +1,5 @@
 from .models import SchoolSettings, PageTheme, GalleryImage
+from .print_utils import build_document_verification
 from announcements.models import Announcement
 
 def _get_page_key_from_path(path):
@@ -137,3 +138,16 @@ def announcements_context(request):
             'recent_announcements': [],
             'urgent_announcements_count': 0,
         }
+
+
+def print_verification_context(request):
+    """Populate shared print verification details for printable documents."""
+    try:
+        return {
+            'print_verification': build_document_verification(request),
+        }
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error building print verification context: {str(e)}")
+        return {'print_verification': None}

@@ -3042,30 +3042,46 @@ body {
     padding: 0 !important;
   }
 
-  /* Keep the portal header visible when printing, while hiding only navigation and page chrome */
+  /* Keep the portal header visible when printing, while making it a prominent letterhead block */
+  header {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 0 18px 0 !important;
+    padding: 16px 0 20px 0 !important;
+    border-bottom: 2px solid #111 !important;
+  }
+
   .header-container {
     display: flex !important;
-    justify-content: space-between !important;
+    width: 100% !important;
+    justify-content: center !important;
     align-items: center !important;
-    gap: 20px !important;
+    gap: 24px !important;
+    min-height: 90px !important;
   }
 
   .header-left {
     flex-shrink: 0;
+    display: flex !important;
+    align-items: center !important;
   }
 
   .header-left img {
-    max-height: 50px !important;
-    max-width: 80px !important;
+    height: 90px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: none !important;
   }
 
   .header-center {
-    flex: 1;
+    flex: 1 1 auto !important;
+    width: 100% !important;
     text-align: center !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
-    gap: 4px !important;
+    align-items: center !important;
+    gap: 6px !important;
   }
 
   /* Match desktop header font sizing and alignment when printing */
@@ -3074,15 +3090,23 @@ body {
     color: black !important;
   }
 
+  .header-center a {
+    display: block !important;
+    width: 100% !important;
+  }
+
   .header-center div:first-child {
-    font-size: 18px !important;
-    font-weight: bold !important;
-    margin-bottom: 4px !important;
+    font-size: 34px !important;
+    font-weight: 900 !important;
+    line-height: 1.05 !important;
+    letter-spacing: 0.8px !important;
+    margin-bottom: 8px !important;
     text-align: center !important;
+    white-space: normal !important;
   }
 
   .header-center > div:nth-child(2) {
-    font-size: 12px !important;
+    font-size: 13px !important;
     margin-bottom: 6px !important;
     text-align: center !important;
   }
@@ -3525,16 +3549,16 @@ body {
     <!-- LEFT: Logo -->
     <div class="header-left">
       {% if school_logo %}
-        <img src="{{ school_logo }}" style="height:60px;">
+        <img src="{{ school_logo }}" style="height:100px;">
       {% else %}
-        <img src="{% static 'img/logo.png' %}" style="height:60px;">
+        <img src="{% static 'img/logo.png' %}" style="height:100px;">
       {% endif %}
     </div>
 
     <!-- CENTER: Title -->
     <div class="header-center">
       <a href="{% url 'home' %}" style="color: var(--header-heading-color); text-decoration: none;">
-        <div style="font-size:24px; font-weight:bold;">{{ school_name }}</div>
+        <div style="font-size: 48px; font-weight: 800; line-height: 1.05; letter-spacing: 0.5px;">{{ school_name }}</div>
       </a>
       <div style="font-size:14px;">{{ motto }}</div>
       <!-- School Contact Information - Responsive -->
@@ -3862,6 +3886,11 @@ body {
         <i class="fas fa-bullhorn"></i><span> Announcements</span>
       </a>
 
+      <a href="{% url 'gallery' %}" data-tooltip="Gallery"
+         class="{% if request.resolver_match.url_name == 'gallery' %}active{% endif %}">
+        <i class="fas fa-image"></i><span> Gallery</span>
+      </a>
+
       <a href="/results/" data-tooltip="Results">
         <i class="fas fa-poll"></i><span> Results</span>
       </a>
@@ -3976,6 +4005,23 @@ body {
 </script>
   <main class="content">
         {% block content %}{% endblock %}
+
+        {% if print_verification %}
+        <div class="print-verification-footer" style="margin-top: 24px; padding: 12px 0 0 0; border-top: 1px solid #ccc; font-size: 11px; color: #444; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden;">
+          <div style="display: block; width: 100%; box-sizing: border-box;">
+            <div style="margin-bottom: 8px;">
+              <div style="font-weight: 700; margin-bottom: 4px;">Document Verification</div>
+              <div>{{ print_verification.verification_text }}</div>
+              <div style="margin-top: 4px;"><strong>Reference:</strong> {{ print_verification.reference }}</div>
+            </div>
+            <div style="width: 100%; display: flex; justify-content: center; align-items: center; margin-top: 8px; padding: 0 12px 0 12px; box-sizing: border-box;">
+              <div style="width: 84px; max-width: 100%; padding: 3px; border: 1px solid #ddd; background: white; box-sizing: border-box; margin: 0 auto;">
+                <div style="width: 100%; height: auto;">{{ print_verification.qr_svg|safe }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
       </main>
 
 

@@ -47,3 +47,15 @@ def school_settings(request):
         'gallery_images': gallery_images,
     }
     return render(request, 'school_settings.html', context)
+
+
+def gallery(request):
+    """Public gallery page showing full images and playable video."""
+    settings_obj, created = SchoolSettings.objects.get_or_create(id=1)
+    gallery_images = GalleryImage.objects.filter(school_settings=settings_obj).order_by('order')
+
+    context = {
+        'school_settings': settings_obj,
+        'gallery_images': gallery_images,
+    }
+    return render(request, 'gallery.html', context)

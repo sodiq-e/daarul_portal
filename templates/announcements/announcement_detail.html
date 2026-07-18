@@ -6,12 +6,16 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1>{{ announcement.title }}</h1>
+            <h1 class="announcement-title {{ announcement.title_size_class }} {{ announcement.title_alignment_class }}">{{ announcement.title }}</h1>
             <p class="text-muted">Posted on {{ announcement.created_at|date:'F j, Y' }} by {{ announcement.created_by.get_full_name|default:announcement.created_by.username }}</p>
         </div>
         <div>
-            <a href="{% url 'announcement_list' %}" class="btn btn-secondary">Back to Announcements</a>
-            <button onclick="window.print()" class="btn btn-primary no-print">Print Announcement</button>
+            <a href="{% url 'announcement_list' %}" class="btn btn-secondary back-action">Back to Announcements</a>
+            <button onclick="window.print()" class="btn btn-primary no-print print-action">Print Announcement</button>
+            {% if user.is_staff or user.is_superuser %}
+                <a href="{% url 'announcement_edit' announcement.pk %}" class="btn btn-warning no-print admin-action">Edit</a>
+                <a href="{% url 'announcement_delete' announcement.pk %}" class="btn btn-danger no-print admin-action">Delete</a>
+            {% endif %}
         </div>
     </div>
 
@@ -22,5 +26,16 @@
             </div>
         </div>
     </div>
-</div>
+        </div>
+
+<style>
+.announcement-title { font-weight: 700; font-size: clamp(1.5rem, 2.2vw, 2.25rem); line-height: 1.05; }
+.announcement-title.title-small { font-size: 1.25rem; }
+.announcement-title.title-medium { font-size: 1.75rem; }
+.announcement-title.title-large { font-size: 2.25rem; }
+@media print {
+    .no-print, .print-action, .back-action, .admin-action { display: none !important; }
+}
+</style>
+
 {% endblock %}

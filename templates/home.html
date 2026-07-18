@@ -42,33 +42,39 @@
   <div class="video-card card-hover">
     <div class="video-label">School Videos</div>
 
-  <div class="video-placeholder">
+    <div class="video-placeholder">
+      {# Replace embedded video with a clickable thumbnail linking to the Gallery page #}
+      {% if gallery_images and gallery_images.0.image %}
+        <a href="{% url 'gallery' %}" style="display:block; text-decoration:none; color:inherit;">
+          <div style="position:relative;">
+            <img src="{{ gallery_images.0.image.url }}" alt="Gallery" style="width:100%; height:240px; object-fit:cover; border-radius:10px;" loading="lazy">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+              <div style="width:72px; height:72px; border-radius:50%; background:rgba(0,0,0,0.5); color:white; display:grid; place-items:center; font-size:28px;">▶</div>
+            </div>
+          </div>
+        </a>
+      {% elif school_settings.homepage_video %}
+        {# Fallback: show a simple play banner linking to gallery (do not embed video) #}
+        <a href="{% url 'gallery' %}" style="display:block; text-decoration:none; color:inherit;">
+          <div style="min-height:180px; display:flex; align-items:center; justify-content:center; gap:12px;">
+            <div class="video-icon">▶</div>
+            <div>
+              <strong>View school videos</strong>
+              <p>Open the gallery to watch the full video</p>
+            </div>
+          </div>
+        </a>
+      {% else %}
+        <div class="video-icon">▶</div>
+        <div>
+          <strong>No video uploaded</strong>
+          <p>Upload a video from admin panel</p>
+        </div>
+      {% endif %}
 
-  {% if school_settings.homepage_video %}
-    <video width="100%" height="315" controls style="border-radius:10px;">
-      <source src="{{ school_settings.homepage_video.url }}" type="video/mp4">
-      Your browser does not support video.
-    </video>
-
-  {% elif school_settings.homepage_video_url %}
-    <iframe width="100%" height="315"
-      src="{{ school_settings.homepage_video_url }}"
-      frameborder="0"
-      allowfullscreen
-      style="border-radius:10px;">
-    </iframe>
-
-  {% else %}
-    <div class="video-icon">▶</div>
-    <div>
-      <strong>No video uploaded</strong>
-      <p>Upload a video from admin panel</p>
     </div>
-  {% endif %}
 
-</div>
-
-</div>
+  </div>
 </section>
 
 {% else %}
@@ -212,32 +218,22 @@
   </div>
   <div class="slider" id="gallerySlider">
     {% if gallery_images %}
-      {% for image in gallery_images %}
-        <div class="slide {% if forloop.first %}active{% endif %}">
-          {% if image.video %}
-  <video width="100%" height="250" controls style="border-radius:10px; margin-bottom:15px;" class="card-hover">
-    <source src="{{ image.video.url }}" type="video/mp4">
-  </video>
-
-{% elif image.image %}
-  <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:100%; height:auto; border-radius:10px; margin-bottom:15px;" class="image-hover">
-{% endif %}
-          <h3>{{ image.title }}</h3>
-          <p>{{ image.description }}</p>
-        </div>
-      {% endfor %}
+      <div class="thumbnail-grid" style="display:flex; gap:12px; flex-wrap:wrap;">
+        {% for image in gallery_images %}
+          <a href="{% url 'gallery' %}" class="card-hover" style="display:block; width:150px; text-decoration:none; color:inherit;">
+            {% if image.image %}
+              <img src="{{ image.image.url }}" alt="{{ image.title }}" style="width:150px; height:100px; object-fit:cover; border-radius:8px;" loading="lazy">
+            {% else %}
+              <div style="width:150px; height:100px; background:#f0f0f0; border-radius:8px; display:flex; align-items:center; justify-content:center;">No image</div>
+            {% endif %}
+            <div style="font-size:0.9rem; margin-top:6px;">{{ image.title }}</div>
+          </a>
+        {% endfor %}
+      </div>
     {% else %}
       <div class="slide active">
         <h3>Student Dashboard</h3>
         <p>Everything you need in one place: reports, class schedules, and notifications.</p>
-      </div>
-      <div class="slide">
-        <h3>Results & Grades</h3>
-        <p>Track academic performance and access detailed examinations reports.</p>
-      </div>
-      <div class="slide">
-        <h3>Announcements</h3>
-        <p>Receive school updates, event reminders, and important news instantly.</p>
       </div>
     {% endif %}
   </div>
@@ -568,38 +564,29 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var slides = document.querySelectorAll('#gallerySlider .slide');
+    if (!slides || slides.length === 0) return; // no legacy slides, nothing to do
+
     var current = 0;
     var nextButton = document.getElementById('nextSlide');
     var prevButton = document.getElementById('prevSlide');
 
     function showSlide(index) {
-      slides[current].classList.remove('active');
+      if (slides[current]) slides[current].classList.remove('active');
 
       // pause any playing video before leaving slide
-      var currentVideo = slides[current].querySelector('video');
-      if (currentVideo) {
-        currentVideo.pause();
-      }
+      var currentVideo = slides[current] ? slides[current].querySelector('video') : null;
+      if (currentVideo) currentVideo.pause();
 
       current = (index + slides.length) % slides.length;
-      slides[current].classList.add('active');
+      if (slides[current]) slides[current].classList.add('active');
     }
 
-    nextButton.addEventListener('click', function () {
-      showSlide(current + 1);
-    });
-
-    prevButton.addEventListener('click', function () {
-      showSlide(current - 1);
-    });
+    if (nextButton) nextButton.addEventListener('click', function () { showSlide(current + 1); });
+    if (prevButton) prevButton.addEventListener('click', function () { showSlide(current - 1); });
 
     setInterval(function () {
-      var activeVideo = slides[current].querySelector('video');
-
-      // only slide if no video is playing
-      if (!activeVideo || activeVideo.paused) {
-        showSlide(current + 1);
-      }
+      var activeVideo = slides[current] ? slides[current].querySelector('video') : null;
+      if (!activeVideo || activeVideo.paused) showSlide(current + 1);
     }, 7000);
   });
 </script>

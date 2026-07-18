@@ -7,12 +7,60 @@
 
     <link rel="stylesheet" href="{% static 'css/print.css' %}">
 
+    <style>
+        .print-verification-footer {
+            margin-top: 24px;
+            padding: 12px 0 0 0;
+            border-top: 1px solid #ccc;
+            font-size: 11px;
+            color: #444;
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        .print-verification-footer .verification-grid {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .print-verification-footer .qr-box {
+            width: 84px;
+            max-width: 100%;
+            padding: 3px;
+            border: 1px solid #ddd;
+            background: white;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+        .print-verification-footer .qr-box img {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+
     {% block extra_css %}{% endblock %}
 
 <body>
 
 <div class="print-container">
     {% block content %}{% endblock %}
+
+    {% if print_verification %}
+    <div class="print-verification-footer">
+        <div class="verification-grid">
+            <div>
+                <div style="font-weight: 700; margin-bottom: 4px;">Document Verification</div>
+                <div>{{ print_verification.verification_text }}</div>
+                <div style="margin-top: 4px;"><strong>Reference:</strong> {{ print_verification.reference }}</div>
+            </div>
+            <div class="qr-box">
+                <div style="width: 100%; height: auto;">{{ print_verification.qr_svg|safe }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 </body>

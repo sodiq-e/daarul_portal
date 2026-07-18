@@ -4,61 +4,99 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>{{ announcement.title }}</h1>
-
-
-
+    <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-            <a href="{% url 'announcement_list' %}" class="btn btn-secondary">Back to Announcements</a>
-            {% if user.is_staff or user.is_superuser %}
-            <a href="{% url 'announcement_edit' announcement.pk %}" class="btn btn-warning">Edit</a>
-            <a href="{% url 'announcement_delete' announcement.pk %}" class="btn btn-danger">Delete</a>
-            {% endif %}
-        </div>
+      <h1 class="announcement-title mb-1 {{ announcement.title_size_class }} {{ announcement.title_alignment_class }}">{{ announcement.title }}</h1>
+      <div class="text-muted">{{ announcement.created_at|date:"F j, Y \a\t g:i A" }} • By {{ announcement.created_by.get_full_name|default:announcement.created_by.username }}</div>
+    </div>
+    <div class="btn-group">
+      <a href="{% url 'announcement_list' %}" class="btn btn-outline-secondary back-action">Back</a>
+      <button onclick="window.print()" class="btn btn-outline-secondary print-action">Print</button>
+      {% if user.is_staff or user.is_superuser %}
+        <a href="{% url 'announcement_edit' announcement.pk %}" class="btn btn-warning">Edit</a>
+        <a href="{% url 'announcement_delete' announcement.pk %}" class="btn btn-danger">Delete</a>
+      {% endif %}
+    </div>
     </div>
 
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-                <strong>Priority:</strong>
-                <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
-            </div>
-            <small class="text-muted">
-                Posted on {{ announcement.created_at|date:"F j, Y \a\t g:i A" }}
-            </small>
-        </div>
-        <div class="card-body">
-            <div class="mb-3">
-                <strong>Posted by:</strong> {{ announcement.created_by.get_full_name|default:announcement.created_by.username }}
-            </div>
-            <div class="announcement-box border rounded p-4 mb-3">
-                <div class="announcement-content">
-                    {{ announcement.content|linebreaks }}
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                {% if announcement.featured_image %}
+                    <img src="{{ announcement.featured_image.url }}" alt="{{ announcement.title }}" class="img-fluid rounded-top" style="width:100%; height:auto; object-fit:cover;">
+                {% endif %}
+                <div class="card-body">
+                    <div class="mb-3">
+                        {% if announcement.category %}
+                            <span class="badge bg-secondary">{{ announcement.category.name }}</span>
+                        {% endif %}
+                        <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
+                    </div>
+
+                    <div class="announcement-content">
+                        {{ announcement.content|safe }}
+                    </div>
                 </div>
+                {% if announcement.updated_at != announcement.created_at %}
+                    <div class="card-footer text-muted">Last updated: {{ announcement.updated_at|date:"F j, Y \a\t g:i A" }}</div>
+                {% endif %}
             </div>
         </div>
-        {% if announcement.updated_at != announcement.created_at %}
-        <div class="card-footer">
-            <small class="text-muted">
-                Last updated: {{ announcement.updated_at|date:"F j, Y \a\t g:i A" }}
-            </small>
-        </div>
-        {% endif %}
+
+        <aside class="col-lg-4">
+            <div class="mb-3">
+                {% if announcement.video_url %}
+                    <div class="card">
+                        <div class="position-relative">
+                            {% if announcement.video_thumbnail %}
+                                <img src="{{ announcement.video_thumbnail.url }}" alt="Video thumbnail" class="img-fluid rounded-top" style="object-fit:cover; width:100%; height:auto;">
+                            {% else %}
+                                <div style="background:#f5f5f7; height:180px; display:flex; align-items:center; justify-content:center;">Video</div>
+                            {% endif %}
+                            <a href="{{ announcement.video_url }}" target="_blank" class="stretched-link" aria-label="Open video"></a>
+                            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;"><div style="width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,0.48); color:white; display:grid; place-items:center; font-size:28px;">▶</div></div>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">Watch video</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if announcement.has_gallery %}
+                <div class="card mb-3">
+                    <div class="card-body text-center">
+                        {% if announcement.gallery_cover %}
+                            <img src="{{ announcement.gallery_cover }}" alt="Gallery cover" class="img-fluid rounded" style="max-height:160px; object-fit:cover;">
+                        {% endif %}
+                        <h5 class="mt-3">Gallery Preview</h5>
+                        {% with counts=announcement.gallery_counts %}
+                            <p class="mb-2 text-muted">{{ counts.photos }} photos • {{ counts.videos }} videos</p>
+                        {% endwith %}
+                        <a href="{% url 'gallery' %}" class="btn btn-outline-primary">View Gallery</a>
+                    </div>
+                </div>
+            {% endif %}
+
+        </aside>
     </div>
+
 </div>
 
 <style>
-.announcement-box {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+.announcement-title {
+  font-size: clamp(2rem, 3vw, 3.6rem);
+  line-height: 1.05;
 }
-
-.announcement-content {
-    white-space: pre-wrap;
-    line-height: 1.6;
+.announcement-title.title-small { font-size: 1.75rem; }
+.announcement-title.title-medium { font-size: 2.5rem; }
+.announcement-title.title-large { font-size: 3.6rem; }
+.announcement-content img { max-width: 100%; height: auto; }
+.announcement-content table { width: 100%; overflow-x: auto; display: block; }
+@media print {
+  header, footer, .mobile-bottom-nav, .menu-section, .print-action, .back-action { display: none !important; }
+  .card { box-shadow: none !important; border: none !important; }
 }
 </style>
-<p>Pages count: {{ pages|length }}</p>
+
 {% endblock %}

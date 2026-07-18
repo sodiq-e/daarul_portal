@@ -11,18 +11,38 @@
                     <h2>{% if form.instance.pk %}Edit{% else %}Create{% endif %} Announcement</h2>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
 
+                        {{ form.media }}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                                {{ form.title }}
+                                {% if form.title.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.title.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ form.title_size.id_for_label }}" class="form-label">Title Size</label>
+                                {{ form.title_size }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="{{ form.title_alignment.id_for_label }}" class="form-label">Title Alignment</label>
+                                {{ form.title_alignment }}
+                            </div>
+                        </div>
+
                         <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
-                            {{ form.title }}
-                            {% if form.title.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.title.errors %}
-                                        <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
+                            <label for="{{ form.excerpt.id_for_label }}" class="form-label">Summary (excerpt)</label>
+                            {{ form.excerpt }}
+                            {% if form.excerpt.errors %}
+                                <div class="text-danger">{% for error in form.excerpt.errors %}<small>{{ error }}</small>{% endfor %}</div>
                             {% endif %}
                         </div>
 
@@ -37,10 +57,16 @@
                                 </div>
                             {% endif %}
                         </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
-                            {{ form.priority }}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">Priority</label>
+                                {{ form.priority }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                                {{ form.category }}
+                            </div>
+                        </div>
                             {% if form.priority.errors %}
                                 <div class="text-danger">
                                     {% for error in form.priority.errors %}
@@ -50,14 +76,36 @@
                             {% endif %}
                         </div>
 
-                        {% if form.instance.pk %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Featured image</label>
+                                {% if form.instance.featured_image %}
+                                    <div class="mb-2"><img src="{{ form.instance.featured_image.url }}" style="max-width:180px; border-radius:6px;"></div>
+                                {% endif %}
+                                {{ form.featured_image }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Video thumbnail</label>
+                                {% if form.instance.video_thumbnail %}
+                                    <div class="mb-2"><img src="{{ form.instance.video_thumbnail.url }}" style="max-width:180px; border-radius:6px;"></div>
+                                {% endif %}
+                                {{ form.video_thumbnail }}
+                                <label class="form-label mt-2">Video URL</label>
+                                {{ form.video_url }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Linked gallery images</label>
+                            {{ form.galleries }}
+                        </div>
+
                         <div class="mb-3 form-check">
                             {{ form.is_active }}
                             <label for="{{ form.is_active.id_for_label }}" class="form-check-label">
                                 Active (visible to users)
                             </label>
                         </div>
-                        {% endif %}
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">

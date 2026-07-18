@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="gallery-full">
+  <div class="section-header">
+    <h2>Portal Gallery</h2>
+    <p>Browse the full-size images and watch portal videos.</p>
+  </div>
+
+  {% if gallery_images %}
+    <div class="gallery-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px;">
+      {% for item in gallery_images %}
+        <div class="gallery-item card-hover" style="background:white; padding:12px; border-radius:10px;">
+          {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.title }}" style="width:100%; height:auto; border-radius:8px;" loading="lazy">
+          {% endif %}
+
+          {% if item.video %}
+            <video controls style="width:100%; margin-top:10px; border-radius:8px;">
+              <source src="{{ item.video.url }}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          {% endif %}
+
+          <h3 style="margin-top:10px;">{{ item.title }}</h3>
+          <p>{{ item.description }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="no-data">
+      <i>ℹ️</i>
+      <p>No gallery media has been uploaded yet.</p>
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}

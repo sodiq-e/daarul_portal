@@ -4,7 +4,9 @@ from django.contrib import messages
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from .models import Announcement
+from .models import Announcement, AnnouncementCategory
+from django.db.models import Q
+from .forms import AnnouncementForm
 from pages.models import Page
 
 
@@ -15,7 +17,14 @@ class AnnouncementListView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return Announcement.objects.filter(is_active=True).order_by('-created_at')
+        qs = Announcement.objects.filter(is_active=True).order_by('-created_at')
+        q = self.request.GET.get('q')
+        cat = self.request.GET.get('category')
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(excerpt__icontains=q) | Q(content__icontains=q))
+        if cat:
+            qs = qs.filter(category__id=cat)
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -24,6 +33,9 @@ class AnnouncementListView(ListView):
             url_prefix='announcements',
             show_in_navigation=True
         )
+        context['categories'] = AnnouncementCategory.objects.all()
+        context['q'] = self.request.GET.get('q', '')
+        context['selected_category'] = self.request.GET.get('category', '')
         return context
 
 
@@ -48,7 +60,7 @@ class AnnouncementDetailView(DetailView):
 class AnnouncementCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Announcement
     template_name = 'announcements/announcement_form.html'
-    fields = ['title', 'content', 'priority']
+    form_class = AnnouncementForm
     success_url = reverse_lazy('announcement_list')
 
     def test_func(self):
@@ -63,7 +75,7 @@ class AnnouncementCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView
 class AnnouncementUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Announcement
     template_name = 'announcements/announcement_form.html'
-    fields = ['title', 'content', 'priority', 'is_active']
+    form_class = AnnouncementForm
     success_url = reverse_lazy('announcement_list')
 
     def test_func(self):
