@@ -165,25 +165,53 @@ def _translate_gemini_exception(exc: Exception) -> GeminiAPIError:
         return GeminiModelNotFoundError(_format_gemini_error_message(exc))
     if _is_timeout_error(exc):
         return GeminiTimeoutError(_format_gemini_error_message(exc))
-    return GeminiAPIError(_format_gemini_error_message(exc))
+        return GeminiAPIError(_format_gemini_error_message(exc))
 
 
 def _build_prompt(exam, topic, difficulty, num_questions):
     subject_name = getattr(exam.subject, 'name', 'General Knowledge')
     exam_mode = exam.get_exam_mode_display() if hasattr(exam, 'get_exam_mode_display') else 'Exam'
-    prompt = (
-        f"Generate {num_questions} CBT-style exam questions for a {exam_mode} in {subject_name}. "
-        f"Use a clear question prompt, include a topic and difficulty, and return valid JSON only. "
-        f"The questions should be appropriate for difficulty level '{difficulty}' and should include an explanation and answer choices when relevant. "
-    )
+    prompt += (
+        "Respond ONLY with a valid JSON array.\n\n"
+
+    "Each object MUST contain:\n"
+    "- prompt\n"
+    "- question_type\n"
+    "- mark_value\n"
+    "- topic\n"
+    "- difficulty\n"
+    "- explanation\n"
+    "- choices\n\n"
+
+    "question_type MUST be EXACTLY one of:\n"
+    "- mcq\n"
+    "- multiple\n"
+    "- true_false\n"
+    "- short_answer\n\n"
+
+    "difficulty MUST be EXACTLY one of:\n"
+    "- easy\n"
+    "- medium\n"
+    "- hard\n\n"
+
+    "For mcq, multiple and true_false, include exactly 4 choices.\n"
+    "Each choice must contain:\n"
+    "- text\n"
+    "- is_correct\n"
+    "- order\n\n"
+
+    "For short_answer, choices must be an empty array.\n"
+
+    "Return ONLY JSON."
+)
     if topic:
         prompt += f"Focus on the topic: {topic}. "
 
-    prompt += (
-        "Respond with a JSON array of objects where each object has the keys: prompt, question_type, mark_value, topic, difficulty, explanation, choices. "
-        "For choice-based questions include a 'choices' array containing objects with keys text, is_correct, order. "
-        "For short_answer questions, choices may be an empty array. "
-        "Do not include any additional text outside valid JSON."
+        prompt += (
+            "Respond with a JSON array of objects where each object has the keys: prompt, question_type, mark_value, topic, difficulty, explanation, choices. "
+            "For choice-based questions include a 'choices' array containing objects with keys text, is_correct, order. "
+            "For short_answer questions, choices may be an empty array. "
+            "Do not include any additional text outside valid JSON."
     )
     return prompt
 

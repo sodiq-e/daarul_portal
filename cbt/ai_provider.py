@@ -19,7 +19,7 @@ from .gemini_service import (
     _build_prompt,
     _make_gemini_request,
     validate_generated_question_payload,
-)
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -119,9 +119,27 @@ def _record_groq_failure() -> None:
 def _clear_groq_failures() -> None:
     cache.delete(GROQ_FAILURE_KEY)
     cache.delete(GROQ_COOLDOWN_KEY)
+QUESTION_TYPE_MAP = {
+    "multiple_choice": "mcq",
+    "multiple choice": "mcq",
+    "mcq": "mcq",
 
+    "multiple_select": "multiple",
+    "multiple select": "multiple",
+
+    "truefalse": "true_false",
+    "true/false": "true_false",
+    "true_false": "true_false",
+
+    "short answer": "short_answer",
+    "shortanswer": "short_answer",
+    "short_answer": "short_answer",
+}
 
 def _validate_question_payload(question: Any, index: int) -> None:
+    if "question_type" in question:
+        value = str(question["question_type"]).strip().lower()
+        question["question_type"] = QUESTION_TYPE_MAP.get(value, value)
     valid, error = validate_generated_question_payload(question)
     if not valid:
         raise GeminiJSONError(f'Question at index {index} is invalid: {error}')
@@ -229,6 +247,7 @@ def _generate_questions(prompt: str, requested_questions: int):
         logger.info('[AI] Groq disabled or unavailable; using Gemini provider only.')
         raw_text = generate_with_gemini(prompt)
         questions = _parse_ai_questions(raw_text)
+        logger.info("Groq raw response:\n%s", raw_text)
         _log_metadata('gemini', time.monotonic() - start, False, requested_questions)
         return questions
 
