@@ -60,14 +60,13 @@ class AttendanceSessionAdmin(admin.ModelAdmin):
     def attendance_summary(self, obj):
         percentage = round((obj.present_count / obj.total_students * 100), 1) if obj.total_students > 0 else 0
         return format_html(
-            '<strong>{}/{}</strong> ({:.1f}%)',
-            obj.present_count, obj.total_students, percentage
-        )
+            '<strong>{}/{}</strong> ({}%)',
+            obj.present_count,
+            obj.total_students,
+            f"{percentage:.1f}",
+    )
     attendance_summary.short_description = 'Present/Total (%)'
 
-    def weekday(self, obj):
-        return obj.date.strftime('%A') if obj.date else '-'
-    weekday.short_description = 'Day'
 
 
 @admin.register(AttendanceHoliday)
@@ -100,7 +99,7 @@ class AttendanceHolidayAdmin(admin.ModelAdmin):
     def duration_days(self, obj):
         delta = obj.end_date - obj.start_date
         days = delta.days + 1  # Include both start and end dates
-        return format_html('<span style="color: #0066cc;"><strong>{}</strong> day{}</span>', 
+        return format_html('<span style="color: #0066cc;"><strong>{}</strong> day{}</span>',
                           days, 's' if days > 1 else '')
     duration_days.short_description = 'Duration'
 
@@ -134,12 +133,15 @@ class AttendanceSettingsAdmin(admin.ModelAdmin):
             'description': 'Send alerts when attendance drops below minimum threshold'
         }),
         ('Admin Information', {
-            'fields': ('last_updated', 'last_updated_by'),
+            'fields': ('last_updated_by',),
             'classes': ('collapse',),
             'description': 'Read-only metadata'
         }),
     )
-    readonly_fields = ('last_updated', 'last_updated_by')
+    readonly_fields = (
+      'created_at',
+      'week_number',
+    )
 
     def config_summary(self, obj):
         return "📋 Attendance Configuration"
