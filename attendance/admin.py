@@ -133,14 +133,14 @@ class AttendanceSettingsAdmin(admin.ModelAdmin):
             'description': 'Send alerts when attendance drops below minimum threshold'
         }),
         ('Admin Information', {
-            'fields': ('last_updated_by',),
+                        'fields': ('last_updated', 'last_updated_by',),
             'classes': ('collapse',),
             'description': 'Read-only metadata'
         }),
     )
     readonly_fields = (
-      'created_at',
-      'week_number',
+        'last_updated',
+        'last_updated_by',
     )
 
     def config_summary(self, obj):

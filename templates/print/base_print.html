@@ -9,34 +9,47 @@
 
     <style>
         .print-verification-footer {
-            margin-top: 24px;
-            padding: 12px 0 0 0;
+            margin-top: 8px;
+            padding: 4px 0;
             border-top: 1px solid #ccc;
-            font-size: 11px;
+            font-size: 10px;
             color: #444;
             box-sizing: border-box;
             width: 100%;
             max-width: 100%;
             overflow: hidden;
+            page-break-inside: avoid;
         }
         .print-verification-footer .verification-grid {
-            display: block;
+            display: flex;
             width: 100%;
             box-sizing: border-box;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .print-verification-footer .verification-grid > div:first-child {
+            flex: 1 1 auto;
+            min-width: 0;
         }
         .print-verification-footer .qr-box {
-            width: 84px;
+            width: 64px;
             max-width: 100%;
-            padding: 3px;
-            border: 1px solid #ddd;
-            background: white;
+            padding: 0;
+            border: 0;
+            background: transparent;
             flex-shrink: 0;
             box-sizing: border-box;
-            margin: 0 auto;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .print-verification-footer .qr-box img {
+        .print-verification-footer .qr-box img,
+        .print-verification-footer .qr-box svg {
             width: 100%;
-            height: 100%;
+            height: auto;
+            display: block;
         }
     </style>
 
