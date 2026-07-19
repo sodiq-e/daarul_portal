@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Attendance Settings</h1>
+            <p class="text-muted">Configure school attendance behavior, term restrictions, and reporting rules.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'admin_student_settings' %}" class="btn btn-secondary">Admin Student Attendance Stats</a>
+            <a href="{% url 'attendance_report' %}" class="btn btn-outline-secondary">Global Attendance Reports</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.enable_term_date_restriction }}
+                            <label class="form-check-label" for="id_enable_term_date_restriction">{{ form.enable_term_date_restriction.label }}</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.allow_retroactive_marking }}
+                            <label class="form-check-label" for="id_allow_retroactive_marking">{{ form.allow_retroactive_marking.label }}</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.auto_mark_holidays_as_absent }}
+                            <label class="form-check-label" for="id_auto_mark_holidays_as_absent">{{ form.auto_mark_holidays_as_absent.label }}</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.send_low_attendance_alerts }}
+                            <label class="form-check-label" for="id_send_low_attendance_alerts">{{ form.send_low_attendance_alerts.label }}</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.school_has_morning_session }}
+                            <label class="form-check-label" for="id_school_has_morning_session">{{ form.school_has_morning_session.label }}</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.school_has_afternoon_session }}
+                            <label class="form-check-label" for="id_school_has_afternoon_session">{{ form.school_has_afternoon_session.label }}</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.minimum_attendance_percentage.label }}</label>
+                        {{ form.minimum_attendance_percentage }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.attendance_calculation_method.label }}</label>
+                        {{ form.attendance_calculation_method }}
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Attendance Holidays Overview</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded">
+                        <h6>Active holidays</h6>
+                        <p class="fs-4 mb-0">{{ active_holidays }}</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded">
+                        <h6>Inactive holidays</h6>
+                        <p class="fs-4 mb-0">{{ inactive_holidays }}</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 bg-light rounded">
+                        <h6>Upcoming holidays</h6>
+                        <p class="fs-4 mb-0">{{ upcoming_holidays.count }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {% if ongoing_holidays %}
+            <div class="mt-4">
+                <h6>Ongoing Holidays</h6>
+                <ul class="list-group">
+                    {% for holiday in ongoing_holidays %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ holiday.name }}</strong><br>
+                            <small>{{ holiday.start_date }} – {{ holiday.end_date }}</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">{{ holiday.holiday_type|capfirst }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

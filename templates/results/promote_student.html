@@ -1,19 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Promote Student</h2>
-<p>Student: {{ student.full_name }} ({{ student.admission_no }})</p>
-<p>Current Class: {{ student.student_class.name }}</p>
-<p>Exam: {{ exam.name }}</p>
-<form method="post">
+<div class="container-fluid">
+  <h2>Promote Student</h2>
+  <p><strong>Student:</strong> {{ student.full_name }} ({{ student.admission_no }})</p>
+  <p><strong>Current Class:</strong> {{ student.student_class|default:'--' }}</p>
+
+  <form method="post" class="card p-3">
     {% csrf_token %}
-    <label for="to_class">Promote to Class:</label>
-    <select name="to_class" id="to_class" required>
+    <div class="mb-3">
+      <label class="form-label" for="to_class">Promote to Class</label>
+      <select class="form-select" name="to_class" id="to_class" required>
+        <option value="">-- Select class --</option>
         {% for cls in classes %}
-        <option value="{{ cls.id }}">{{ cls.name }}</option>
+        <option value="{{ cls.id }}">{{ cls.class_name }}</option>
         {% endfor %}
-    </select><br>
-    <label for="remarks">Remarks:</label>
-    <textarea name="remarks" id="remarks"></textarea><br>
-    <button type="submit">Promote</button>
-</form>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="term">Term</label>
+      <select class="form-select" name="term" id="term">
+        {% for term in terms %}
+        <option value="{{ term.id }}">{{ term.display_name }} ({{ term.academic_year }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="remarks">Remarks</label>
+      <textarea class="form-control" name="remarks" id="remarks" rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Promote</button>
+    <a href="{% url 'promotions_list' %}" class="btn btn-outline-secondary ms-2">Back</a>
+  </form>
+</div>
 {% endblock %}

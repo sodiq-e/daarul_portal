@@ -1,10 +1,12 @@
+import math
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import HttpResponse
 from django.template.loader import get_template
-from django.db.models import Avg, Count, Sum, Q
+from django.db.models import Avg, Count, Sum, Q, Max, Min
 from django.views.generic import TemplateView, ListView
 from django.utils.decorators import method_decorator
 from students.models import Student
@@ -35,6 +37,25 @@ def user_is_staff(user):
         )
     except AttributeError:
         return False
+
+
+def get_next_school_class(source_class):
+    """Find the next class in ordering for bulk promotion."""
+    ordered_classes = list(SchoolClasses.objects.order_by('level', 'class_name'))
+    for index, cls in enumerate(ordered_classes):
+        if cls.pk == source_class.pk:
+            return ordered_classes[index + 1] if index + 1 < len(ordered_classes) else None
+    return None
+
+
+def generate_distinct_chart_colors(label_count):
+    """Create a palette of distinct colors for each chart label."""
+    label_count = max(int(label_count or 0), 1)
+    colors = []
+    for index in range(label_count):
+        hue = (index * 360 / label_count) % 360
+        colors.append(f"hsl({hue}, 70%, 45%)")
+    return colors
 
 
 @login_required
@@ -140,38 +161,174 @@ def report_card_student_list(request, class_id, term_id):
             messages.error(request, 'You do not have permission to view this class.')
             return redirect('select_class_for_report_card')
 
-    # Get all active students in this class
-    students = Student.objects.filter(
-        student_class=school_class,
-        status='active'
-    ).order_by('surname', 'other_names')
+    # Optional academic session, term, and student filters from GET
+    academic_session = request.GET.get('academic_session', '').strip()
+    selected_term_id = request.GET.get('term', '').strip()
+    selected_student_id = request.GET.get('student', '').strip()
+    selected_term = None
+    selected_student = None
+    if selected_term_id:
+        try:
+            selected_term = Term.objects.get(pk=selected_term_id)
+        except Term.DoesNotExist:
+            selected_term_id = ''
+    if selected_student_id:
+        try:
+            selected_student = Student.objects.get(pk=selected_student_id)
+        except Student.DoesNotExist:
+            selected_student_id = ''
 
-    # Check if result template exists
+    display_term = selected_term or term
+
+    # Check if result template exists for the current display term
     try:
         result_template = ResultTemplate.objects.get(
             school_class=school_class,
-            term=term,
+            term=display_term,
             is_active=True
         )
     except ResultTemplate.DoesNotExist:
         messages.warning(request, 'No result template found for this class and term.')
         result_template = None
 
-    # Filter students who have results
-    students_with_results = []
-    for student in students:
-        has_results = StudentResult.objects.filter(
-            student=student,
-            term=term
-        ).exists()
-        if has_results or result_template:
-            students_with_results.append(student)
+    # Build the student list from the selected filters
+    student_results_qs = StudentResult.objects.filter(
+        class_subject__school_class=school_class,
+        percentage__isnull=False,
+    )
+    if academic_session:
+        student_results_qs = student_results_qs.filter(term__academic_year=academic_session)
+    if selected_term:
+        student_results_qs = student_results_qs.filter(term=selected_term)
+    elif display_term:
+        student_results_qs = student_results_qs.filter(term=display_term)
+    if selected_student:
+        student_results_qs = student_results_qs.filter(student=selected_student)
+
+    student_ids = list(student_results_qs.values_list('student_id', flat=True).distinct())
+    students_base = Student.objects.filter(
+        Q(student_class=school_class, status='active') |
+        Q(results__class_subject__school_class=school_class) |
+        Q(term_results__result_template__school_class=school_class)
+    ).distinct()
+
+    if selected_student:
+        students = students_base.filter(pk=selected_student.id).order_by('surname', 'other_names')
+    elif student_ids:
+        students = students_base.filter(pk__in=student_ids).order_by('surname', 'other_names')
+    elif academic_session or selected_term_id or selected_student_id:
+        students = Student.objects.none()
+    else:
+        students = students_base.filter(
+            Q(student_class=school_class, status='active') |
+            Q(results__class_subject__school_class=school_class, results__term=display_term) |
+            Q(term_results__term=display_term, term_results__result_template__school_class=school_class)
+        ).distinct().order_by('surname', 'other_names')
+
+    # Build performance aggregates for the class based on the active filters
+    performance_summary = {}
+    performance_by_term = []
+    top_subjects = []
+    chart_labels = []
+    chart_data = []
+    chart_title = 'Student Performance Across Sessions'
+    chart_series_label = 'Average Percentage'
+    chart_x_label = 'Student'
+    chart_type = request.GET.get('chart_type', 'bar').strip().lower() or 'bar'
+
+    chart_results = StudentResult.objects.filter(
+        class_subject__school_class=school_class,
+        percentage__isnull=False,
+    )
+    if academic_session:
+        chart_results = chart_results.filter(term__academic_year=academic_session)
+    if selected_term:
+        chart_results = chart_results.filter(term=selected_term)
+    if selected_student:
+        chart_results = chart_results.filter(student=selected_student)
+
+    published_results = chart_results
+    avg_pct = published_results.aggregate(avg=Avg('percentage'))['avg'] or 0
+    result_count = published_results.count()
+
+    performance_summary = {
+        'result_count': result_count,
+        'average_percentage': round(float(avg_pct), 2) if avg_pct else 0,
+        'highest_percentage': published_results.aggregate(max_percent=Max('percentage'))['max_percent'] or 0,
+        'lowest_percentage': published_results.aggregate(min_percent=Min('percentage'))['min_percent'] or 0,
+    }
+
+    if selected_term:
+        top_subjects = published_results.values('class_subject__subject__name').annotate(
+            avg_percentage=Avg('percentage')
+        ).order_by('-avg_percentage')[:10]
+        chart_labels = [item['class_subject__subject__name'] for item in top_subjects]
+        chart_data = [round(float(item['avg_percentage'] or 0), 2) for item in top_subjects]
+        performance_by_term = []
+        chart_title = f'Subject Performance for {selected_term.display_name} ({selected_term.academic_year})'
+        chart_series_label = 'Average Percentage'
+        chart_x_label = 'Subject'
+    elif selected_student:
+        performance_by_term = published_results.values(
+            'term__id', 'term__display_name', 'term__academic_year'
+        ).annotate(avg_percentage=Avg('percentage')).order_by('term__academic_year', 'term__name')
+        chart_labels = [f"{item['term__display_name']} ({item['term__academic_year']})" for item in performance_by_term]
+        chart_data = [round(float(item['avg_percentage'] or 0), 2) for item in performance_by_term]
+        top_subjects = published_results.values('class_subject__subject__name').annotate(
+            avg_percentage=Avg('percentage')
+        ).order_by('-avg_percentage')[:5]
+        chart_title = f'Performance for {selected_student.full_name()} across terms'
+        chart_series_label = 'Average Percentage'
+        chart_x_label = 'Term'
+    elif academic_session:
+        performance_by_term = published_results.values(
+            'term__id', 'term__display_name', 'term__academic_year'
+        ).annotate(avg_percentage=Avg('percentage')).order_by('term__academic_year', 'term__name')
+        chart_labels = [f"{item['term__display_name']} ({item['term__academic_year']})" for item in performance_by_term]
+        chart_data = [round(float(item['avg_percentage'] or 0), 2) for item in performance_by_term]
+        top_subjects = published_results.values('class_subject__subject__name').annotate(
+            avg_percentage=Avg('percentage')
+        ).order_by('-avg_percentage')[:5]
+        chart_title = f'Performance Across Terms for {academic_session}'
+        chart_series_label = 'Average Percentage'
+        chart_x_label = 'Term'
+    else:
+        performance_by_term = published_results.values(
+            'student__id', 'student__surname', 'student__other_names'
+        ).annotate(avg_percentage=Avg('percentage')).order_by('student__surname', 'student__other_names')
+        chart_labels = [
+            ' '.join(filter(None, [item['student__surname'], item['student__other_names']])).strip() or f'Student {idx + 1}'
+            for idx, item in enumerate(performance_by_term)
+        ]
+        chart_data = [round(float(item['avg_percentage'] or 0), 2) for item in performance_by_term]
+        top_subjects = published_results.values('class_subject__subject__name').annotate(
+            avg_percentage=Avg('percentage')
+        ).order_by('-avg_percentage')[:5]
+
+    chart_colors = generate_distinct_chart_colors(len(chart_labels))
 
     context = {
         'school_class': school_class,
-        'term': term,
-        'students': students_with_results if students_with_results else students,
+        'term': display_term,
+        'students': students,
         'result_template': result_template,
+        'academic_sessions': Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct(),
+        'selected_academic_session': academic_session,
+        'students_for_filter': students_base.order_by('surname', 'other_names'),
+        'selected_student': selected_student,
+        'selected_student_id': selected_student_id,
+        'terms': Term.objects.order_by('academic_year', 'name'),
+        'selected_term': selected_term_id,
+        'performance_summary': performance_summary,
+        'performance_by_term': list(performance_by_term),
+        'top_subjects': list(top_subjects),
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+        'chart_title': chart_title,
+        'chart_series_label': chart_series_label,
+        'chart_x_label': chart_x_label,
+        'chart_type': chart_type,
+        'chart_colors': chart_colors,
     }
 
     return render(request, 'results/report_card_student_list.html', context)
@@ -198,11 +355,12 @@ def class_results(request, class_id, term_id):
         messages.error(request, f'No result template found for {school_class} - {term}')
         return redirect('results_home')
 
-    # Get all students in this class
+    # Get all students for this class and term, including historical students with results for the selected class.
     students = Student.objects.filter(
-        student_class=school_class,
-        status='active'
-    ).order_by('surname', 'other_names')
+        Q(student_class=school_class, status='active') |
+        Q(results__class_subject__school_class=school_class, results__term=term) |
+        Q(term_results__term=term, term_results__result_template__school_class=school_class)
+    ).distinct().order_by('surname', 'other_names')
 
     # Get results for each student
     student_results = []
@@ -255,6 +413,16 @@ def class_results(request, class_id, term_id):
         'can_modify': user_is_staff(request.user),
         'can_print_broadsheet': can_print_broadsheet,
         'broadsheet_url': broadsheet_url,
+        'academic_sessions': Term.objects.filter(termresult__result_template__school_class=school_class).order_by('academic_year').values_list('academic_year', flat=True).distinct(),
+        'selected_academic_session': request.GET.get('academic_session', '').strip(),
+        'terms': Term.objects.filter(is_active=True).order_by('academic_year', 'name'),
+        'selected_term': term.id if term else '',
+        # Performance placeholders (calculated elsewhere or empty)
+        'performance_summary': {},
+        'performance_by_term': [],
+        'top_subjects': [],
+        'chart_labels': [],
+        'chart_data': [],
     }
 
     return render(request, 'results/class_results.html', context)
@@ -275,33 +443,33 @@ def student_report_card(request, student_id, term_id):
         messages.error(request, 'You do not have permission to view this report card.')
         return redirect('home')
 
-    # Get result template
-    try:
-        result_template = ResultTemplate.objects.get(
+    # Get student results for the selected term, preserving historical class/template context.
+    results = StudentResult.objects.filter(
+        student=student,
+        term=term
+    ).select_related('class_subject__subject', 'result_template').order_by('class_subject__order')
+
+    result_template = None
+    if results.exists():
+        result_template = results.first().result_template
+    else:
+        result_template = ResultTemplate.objects.filter(
             school_class=student.student_class,
             term=term,
             is_active=True
+        ).first()
+
+    term_result = None
+    if result_template:
+        term_result, created = TermResult.objects.get_or_create(
+            student=student,
+            term=term,
+            defaults={'result_template': result_template, 'is_complete': False}
         )
-    except ResultTemplate.DoesNotExist:
-        messages.error(request, 'No results available for this term.')
-        return redirect('results_home')
+    else:
+        term_result = TermResult.objects.filter(student=student, term=term).first()
 
-    # Get student results
-    results = StudentResult.objects.filter(
-        student=student,
-        term=term,
-        result_template=result_template
-    ).select_related('class_subject__subject').order_by('class_subject__order')
-
-    # Get term result
-    term_result, created = TermResult.objects.get_or_create(
-        student=student,
-        term=term,
-        result_template=result_template,
-        defaults={'is_complete': False}
-    )
-
-    if results.exists() and not term_result.is_complete:
+    if term_result and results.exists() and not term_result.is_complete:
         term_result.calculate_aggregates()
 
     # Get student conduct record
@@ -316,6 +484,23 @@ def student_report_card(request, student_id, term_id):
         date__gte=term.start_date,
         date__lte=term.end_date
     ) if term.start_date and term.end_date else AttendanceRecord.objects.none()
+
+    # Invoice and receipt details for the selected term or academic year
+    invoices = []
+    payments = []
+    try:
+        from payroll.models import StudentInvoice, StudentPayment
+        invoices = StudentInvoice.objects.filter(
+            student=student
+        ).filter(
+            Q(term=term) | Q(academic_session=term.academic_year)
+        ).order_by('-issued_date')
+        payments = StudentPayment.objects.filter(
+            invoice__in=invoices
+        ).order_by('-payment_date')
+    except Exception:
+        invoices = []
+        payments = []
 
     # Calculate automatic attendance if records exist
     attendance_sessions = attendance_records.count()
@@ -349,6 +534,8 @@ def student_report_card(request, student_id, term_id):
         'attended_sessions': attended_sessions,
         'attendance_percentage': attendance_percentage,
         'has_attendance': has_attendance,
+        'invoices': invoices,
+        'payments': payments,
     }
     # Prepare a string for display that preserves 0 as valid value
     context['attendance_percentage_str'] = None if attendance_percentage is None else str(attendance_percentage)
@@ -377,6 +564,16 @@ def broadsheet(request, class_id, term_id):
         messages.error(request, f'No result template found for {school_class} - {term}')
         return redirect('results_home')
 
+    # Allow optional filtering by academic session / term via GET params
+    academic_session = request.GET.get('academic_session', '').strip()
+    term_param = request.GET.get('term', '').strip()
+    if term_param:
+        # override term if a GET term param is provided
+        try:
+            term = Term.objects.get(pk=term_param)
+        except Term.DoesNotExist:
+            pass
+
     # Get all subjects for this class
     class_subjects = ClassSubject.objects.filter(
         school_class=school_class
@@ -388,8 +585,19 @@ def broadsheet(request, class_id, term_id):
         status='active'
     ).order_by('surname', 'other_names')
 
-    # Build broadsheet data
+    # Build broadsheet data (respect filters)
     broadsheet_data = []
+
+    # Build a base StudentResult queryset for aggregation and per-student lookups
+    base_results_qs = StudentResult.objects.filter(
+        result_template=result_template,
+        class_subject__school_class=school_class
+    )
+    if academic_session:
+        base_results_qs = base_results_qs.filter(term__academic_year=academic_session)
+    if term:
+        base_results_qs = base_results_qs.filter(term=term)
+
     for student in students:
         student_data = {
             'student': student,
@@ -397,38 +605,50 @@ def broadsheet(request, class_id, term_id):
             'term_result': None,
         }
 
-        # Get results for each subject
+        # Get results for each subject for this student
         for class_subject in class_subjects:
-            try:
-                result = StudentResult.objects.get(
-                    student=student,
-                    class_subject=class_subject,
-                    term=term,
-                    result_template=result_template
-                )
+            result = base_results_qs.filter(
+                student=student,
+                class_subject=class_subject
+            ).select_related('class_subject__subject').first()
+
+            if result:
                 student_data['subject_scores'][class_subject.subject.name] = {
                     'test_score': result.test_score,
                     'exam_score': result.exam_score,
                     'total_score': result.total_score,
                     'grade': result.grade,
                 }
-            except StudentResult.DoesNotExist:
+            else:
                 student_data['subject_scores'][class_subject.subject.name] = None
 
         # Get term result
-        try:
-            term_result = TermResult.objects.get(
-                student=student,
-                term=term,
-                result_template=result_template
-            )
-            if not term_result.is_complete:
-                term_result.calculate_aggregates()
-            student_data['term_result'] = term_result
-        except TermResult.DoesNotExist:
-            pass
+        term_result = TermResult.objects.filter(
+            student=student,
+            term=term,
+            result_template=result_template
+        ).first()
+        if term_result and not term_result.is_complete:
+            term_result.calculate_aggregates()
+        student_data['term_result'] = term_result
 
         broadsheet_data.append(student_data)
+
+    # Aggregate performance summary for the class using the filtered results
+    published_results = base_results_qs.filter(percentage__isnull=False)
+    avg_pct = published_results.aggregate(avg=Avg('percentage'))['avg'] or 0
+    result_count = published_results.count()
+
+    performance_by_term = published_results.values(
+        'term__id', 'term__display_name', 'term__academic_year'
+    ).annotate(
+        avg_percentage=Avg('percentage'),
+        total_score=Sum('total_score')
+    ).order_by('term__academic_year', 'term__name')
+
+    top_subjects = published_results.values('class_subject__subject__name').annotate(
+        avg_percentage=Avg('percentage')
+    ).order_by('-avg_percentage')[:5]
 
     context = {
         'school_class': school_class,
@@ -436,6 +656,19 @@ def broadsheet(request, class_id, term_id):
         'result_template': result_template,
         'class_subjects': class_subjects,
         'broadsheet_data': broadsheet_data,
+        'academic_sessions': Term.objects.filter(termresult__result_template__school_class=school_class).order_by('academic_year').values_list('academic_year', flat=True).distinct(),
+        'selected_academic_session': academic_session,
+        'selected_term': term.id if term else '',
+        'performance_summary': {
+            'result_count': result_count,
+            'average_percentage': round(float(avg_pct), 2) if avg_pct else 0,
+            'highest_percentage': published_results.aggregate(max_percent=Max('percentage'))['max_percent'] or 0,
+            'lowest_percentage': published_results.aggregate(min_percent=Min('percentage'))['min_percent'] or 0,
+        },
+        'performance_by_term': list(performance_by_term),
+        'top_subjects': list(top_subjects),
+        'chart_labels': [f"{item['term__display_name']} {item['term__academic_year']}" for item in performance_by_term],
+        'chart_data': [round(float(item['avg_percentage'] or 0), 2) for item in performance_by_term],
     }
 
     return render(request, 'results/broadsheet.html', context)
@@ -488,7 +721,165 @@ def promotions_list(request):
         'student', 'from_class', 'to_class', 'term'
     ).order_by('-promoted_date')
 
-    return render(request, 'results/promotions_list.html', {'promotions': promotions})
+    classes = SchoolClasses.objects.all().order_by('class_name')
+    terms = Term.objects.filter(is_active=True).order_by('academic_year', 'name')
+    students = Student.objects.select_related('student_class').filter(status='active').order_by('surname', 'other_names', 'admission_no')
+
+    selected_student_ids = []
+    if request.method == 'POST':
+        source_class_id = request.POST.get('source_class') or ''
+        target_class_id = request.POST.get('target_class')
+        term_id = request.POST.get('term')
+        percentage_value = (request.POST.get('percentage') or '').strip()
+        remarks = (request.POST.get('remarks') or '').strip()
+        selected_student_ids = request.POST.getlist('student_ids')
+
+        if not target_class_id and not selected_student_ids:
+            if not source_class_id:
+                messages.error(request, 'Choose a source class or select students individually.')
+                return render(request, 'results/promotions_list.html', {
+                    'promotions': promotions,
+                    'classes': classes,
+                    'terms': terms,
+                    'students': students,
+                    'selected_student_ids': selected_student_ids,
+                })
+
+            source_class = get_object_or_404(SchoolClasses, pk=source_class_id)
+            target_class = get_next_school_class(source_class)
+            if not target_class:
+                messages.error(request, 'Unable to determine the next class for bulk promotion. Please select a destination class manually.')
+                return render(request, 'results/promotions_list.html', {
+                    'promotions': promotions,
+                    'classes': classes,
+                    'terms': terms,
+                    'students': students,
+                    'selected_student_ids': selected_student_ids,
+                })
+        elif not target_class_id:
+            messages.error(request, 'Please select a destination class for individual promotion.')
+            return render(request, 'results/promotions_list.html', {
+                'promotions': promotions,
+                'classes': classes,
+                'terms': terms,
+                'students': students,
+                'selected_student_ids': selected_student_ids,
+            })
+        else:
+            target_class = get_object_or_404(SchoolClasses, pk=target_class_id)
+
+        term = get_object_or_404(Term, pk=term_id) if term_id else terms.first()
+        if not term:
+            messages.error(request, 'No active term is available for promotion.')
+            return render(request, 'results/promotions_list.html', {
+                'promotions': promotions,
+                'classes': classes,
+                'terms': terms,
+                'students': students,
+                'selected_student_ids': selected_student_ids,
+            })
+
+        if source_class_id and str(source_class_id) == str(target_class_id):
+            messages.error(request, 'The source class and destination class cannot be the same.')
+            return render(request, 'results/promotions_list.html', {
+                'promotions': promotions,
+                'classes': classes,
+                'terms': terms,
+                'students': students,
+                'selected_student_ids': selected_student_ids,
+            })
+
+        student_queryset = Student.objects.select_related('student_class').filter(status='active')
+        if source_class_id:
+            student_queryset = student_queryset.filter(student_class_id=source_class_id)
+        if selected_student_ids:
+            student_queryset = student_queryset.filter(pk__in=selected_student_ids)
+
+        eligible_students = list(student_queryset.order_by('surname', 'other_names', 'admission_no'))
+
+        if selected_student_ids:
+            students_to_promote = [student for student in eligible_students if str(student.pk) in selected_student_ids]
+        elif percentage_value:
+            try:
+                percentage = float(percentage_value)
+            except ValueError:
+                messages.error(request, 'Please enter a valid percentage value.')
+                return render(request, 'results/promotions_list.html', {
+                    'promotions': promotions,
+                    'classes': classes,
+                    'terms': terms,
+                    'students': students,
+                    'selected_student_ids': selected_student_ids,
+                })
+
+            if percentage <= 0 or percentage > 100:
+                messages.error(request, 'Percentage must be between 1 and 100.')
+                return render(request, 'results/promotions_list.html', {
+                    'promotions': promotions,
+                    'classes': classes,
+                    'terms': terms,
+                    'students': students,
+                    'selected_student_ids': selected_student_ids,
+                })
+
+            if not eligible_students:
+                messages.error(request, 'No students are available for promotion from the selected class.')
+                return render(request, 'results/promotions_list.html', {
+                    'promotions': promotions,
+                    'classes': classes,
+                    'terms': terms,
+                    'students': students,
+                    'selected_student_ids': selected_student_ids,
+                })
+
+            count = max(1, math.ceil(len(eligible_students) * percentage / 100))
+            students_to_promote = eligible_students[:count]
+        else:
+            students_to_promote = eligible_students
+
+        if not students_to_promote:
+            messages.error(request, 'No students were selected for promotion.')
+            return render(request, 'results/promotions_list.html', {
+                'promotions': promotions,
+                'classes': classes,
+                'terms': terms,
+                'students': students,
+                'selected_student_ids': selected_student_ids,
+            })
+
+            promoted_count = 0
+            for student in students_to_promote:
+                current_class = student.student_class
+                if not current_class:
+                    continue
+                if current_class.id == target_class.id:
+                    continue
+
+                student.student_class = target_class
+                student.save(update_fields=['student_class'])
+                Promotion.objects.create(
+                    student=student,
+                    from_class=current_class,
+                    to_class=target_class,
+                    term=term,
+                    remarks=remarks,
+                    promoted_by=request.user
+                )
+                promoted_count += 1
+
+            if promoted_count:
+                messages.success(request, f'Successfully promoted {promoted_count} student(s) to {target_class}.')
+            else:
+                messages.info(request, 'No changes were made because the selected students were already in the destination class.')
+            return redirect('promotions_list')
+
+    return render(request, 'results/promotions_list.html', {
+        'promotions': promotions,
+        'classes': classes,
+        'terms': terms,
+        'students': students,
+        'selected_student_ids': selected_student_ids,
+    })
 
 
 @login_required
@@ -498,9 +889,47 @@ def promote_student(request, student_id, exam_id):
         return redirect('home')
 
     student = get_object_or_404(Student, pk=student_id)
-    # For backward compatibility, we'll redirect to the new system
-    messages.info(request, 'Student promotion has been moved to the new results system.')
-    return redirect('results_home')
+    classes = SchoolClasses.objects.exclude(pk=student.student_class_id).order_by('class_name') if student.student_class_id else SchoolClasses.objects.all().order_by('class_name')
+    terms = Term.objects.filter(is_active=True).order_by('academic_year', 'name')
+
+    if request.method == 'POST':
+        target_class_id = request.POST.get('to_class')
+        term_id = request.POST.get('term')
+        remarks = (request.POST.get('remarks') or '').strip()
+
+        if not target_class_id:
+            messages.error(request, 'Please select a destination class.')
+        else:
+            target_class = get_object_or_404(SchoolClasses, pk=target_class_id)
+            term = get_object_or_404(Term, pk=term_id) if term_id else (terms.first() if terms.exists() else None)
+            if not term:
+                messages.error(request, 'No active term is available for promotion.')
+            elif student.student_class_id == target_class.id:
+                messages.info(request, 'This student is already in the selected class.')
+            else:
+                current_class = student.student_class
+                if current_class:
+                    student.student_class = target_class
+                    student.save(update_fields=['student_class'])
+                    Promotion.objects.create(
+                        student=student,
+                        from_class=current_class,
+                        to_class=target_class,
+                        term=term,
+                        remarks=remarks,
+                        promoted_by=request.user
+                    )
+                    messages.success(request, f'{student.full_name()} was promoted to {target_class}.')
+                else:
+                    messages.error(request, 'The selected student does not currently belong to a class.')
+        return redirect('promotions_list')
+
+    return render(request, 'results/promote_student.html', {
+        'student': student,
+        'exam': None,
+        'classes': classes,
+        'terms': terms,
+    })
 
 
 

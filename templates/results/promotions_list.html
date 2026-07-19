@@ -1,28 +1,129 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Student Promotions</h2>
-<table>
-    <thead>
-        <tr>
+<div class="container-fluid">
+  <h2>Student Promotions</h2>
+  <p class="text-muted">Promote students in bulk by percentage, or select individual students without applying any filter.</p>
+
+  <form method="post" class="card p-3 mb-4">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label" for="source_class">From Class (optional filter)</label>
+        <select class="form-select" id="source_class" name="source_class">
+          <option value="">All active students</option>
+          {% for cls in classes %}
+          <option value="{{ cls.id }}">{{ cls.class_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="target_class">Promote To</label>
+        <select class="form-select" id="target_class" name="target_class">
+          <option value="">-- Select class --</option>
+          {% for cls in classes %}
+          <option value="{{ cls.id }}">{{ cls.class_name }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-text">
+          For bulk promotion with a selected source class, leave this empty to move students to the next class automatically. For individual selections, choose the destination class.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="term">Term</label>
+        <select class="form-select" id="term" name="term" required>
+          {% for term in terms %}
+          <option value="{{ term.id }}">{{ term.display_name }} ({{ term.academic_year }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="percentage">Promote % of filtered students</label>
+        <input class="form-control" type="number" min="1" max="100" id="percentage" name="percentage" placeholder="e.g. 25">
+      </div>
+      <div class="col-md-8">
+        <label class="form-label" for="remarks">Remarks</label>
+        <textarea class="form-control" id="remarks" name="remarks" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <button type="submit" class="btn btn-primary">Promote Selected</button>
+      <a href="{% url 'results_home' %}" class="btn btn-outline-secondary ms-2">Back</a>
+    </div>
+
+    <div class="card p-3 mt-4">
+      <h4 class="mb-3">Select Students</h4>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="select-all"></th>
+              <th>Student</th>
+              <th>Admission No</th>
+              <th>Current Class</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+            <tr>
+              <td><input type="checkbox" name="student_ids" value="{{ student.id }}" class="student-checkbox" {% if student.id|stringformat:'s' in selected_student_ids %}checked{% endif %}></td>
+              <td>{{ student.full_name }}</td>
+              <td>{{ student.admission_no }}</td>
+              <td>{{ student.student_class|default:'--' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No active students found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </form>
+
+  <div class="card p-3 mt-4">
+    <h4 class="mb-3">Recent Promotions</h4>
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead>
+          <tr>
             <th>Student</th>
             <th>From Class</th>
             <th>To Class</th>
-            <th>Exam</th>
+            <th>Term</th>
             <th>Promoted Date</th>
             <th>Remarks</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for promotion in promotions %}
-        <tr>
+          </tr>
+        </thead>
+        <tbody>
+          {% for promotion in promotions %}
+          <tr>
             <td>{{ promotion.student.full_name }} ({{ promotion.student.admission_no }})</td>
-            <td>{{ promotion.from_class.name }}</td>
-            <td>{{ promotion.to_class.name }}</td>
-            <td>{{ promotion.exam.name }}</td>
+            <td>{{ promotion.from_class.class_name|default:promotion.from_class }}</td>
+            <td>{{ promotion.to_class.class_name|default:promotion.to_class }}</td>
+            <td>{{ promotion.term.display_name|default:promotion.term }}</td>
             <td>{{ promotion.promoted_date }}</td>
             <td>{{ promotion.remarks }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6">No promotions recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const selectAll = document.getElementById('select-all');
+    const boxes = Array.from(document.querySelectorAll('.student-checkbox'));
+    if (selectAll) {
+      selectAll.addEventListener('change', function () {
+        boxes.forEach(function (box) {
+          box.checked = selectAll.checked;
+        });
+      });
+    }
+  });
+</script>
 {% endblock %}

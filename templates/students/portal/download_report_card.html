@@ -19,6 +19,29 @@
                         <p><i class="fas fa-info-circle"></i> Select a term below to download your report card.</p>
                     </div>
 
+                    <form method="get" class="row gy-3 mb-4">
+                        <div class="col-md-5">
+                            <label class="form-label">Academic Session</label>
+                            <select name="academic_session" class="form-select">
+                                <option value="">All Sessions</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Term</label>
+                            <select name="term" class="form-select">
+                                <option value="">All Terms</option>
+                                {% for term in terms %}
+                                <option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term.display_name }} ({{ term.academic_year }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Filter</button>
+                        </div>
+                    </form>
                     <div class="row">
                         {% for term_result in term_results %}
                         <div class="col-md-6 col-lg-4 mb-3">
@@ -31,7 +54,7 @@
                                     </p>
                                 </div>
                                 <div class="card-footer bg-white">
-                                    <a href="?format=pdf&term_id={{ term_result.id }}" class="btn btn-sm btn-primary w-100">
+                                    <a href="?format=pdf&term_id={{ term_result.term.id }}" class="btn btn-sm btn-primary w-100">
                                         <i class="fas fa-download"></i> Download PDF
                                     </a>
                                 </div>

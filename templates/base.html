@@ -2192,6 +2192,9 @@
     height: auto;
     width: 300px;
     transition: width 0.3s ease;
+    /* Ensure sidebar content can scroll instead of overlapping other sections */
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
   }
 
   /* COLLAPSED STATE ON DESKTOP */
@@ -2204,8 +2207,8 @@
   /* Expanded sidebar on desktop - show full links */
   .sidebar:not(.collapsed) .menu-content:not(.collapsed) {
     display: block !important;
-    max-height: 500px !important;
-    overflow: hidden !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .sidebar:not(.collapsed) .menu-content.collapsed {
@@ -2333,9 +2336,9 @@
   transform: rotate(90deg);
 }
 
-.sidebar .menu-content {
-  max-height: 500px;
-  overflow: hidden;
+  .sidebar .menu-content {
+  max-height: none;
+  overflow: visible;
   transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -2362,11 +2365,11 @@
 }
 
 /* Show menu content in collapsed state (but hide text) */
-.sidebar.collapsed .menu-content {
-  display: block !important;
-  max-height: none !important;
-  overflow: visible !important;
-}
+  .sidebar.collapsed .menu-content {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
 
 /* Collapsed links styling */
 .sidebar.collapsed a {
@@ -3756,6 +3759,11 @@ body {
         </a>
         {% endif %}
 
+        <a href="{% url 'attendance_settings' %}" data-tooltip="General Attendance Settings"
+           class="{% if request.resolver_match.url_name == 'attendance_settings' %}active{% endif %}">
+          <i class="fas fa-calendar-alt"></i><span> General Attendance Settings</span>
+        </a>
+
         <a href="/admin/" data-tooltip="Django Admin">
           <i class="fas fa-cog"></i><span> Django Admin</span>
         </a>
@@ -4017,6 +4025,19 @@ body {
     });
   } catch (error) {
     console.warn('Unable to restore sidebar menu state:', error);
+  }
+})();
+// If the sidebar is collapsed, ensure no menu-content is left collapsed so
+// icon-only buttons remain visible. This prevents saved-per-section collapsed
+// state from hiding icons when the sidebar is in icon-only mode.
+(function() {
+  try {
+    const sidebarEl = document.getElementById('sidebar');
+    if (sidebarEl && sidebarEl.classList.contains('collapsed')) {
+      document.querySelectorAll('.menu-content').forEach(c => c.classList.remove('collapsed'));
+    }
+  } catch (e) {
+    // non-fatal
   }
 })();
 </script>
@@ -4322,10 +4343,20 @@ function toggleMenu(header) {
     return;
   }
 
-  // Toggle active state on header
-  header.classList.toggle('active');
+  // If the whole sidebar is in collapsed (icon-only) mode, do not hide
+  // the menu-content; keep icons visible. Instead, mark the header active
+  // visually but avoid toggling the collapsed class which would hide icons.
+  const sidebarEl = document.getElementById('sidebar');
+  if (sidebarEl && sidebarEl.classList.contains('collapsed')) {
+    header.classList.add('active');
+    content.classList.remove('collapsed');
+    // Persist the preference but ensure icons remain visible in collapsed mode
+    saveSidebarMenuState();
+    return;
+  }
 
-  // Toggle collapsed state on content
+  // Normal behaviour when sidebar is expanded: toggle active/collapsed state
+  header.classList.toggle('active');
   content.classList.toggle('collapsed');
   saveSidebarMenuState();
 }

@@ -7,6 +7,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.db.models import Q, Avg, Count, Sum, Max, Min
+from exams.models import Term
 
 try:
     from weasyprint import HTML
@@ -313,25 +315,108 @@ class StudentResultsView(LoginRequiredMixin, TemplateView):
         try:
             from results.models import StudentResult
             student = self.request.user.student_profile
+            academic_session = self.request.GET.get('academic_session', '').strip()
+            term_id = self.request.GET.get('term', '').strip()
+
             context['student'] = student
-            # Fetch only published results
-            context['results'] = StudentResult.objects.filter(
+            context['selected_academic_session'] = academic_session
+            context['selected_term'] = term_id
+
+            # Base query for published results
+            results_qs = StudentResult.objects.filter(
                 student=student,
                 is_published=True
-            ).select_related(
+            )
+
+            if academic_session:
+                results_qs = results_qs.filter(term__academic_year=academic_session)
+            if term_id:
+                results_qs = results_qs.filter(term_id=term_id)
+
+            results = results_qs.select_related(
                 'class_subject__subject',
                 'term',
                 'result_template'
             ).order_by('-term__academic_year', '-term__name')
+
+            context['results'] = results
+            context['academic_sessions'] = StudentResult.objects.filter(
+                student=student,
+                is_published=True
+            ).order_by('term__academic_year').values_list('term__academic_year', flat=True).distinct()
+            term_qs = Term.objects.filter(
+                studentresult__student=student,
+                studentresult__is_published=True
+            ).distinct().order_by('academic_year', 'name')
+            if academic_session:
+                term_qs = term_qs.filter(academic_year=academic_session)
+
+            context['terms'] = term_qs
+
+            # Performance summary for the filtered results
+            published_results = results.filter(percentage__isnull=False)
+            average_percentage = published_results.aggregate(avg=Avg('percentage'))['avg'] or 0
+            result_count = published_results.count()
+
+            performance_by_term = published_results.values(
+                'term__id',
+                'term__display_name',
+                'term__academic_year'
+            ).annotate(
+                avg_percentage=Avg('percentage'),
+                total_score=Sum('total_score')
+            ).order_by('term__academic_year', 'term__name')
+
+            top_subjects = published_results.values(
+                'class_subject__subject__name'
+            ).annotate(
+                avg_percentage=Avg('percentage')
+            ).order_by('-avg_percentage')[:5]
+
+            context['performance_summary'] = {
+                'result_count': result_count,
+                'average_percentage': round(float(average_percentage), 2) if average_percentage else 0,
+                'highest_percentage': published_results.aggregate(max_percent=Max('percentage'))['max_percent'] or 0,
+                'lowest_percentage': published_results.aggregate(min_percent=Min('percentage'))['min_percent'] or 0,
+            }
+            context['performance_by_term'] = list(performance_by_term)
+            context['top_subjects'] = list(top_subjects)
+            context['chart_labels'] = [
+                f"{item['term__display_name']} {item['term__academic_year']}"
+                for item in performance_by_term
+            ]
+            context['chart_data'] = [
+                round(float(item['avg_percentage'] or 0), 2)
+                for item in performance_by_term
+            ]
+
         except Student.DoesNotExist:
             context['student'] = None
             context['results'] = []
+            context['academic_sessions'] = []
+            context['terms'] = []
+            context['selected_academic_session'] = ''
+            context['selected_term'] = ''
+            context['performance_summary'] = {}
+            context['performance_by_term'] = []
+            context['top_subjects'] = []
+            context['chart_labels'] = []
+            context['chart_data'] = []
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in StudentResultsView: {str(e)}")
             context['student'] = None
             context['results'] = []
+            context['academic_sessions'] = []
+            context['terms'] = []
+            context['selected_academic_session'] = ''
+            context['selected_term'] = ''
+            context['performance_summary'] = {}
+            context['performance_by_term'] = []
+            context['top_subjects'] = []
+            context['chart_labels'] = []
+            context['chart_data'] = []
         return context
 
 
@@ -344,18 +429,47 @@ class StudentFeesView(LoginRequiredMixin, TemplateView):
         try:
             from payroll.models import StudentPayment
             student = self.request.user.student_profile
+            academic_session = self.request.GET.get('academic_session', '').strip()
+            term_id = self.request.GET.get('term', '').strip()
+
+            invoices = student.invoices.all().order_by('-issued_date')
+            if academic_session:
+                invoices = invoices.filter(academic_session=academic_session)
+            if term_id:
+                invoices = invoices.filter(term_id=term_id)
+
+            payments = StudentPayment.objects.filter(invoice__in=invoices).order_by('-payment_date')
+
             context['student'] = student
-            context['invoices'] = student.invoices.all().order_by('-issued_date')
-            context['payments'] = StudentPayment.objects.filter(student=student).order_by('-payment_date')
-            
+            context['invoices'] = invoices
+            context['payments'] = payments
+            context['academic_sessions'] = student.invoices.order_by('academic_session').values_list('academic_session', flat=True).distinct()
+            context['terms'] = Term.objects.filter(invoices__student=student).distinct().order_by('academic_year', 'name')
+            context['selected_academic_session'] = academic_session
+            context['selected_term'] = term_id
+
             # Summary calculations
-            total_due = sum(inv.amount_due for inv in context['invoices'])
-            total_paid = sum(p.amount for p in context['payments'])
+            total_due = sum(inv.amount_due for inv in invoices)
+            total_paid = sum(p.amount for p in payments)
             context['total_due'] = total_due
             context['total_paid'] = total_paid
             context['total_owing'] = total_due - total_paid
         except Student.DoesNotExist:
             context['student'] = None
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in StudentFeesView: {str(e)}")
+            context['student'] = None
+            context['invoices'] = []
+            context['payments'] = []
+            context['academic_sessions'] = []
+            context['terms'] = []
+            context['selected_academic_session'] = ''
+            context['selected_term'] = ''
+            context['total_due'] = 0
+            context['total_paid'] = 0
+            context['total_owing'] = 0
         return context
 
 
@@ -368,46 +482,140 @@ class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
         try:
             from results.models import TermResult
             student = self.request.user.student_profile
+            academic_session = self.request.GET.get('academic_session', '').strip()
+            term_id = self.request.GET.get('term', '').strip()
+
+            all_term_results = TermResult.objects.filter(student=student)
+            term_results = all_term_results
+            if academic_session:
+                term_results = term_results.filter(term__academic_year=academic_session)
+            if term_id:
+                term_results = term_results.filter(term_id=term_id)
+
+            from results.models import StudentResult
             context['student'] = student
-            # Get all term results for this student
-            context['term_results'] = TermResult.objects.filter(
-                student=student
-            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__name')
+            filtered_term_results = term_results.select_related('term', 'result_template').order_by('-term__academic_year', '-term__name')
+            context['term_results'] = filtered_term_results
+            context['results_by_term'] = {
+                tr.id: StudentResult.objects.filter(
+                    student=student,
+                    term=tr.term,
+                    result_template=tr.result_template
+                ).select_related('class_subject__subject').order_by('class_subject__order')
+                for tr in filtered_term_results
+            }
+            context['academic_sessions'] = all_term_results.order_by('term__academic_year').values_list('term__academic_year', flat=True).distinct()
+            context['terms'] = Term.objects.filter(term_results__student=student).distinct().order_by('academic_year', 'name')
+            selected_term_obj = Term.objects.filter(pk=term_id).first() if term_id else None
+            context['selected_academic_session'] = academic_session
+            context['selected_term'] = term_id
+            context['selected_term_obj'] = selected_term_obj
+
+            # Add invoices/payments for the selected session or term to support report card download views.
+            from payroll.models import StudentInvoice, StudentPayment
+            invoice_query = StudentInvoice.objects.filter(student=student)
+            if academic_session:
+                invoice_query = invoice_query.filter(academic_session=academic_session)
+            if term_id:
+                invoice_query = invoice_query.filter(term_id=term_id)
+            context['invoices'] = invoice_query.order_by('-issued_date')
+            context['payments'] = StudentPayment.objects.filter(invoice__in=context['invoices']).order_by('-payment_date')
         except Student.DoesNotExist:
             context['student'] = None
             context['term_results'] = []
+            context['academic_sessions'] = []
+            context['terms'] = []
+            context['selected_academic_session'] = ''
+            context['selected_term'] = ''
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in StudentDownloadReportCardView: {str(e)}")
             context['student'] = None
             context['term_results'] = []
+            context['academic_sessions'] = []
+            context['terms'] = []
+            context['selected_academic_session'] = ''
+            context['selected_term'] = ''
         return context
     
     def get(self, request, *args, **kwargs):
         try:
-            from results.models import TermResult
-            student = request.user.student_profile
-            term_results = TermResult.objects.filter(
-                student=student
-            ).select_related('term', 'class_subject__subject').order_by('-term__academic_year', '-term__name')
-            
+            context = self.get_context_data(**kwargs)
+            student = context.get('student')
+
             # If PDF download is requested
             if request.GET.get('format') == 'pdf' and WEASYPRINT_AVAILABLE:
-                context = {
-                    'student': student,
-                    'term_results': term_results,
-                }
+                from results.models import TermResult, StudentResult
+                term_id = request.GET.get('term_id', '').strip()
+                if not term_id:
+                    messages.error(request, 'Please select a term before downloading a report card.')
+                    return redirect('student_portal_report_card')
+
+                selected_term = get_object_or_404(Term, pk=term_id)
+                selected_term_result = TermResult.objects.filter(
+                    student=student,
+                    term=selected_term
+                ).select_related('result_template').first()
+
+                if selected_term_result:
+                    selected_results = StudentResult.objects.filter(
+                        student=student,
+                        term=selected_term,
+                        result_template=selected_term_result.result_template
+                    ).select_related('class_subject__subject').order_by('class_subject__order')
+                else:
+                    selected_results = StudentResult.objects.filter(
+                        student=student,
+                        term=selected_term
+                    ).select_related('class_subject__subject').order_by('class_subject__order')
+
+                context['selected_term'] = term_id
+                context['selected_term_obj'] = selected_term
+                context['selected_term_result'] = selected_term_result
+                context['selected_results'] = selected_results
+
+                from results.models import StudentConduct
+                from attendance.models import AttendanceRecord
+                context['student_conduct'] = StudentConduct.objects.filter(student=student, term=selected_term).first()
+                attendance_records = AttendanceRecord.objects.filter(
+                    student=student,
+                    date__gte=selected_term.start_date,
+                    date__lte=selected_term.end_date
+                ) if selected_term.start_date and selected_term.end_date else AttendanceRecord.objects.none()
+                attendance_sessions = attendance_records.count()
+                attended_sessions = sum(record.present_sessions for record in attendance_records)
+                total_sessions = attendance_sessions * 2
+                attendance_percentage = round((attended_sessions / total_sessions) * 100, 2) if total_sessions > 0 else None
+
+                if (attendance_percentage is None or attendance_sessions == 0) and context['student_conduct']:
+                    if getattr(context['student_conduct'], 'manual_attendance_percentage', None) is not None:
+                        attendance_percentage = float(context['student_conduct'].manual_attendance_percentage)
+                        attended_sessions = context['student_conduct'].manual_attendance_sessions_attended or attended_sessions
+                        total_sessions = context['student_conduct'].manual_attendance_total_sessions or total_sessions
+                        attendance_sessions = context['student_conduct'].manual_attendance_days_marked or attendance_sessions
+
+                context['attendance_sessions'] = attendance_sessions
+                context['attended_sessions'] = attended_sessions
+                context['attendance_total_sessions'] = total_sessions
+                context['attendance_percentage'] = attendance_percentage
+                context['attendance_percentage_str'] = None if attendance_percentage is None else str(attendance_percentage)
+                context['has_attendance'] = (
+                    attendance_sessions > 0 or
+                    (context['student_conduct'] is not None and getattr(context['student_conduct'], 'manual_attendance_percentage', None) is not None) or
+                    (attendance_percentage is not None)
+                )
+
                 html_string = render_to_string('students/portal/report_card_pdf.html', context)
                 html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
                 pdf = html.write_pdf()
                 response = HttpResponse(pdf, content_type='application/pdf')
-                response['Content-Disposition'] = f'attachment; filename="report_card_{student.admission_no}.pdf"'
+                response['Content-Disposition'] = f'attachment; filename="report_card_{student.admission_no}_{selected_term.name}.pdf"'
                 return response
         except Student.DoesNotExist:
             messages.error(request, 'Student profile not found.')
             return redirect('student_portal_dashboard')
-        
+
         return super().get(request, *args, **kwargs)
 
 

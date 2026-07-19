@@ -20,6 +20,30 @@
         {% endfor %}
       </select>
     </div>
+    <div id="student-field" class="col-md-4">
+      <label class="form-label">Student (optional)</label>
+      <select id="student-select" name="student_id" class="form-select">
+        {% if selected_class_id and selected_class_id != 'all' %}
+          <option value="">-- All students in class --</option>
+          {% if students_in_class %}
+            {% for st in students_in_class %}
+              <option value="{{ st.id }}" {% if selected_student_id|stringformat:'s' == st.id|stringformat:'s' %}selected{% endif %}>{{ st.get_full_name|default:st }}</option>
+            {% endfor %}
+          {% else %}
+            <option value="" disabled>No students found in selected class</option>
+          {% endif %}
+        {% else %}
+          <option value="" disabled selected>-- Select a class to load students --</option>
+        {% endif %}
+      </select>
+      <div class="form-text">
+        {% if selected_class_id and selected_class_id != 'all' %}
+          Select a student from the chosen class to view individual stats (optional).
+        {% else %}
+          Choose a class first to select a student.
+        {% endif %}
+      </div>
+    </div>
     <div class="col-md-3">
       <label class="form-label">Start Date</label>
       <input type="date" name="start_date" value="{{ start_date }}" class="form-control" />
@@ -60,6 +84,154 @@
     </table>
   </div>
   {% endif %}
+
+  {% if student %}
+  <hr />
+  <h4>Attendance for: {{ student.get_full_name|default:student }}</h4>
+  <div class="row">
+    <div class="col-md-3">Total Records: <strong>{{ student_total_records }}</strong></div>
+    <div class="col-md-3">Present Sessions: <strong>{{ student_present_sessions }}</strong></div>
+    <div class="col-md-3">Absent Sessions: <strong>{{ student_absent_sessions }}</strong></div>
+    <div class="col-md-3">Attendance %: <strong>{{ student_attendance_percentage }}%</strong></div>
+  </div>
+
+  {% if student_weekly_stats %}
+  <div class="table-responsive mt-3">
+    <table class="table table-sm table-striped">
+      <thead>
+        <tr>
+          <th>Week</th>
+          <th>Present Sessions</th>
+          <th>Absent Sessions</th>
+          <th>Days Marked</th>
+          <th>Attendance %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in student_weekly_stats %}
+        <tr>
+          <td>{{ w.week }}</td>
+          <td>{{ w.present_sessions }}</td>
+          <td>{{ w.absent_sessions }}</td>
+          <td>{{ w.days_marked }}</td>
+          <td>{{ w.attendance_percentage }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if student_error %}
+    <div class="alert alert-danger mt-3">{{ student_error }}</div>
+  {% endif %}
+  {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const classSelect = document.querySelector('select[name="class_id"]');
+  let studentSelect = document.getElementById('student-select');
+  const studentContainer = document.getElementById('student-field');
+  const selectedClassId = '{{ selected_class_id|default:"" }}';
+  const selectedStudentId = '{{ selected_student_id|default:"" }}';
+  if (!classSelect || !studentContainer) return;
+
+  // If server didn't render class options (only 'All Classes'), fetch classes
+  if (classSelect.options.length <= 1) {
+    fetch('{% url "classes_list" %}', { credentials: 'same-origin' })
+      .then(resp => resp.json())
+      .then(data => {
+        (data.classes || []).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          if (String(c.id) === String(selectedClassId)) opt.selected = true;
+          classSelect.appendChild(opt);
+        });
+        if (selectedClassId && selectedClassId !== 'all') {
+          loadStudentsForClass(selectedClassId);
+        }
+      }).catch(err => console.error('Could not load classes', err));
+  }
+
+  function loadStudentsForClass(classId) {
+    if (!classId || classId === 'all') {
+      if (studentSelect && studentSelect.tagName === 'SELECT') {
+        studentSelect.innerHTML = '<option value="">-- All students --</option>';
+      }
+      return;
+    }
+
+    fetch('{% url "students_by_class" %}?class_id=' + encodeURIComponent(classId), { credentials: 'same-origin' })
+      .then(resp => {
+        if (!resp.ok) throw new Error('Network response was not ok ' + resp.status);
+        return resp.json();
+      })
+      .then(data => {
+        studentSelect = document.getElementById('student-select');
+        if (!studentSelect || studentSelect.tagName !== 'SELECT') {
+          const select = document.createElement('select');
+          select.name = 'student_id';
+          select.id = 'student-select';
+          select.className = 'form-select';
+          const existing = document.getElementById('student-select');
+          if (existing && existing.parentNode === studentContainer) {
+            studentContainer.replaceChild(select, existing);
+          } else {
+            const inputEl = studentContainer.querySelector('input[name="student_id"]');
+            if (inputEl) {
+              studentContainer.replaceChild(select, inputEl);
+            } else {
+              studentContainer.appendChild(select);
+            }
+          }
+          studentSelect = document.getElementById('student-select');
+        }
+
+        const sel = document.getElementById('student-select');
+        sel.innerHTML = '';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '-- All students in class --';
+        sel.appendChild(emptyOpt);
+        (data.students || []).forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name;
+          sel.appendChild(opt);
+        });
+        const prev = selectedStudentId;
+        if (prev) {
+          sel.value = prev;
+        }
+        sel.addEventListener('change', function() {
+          const form = sel.closest('form');
+          if (form) {
+            const populateInput = form.querySelector('input[name="populate"]');
+            if (!populateInput) {
+              const hidden = document.createElement('input');
+              hidden.type = 'hidden';
+              hidden.name = 'populate';
+              hidden.value = '1';
+              form.appendChild(hidden);
+            }
+            form.submit();
+          }
+        });
+      }).catch(err => console.error('Could not load students for class', err));
+  }
+
+  classSelect.addEventListener('change', function() {
+    loadStudentsForClass(this.value);
+  });
+
+  // When the page loads with a selected class, populate students automatically
+  const initialClass = classSelect.value;
+  if (initialClass && initialClass !== 'all') {
+    loadStudentsForClass(initialClass);
++  }
+});
+</script>
 
   <hr />
   <div class="mt-3">

@@ -14,6 +14,29 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <form method="get" class="row gy-3 mb-4">
+                        <div class="col-md-5">
+                            <label class="form-label">Academic Session</label>
+                            <select name="academic_session" class="form-select">
+                                <option value="">All Sessions</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Term</label>
+                            <select name="term" class="form-select">
+                                <option value="">All Terms</option>
+                                {% for term in terms %}
+                                <option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term.display_name }} ({{ term.academic_year }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Filter</button>
+                        </div>
+                    </form>
                     <div class="row mb-4">
                         <div class="col-md-4">
                             <div class="card text-center bg-light">

@@ -20,4 +20,6 @@ urlpatterns = [
     # Admin Attendance Settings View
     path('settings/', views.AttendanceSettingsView.as_view(), name='attendance_settings'),
     path('admin/student-settings/', views.AdminStudentAttendanceView.as_view(), name='admin_student_settings'),
+    path('api/students-by-class/', views.students_by_class, name='students_by_class'),
+    path('api/classes/', views.classes_list, name='classes_list'),
 ]

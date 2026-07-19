@@ -264,6 +264,65 @@
         </div>
         {% endif %}
 
+        {% if invoices or payments %}
+        <div style="border: 1px solid #ddd; padding: 12px; background: #ffffff; margin-bottom: 15px; border-radius: 4px;">
+            <h3 style="font-size: 12px; font-weight: bold; color: #2c3e50; margin-bottom: 8px;">💳 Term Invoices & Receipts</h3>
+            {% if invoices %}
+            <div style="overflow-x: auto; margin-bottom: 12px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f0f0f0;">
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Invoice #</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Fee</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: right;">Amount Due</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: right;">Paid</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: right;">Balance</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for invoice in invoices %}
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 6px;">#{{ invoice.id }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px;">{{ invoice.fee.name|default:"General Fee" }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px; text-align: right;">₦ {{ invoice.amount_due }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px; text-align: right;">₦ {{ invoice.total_paid }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px; text-align: right;">₦ {{ invoice.balance }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px;">{{ invoice.status|capfirst }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if payments %}
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <thead>
+                        <tr style="background: #f0f0f0;">
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Date</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: right;">Amount</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Method</th>
+                            <th style="border: 1px solid #ccc; padding: 6px; text-align: left;">Reference</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td style="border: 1px solid #ccc; padding: 6px;">{{ payment.payment_date|date:"d/m/Y" }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px; text-align: right;">₦ {{ payment.amount }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px;">{{ payment.payment_method|default:"Not specified" }}</td>
+                            <td style="border: 1px solid #ccc; padding: 6px;">{{ payment.reference|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <hr style="border: 0.5px solid #ddd; margin: 6px 0;">
 
         <!-- Conduct & Behavior Assessment -->

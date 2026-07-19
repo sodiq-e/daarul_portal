@@ -64,7 +64,118 @@
             <div class="mt-3">
                 <a href="{% url 'results_home' %}" class="btn btn-secondary">Back to Results</a>
             </div>
-        </div>
+                </div>
+    
+                <!-- Filters -->
+                <div class="card mt-3 mb-3">
+                    <div class="card-body">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Academic Session</label>
+                                <select name="academic_session" class="form-select">
+                                    <option value="">All Sessions</option>
+                                    {% for session in academic_sessions %}
+                                    <option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Term</label>
+                                <select name="term" class="form-select">
+                                    <option value="">All Terms</option>
+                                    {% for t in terms %}
+                                    <option value="{{ t.id }}" {% if t.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ t.display_name }} ({{ t.academic_year }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100">Filter</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Performance Summary -->
+                {% if performance_summary and performance_summary.result_count %}
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-1">Results Count</p>
+                                <h3 class="mb-0">{{ performance_summary.result_count }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-1">Average Percentage</p>
+                                <h3 class="mb-0">{{ performance_summary.average_percentage|floatformat:2 }}%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-1">Highest Percentage</p>
+                                <h3 class="mb-0">{{ performance_summary.highest_percentage|floatformat:2 }}%</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-3">
+                        <div class="card shadow-sm">
+                            <div class="card-body text-center">
+                                <p class="text-muted mb-1">Lowest Percentage</p>
+                                <h3 class="mb-0">{{ performance_summary.lowest_percentage|floatformat:2 }}%</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-8">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">Performance Trend</h5>
+                                <canvas id="performanceChart" height="160"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">Top Subjects</h5>
+                                {% if top_subjects %}
+                                <ol class="ps-3">
+                                    {% for subject in top_subjects %}
+                                    <li>{{ subject.class_subject__subject__name }} — {{ subject.avg_percentage|floatformat:2 }}%</li>
+                                    {% endfor %}
+                                </ol>
+                                {% else %}
+                                <p class="text-muted mb-0">No subject performance data available.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Build broadsheet data -->
+                <div class="row">
+                    {% for item in broadsheet_data %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ item.student.full_name }}</h5>
+                                {% if item.term_result %}
+                                <p>Total: {{ item.term_result.total_score }}</p>
+                                <p>Avg: {{ item.term_result.average_percentage|default:'N/A' }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
     </div>
 </div>
 {% endblock %}

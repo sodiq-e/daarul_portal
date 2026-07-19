@@ -19,6 +19,94 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <form method="get" class="row gy-3 mb-4">
+                        <div class="col-md-5">
+                            <label class="form-label">Academic Session</label>
+                            <select name="academic_session" class="form-select">
+                                <option value="">All Sessions</option>
+                                {% for session in academic_sessions %}
+                                <option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Term</label>
+                            <select name="term" class="form-select">
+                                <option value="">All Terms</option>
+                                {% for term in terms %}
+                                <option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term.display_name }} ({{ term.academic_year }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Filter</button>
+                        </div>
+                    </form>
+
+                    {% if performance_summary and performance_summary.result_count %}
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card shadow-sm">
+                                <div class="card-body text-center">
+                                    <p class="text-muted mb-1">Results Count</p>
+                                    <h3 class="mb-0">{{ performance_summary.result_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card shadow-sm">
+                                <div class="card-body text-center">
+                                    <p class="text-muted mb-1">Average Percentage</p>
+                                    <h3 class="mb-0">{{ performance_summary.average_percentage|floatformat:2 }}%</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card shadow-sm">
+                                <div class="card-body text-center">
+                                    <p class="text-muted mb-1">Highest Percentage</p>
+                                    <h3 class="mb-0">{{ performance_summary.highest_percentage|floatformat:2 }}%</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="card shadow-sm">
+                                <div class="card-body text-center">
+                                    <p class="text-muted mb-1">Lowest Percentage</p>
+                                    <h3 class="mb-0">{{ performance_summary.lowest_percentage|floatformat:2 }}%</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-8">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">Performance Trend</h5>
+                                    <canvas id="performanceChart" height="160"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">Top Subjects</h5>
+                                    {% if top_subjects %}
+                                    <ol class="ps-3">
+                                        {% for subject in top_subjects %}
+                                        <li>{{ subject.class_subject__subject__name }} — {{ subject.avg_percentage|floatformat:2 }}%</li>
+                                        {% endfor %}
+                                    </ol>
+                                    {% else %}
+                                    <p class="text-muted mb-0">No subject performance data available.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if results %}
                     <div class="table-responsive">
                         <table class="table table-striped">
@@ -60,4 +148,55 @@
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const labels = {{ chart_labels|default:'[]'|safe }};
+        const data = {{ chart_data|default:'[]'|safe }};
+        const ctx = document.getElementById('performanceChart');
+        if (ctx && labels.length && data.length) {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Percentage',
+                        data: data,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#0d6efd',
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Term / Session'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
