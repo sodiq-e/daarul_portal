@@ -99,19 +99,18 @@
         event.preventDefault();
         clearErrors();
 
-        var url = loginForm.action || window.location.href;
-        var body = new URLSearchParams(new FormData(loginForm)).toString();
+        var formData = new FormData(loginForm);
         var csrfToken = getCSRFToken();
+        var url = loginForm.action || window.location.href;
 
         fetch(url, {
           method: 'POST',
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
             'X-CSRFToken': csrfToken || ''
           },
-          body: body,
+          body: formData,
           credentials: 'same-origin'
         })
           .then(function(response) {
@@ -126,7 +125,6 @@
             });
           })
           .then(function(result) {
-            console.log('Login fetch result', result.status, result.text);
             var response = result.json;
             if (response && response.success) {
               window.location.href = response.redirect_url || '/';
@@ -136,6 +134,7 @@
               showError(response.errors[0]);
               return;
             }
+            console.error('Login AJAX error response:', result.status, result.text);
             if (result.status === 400 || result.status === 422) {
               showError('Login failed. Please check your username and password.');
               return;

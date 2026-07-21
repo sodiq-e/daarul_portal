@@ -1,11 +1,26 @@
 from django.contrib import admin
 from .models import SchoolSettings, PageTheme, GalleryImage
+from .models import HeroText, HeroButton
 
 
 class GalleryImageInline(admin.TabularInline):
     """Inline admin for gallery images within SchoolSettings"""
     model = GalleryImage
     fields = ('image', 'title', 'description', 'order')
+    extra = 3
+    ordering = ('order',)
+
+
+class HeroTextInline(admin.TabularInline):
+    model = HeroText
+    fields = ('title', 'subtitle', 'button_text', 'button_url', 'order', 'active')
+    extra = 2
+    ordering = ('order',)
+
+
+class HeroButtonInline(admin.TabularInline):
+    model = HeroButton
+    fields = ('label', 'url', 'order', 'active', 'open_in_new_tab')
     extra = 3
     ordering = ('order',)
 
@@ -22,12 +37,16 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
         }),
         ('Homepage Content', {
     'fields': (
+        'homepage_hero_enabled',
+        'homepage_hero_slide_duration',
+        'homepage_hero_show_announcements',
+        'homepage_hero_show_counters',
         'homepage_welcome_text',
         'homepage_video_description',
-        'homepage_video',          # ✅ ADD THIS
-        'homepage_video_url'       # ✅ (optional but recommended)
+        'homepage_video',
+        'homepage_video_url'
     ),
-    'description': 'Editable text content for the homepage.'
+    'description': 'Editable text and homepage hero settings for visitors.'
         }),
         ('Default Theme Colors', {
             'fields': (
@@ -61,6 +80,8 @@ class SchoolSettingsAdmin(admin.ModelAdmin):
     )
 
     inlines = [GalleryImageInline]
+    # Add hero inlines so admins can manage hero texts and CTA buttons from the same screen
+    inlines += [HeroTextInline, HeroButtonInline]
 
     def has_add_permission(self, request):
         # Limit to only one school settings object
@@ -113,15 +134,15 @@ class PageThemeAdmin(admin.ModelAdmin):
 
 @admin.register(GalleryImage)
 class GalleryImageAdmin(admin.ModelAdmin):
-    list_display = ('title_or_date', 'school_settings', 'image_preview', 'order', 'created_at')
-    list_filter = ('created_at', 'school_settings')
+    list_display = ('title_or_date', 'school_settings', 'usage', 'image_preview', 'order', 'created_at')
+    list_filter = ('usage', 'created_at', 'school_settings')
     list_editable = ('order',)
     search_fields = ('title', 'description')
     ordering = ('order', '-created_at')
 
     fieldsets = (
         ('Image Information', {
-            'fields': ('school_settings', 'image', 'title', 'description')
+            'fields': ('school_settings', 'image', 'video', 'homepage_video_url', 'usage', 'title', 'description')
         }),
         ('Display Settings', {
             'fields': ('order',),

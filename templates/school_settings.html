@@ -55,6 +55,193 @@
             {{ form.logo }}
         </fieldset>
 
+        <!-- Homepage Content -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Homepage Copy & Hero Content</legend>
+            <p style="color:#555; margin-bottom:12px;">Edit the main homepage copy, hero labels, and section copy below. Changes appear immediately on the public homepage.</p>
+
+            <label style="margin-top:10px;"><b>Hero Eyebrow</b></label>
+            {{ form.homepage_hero_eyebrow }}
+
+            <label style="margin-top:10px;"><b>Hero Title</b></label>
+            {{ form.homepage_hero_title }}
+
+            <label style="margin-top:10px;"><b>Hero Intro / Supporting Copy</b></label>
+            {{ form.homepage_hero_intro }}
+
+            <label style="margin-top:10px;"><b>Main Heading Size</b></label>
+            {{ form.hero_title_font_size }}
+
+            <label style="margin-top:10px;"><b>Intro Text Size</b></label>
+            {{ form.hero_intro_font_size }}
+
+            <label style="margin-top:10px;"><b>Animated Text Size</b></label>
+            {{ form.hero_rotator_title_font_size }}
+
+            <label style="margin-top:10px;"><b>Animated Detail Size</b></label>
+            {{ form.hero_rotator_subtitle_font_size }}
+
+            <label style="margin-top:10px;"><b>Main Heading Color</b></label>
+            {{ form.hero_title_color }}
+
+            <label style="margin-top:10px;"><b>Body Text Color</b></label>
+            {{ form.hero_text_color }}
+
+            <label style="margin-top:10px;"><b>Button Text Size</b></label>
+            {{ form.hero_button_font_size }}
+
+            <label style="margin-top:10px;"><b>Button Text Color</b></label>
+            {{ form.hero_button_text_color }}
+
+            <label style="margin-top:10px;"><b>Button Fill Color</b></label>
+            {{ form.hero_button_background_color }}
+
+            <label style="margin-top:10px;"><b>Button Border Color</b></label>
+            {{ form.hero_button_border_color }}
+
+            <label style="margin-top:10px;"><b>Button Hover Fill</b></label>
+            {{ form.hero_button_hover_background_color }}
+
+            <label style="margin-top:10px;"><b>Button Hover Text</b></label>
+            {{ form.hero_button_hover_text_color }}
+
+            <label style="margin-top:10px;"><b>Primary CTA Label</b></label>
+            {{ form.homepage_hero_primary_cta_label }}
+
+            <label style="margin-top:10px;"><b>Secondary CTA Label</b></label>
+            {{ form.homepage_hero_secondary_cta_label }}
+
+            <label style="margin-top:10px;"><b>Tertiary CTA Label</b></label>
+            {{ form.homepage_hero_tertiary_cta_label }}
+
+            <label style="margin-top:10px;"><b>Announcements Header Label</b></label>
+            {{ form.homepage_hero_announcements_label }}
+
+            <label style="margin-top:10px;"><b>Overview Section Title</b></label>
+            {{ form.homepage_overview_title }}
+
+            <label style="margin-top:10px;"><b>Overview Intro</b></label>
+            {{ form.homepage_overview_intro }}
+
+            <label style="margin-top:10px;"><b>Updates Section Title</b></label>
+            {{ form.homepage_updates_title }}
+
+            <label style="margin-top:10px;"><b>Updates Empty State</b></label>
+            {{ form.homepage_updates_empty_text }}
+
+            <label style="margin-top:10px;"><b>Important Notice Title</b></label>
+            {{ form.homepage_important_notice_title }}
+
+            <label style="margin-top:10px;"><b>Important Notice Text</b></label>
+            {{ form.homepage_important_notice_text }}
+
+            <label style="margin-top:10px;"><b>Help Section Title</b></label>
+            {{ form.homepage_help_title }}
+
+            <label style="margin-top:10px;"><b>Help Section Text</b></label>
+            {{ form.homepage_help_text }}
+
+            <label style="margin-top:10px;"><b>Gallery Section Title</b></label>
+            {{ form.homepage_gallery_title }}
+
+            <label style="margin-top:10px;"><b>Gallery Section Description</b></label>
+            {{ form.homepage_gallery_description }}
+        </fieldset>
+
+        <!-- Hero Texts -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Hero Animated Text</legend>
+            <p style="color:#555; margin-bottom:10px;">Add the words you want to rotate in the hero. You can choose how each one appears and how long it stays on screen.</p>
+
+            <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                <thead style="background:#f9f9f9;"><tr>
+                    <th style="padding:8px; border:1px solid #ddd;">Title</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Subtitle</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Button Text</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Button URL</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Look</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Extra Styles</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Stay For</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Order</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Active</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Delete</th>
+                </tr></thead>
+                <tbody>
+                    {{ hero_text_formset.management_form }}
+                    {% for form in hero_text_formset %}
+                        <tr>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.title }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.subtitle }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.button_text }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.button_url }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.animation_type }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.animation_styles }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.display_seconds }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.order }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.active }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.DELETE }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </fieldset>
+
+        <!-- Hero Buttons -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Hero CTA Buttons</legend>
+            <p style="color:#555; margin-bottom:10px;">Create the buttons you want visitors to click in the hero. You can change their order and whether they open in a new tab.</p>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead style="background:#f9f9f9;"><tr>
+                    <th style="padding:8px; border:1px solid #ddd;">Label</th>
+                    <th style="padding:8px; border:1px solid #ddd;">URL</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Order</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Active</th>
+                    <th style="padding:8px; border:1px solid #ddd;">New Tab</th>
+                    <th style="padding:8px; border:1px solid #ddd;">Delete</th>
+                </tr></thead>
+                <tbody>
+                    {{ hero_button_formset.management_form }}
+                    {% for form in hero_button_formset %}
+                        <tr>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.label }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.url }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.order }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.active }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.open_in_new_tab }}</td>
+                            <td style="padding:8px; border:1px solid #ddd;">{{ form.DELETE }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </fieldset>
+        
+        <!-- Homepage Hero Settings -->
+        <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
+            <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Homepage Hero</legend>
+
+            <div style="display:grid; gap:12px;">
+                <label style="display:flex; align-items:center; gap:12px;">
+                    {{ form.homepage_hero_enabled }}
+                    <span><b>Enable homepage hero</b><br><small style="color:#666;">Show the premium visitor hero on the public homepage</small></span>
+                </label>
+
+                <label style="display:flex; align-items:center; gap:12px;">
+                    <span><b>Slide duration (ms)</b><br><small style="color:#666;">Time each background image remains visible (milliseconds)</small></span>
+                    {{ form.homepage_hero_slide_duration }}
+                </label>
+
+                <label style="display:flex; align-items:center; gap:12px;">
+                    {{ form.homepage_hero_show_announcements }}
+                    <span><b>Show announcement preview</b></span>
+                </label>
+
+                <label style="display:flex; align-items:center; gap:12px;">
+                    {{ form.homepage_hero_show_counters }}
+                    <span><b>Show hero counters</b><br><small style="color:#666;">Display active announcements and media counts</small></span>
+                </label>
+            </div>
+        </fieldset>
+
         <!-- Theme Colors -->
         <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
             <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Theme Colors</legend>
@@ -132,11 +319,14 @@
 
             <h4>Add / Edit Gallery</h4>
 
+            <p style="color:#555; margin-bottom:10px;">Usage: choose <strong>Hero (Homepage)</strong> for images to appear in the homepage hero, <strong>Portal Video</strong> for videos shown in the portal header, or <strong>Gallery</strong> for general gallery items.</p>
+
             <table style="width:100%; border-collapse:collapse;">
                 <thead style="background:#f0f0f0;">
                     <tr>
                         <th style="padding:10px; border:1px solid #ddd;">Image</th>
                         <th style="padding:10px; border:1px solid #ddd;">Video</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Usage</th>
                         <th style="padding:10px; border:1px solid #ddd;">Title</th>
                         <th style="padding:10px; border:1px solid #ddd;">Description</th>
                         <th style="padding:10px; border:1px solid #ddd;">Order</th>
@@ -151,6 +341,7 @@
 
                             <td style="padding:10px; border:1px solid #ddd;">{{ form.image }}</td>
                             <td style="padding:10px; border:1px solid #ddd;">{{ form.video }}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">{{ form.usage }}</td>
                             <td style="padding:10px; border:1px solid #ddd;">{{ form.title }}</td>
                             <td style="padding:10px; border:1px solid #ddd;">{{ form.description }}</td>
                             <td style="padding:10px; border:1px solid #ddd;">{{ form.order }}</td>

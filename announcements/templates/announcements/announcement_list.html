@@ -60,7 +60,7 @@
                                         {% endif %}
                                         <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
                                     </div>
-                                    <p class="card-text text-muted">{{ announcement.excerpt|default:announcement.content|truncatechars:160 }}</p>
+                                    <p class="card-text text-muted">{{ announcement.excerpt|default:announcement.content|striptags|truncatechars:160 }}</p>
                                     <div class="mt-auto d-flex justify-content-between align-items-center">
                                         <small class="text-muted">By {{ announcement.created_by.get_full_name|default:announcement.created_by.username }} • {{ announcement.created_at|date:"M j, Y" }}</small>
                                         <a href="{% url 'announcement_detail' announcement.pk %}" class="btn btn-sm btn-outline-primary">Read More</a>

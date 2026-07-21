@@ -168,6 +168,9 @@
 .image-hover img {
   transition: transform var(--anim-duration-base) var(--anim-easing-smooth);
   display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
 .image-hover:hover img {
@@ -176,6 +179,24 @@
 
 .image-hover:hover {
   box-shadow: var(--shadow-lg);
+}
+
+/* Global image responsiveness */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Ensure images in containers don't stretch vertically */
+.card img,
+.container img,
+.content img,
+.hero img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  object-position: center;
 }
 
 /* ===== LINK HOVER - MODERN STYLE ===== */

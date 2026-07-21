@@ -39,6 +39,37 @@
 
     h1, h2, h3, h4, h5, h6 { color: var(--heading-text-color); }
 
+    /* Responsive heading sizes using clamp() */
+    h1 {
+      font-size: clamp(1.5rem, 5vw, 2.5rem);
+      line-height: 1.2;
+    }
+
+    h2 {
+      font-size: clamp(1.3rem, 4.5vw, 2rem);
+      line-height: 1.2;
+    }
+
+    h3 {
+      font-size: clamp(1.1rem, 3.5vw, 1.75rem);
+      line-height: 1.3;
+    }
+
+    h4 {
+      font-size: clamp(1rem, 3vw, 1.5rem);
+      line-height: 1.3;
+    }
+
+    h5 {
+      font-size: clamp(0.95rem, 2.5vw, 1.25rem);
+      line-height: 1.4;
+    }
+
+    h6 {
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      line-height: 1.4;
+    }
+
     /* ===== PAGE TRANSITIONS & ANIMATIONS ===== */
     html {
       scroll-behavior: smooth;
@@ -90,6 +121,15 @@
       z-index: 99999;
       max-width: 400px;
       pointer-events: none;
+    }
+
+    @media (max-width: 576px) {
+      .toast-container {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        max-width: calc(100% - 24px);
+      }
     }
 
     .toast {
@@ -319,12 +359,13 @@
       display: inline-block;
       background: var(--accent-color);
       color: var(--text-color);
-      padding: 12px 22px;
+      padding: clamp(10px, 2vw, 12px) clamp(18px, 3vw, 22px);
       border-radius: 999px;
       text-decoration: none;
       font-weight: 700;
       box-shadow: 0 10px 20px rgba(0,0,0,.12);
       transition: all 0.3s ease;
+      font-size: clamp(13px, 2vw, 16px);
     }
 
     .button:hover {
@@ -350,9 +391,9 @@
     input, textarea, select {
       border: 1px solid #ddd;
       border-radius: 6px;
-      padding: 10px 12px;
+      padding: clamp(8px, 2vw, 10px) clamp(10px, 2vw, 12px);
       font-family: inherit;
-      font-size: 14px;
+      font-size: clamp(14px, 2.5vw, 16px);
     }
 
     input:focus, textarea:focus, select:focus {
@@ -363,6 +404,12 @@
     textarea {
       resize: vertical;
       min-height: 100px;
+    }
+
+    @media (max-width: 600px) {
+      input, textarea, select {
+        font-size: 16px;
+      }
     }
 
     /* ===== ACCESSIBILITY ===== */
@@ -496,7 +543,7 @@
       }
 
       footer {
-        margin-bottom: 70px !important;
+        margin-bottom: 0 !important;
       }
     }
 
@@ -620,7 +667,6 @@
     }
     html, body {
       width: 100%;
-      overflow-x: hidden;
     }
 
     * {
@@ -629,7 +675,7 @@
 
     /* ✅ FIXED CONTAINER (full width for desktop) */
     .container {
-      padding: 20px;
+      padding: clamp(12px, 3vw, 20px);
       width: 100%;
       max-width: 100%;
       margin: 0;
@@ -638,14 +684,14 @@
     .hero{
       background:linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       color:white;
-      padding:60px 30px;
+      padding:clamp(30px, 5vw, 60px) clamp(16px, 4vw, 30px);
       border-radius:18px;
       box-shadow:0 20px 50px rgba(35,31,89,.18);
       margin-bottom:24px
     }
 
     .hero h1{
-      font-size:3rem;
+      font-size:clamp(1.5rem, 6vw, 3rem);
       line-height:1.05;
       margin:0 0 16px;
       text-transform:uppercase;
@@ -653,7 +699,7 @@
     }
 
     .hero p{
-      font-size:1.05rem;
+      font-size:clamp(0.9rem, 2vw, 1.05rem);
       max-width:680px;
       margin:0 0 24px;
       opacity:.92
@@ -680,10 +726,17 @@
     }
 
     thead th {
-      padding: 12px;
+      padding: clamp(10px, 2vw, 12px);
       text-align: left;
       font-weight: 600;
       border: none;
+      font-size: clamp(12px, 1.8vw, 14px);
+    }
+
+    tbody td {
+      padding: clamp(10px, 2vw, 12px);
+      border-bottom: 1px solid #e0e0e0;
+      font-size: clamp(12px, 1.8vw, 14px);
     }
 
     tbody tr:nth-child(odd) {
@@ -693,11 +746,6 @@
     tbody tr:hover {
       background: #f0f0f0;
       transition: background 0.2s ease;
-    }
-
-    tbody td {
-      padding: 12px;
-      border-bottom: 1px solid #e0e0e0;
     }
 
     /* Responsive table wrapper */
@@ -900,76 +948,6 @@
       opacity: 0.3;
     }
 
-    /* ===== RESPONSIVE TABLE (MOBILE) ===== */
-    @media (max-width: 768px) {
-      .table-wrapper table {
-        width: 100%;
-      }
-
-      /* Switch to card layout on mobile */
-      .table-responsive thead {
-        display: none;
-      }
-
-      .table-responsive tbody,
-      .table-responsive tr {
-        display: block;
-        width: 100%;
-      }
-
-      .table-responsive tr {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        margin-bottom: 12px;
-        overflow: hidden;
-        background: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-
-      .table-responsive td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px !important;
-        border: none !important;
-        border-bottom: 1px solid #f0f0f0;
-      }
-
-      .table-responsive td:last-child {
-        border-bottom: none;
-      }
-
-      .table-responsive td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: var(--primary-color);
-        flex: 0 0 40%;
-      }
-      /* Ensure action buttons inside responsive table cells don't stretch vertically */
-      .table-responsive td .btn,
-      .table-responsive td button {
-        height: auto !important;
-        align-self: center !important;
-        display: inline-flex !important;
-        white-space: nowrap !important;
-        width: auto !important;
-        padding: 6px 8px !important;
-      }
-
-      .table-responsive td:last-child::before {
-        display: none;
-      }
-
-      .table-controls {
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .table-search {
-        min-width: 100%;
-      }
-    }
-
     /* ===== ROW SELECTION ===== */
     .table-checkbox {
       width: 18px;
@@ -1019,14 +997,14 @@
     /* ===== TABLE STATISTICS ===== */
     .table-stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(clamp(120px, 20vw, 150px), 1fr));
+      gap: clamp(10px, 2vw, 12px);
       margin-bottom: 20px;
     }
 
     .stat-card {
       background: white;
-      padding: 16px;
+      padding: clamp(12px, 3vw, 16px);
       border-radius: 8px;
       border-left: 4px solid var(--primary-color);
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -1039,7 +1017,7 @@
     }
 
     .stat-card-label {
-      font-size: 12px;
+      font-size: clamp(10px, 1.5vw, 12px);
       color: #999;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -1048,13 +1026,13 @@
     }
 
     .stat-card-value {
-      font-size: 28px;
+      font-size: clamp(20px, 5vw, 28px);
       font-weight: bold;
       color: var(--primary-color);
     }
 
     .stat-card-subtitle {
-      font-size: 12px;
+      font-size: clamp(10px, 1.5vw, 12px);
       color: #666;
       margin-top: 8px;
     }
@@ -1624,11 +1602,31 @@
       background: white;
       border-radius: 12px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      max-width: 500px;
-      width: 100%;
+      max-width: clamp(90%, 500px, 100%);
+      width: 90%;
       max-height: 80vh;
       overflow-y: auto;
       animation: slideUp 0.3s ease-out;
+    }
+
+    @media (max-width: 600px) {
+      .modal {
+        padding: 12px;
+      }
+
+      .modal-content {
+        width: 100%;
+        max-height: 85vh;
+        border-radius: 8px;
+      }
+
+      .modal-header {
+        padding: 16px;
+      }
+
+      .modal-title {
+        font-size: clamp(16px, 5vw, 20px);
+      }
     }
 
     body[data-theme="dark"] .modal-content {
@@ -2174,7 +2172,7 @@
 
     /* ===== CONTENT ===== */
     .content {
-      padding: 20px;
+      padding: clamp(12px, 3vw, 20px);
       transition: margin-left 0.3s ease;
     }
 
@@ -2628,11 +2626,13 @@
   }
 
   .container {
-    padding: 12px;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    overflow-x: visible !important;
+    -webkit-overflow-scrolling: touch;
   }
-  html, body {
-  overflow-x: hidden;
-}
 
   /* Mobile menu sections */
   .menu-section {
@@ -2653,6 +2653,120 @@
   .sidebar .menu-content.collapsed {
     max-height: 0 !important;
     overflow: hidden !important;
+  }
+
+  /* ===== MOBILE CONTENT & TABLES ===== */
+  .content {
+    overflow-x: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper,
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrapper table,
+  .table-responsive table {
+    width: 100% !important;
+    min-width: 500px;
+    border-collapse: collapse;
+  }
+
+  thead {
+    background: var(--primary-color);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  th,
+  td {
+    padding: 8px 10px !important;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .table-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .table-search {
+    min-width: 100%;
+  }
+
+  .content button,
+  .button,
+  .btn,
+  button {
+    width: auto !important;
+    max-width: none !important;
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    white-space: normal !important;
+    min-width: 0;
+  }
+
+  .card,
+  .box,
+  [class*="card"],
+  [class*="box"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .flex,
+  [style*="display: flex"] {
+    flex-wrap: wrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-cards,
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dashboard-cards .card,
+  .card-row .card {
+    min-width: 260px;
+    flex-shrink: 0;
+  }
+
+  .hero {
+    padding: 30px 16px !important;
+  }
+
+  .hero h1 {
+    font-size: 1.8rem !important;
+  }
+
+  .hero p {
+    font-size: 0.95rem !important;
+  }
+
+  img,
+  .card img,
+  .container img,
+  .content img,
+  .hero img {
+    max-width: 100%;
+    height: auto;
   }
 }
 
@@ -2704,150 +2818,6 @@
   font-size: 18px;
 }
 
-@media (max-width: 768px) {
-
-  .header-center div:first-child {
-    font-size: 16px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  .header-center div:last-child {
-    font-size: 11px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  /* ===== MOBILE CONTENT FIXES ===== */
-
-  /* Remove text truncation */
-  * {
-    text-overflow: unset !important;
-  }
-
-  /* Text wrapping on mobile */
-  p, span, div, a, li, td, th {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    hyphens: auto;
-  }
-
-  /* Ensure full width */
-  .content {
-    width: 100% !important;
-    overflow-x: hidden !important;
-  }
-
-  /* Fix containers */
-  .container {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 12px !important;
-    overflow-x: hidden;
-  }
-
-  /* Responsive tables */
-  table {
-    width: 100% !important;
-    font-size: 14px;
-    display: block;
-    overflow-x: auto;
-    white-space: normal;
-  }
-
-  thead, tbody, th, td, tr {
-    display: block;
-    width: 100%;
-  }
-
-  thead {
-    display: none;
-  }
-
-  tr {
-    margin-bottom: 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px;
-  }
-
-  td {
-    padding: 8px !important;
-    text-align: left !important;
-    border: none;
-    display: block;
-    word-wrap: break-word;
-  }
-
-  td:before {
-    content: attr(data-label);
-    font-weight: bold;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  /* Forms responsive */
-  form {
-    width: 100% !important;
-  }
-
-  /* Inputs and selects should be full-width on mobile, but buttons must remain auto-sized */
-  .content input, .content textarea, .content select {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .content button, .btn, button {
-    width: auto !important;
-    max-width: none !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    height: auto !important;
-    padding: 6px 10px !important;
-    white-space: nowrap !important;
-  }
-
-  /* Cards and boxes */
-  .card, .box, [class*="card"], [class*="box"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-
-  /* Flex containers wrap */
-  .flex, [style*="display: flex"] {
-    flex-wrap: wrap !important;
-  }
-
-  /* Hero sections */
-  .hero {
-    padding: 30px 16px !important;
-  }
-
-  .hero h1 {
-    font-size: 1.8rem !important;
-  }
-
-  .hero p {
-    font-size: 0.95rem !important;
-  }
-
-  /* Headings responsive */
-  h1, h2, h3, h4, h5, h6 {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  h1 { font-size: 1.5rem !important; }
-  h2 { font-size: 1.3rem !important; }
-  h3 { font-size: 1.1rem !important; }
-}
-
-/* ===== PRINT STYLES ===== */
 @media print {
 
   @page {
@@ -3397,33 +3367,6 @@ body {
   body {
     widows: 3;
     orphans: 3;
-  }
-}
-
-/* Additional mobile fixes: prevent action buttons from stretching vertically or horizontally */
-@media (max-width: 768px) {
-  .container .btn,
-  .container button,
-  .table-responsive td .btn,
-  .bulk-actions button,
-  .pagination button,
-  .modal-footer button,
-  .card .btn {
-    display: inline-flex !important;
-    width: auto !important;
-    max-width: none !important;
-    height: auto !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 6px 10px !important;
-    white-space: nowrap !important;
-  }
-
-  /* Avoid children stretching to fill column flex parents */
-  .table-responsive td,
-  .card,
-  .box {
-    align-items: center !important;
   }
 }
 

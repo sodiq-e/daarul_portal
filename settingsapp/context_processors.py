@@ -1,4 +1,4 @@
-from .models import SchoolSettings, PageTheme, GalleryImage
+from .models import SchoolSettings, PageTheme, GalleryImage, HeroText, HeroButton
 from .print_utils import build_document_verification
 from announcements.models import Announcement
 
@@ -84,7 +84,20 @@ def school_settings(request):
             # Also pass current page key for reference
             "current_page": page_key,
             # Gallery images
-            "gallery_images": GalleryImage.objects.filter(school_settings=settings).order_by('order') if settings else [],
+            "gallery_images": GalleryImage.objects.filter(school_settings=settings, usage=GalleryImage.USAGE_GALLERY).order_by('order') if settings else [],
+            # Hero images (subset of gallery images marked for the homepage hero)
+            "hero_images": GalleryImage.objects.filter(school_settings=settings, usage=GalleryImage.USAGE_HERO).order_by('order') if settings else [],
+            # Hero text items and CTA buttons
+            "hero_texts": HeroText.objects.filter(school_settings=settings, active=True).order_by('order') if settings else [],
+            "hero_buttons": HeroButton.objects.filter(school_settings=settings, active=True).order_by('order') if settings else [],
+            # Hero settings
+            "hero_height": settings.hero_height if settings else '80vh',
+            "hero_overlay_opacity": settings.hero_overlay_opacity if settings else 50,
+            "hero_text_position": settings.hero_text_position if settings else 'left',
+            "hero_animation_speed": settings.hero_animation_speed if settings else 900,
+            "enable_auto_slide": settings.enable_auto_slide if settings else True,
+            "enable_hero_overlay": settings.enable_hero_overlay if settings else True,
+            "enable_hero_text_animation": settings.enable_hero_text_animation if settings else True,
         }
     except Exception as e:
         # Log the error but don't crash the app
@@ -113,6 +126,7 @@ def school_settings(request):
             "icon_color": "#4b2e83",
             "current_page": "home",
             "gallery_images": [],
+            "hero_images": [],
         }
 
 

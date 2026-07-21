@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 <!-- 🔥 Dynamic Pages Section -->
 <section class="dynamic-pages reveal">
-  <h2>Latest Updates</h2>
+  <h2>{{ school_settings.homepage_updates_title|default:"Latest Updates" }}</h2>
 
   {% for page in pages %}
     <div class="dynamic-page-block card-hover reveal">
@@ -20,63 +20,562 @@
       {% endfor %}
     </div>
   {% empty %}
-    <p>No updates available yet.</p>
+    <p>{{ school_settings.homepage_updates_empty_text|default:"No updates available yet." }}</p>
   {% endfor %}
 </section>
 {% block content %}
 
 {% if not user.is_authenticated %}
-<!-- VISITOR SECTION -->
-<section class="welcome-hero">
-  <div class="hero-copy">
-
-    <h1 class="hero-heading">Welcome to  Daarul Bayaan  Portal</h1>
-    <p class="hero-subtitle">{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone. We provide a balanced education that combines Western and Islamic studies, including modern fields such as STEM and Robotics." }}</p>
-    <div class="hero-actions">
-      <a href="{% url 'student_application' %}" class="button secondary btn-premium">Apply for Admission</a>
-      <a href="{% url 'contact' %}" class="button secondary btn-premium">📧 Contact Us</a>
-      <!-- Sign In and Create Account moved to dropdown menu -->
-    </div>
-  </div>
-  <div class="hero-media">
-  <div class="video-card card-hover">
-    <div class="video-label">School Videos</div>
-
-    <div class="video-placeholder">
-      {# Replace embedded video with a clickable thumbnail linking to the Gallery page #}
-      {% if gallery_images and gallery_images.0.image %}
-        <a href="{% url 'gallery' %}" style="display:block; text-decoration:none; color:inherit;">
-          <div style="position:relative;">
-            <img src="{{ gallery_images.0.image.url }}" alt="Gallery" style="width:100%; height:240px; object-fit:cover; border-radius:10px;" loading="lazy">
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-              <div style="width:72px; height:72px; border-radius:50%; background:rgba(0,0,0,0.5); color:white; display:grid; place-items:center; font-size:28px;">▶</div>
+  {% if school_settings.homepage_hero_enabled|default:True %}
+  <!-- Unified Fullscreen Hero -->
+  <section class="home-hero unified-hero reveal" style="height: {{ school_settings.hero_height|default:'85vh' }};" data-hero-duration="{{ school_settings.homepage_hero_slide_duration|default:6500 }}" data-auto-slide="{{ school_settings.enable_auto_slide|yesno:'true,false' }}" data-overlay-opacity="{{ school_settings.hero_overlay_opacity|default:55 }}">
+    <div class="hero-bg">
+      <div class="hero-slides">
+        {% if hero_images and hero_images|length > 0 %}
+          {% for image in hero_images %}
+            <div class="hero-slide {% if forloop.first %}active{% endif %}">
+              {% if image.image %}
+                <img class="hero-slide-image lazy-bg" data-src="{{ image.image.url }}" alt="{{ image.title|default:'Hero image' }}" loading="lazy">
+              {% endif %}
             </div>
-          </div>
-        </a>
-      {% elif school_settings.homepage_video %}
-        {# Fallback: show a simple play banner linking to gallery (do not embed video) #}
-        <a href="{% url 'gallery' %}" style="display:block; text-decoration:none; color:inherit;">
-          <div style="min-height:180px; display:flex; align-items:center; justify-content:center; gap:12px;">
-            <div class="video-icon">▶</div>
-            <div>
-              <strong>View school videos</strong>
-              <p>Open the gallery to watch the full video</p>
-            </div>
-          </div>
-        </a>
-      {% else %}
-        <div class="video-icon">▶</div>
-        <div>
-          <strong>No video uploaded</strong>
-          <p>Upload a video from admin panel</p>
-        </div>
+          {% endfor %}
+        {% else %}
+          <div class="hero-slide active fallback-gradient"></div>
+        {% endif %}
+      </div>
+
+      {% if school_settings.enable_hero_overlay|default:True %}
+        <div class="hero-overlay" aria-hidden="true"></div>
       {% endif %}
-
     </div>
 
-  </div>
-</section>
+    <div class="hero-shell">
+      <div class="hero-panel">
+        <div class="hero-left">
+          <p class="hero-eyebrow">{{ school_settings.homepage_hero_eyebrow|default:"Welcome to" }}</p>
+          <h1 class="hero-title" style="font-size: {{ school_settings.hero_title_font_size|default:'clamp(2.5rem, 4.8vw, 4.3rem)' }}; color: {{ school_settings.hero_title_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_title|default:school_settings.school_name|default:school_name }}</h1>
 
+          <div class="hero-dynamic">
+            {% if hero_texts and hero_texts|length > 0 and school_settings.enable_hero_text_animation|default:True %}
+              <div class="hero-rotator" data-anim-speed="{{ school_settings.hero_animation_speed|default:900 }}">
+                {% for item in hero_texts %}
+                  <div class="rotator-item {% if forloop.first %}active{% endif %}" data-display-seconds="{{ item.display_seconds }}" data-anim="{{ item.animation_type }}" data-animation-styles="{{ item.animation_styles|default:item.animation_type }}">
+                    <div class="rotator-title" style="font-size: {{ school_settings.hero_rotator_title_font_size|default:'clamp(1.25rem, 2.2vw, 1.75rem)' }};">{{ item.title }}</div>
+                    <div class="rotator-subtitle" style="font-size: {{ school_settings.hero_rotator_subtitle_font_size|default:'clamp(0.95rem, 1.4vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ item.subtitle }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="hero-static">
+                <div class="rotator-title" style="font-size: {{ school_settings.hero_rotator_title_font_size|default:'clamp(1.25rem, 2.2vw, 1.75rem)' }};">{{ school_settings.homepage_hero_intro|default:school_settings.homepage_welcome_text|truncatechars:120 }}</div>
+                <div class="rotator-subtitle" style="font-size: {{ school_settings.hero_rotator_subtitle_font_size|default:'clamp(0.95rem, 1.4vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ school_settings.motto|default:motto }}</div>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="hero-motto" style="font-size: {{ school_settings.hero_intro_font_size|default:'clamp(0.95rem, 1.35vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ school_settings.homepage_hero_intro|default:school_settings.motto|default:motto }}</div>
+
+          <div class="hero-actions">
+            {% if hero_buttons and hero_buttons|length > 0 %}
+              {% for btn in hero_buttons %}
+                <a href="{{ btn.url|default:'#' }}" class="button{% if forloop.counter == 2 %} secondary{% elif forloop.counter == 3 %} tertiary{% endif %}" {% if btn.open_in_new_tab %}target="_blank" rel="noopener"{% endif %} style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ btn.label }}</a>
+              {% endfor %}
+            {% else %}
+              <a href="{% url 'student_application' %}" class="button" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_primary_cta_label|default:"Apply for Admission" }}</a>
+              <a href="{% url 'contact' %}" class="button secondary" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_secondary_cta_label|default:"Contact Us" }}</a>
+              <a href="{% url 'gallery' %}" class="button tertiary" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_tertiary_cta_label|default:"View Gallery" }}</a>
+            {% endif %}
+          </div>
+        </div>
+
+        <aside class="hero-right">
+          {% if recent_announcements and school_settings.homepage_hero_show_announcements|default:True %}
+            <article class="announcement-card" aria-live="polite">
+              <div class="announcement-meta">
+                <span class="announcement-label">{{ school_settings.homepage_hero_announcements_label|default:"Latest Announcement" }}</span>
+                <span class="announcement-date">{{ recent_announcements.0.created_at|date:'F d, Y' }}</span>
+              </div>
+              <h2 class="announcement-heading">{{ recent_announcements.0.title|striptags }}</h2>
+              <p class="announcement-copy">{{ recent_announcements.0.excerpt|default:recent_announcements.0.content|striptags|truncatechars:80 }}</p>
+              <a href="{% url 'announcement_detail' recent_announcements.0.id %}" class="button secondary announcement-link">Read More</a>
+            </article>
+          {% endif %}
+
+          {% if school_settings.homepage_hero_show_counters|default:True %}
+            <div class="hero-stats">
+              <div class="stat-card">
+                <span class="stat-icon">📢</span>
+                <span class="stat-value">{{ active_announcements_count|default:0 }}</span>
+                <span class="stat-label">{{ school_settings.homepage_hero_stat_announcements_label|default:"Announcements" }}</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-icon">🖼️</span>
+                <span class="stat-value">{{ gallery_images|length }}</span>
+                <span class="stat-label">{{ school_settings.homepage_hero_stat_gallery_label|default:"Gallery" }}</span>
+              </div>
+              {% if students_count %}
+              <div class="stat-card">
+                <span class="stat-icon">🎓</span>
+                <span class="stat-value">{{ students_count }}</span>
+                <span class="stat-label">{{ school_settings.homepage_hero_stat_students_label|default:"Students" }}</span>
+              </div>
+              {% endif %}
+              {% if teachers_count %}
+              <div class="stat-card">
+                <span class="stat-icon">👩‍🏫</span>
+                <span class="stat-value">{{ teachers_count }}</span>
+                <span class="stat-label">{{ school_settings.homepage_hero_stat_teachers_label|default:"Teachers" }}</span>
+              </div>
+              {% endif %}
+            </div>
+          {% endif %}
+        </aside>
+      </div>
+    </div>
+  </section>
+  <style>
+  .unified-hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 78vh;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: clamp(24px, 3vw, 36px);
+  }
+  .unified-hero .hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+  .unified-hero .hero-slides {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .unified-hero .hero-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transform: scale(1.06);
+    transition: opacity 900ms ease, transform 900ms ease;
+    background: radial-gradient(circle at center, rgba(0,0,0,0.08), transparent 35%);
+  }
+  .unified-hero .hero-slide.active {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .unified-hero .hero-slide img.hero-slide-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    opacity: 0;
+    transition: opacity 900ms ease, transform 900ms ease, filter 900ms ease;
+    transform: scale(1.06);
+    filter: blur(1.2px) brightness(0.78) saturate(1.05);
+  }
+  .unified-hero .hero-slide img.hero-slide-image.loaded {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(1px) brightness(0.78) saturate(1.05);
+  }
+  .unified-hero .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 8, 22, 0.72);
+    backdrop-filter: blur(2px);
+    z-index: 1;
+  }
+  .hero-shell {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 clamp(18px, 3vw, 32px);
+  }
+  .hero-panel {
+    width: 100%;
+    max-width: 1320px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.9fr);
+    gap: clamp(24px, 3.4vw, 40px);
+    align-items: center;
+    padding: clamp(22px, 3vw, 32px) 0;
+  }
+  .hero-left {
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .hero-eyebrow {
+    margin: 0;
+    font-size: clamp(0.8rem, 1.2vw, 0.95rem);
+    letter-spacing: 0.24em;
+    color: rgba(255,255,255,0.78);
+    text-transform: uppercase;
+  }
+  .hero-title {
+    margin: 0;
+    font-size: clamp(2.5rem, 4.8vw, 4.3rem);
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+    text-transform: none;
+  }
+  .hero-dynamic,
+  .hero-static {
+    max-width: 680px;
+    margin: 0;
+  }
+  .hero-rotator {
+    position: relative;
+    min-height: 112px;
+  }
+  .hero-rotator .rotator-item {
+    display: none;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 600ms ease, transform 600ms ease;
+  }
+  .hero-rotator .rotator-item.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .rotator-title {
+    font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.16;
+    color: #ffffff;
+  }
+  .rotator-subtitle {
+    margin-top: 8px;
+    opacity: 0.9;
+    color: rgba(255,255,255,0.9);
+    font-size: clamp(0.95rem, 1.4vw, 1.05rem);
+    line-height: 1.7;
+  }
+  .hero-title {
+    font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+    text-shadow: 0 10px 30px rgba(0,0,0,0.26);
+  }
+  .rotator-title {
+    font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .hero-actions .button {
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    font-size: 0.82rem;
+  }
+  .hero-motto {
+    margin: 0;
+    max-width: 680px;
+    opacity: 0.84;
+    color: rgba(255,255,255,0.84);
+    font-size: clamp(0.95rem, 1.35vw, 1.05rem);
+    line-height: 1.8;
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .hero-actions .button {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 220px;
+    padding: 13px 18px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 14px 36px rgba(7, 13, 33, 0.2);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  }
+  .hero-actions .button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 42px rgba(7, 13, 33, 0.24);
+  }
+  .hero-actions .button.secondary {
+    background: rgba(255,255,255,0.04);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.28);
+    box-shadow: none;
+  }
+  .hero-actions .button.secondary:hover {
+    background: rgba(255,255,255,0.14);
+  }
+  .hero-actions .button.tertiary {
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: none;
+  }
+  .hero-actions .button.tertiary:hover {
+    background: rgba(255,255,255,0.1);
+  }
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .announcement-card {
+    padding: 20px 20px 18px;
+    border-radius: 24px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 24px 54px rgba(0,0,0,0.18);
+  }
+  .announcement-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .announcement-label {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.74);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  .announcement-date {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.74);
+  }
+  .announcement-heading {
+    margin: 0 0 10px;
+    font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+    line-height: 1.25;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .announcement-copy {
+    margin: 0 0 14px;
+    color: rgba(255,255,255,0.86);
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+  .announcement-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.24);
+    color: #ffffff;
+    text-align: center;
+  }
+  .announcement-link:hover {
+    background: rgba(255,255,255,0.16);
+  }
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 22px;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.14);
+    min-height: 108px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 48px rgba(0,0,0,0.16);
+  }
+  .stat-icon {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    display: block;
+    font-size: clamp(1.2rem, 2vw, 1.65rem);
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+  }
+  .stat-label {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.82);
+  }
+  @media (max-width: 1100px) {
+    .hero-panel {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    .hero-left {
+      align-items: center;
+      text-align: center;
+    }
+    .hero-right {
+      align-items: stretch;
+    }
+  }
+  @media (max-width: 760px) {
+    .unified-hero {
+      min-height: 78vh;
+      padding-bottom: 28px;
+    }
+    .hero-shell { padding: 0 16px; }
+    .hero-title { font-size: clamp(2.25rem, 8.5vw, 3rem); }
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+      width: 100%;
+      gap: 10px;
+    }
+    .hero-actions .button {
+      width: 100%;
+      max-width: none;
+    }
+    .announcement-card, .stat-card { min-height: auto; }
+    .hero-stats { grid-template-columns: 1fr; }
+    .announcement-card { padding: 18px; }
+    .hero-left { align-items: center; text-align: center; }
+    .hero-right { align-items: stretch; text-align: center; }
+    .announcement-meta { justify-content: center; }
+  }
+  </style>
+
+  <script>
+    (function(){
+      var hero = document.querySelector('.unified-hero');
+      var slides = hero ? hero.querySelectorAll('.hero-slide') : [];
+      var slideDuration = parseInt(hero && hero.dataset.heroDuration ? hero.dataset.heroDuration : 6500, 10) || 6500;
+      var autoSlide = hero && hero.dataset.autoSlide === 'true';
+      var currentIndex = 0;
+      var timer = null;
+
+      function loadHeroImages() {
+        var imgs = document.querySelectorAll('.hero-slide-image.lazy-bg');
+        imgs.forEach(function(img, i){
+          var src = img.dataset.src;
+          if (!src) return;
+          setTimeout(function(){
+            var tmp = new Image();
+            tmp.onload = function(){ img.src = src; img.classList.add('loaded'); };
+            tmp.src = src;
+          }, i * 180);
+        });
+      }
+
+      function showSlide(index) {
+        if (!slides.length) return;
+        currentIndex = (index + slides.length) % slides.length;
+        slides.forEach(function(slide, idx){
+          slide.classList.toggle('active', idx === currentIndex);
+        });
+      }
+
+      function startRotation() {
+        if (!autoSlide || slides.length < 2) return;
+        stopRotation();
+        timer = window.setInterval(function(){ showSlide(currentIndex + 1); }, slideDuration);
+      }
+
+      function startHeroTextRotation() {
+        var rotator = hero ? hero.querySelector('.hero-rotator') : null;
+        if (!rotator) return;
+        var items = rotator.querySelectorAll('.rotator-item');
+        if (!items.length) return;
+        var index = 0;
+        var speed = parseInt(rotator.getAttribute('data-anim-speed') || 900, 10) || 900;
+        var styles = [];
+
+        function normalizeStyles(raw) {
+          if (!raw) return ['fade'];
+          return raw.split(',').map(function(style){ return style.trim().toLowerCase(); }).filter(Boolean);
+        }
+
+        function applyAnimation(item, style) {
+          item.classList.remove('fade','slide','zoom','typing','float');
+          if (style) item.classList.add(style);
+        }
+
+        function showItem(i) {
+          items.forEach(function(item, idx){
+            item.classList.toggle('active', idx === i);
+            var style = styles[idx % styles.length] || 'fade';
+            applyAnimation(item, style);
+          });
+          index = (i + items.length) % items.length;
+        }
+
+        function scheduleNext() {
+          var active = items[index];
+          var seconds = parseInt(active && active.getAttribute('data-display-seconds') || 4, 10) * 1000;
+          window.clearTimeout(rotator._timer);
+          rotator._timer = window.setTimeout(function(){ showItem(index + 1); scheduleNext(); }, Math.max(seconds, speed));
+        }
+
+        items.forEach(function(item){
+          var rawStyles = item.getAttribute('data-animation-styles') || item.getAttribute('data-anim') || 'fade';
+          styles.push(rawStyles);
+        });
+        styles = normalizeStyles(styles.join(','));
+        showItem(0);
+        scheduleNext();
+        rotator.addEventListener('mouseenter', function(){ window.clearTimeout(rotator._timer); });
+        rotator.addEventListener('mouseleave', scheduleNext);
+      }
+
+      function stopRotation() {
+        if (timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      if (document.readyState === 'complete') {
+        loadHeroImages();
+      } else {
+        window.addEventListener('load', loadHeroImages);
+      }
+
+      if (slides.length) {
+        showSlide(0);
+        startRotation();
+        startHeroTextRotation();
+        hero.addEventListener('mouseenter', stopRotation);
+        hero.addEventListener('mouseleave', startRotation);
+        document.addEventListener('visibilitychange', function(){ if (document.hidden) stopRotation(); else startRotation(); });
+      }
+    })();
+  </script>
+  {% else %}
+  <section class="welcome-hero reveal">
+    <div class="hero-copy">
+      <h1 class="hero-heading">Welcome to Daarul Bayaan Portal</h1>
+      <p class="hero-copy-text">{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone." }}</p>
+      <div class="hero-actions">
+        <a href="{% url 'student_application' %}" class="button btn-premium">Apply for Admission</a>
+        <a href="{% url 'contact' %}" class="button secondary btn-premium">Contact Us</a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
 {% else %}
 <!-- LOGGED-IN USER SECTION -->
 <section class="welcome-authenticated">
@@ -166,33 +665,34 @@
 {% endif %}
 
 <section class="portal-overview reveal">
-  <h2>What You Can Do on This Portal</h2>
+  <h2>{{ school_settings.homepage_overview_title|default:"What You Can Do on This Portal" }}</h2>
+  <p class="overview-intro">{{ school_settings.homepage_overview_intro|default:"Explore a secure digital experience designed to keep students, families, and staff connected." }}</p>
 
   <div class="overview-grid stagger-parent">
 
     <a href="/results/" class="overview-card card-hover stagger-item">
-      <h3>Access academic records</h3>
-      <p>View your results, grades, and progress reports from one secure location.</p>
+      <h3>{{ school_settings.homepage_overview_card_1_title|default:"Access academic records" }}</h3>
+      <p>{{ school_settings.homepage_overview_card_1_description|default:"View your results, grades, and progress reports from one secure location." }}</p>
     </a>
 
     <a href="{% url 'school_classes:class_list' %}" class="overview-card card-hover stagger-item">
-      <h3>View class schedules</h3>
-      <p>Check timetables, subject details, and classroom assignments at a glance.</p>
+      <h3>{{ school_settings.homepage_overview_card_2_title|default:"View class schedules" }}</h3>
+      <p>{{ school_settings.homepage_overview_card_2_description|default:"Check timetables, subject details, and classroom assignments at a glance." }}</p>
     </a>
 
     <a href="{% url 'student_list' %}" class="overview-card card-hover stagger-item">
-      <h3>Receive school updates</h3>
-      <p>Stay informed with announcements, news, and important school events.</p>
+      <h3>{{ school_settings.homepage_overview_card_3_title|default:"Receive school updates" }}</h3>
+      <p>{{ school_settings.homepage_overview_card_3_description|default:"Stay informed with announcements, news, and important school events." }}</p>
     </a>
 
    <a href="{% url 'contact' %}" class="overview-card card-hover stagger-item">
-        <h3>Communicate easily</h3>
-        <p>Message teachers and school management through the portal's secure channels.</p>
+        <h3>{{ school_settings.homepage_overview_card_4_title|default:"Communicate easily" }}</h3>
+        <p>{{ school_settings.homepage_overview_card_4_description|default:"Message teachers and school management through the portal's secure channels." }}</p>
     </a>
 
     <a href="{% url 'profile' %}" class="overview-card card-hover stagger-item">
-      <h3>Manage your profile</h3>
-      <p>Update your account information and keep your profile current.</p>
+      <h3>{{ school_settings.homepage_overview_card_5_title|default:"Manage your profile" }}</h3>
+      <p>{{ school_settings.homepage_overview_card_5_description|default:"Update your account information and keep your profile current." }}</p>
     </a>
 
   </div>
@@ -201,20 +701,19 @@
 <!-- Getting Started section removed; login/signup now in dropdown menu -->
 
 <section class="important-notice reveal">
-  <h2>Important Notice</h2>
-  <p>Your login details are personal and should not be shared with anyone. Keep your credentials safe to protect your academic information.</p>
+  <h2>{{ school_settings.homepage_important_notice_title|default:"Important Notice" }}</h2>
+  <p>{{ school_settings.homepage_important_notice_text|default:"Your login details are personal and should not be shared with anyone. Keep your credentials safe to protect your academic information." }}</p>
 </section>
 
 <section class="help-section reveal">
-  <h2>Need Help?</h2>
-  <p>If you experience any difficulty accessing your account or navigating the portal, please contact the school administration for assistance using "Contact us" icon above or call: 08145430107.</p>
-  <p>We are committed to providing a seamless and efficient digital experience. Thank you for being part of our community.</p>
+  <h2>{{ school_settings.homepage_help_title|default:"Need Help?" }}</h2>
+  <p>{{ school_settings.homepage_help_text|default:"If you experience any difficulty accessing your account or navigating the portal, please contact the school administration for assistance." }}</p>
 </section>
 
 <section class="gallery-section reveal">
   <div class="section-header">
-    <h2>Portal Gallery</h2>
-    <p>Browse highlights from the portal and explore the types of information available.</p>
+    <h2>{{ school_settings.homepage_gallery_title|default:"Portal Gallery" }}</h2>
+    <p>{{ school_settings.homepage_gallery_description|default:"Browse highlights from the portal and explore the types of information available." }}</p>
   </div>
   <div class="slider" id="gallerySlider">
     {% if gallery_images %}
@@ -244,79 +743,241 @@
 </section>
 
 <style>
-.welcome-hero {
+.home-hero {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
   gap: 30px;
+  align-items: stretch;
+  padding: clamp(24px, 4vw, 38px);
+  margin-bottom: 40px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,255,0.9));
+  box-shadow: 0 32px 80px rgba(22,28,84,0.12);
+  overflow: hidden;
+}
+.home-hero-cover {
+  position: relative;
+  min-height: 520px;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7);
+}
+.home-hero-slides {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 0.9s ease, transform 0.9s ease;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(75,46,131,0.14), rgba(127,90,240,0.16));
+}
+.hero-slide.active {
+  opacity: 1;
+  transform: scale(1);
+}
+.hero-slide-image,
+.hero-slide-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.hero-slide-fallback {
+  background: linear-gradient(135deg, rgba(75,46,131,0.25), rgba(127,90,240,0.3));
+}
+.hero-slide-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10,15,40,0.12) 0%, rgba(10,15,40,0.54) 100%);
+  pointer-events: none;
+}
+.home-hero-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  padding: 36px;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 26px 50px rgba(20,26,70,0.08);
+}
+.home-hero-panel .eyebrow {
+  display: inline-flex;
   align-items: center;
-  padding: 40px 0;
-}
-.eyebrow {
-  display: inline-block;
-  font-size: 0.9rem;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 700;
   color: var(--accent-color);
-  margin-bottom: 18px;
 }
-.hero-copy h1 {
-  font-size: clamp(2rem, 3vw, 3.4rem);
-  margin: 0 0 20px;
-  line-height: 1.05;
+.hero-heading {
+  margin: 0;
+  font-size: clamp(2.5rem, 4vw, 3.6rem);
+  line-height: 1.02;
+  color: var(--heading-text-color);
 }
-.hero-copy p {
-  max-width: 640px;
-  line-height: 1.75;
-  margin-bottom: 28px;
-  color: #333;
+.hero-copy-text {
+  margin: 0;
+  max-width: 100%;
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
+  line-height: 1.85;
+  color: #4b4f63;
 }
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
 }
-.hero-media {
-  min-height: 320px;
+.hero-actions .button {
+  min-width: 160px;
 }
-.video-card {
-  width: 100%;
-  border-radius: 22px;
-  padding: 28px;
-  background: rgba(255,255,255,0.95);
-  border: 1px solid rgba(0,0,0,0.05);
-  box-shadow: 0 30px 60px rgba(0,0,0,0.08);
+.button.tertiary {
+  background: rgba(75,46,131,0.08);
+  color: var(--primary-color);
+  border: 1px solid rgba(75,46,131,0.14);
 }
-.video-label {
-  font-size: 0.85rem;
+.button.tertiary:hover {
+  background: rgba(75,46,131,0.14);
+}
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.hero-stat {
+  background: var(--icon-plate-color);
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hero-stat-value {
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 800;
+  color: var(--primary-color);
+}
+.hero-stat-label {
+  color: #4f5474;
+  font-size: 0.95rem;
+}
+.hero-announcement-banner {
+  padding: 22px;
+  border-radius: 18px;
+  background: #f9f5ff;
+  border: 1px solid rgba(127,90,240,0.12);
+  display: grid;
+  gap: 12px;
+}
+.ticker-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent-color);
-  margin-bottom: 18px;
+  letter-spacing: 0.14em;
+  color: var(--primary-color);
 }
-.video-placeholder {
-  min-height: 240px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(75,46,131,0.08), rgba(127,90,240,0.08));
+.hero-announcement-banner p {
+  margin: 0;
+  color: #4d5270;
+  line-height: 1.75;
+}
+.hero-controls {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  text-align: center;
-  gap: 16px;
-  padding: 24px;
-  color: #2a2a2a;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.video-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  color: white;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
+.hero-nav-button {
+  background: white;
+  color: var(--primary-color);
+  border: 1px solid rgba(75,46,131,0.16);
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+.hero-nav-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(75,46,131,0.12);
+}
+@media (max-width: 980px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+  }
+  .home-hero-cover {
+    min-height: 340px;
+  }
+  .home-hero-panel {
+    padding: 28px;
+  }
+}
+@media (max-width: 700px) {
+  .home-hero {
+    padding: 20px 16px 28px;
+    gap: 22px;
+  }
+  .hero-heading {
+    font-size: clamp(2rem, 10vw, 2.7rem);
+  }
+  .hero-actions {
+    flex-direction: column;
+  }
+  .hero-actions .button,
+  .hero-nav-button {
+    width: 100%;
+    text-align: center;
+  }
+  .hero-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Unified full-bleed hero overrides */
+.unified-hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  display: block;
+}
+.unified-hero .hero-bg { position: absolute; inset: 0; z-index: 0; }
+.unified-hero .hero-slides { position: relative; width:100%; height:100%; }
+.unified-hero .hero-slide { position: absolute; inset:0; opacity:0; transition: opacity 900ms ease; }
+.unified-hero .hero-slide.active { opacity:1; }
+.unified-hero .hero-slide img.hero-slide-image { width:100%; height:100%; object-fit:cover; display:block; filter: saturate(0.98) contrast(1.02); }
+.unified-hero .hero-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.5); z-index:1; pointer-events:none; }
+.unified-hero .hero-content { position:relative; z-index:2; height:100%; display:flex; align-items:center; }
+.unified-hero .hero-inner { width:100%; max-width:1200px; margin:0 auto; padding: clamp(18px,4vw,48px); display:flex; gap:32px; align-items:flex-start; }
+.unified-hero .hero-branding { flex:1; color: white; text-align: left; }
+.unified-hero .hero-title { margin:0 0 8px; font-size:clamp(2rem, 4vw, 3.6rem); line-height:1; font-weight:800; text-shadow:0 6px 30px rgba(0,0,0,0.45); }
+.unified-hero .hero-dynamic { margin-bottom:18px; }
+.hero-rotator .rotator-item { opacity:0; transition: opacity 600ms ease; }
+.hero-rotator .rotator-item.active { opacity:1; }
+.rotator-title { font-size: clamp(1.2rem, 2.4vw, 1.6rem); font-weight:700; }
+.rotator-subtitle { margin-top:6px; opacity:0.92; font-size:1rem; color: #e9e9f5; }
+.hero-ctas { display:flex; gap:12px; margin-top:18px; flex-wrap:wrap; }
+.hero-ctas .button { min-width:160px; }
+.hero-side { width:320px; }
+.hero-counters { display:flex; flex-direction:column; gap:12px; }
+.counter-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(6px); border-radius:12px; padding:12px; color:white; text-align:center; }
+.counter-card .count { font-weight:800; font-size:1.4rem; }
+.hero-announcements-panel { margin-top:14px; background: rgba(255,255,255,0.06); padding:12px; border-radius:12px; color:white; }
+
+@media (max-width: 980px) {
+  .unified-hero .hero-inner { flex-direction:column; align-items:center; text-align:center; }
+  .unified-hero .hero-side { width:100%; }
+  .unified-hero .hero-branding { text-align:center; }
+}
+
+
 .portal-overview,
 .getting-started,
 .important-notice,
@@ -588,6 +1249,74 @@
       var activeVideo = slides[current] ? slides[current].querySelector('video') : null;
       if (!activeVideo || activeVideo.paused) showSlide(current + 1);
     }, 7000);
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Unified hero behavior
+    var hero = document.querySelector('.unified-hero');
+    if (!hero) return;
+
+    var slides = hero.querySelectorAll('.hero-slide');
+    var duration = parseInt(hero.dataset.heroDuration, 10) || 6500;
+    var autoSlide = hero.dataset.autoSlide === 'true';
+    var overlayOpacity = parseFloat(hero.dataset.overlayOpacity || 50) / 100;
+    var current = 0; var slideTimer = null;
+
+    // set overlay opacity
+    var overlayEl = hero.querySelector('.hero-overlay');
+    if (overlayEl) overlayEl.style.background = 'rgba(0,0,0,' + overlayOpacity + ')';
+
+    function showSlide(i) {
+      if (!slides || slides.length === 0) return;
+      slides.forEach(function(s, idx){ s.classList.toggle('active', idx === i); });
+      current = (i + slides.length) % slides.length;
+    }
+
+    function startSlides() {
+      stopSlides();
+      if (!autoSlide || slides.length < 2) return;
+      slideTimer = setInterval(function(){ showSlide(current+1); }, duration);
+    }
+    function stopSlides(){ if (slideTimer) { clearInterval(slideTimer); slideTimer = null; } }
+
+    // Lazy load images after window.load
+    function lazyLoadHero() {
+      var imgs = hero.querySelectorAll('.hero-slide-image');
+      imgs.forEach(function(img, i){
+        var src = img.dataset.src || img.getAttribute('data-src');
+        if (!src) return;
+        setTimeout(function(){ var tmp=new Image(); tmp.onload=function(){ img.src=src; img.classList.add('loaded'); }; tmp.src=src; }, i*200);
+      });
+    }
+    if (document.readyState === 'complete') lazyLoadHero(); else window.addEventListener('load', lazyLoadHero);
+
+    // Rotator for hero text
+    (function(){
+      var rotator = hero.querySelector('.hero-rotator');
+      if (!rotator) return;
+      var items = rotator.querySelectorAll('.rotator-item');
+      if (!items || items.length === 0) return;
+      var rtIndex = 0; var rtTimer = null;
+
+      function showRotator(i){ items.forEach(function(it, idx){ it.classList.toggle('active', idx===i); }); rtIndex = (i+items.length)%items.length; }
+
+      function scheduleNext(){
+        var active = items[rtIndex];
+        var secs = parseInt(active.dataset.displaySeconds || active.getAttribute('data-display-seconds') || 4, 10) * 1000;
+        clearTimeout(rtTimer);
+        rtTimer = setTimeout(function(){ showRotator(rtIndex+1); scheduleNext(); }, secs);
+      }
+
+      showRotator(0); scheduleNext();
+      // pause on hover
+      rotator.addEventListener('mouseenter', function(){ clearTimeout(rtTimer); });
+      rotator.addEventListener('mouseleave', scheduleNext);
+    })();
+
+    // start
+    showSlide(0); startSlides();
+    hero.addEventListener('mouseenter', stopSlides); hero.addEventListener('mouseleave', startSlides);
+    document.addEventListener('visibilitychange', function(){ if (document.hidden) stopSlides(); else startSlides(); });
   });
 </script>
 

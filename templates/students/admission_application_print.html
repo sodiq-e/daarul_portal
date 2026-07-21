@@ -1,4 +1,4 @@
-{% extends 'print/base_print.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Application - {{ application.full_name }}{% endblock %}
@@ -37,59 +37,9 @@
         font-size: 11pt;
         color: #666;
     }
-    @media print {
-        body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #fff !important;
-            color: #000 !important;
-        }
-        .print-application-container {
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 auto !important;
-            padding: 10px !important;
-        }
-        .print-application-header,
-        .section,
-        .row,
-        .col,
-        .meta-info,
-        .field-value {
-            page-break-inside: auto !important;
-            break-inside: auto !important;
-            page-break-after: auto !important;
-            break-after: auto !important;
-        }
-        .row,
-        .col {
-            display: block !important;
-            width: 100% !important;
-            margin-right: 0 !important;
-        }
-        .print-application-header {
-            page-break-after: avoid !important;
-            margin-bottom: 15px !important;
-        }
-        .field-value,
-        .meta-info {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-        .field-value {
-            padding: 5px 8px !important;
-            border-left: 2px solid #ddd !important;
-        }
-        .section {
-            padding-bottom: 0 !important;
-            margin-bottom: 15px !important;
-            page-break-after: avoid !important;
-        }
-    }
     .section {
         margin-bottom: 25px;
-        page-break-inside: auto;
-        break-inside: auto;
+        page-break-inside: avoid;
     }
     .section h2 {
         font-size: 12pt;
@@ -139,10 +89,13 @@
 
 {% block content %}
 <div class="print-application-container">
+        <!-- Header -->
         <div class="print-application-header">
             <h1>STUDENT ADMISSION APPLICATION</h1>
             <p>Application ID: #{{ application.id }} | Date: {{ application.application_date|date:"d/m/Y H:i" }}</p>
         </div>
+
+        <!-- Student Information -->
         <div class="section">
             <h2>👤 STUDENT INFORMATION</h2>
             <div class="row">
