@@ -252,24 +252,14 @@ img {
   --hero-duration: var(--anim-duration-hero);
 }
 
-.hero-heading {
-  animation: heroHeadingSlideUp var(--hero-duration) var(--anim-easing-smooth) forwards;
-  opacity: 0;
-}
-
-.hero-subtitle {
-  animation: heroParagraphFadeIn calc(var(--hero-duration) * 1.2) var(--anim-easing-smooth) forwards;
-  opacity: 0;
-}
-
-.hero-buttons {
-  animation: heroButtonsSlideUp calc(var(--hero-duration) * 1.4) var(--anim-easing-smooth) forwards;
-  opacity: 0;
-}
-
+/* Hero-specific animations are now handled inline in the homepage template.
+   Keep these utilities from clashing with the dynamic settings-driven hero styles. */
+.hero-heading,
+.hero-subtitle,
+.hero-buttons,
 .hero-media {
-  animation: heroMediaSlideInRight calc(var(--hero-duration) * 1.6) var(--anim-easing-smooth) forwards;
-  opacity: 0;
+  animation: none !important;
+  opacity: 1 !important;
 }
 
 /* ===== FADE IN ANIMATIONS ===== */

@@ -177,6 +177,14 @@
       const heroButtons = document.querySelector('.hero-buttons, .hero-actions, .welcome-hero .hero-actions');
       const heroMedia = document.querySelector('.hero-media, .video-card');
 
+      // Leave the homepage hero to the template-driven inline animation styles.
+      // This avoids conflicting with the settings-controlled hero animations.
+      if (heroHeading && heroHeading.closest('.home-hero')) {
+        heroHeading.style.opacity = '1';
+        heroHeading.classList.add('active');
+        return;
+      }
+
       if (prefersReducedMotion() && config.respectReducedMotion) {
         [heroHeading, heroSubtitle, heroButtons, heroMedia].forEach(el => {
           if (el) el.style.opacity = '1';
@@ -184,7 +192,7 @@
         return;
       }
 
-      // Stagger animation for hero elements
+      // Stagger animation for non-homepage hero elements only
       if (heroHeading) {
         this.animateWithDelay(heroHeading, 0);
       }

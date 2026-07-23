@@ -37,15 +37,16 @@
 
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
+        <p style="margin-bottom:16px; color:#666;"><strong>Note:</strong> Required fields are marked with <span style="color:#d9534f">*</span>.</p>
 
         <!-- School Information -->
         <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
             <legend style="padding:0 10px; font-size:16px; font-weight:bold;">School Information</legend>
 
-            <label><b>School Name</b></label>
+            <label><b>School Name</b> <span style="color:#d9534f">*</span></label>
             {{ form.school_name }}
 
-            <label style="margin-top:15px;"><b>Motto</b></label>
+            <label style="margin-top:15px;"><b>Motto</b> <span style="color:#d9534f">*</span></label>
             {{ form.motto }}
 
             <label style="margin-top:15px;"><b>School Logo</b></label><br>
@@ -89,6 +90,16 @@
 
             <label style="margin-top:10px;"><b>Button Text Size</b></label>
             {{ form.hero_button_font_size }}
+
+            <label style="margin-top:10px;"><b>Hero Content Animation</b></label>
+            <div style="font-size: 0.86rem; color: #666; margin-bottom: 6px;">Choose a motion style that will visibly appear on the home page hero.</div>
+            {{ form.hero_content_animation_style }}
+
+            <label style="margin-top:10px;"><b>Eyebrow Text Size</b></label>
+            {{ form.hero_eyebrow_font_size }}
+
+            <label style="margin-top:10px;"><b>Eyebrow Animation</b></label>
+            {{ form.hero_eyebrow_animation_style }}
 
             <label style="margin-top:10px;"><b>Button Text Color</b></label>
             {{ form.hero_button_text_color }}
@@ -238,6 +249,41 @@
                 <label style="display:flex; align-items:center; gap:12px;">
                     {{ form.homepage_hero_show_counters }}
                     <span><b>Show hero counters</b><br><small style="color:#666;">Display active announcements and media counts</small></span>
+                </label>
+
+                <label style="display:flex; flex-direction:column; gap:6px;">
+                    <span><b>Hero Height</b><br><small style="color:#666;">Example: 80vh, 600px</small></span>
+                    {{ form.hero_height }}
+                </label>
+
+                <label style="display:flex; flex-direction:column; gap:6px;">
+                    <span><b>Overlay Opacity (%)</b><br><small style="color:#666;">Use 0-100 for the hero overlay strength</small></span>
+                    {{ form.hero_overlay_opacity }}
+                </label>
+
+                <label style="display:flex; flex-direction:column; gap:6px;">
+                    <span><b>Hero Text Position</b></span>
+                    {{ form.hero_text_position }}
+                </label>
+
+                <label style="display:flex; flex-direction:column; gap:6px;">
+                    <span><b>Hero Animation Speed (ms)</b></span>
+                    {{ form.hero_animation_speed }}
+                </label>
+
+                <label style="display:flex; align-items:center; gap:12px;">
+                    {{ form.enable_auto_slide }}
+                    <span><b>Auto-slide background images</b></span>
+                </label>
+
+                <label style="display:flex; align-items:center; gap:12px;">
+                    {{ form.enable_hero_overlay }}
+                    <span><b>Show hero overlay</b></span>
+                </label>
+
+                <label style="display:flex; align-items:center; gap:12px;">
+                    {{ form.enable_hero_text_animation }}
+                    <span><b>Animate hero text</b></span>
                 </label>
             </div>
         </fieldset>

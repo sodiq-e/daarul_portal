@@ -116,7 +116,7 @@ class SchoolSettings(models.Model):
     )
 
     hero_intro_font_size = models.CharField(
-        max_length=30,
+        max_length=100,
         default='clamp(0.95rem, 1.35vw, 1.05rem)',
         blank=True,
         help_text='CSS font size for the hero intro / supporting text'
@@ -155,6 +155,38 @@ class SchoolSettings(models.Model):
         default='0.82rem',
         blank=True,
         help_text='CSS font size for hero buttons'
+    )
+
+    hero_content_animation_style = models.CharField(
+        max_length=30,
+        default='fade',
+        blank=True,
+        choices=[
+            ('fade', 'Fade'),
+            ('slide-up', 'Slide Up'),
+            ('slide-left', 'Slide Left'),
+            ('slide-right', 'Slide Right'),
+            ('zoom', 'Zoom In'),
+            ('flip', 'Flip'),
+            ('glow', 'Glow'),
+            ('float', 'Float'),
+        ],
+        help_text='Global animation style for hero content transitions'
+    )
+
+    hero_eyebrow_font_size = models.CharField(
+        max_length=30,
+        default='clamp(0.8rem, 1.1vw, 0.95rem)',
+        blank=True,
+        help_text='CSS font size for the hero eyebrow'
+    )
+
+    hero_eyebrow_animation_style = models.CharField(
+        max_length=30,
+        default='slide-up',
+        blank=True,
+        choices=[('fade', 'Fade'), ('slide-up', 'Slide Up'), ('bounce', 'Bounce'), ('pulse', 'Pulse')],
+        help_text='Animation style for the hero eyebrow'
     )
 
     hero_button_text_color = models.CharField(
@@ -750,9 +782,9 @@ class HeroButton(models.Model):
 
 # Additional hero configuration fields on SchoolSettings
 SchoolSettings.add_to_class('hero_height', models.CharField(max_length=20, default='80vh', blank=True, help_text='CSS height value for the hero (e.g., 80vh, 600px)'))
-SchoolSettings.add_to_class('hero_overlay_opacity', models.PositiveSmallIntegerField(default=50, help_text='Overlay opacity percentage (0-100)'))
-SchoolSettings.add_to_class('hero_text_position', models.CharField(max_length=10, default='left', choices=[('left','Left'),('center','Center'),('right','Right')], help_text='Position of hero text'))
-SchoolSettings.add_to_class('hero_animation_speed', models.PositiveIntegerField(default=900, help_text='Animation speed in milliseconds for text transitions'))
+SchoolSettings.add_to_class('hero_overlay_opacity', models.PositiveSmallIntegerField(default=50, blank=True, help_text='Overlay opacity percentage (0-100)'))
+SchoolSettings.add_to_class('hero_text_position', models.CharField(max_length=10, default='left', blank=True, choices=[('left','Left'),('center','Center'),('right','Right')], help_text='Position of hero text'))
+SchoolSettings.add_to_class('hero_animation_speed', models.PositiveIntegerField(default=900, blank=True, help_text='Animation speed in milliseconds for text transitions'))
 SchoolSettings.add_to_class('enable_auto_slide', models.BooleanField(default=True))
 SchoolSettings.add_to_class('enable_hero_overlay', models.BooleanField(default=True))
 SchoolSettings.add_to_class('enable_hero_text_animation', models.BooleanField(default=True))

@@ -27,8 +27,9 @@
 
 {% if not user.is_authenticated %}
   {% if school_settings.homepage_hero_enabled|default:True %}
+  {% with content_style=school_settings.hero_content_animation_style|default:'fade' eyebrow_style=school_settings.hero_eyebrow_animation_style|default:'slide-up' %}
   <!-- Unified Fullscreen Hero -->
-  <section class="home-hero unified-hero reveal" style="height: {{ school_settings.hero_height|default:'85vh' }};" data-hero-duration="{{ school_settings.homepage_hero_slide_duration|default:6500 }}" data-auto-slide="{{ school_settings.enable_auto_slide|yesno:'true,false' }}" data-overlay-opacity="{{ school_settings.hero_overlay_opacity|default:55 }}">
+  <section class="home-hero unified-hero reveal hero-style-{{ content_style }} hero-eyebrow-style-{{ eyebrow_style }}" style="height: {{ school_settings.hero_height|default:'85vh' }}; margin: 0; width: calc(100% + 40px); margin-left: -20px; margin-right: -20px;" data-hero-duration="{{ school_settings.homepage_hero_slide_duration|default:6500 }}" data-auto-slide="{{ school_settings.enable_auto_slide|yesno:'true,false' }}" data-overlay-opacity="{{ school_settings.hero_overlay_opacity|default:55 }}" data-hero-animation-style="{{ content_style }}" data-hero-eyebrow-animation-style="{{ eyebrow_style }}">
     <div class="hero-bg">
       <div class="hero-slides">
         {% if hero_images and hero_images|length > 0 %}
@@ -52,12 +53,12 @@
     <div class="hero-shell">
       <div class="hero-panel">
         <div class="hero-left">
-          <p class="hero-eyebrow">{{ school_settings.homepage_hero_eyebrow|default:"Welcome to" }}</p>
-          <h1 class="hero-title" style="font-size: {{ school_settings.hero_title_font_size|default:'clamp(2.5rem, 4.8vw, 4.3rem)' }}; color: {{ school_settings.hero_title_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_title|default:school_settings.school_name|default:school_name }}</h1>
+          <p class="hero-eyebrow {{ eyebrow_style }}" style="font-size: {{ school_settings.hero_eyebrow_font_size|default:'clamp(0.8rem, 1.1vw, 0.95rem)' }}; animation-name: {% if eyebrow_style == 'slide-up' %}heroEyebrowSlideUp{% elif eyebrow_style == 'bounce' %}heroEyebrowBounce{% elif eyebrow_style == 'pulse' %}heroEyebrowPulse{% else %}heroEyebrowFade{% endif %}; animation-duration: {% if eyebrow_style == 'bounce' %}900ms{% elif eyebrow_style == 'pulse' %}1.2s{% else %}650ms{% endif %}; animation-iteration-count: {% if eyebrow_style == 'pulse' %}infinite{% else %}1{% endif %}; animation-fill-mode: forwards;">{{ school_settings.homepage_hero_eyebrow|default:"Welcome to" }}</p>
+          <h1 class="hero-title hero-content-anim" style="font-size: {{ school_settings.hero_title_font_size|default:'clamp(2.5rem, 4.8vw, 4.3rem)' }}; color: {{ school_settings.hero_title_color|default:'#ffffff' }}; animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 700ms; animation-fill-mode: both;">{{ school_settings.homepage_hero_title|default:school_settings.school_name|default:school_name }}</h1>
 
           <div class="hero-dynamic">
             {% if hero_texts and hero_texts|length > 0 and school_settings.enable_hero_text_animation|default:True %}
-              <div class="hero-rotator" data-anim-speed="{{ school_settings.hero_animation_speed|default:900 }}">
+              <div class="hero-rotator hero-content-anim" data-anim-speed="{{ school_settings.hero_animation_speed|default:900 }}" style="animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 700ms; animation-fill-mode: both;">
                 {% for item in hero_texts %}
                   <div class="rotator-item {% if forloop.first %}active{% endif %}" data-display-seconds="{{ item.display_seconds }}" data-anim="{{ item.animation_type }}" data-animation-styles="{{ item.animation_styles|default:item.animation_type }}">
                     <div class="rotator-title" style="font-size: {{ school_settings.hero_rotator_title_font_size|default:'clamp(1.25rem, 2.2vw, 1.75rem)' }};">{{ item.title }}</div>
@@ -73,9 +74,9 @@
             {% endif %}
           </div>
 
-          <div class="hero-motto" style="font-size: {{ school_settings.hero_intro_font_size|default:'clamp(0.95rem, 1.35vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ school_settings.homepage_hero_intro|default:school_settings.motto|default:motto }}</div>
+          <div class="hero-motto hero-content-anim" style="font-size: {{ school_settings.hero_intro_font_size|default:'clamp(0.95rem, 1.35vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }}; animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 800ms; animation-fill-mode: both;">{{ school_settings.homepage_hero_intro|default:school_settings.motto|default:motto }}</div>
 
-          <div class="hero-actions">
+          <div class="hero-actions hero-content-anim" style="animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 800ms; animation-fill-mode: both;">
             {% if hero_buttons and hero_buttons|length > 0 %}
               {% for btn in hero_buttons %}
                 <a href="{{ btn.url|default:'#' }}" class="button{% if forloop.counter == 2 %} secondary{% elif forloop.counter == 3 %} tertiary{% endif %}" {% if btn.open_in_new_tab %}target="_blank" rel="noopener"{% endif %} style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ btn.label }}</a>
@@ -133,19 +134,26 @@
       </div>
     </div>
   </section>
+  {% endwith %}
   <style>
   .unified-hero {
     position: relative;
     overflow: hidden;
     min-height: 78vh;
     margin-top: 0;
-    padding-top: 0;
-    padding-bottom: clamp(24px, 3vw, 36px);
+    margin-bottom: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    isolation: isolate;
   }
   .unified-hero .hero-bg {
     position: absolute;
     inset: 0;
     z-index: 0;
+    margin: 0;
   }
   .unified-hero .hero-slides {
     position: relative;
@@ -183,8 +191,8 @@
   .unified-hero .hero-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(3, 8, 22, 0.72);
-    backdrop-filter: blur(2px);
+    background: linear-gradient(90deg, rgba(2, 6, 23, 0.84) 0%, rgba(2, 6, 23, 0.62) 45%, rgba(2, 6, 23, 0.40) 100%);
+    backdrop-filter: blur(0px);
     z-index: 1;
   }
   .hero-shell {
@@ -194,17 +202,18 @@
     height: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 clamp(18px, 3vw, 32px);
+    justify-content: flex-start;
+    padding: clamp(30px, 4vw, 54px) clamp(24px, 4vw, 56px);
+    box-sizing: border-box;
   }
   .hero-panel {
-    width: 100%;
-    max-width: 1320px;
+    width: min(1280px, 100%);
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.9fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.8fr);
     gap: clamp(24px, 3.4vw, 40px);
     align-items: center;
-    padding: clamp(22px, 3vw, 32px) 0;
+    padding: 0;
+    margin: 0;
   }
   .hero-left {
     color: #ffffff;
@@ -212,14 +221,28 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
+    padding-right: clamp(8px, 2vw, 20px);
   }
   .hero-eyebrow {
     margin: 0;
-    font-size: clamp(0.8rem, 1.2vw, 0.95rem);
     letter-spacing: 0.24em;
-    color: rgba(255,255,255,0.78);
+    color: rgba(255,255,255,0.86);
     text-transform: uppercase;
+    opacity: 0;
+    transform: translateY(10px);
+    will-change: transform, opacity;
+    animation-name: heroEyebrowFade;
+    animation-duration: 650ms;
+    animation-fill-mode: forwards;
   }
+  .home-hero.hero-eyebrow-style-fade .hero-eyebrow { animation-name: heroEyebrowFade; }
+  .home-hero.hero-eyebrow-style-slide-up .hero-eyebrow { animation-name: heroEyebrowSlideUp; }
+  .home-hero.hero-eyebrow-style-bounce .hero-eyebrow { animation-name: heroEyebrowBounce; animation-duration: 900ms; }
+  .home-hero.hero-eyebrow-style-pulse .hero-eyebrow { animation-name: heroEyebrowPulse; animation-duration: 1.2s; animation-iteration-count: infinite; }
+  @keyframes heroEyebrowFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes heroEyebrowSlideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes heroEyebrowBounce { 0% { opacity: 0; transform: translateY(10px) scale(0.97); } 50% { opacity: 1; transform: translateY(-4px) scale(1.01); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes heroEyebrowPulse { 0%,100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.03); } }
   .hero-title {
     margin: 0;
     font-size: clamp(2.5rem, 4.8vw, 4.3rem);
@@ -227,7 +250,95 @@
     letter-spacing: -0.04em;
     font-weight: 800;
     text-transform: none;
+    animation-name: heroContentFade;
+    animation-duration: 700ms;
+    animation-timing-function: cubic-bezier(.2,.8,.2,1);
+    animation-fill-mode: both;
+    will-change: transform, opacity;
   }
+  .home-hero .hero-title.hero-content-anim,
+  .home-hero .hero-rotator.hero-content-anim,
+  .home-hero .hero-motto.hero-content-anim,
+  .home-hero .hero-actions.hero-content-anim {
+    animation-name: heroContentFade !important;
+    animation-duration: 700ms !important;
+    animation-fill-mode: both !important;
+  }
+  .hero-content-anim {
+    animation-duration: 700ms;
+    animation-timing-function: cubic-bezier(.2,.8,.2,1);
+    animation-fill-mode: both;
+    will-change: transform, opacity;
+  }
+  .hero-left .hero-motto.hero-content-anim,
+  .hero-left .hero-actions.hero-content-anim {
+    animation-duration: 800ms;
+  }
+  .hero-left .hero-dynamic,
+  .hero-left .hero-motto,
+  .hero-left .hero-actions {
+    animation-name: heroContentFade;
+    animation-duration: 800ms;
+    animation-timing-function: cubic-bezier(.2,.8,.2,1);
+    animation-fill-mode: both;
+    will-change: transform, opacity;
+  }
+  .home-hero.hero-style-slide-up .hero-title.hero-content-anim,
+  .home-hero.hero-style-slide-up .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-slide-up .hero-motto.hero-content-anim,
+  .home-hero.hero-style-slide-up .hero-actions.hero-content-anim {
+    animation-name: heroContentSlideUp !important;
+  }
+  .home-hero.hero-style-slide-left .hero-title.hero-content-anim,
+  .home-hero.hero-style-slide-left .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-slide-left .hero-motto.hero-content-anim,
+  .home-hero.hero-style-slide-left .hero-actions.hero-content-anim {
+    animation-name: heroContentSlideLeft !important;
+  }
+  .home-hero.hero-style-slide-right .hero-title.hero-content-anim,
+  .home-hero.hero-style-slide-right .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-slide-right .hero-motto.hero-content-anim,
+  .home-hero.hero-style-slide-right .hero-actions.hero-content-anim {
+    animation-name: heroContentSlideRight !important;
+  }
+  .home-hero.hero-style-zoom .hero-title.hero-content-anim,
+  .home-hero.hero-style-zoom .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-zoom .hero-motto.hero-content-anim,
+  .home-hero.hero-style-zoom .hero-actions.hero-content-anim {
+    animation-name: heroContentZoom !important;
+  }
+  .home-hero.hero-style-flip .hero-title.hero-content-anim,
+  .home-hero.hero-style-flip .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-flip .hero-motto.hero-content-anim,
+  .home-hero.hero-style-flip .hero-actions.hero-content-anim {
+    animation-name: heroContentFlip !important;
+  }
+  .home-hero.hero-style-glow .hero-title.hero-content-anim,
+  .home-hero.hero-style-glow .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-glow .hero-motto.hero-content-anim,
+  .home-hero.hero-style-glow .hero-actions.hero-content-anim {
+    animation-name: heroContentGlow !important;
+  }
+  .home-hero.hero-style-float .hero-title.hero-content-anim,
+  .home-hero.hero-style-float .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-float .hero-motto.hero-content-anim,
+  .home-hero.hero-style-float .hero-actions.hero-content-anim {
+    animation-name: heroContentFloat !important;
+  }
+  .home-hero.hero-style-fade .hero-title.hero-content-anim,
+  .home-hero.hero-style-fade .hero-rotator.hero-content-anim,
+  .home-hero.hero-style-fade .hero-motto.hero-content-anim,
+  .home-hero.hero-style-fade .hero-actions.hero-content-anim {
+    animation-name: heroContentFade !important;
+  }
+  @keyframes heroContentFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes heroContentSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes heroContentSlideLeft { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes heroContentSlideRight { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes heroContentZoom { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+  @keyframes heroContentFlip { from { opacity: 0; transform: perspective(900px) rotateX(16deg); } to { opacity: 1; transform: perspective(900px) rotateX(0deg); } }
+  @keyframes heroContentGlow { 0% { opacity: 0; transform: scale(0.98); text-shadow: 0 0 0 rgba(255,255,255,0); } 50% { opacity: 0.8; text-shadow: 0 0 22px rgba(255,255,255,0.25); } 100% { opacity: 1; transform: scale(1); text-shadow: 0 0 0 rgba(255,255,255,0); } }
+  @keyframes heroContentFloat { 0% { opacity: 0; transform: translateY(10px); } 50% { opacity: 0.9; transform: translateY(-4px); } 100% { opacity: 1; transform: translateY(0); } }
   .hero-dynamic,
   .hero-static {
     max-width: 680px;
@@ -291,7 +402,7 @@
     margin-top: 6px;
   }
   .hero-actions .button {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 0;
     max-width: 220px;
     padding: 13px 18px;
@@ -299,8 +410,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 14px 36px rgba(7, 13, 33, 0.2);
+    box-shadow: 0 14px 36px rgba(7, 13, 33, 0.16);
     transition: transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+    transform: translateZ(0);
+  }
+
+  main.content {
+    padding-top: 0 !important;
   }
   .hero-actions .button:hover {
     transform: translateY(-3px);
@@ -510,7 +626,7 @@
         }
 
         function applyAnimation(item, style) {
-          item.classList.remove('fade','slide','zoom','typing','float');
+          item.classList.remove('fade','slide','zoom','typing','float','slide-up');
           if (style) item.classList.add(style);
         }
 
