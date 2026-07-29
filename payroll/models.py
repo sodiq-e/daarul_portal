@@ -198,7 +198,7 @@ class StudentInvoice(models.Model):
         ordering = ['-issued_date']
 
     def __str__(self):
-        return f"Invoice {self.id} - {self.student.full_name}"
+        return f"Invoice {self.id} - {self.student} - ₦{self.amount_due}"
 
     @property
     def total_paid(self):
@@ -234,4 +234,4 @@ class StudentPayment(models.Model):
         ordering = ['-payment_date']
 
     def __str__(self):
-        return f"Payment {self.amount} for {self.student.full_name}"
+        return f"Payment {self.amount} for {self.student}"

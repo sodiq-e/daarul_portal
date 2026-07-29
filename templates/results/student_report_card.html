@@ -100,6 +100,55 @@
         page-break-after: avoid !important;
     }
 </style>
+<style>
+    /* Make all report card text bold for better print readability */
+    .report-card, .report-card * {
+        font-weight: 700 !important;
+    }
+    /* Increase base font size for better readability on screen */
+    .report-card {
+        font-size: 14px !important;
+        line-height: 1.35 !important;
+    }
+    .report-card h3 {
+        font-size: 16px !important;
+    }
+    .report-card table,
+    .report-card td,
+    .report-card th,
+    .report-card p,
+    .report-card li {
+        font-size: 14px !important;
+    }
+    /* Ensure small helper text remains slightly smaller but still bold */
+    .report-card small,
+    .report-card .small {
+        font-weight: 600 !important;
+        font-size: 13px !important;
+    }
+
+    @media print {
+        .report-card,
+        .report-card * {
+            font-size: 14pt !important;
+            line-height: 1.4 !important;
+        }
+        .report-card h3 {
+            font-size: 18pt !important;
+        }
+        .report-card table,
+        .report-card td,
+        .report-card th,
+        .report-card p,
+        .report-card li {
+            font-size: 14pt !important;
+        }
+        .report-card small,
+        .report-card .small {
+            font-size: 12pt !important;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -215,6 +264,15 @@
                 <p style="font-size: 12px; margin: 0; color: #333;">{{ term_result.overall_remark }}</p>
             </div>
             {% endif %}
+
+            {% if chart_labels and chart_data %}
+            <div class="chart-section" style="margin-bottom: 20px;">
+                <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff;">
+                    <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 12px;">📈 Performance Analysis</h3>
+                    <canvas id="studentPerformanceChart" height="180"></canvas>
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
         {% else %}
             <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 6px 8px; margin-bottom: 10px; font-size: 10px; border-radius: 3px;">
@@ -313,6 +371,77 @@
     </div>
 </div>
 
+{% if chart_labels and chart_data %}
+<style>
+    /* Constrain chart canvas height to avoid overly long print pages */
+    #performanceChart, #studentPerformanceChart, canvas[id^="performanceChart"] {
+        width: 100% !important;
+        height: 260px !important; /* reduced from 320px */
+        max-height: 320px !important; /* reduced max */
+    }
+    @media print {
+        #performanceChart, #studentPerformanceChart, canvas[id^="performanceChart"] {
+            height: 180px !important; /* reduced for printing */
+            max-height: 240px !important;
+        }
+    }
+</style>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const labels = {{ chart_labels|default:'[]'|safe }};
+        const data = {{ chart_data|default:'[]'|safe }};
+        const colors = {{ chart_colors|default:'[]'|safe }};
+        const ctx = document.getElementById('studentPerformanceChart');
+
+        if (!ctx || !labels.length || !data.length) {
+            return;
+        }
+
+        const backgroundColors = Array.isArray(colors) && colors.length ? colors : labels.map(() => 'rgba(13, 110, 253, 0.6)');
+        const borderColors = Array.isArray(colors) && colors.length ? colors : labels.map(() => '#0d6efd');
+
+        new Chart(ctx, {
+            type: '{{ chart_type|default:'bar' }}',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '{{ chart_series_label|default:"Percentage" }}',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    hoverOffset: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Percentage'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Subject'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: { enabled: true }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
 
 {% endblock %}

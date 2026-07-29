@@ -29,6 +29,33 @@
                 </div>
                 
                 {% if student_results %}
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-8">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ chart_title }}</h5>
+                                    <canvas id="performanceChart" height="160"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">Top Subjects</h5>
+                                    {% if top_subjects %}
+                                    <ol class="ps-3">
+                                        {% for subject in top_subjects %}
+                                        <li>{{ subject.class_subject__subject__name }} — {{ subject.avg_percentage|floatformat:2 }}%</li>
+                                        {% endfor %}
+                                    </ol>
+                                    {% else %}
+                                    <p class="text-muted mb-0">No subject performance data available.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-striped table-hover">
                             <thead class="table-dark">
@@ -90,4 +117,79 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Constrain chart canvas height to avoid overly long print pages */
+    #performanceChart, #studentPerformanceChart, canvas[id^="performanceChart"] {
+        width: 100% !important;
+        height: 260px !important; /* reduced from 320px */
+        max-height: 320px !important; /* reduced max */
+    }
+    @media print {
+        #performanceChart, #studentPerformanceChart, canvas[id^="performanceChart"] {
+            height: 180px !important; /* reduced for printing */
+            max-height: 240px !important;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const labels = {{ chart_labels|default:'[]'|safe }};
+        const data = {{ chart_data|default:'[]'|safe }};
+        const colors = {{ chart_colors|default:'[]'|safe }};
+        const chartType = '{{ chart_type|default:'bar' }}';
+        const ctx = document.getElementById('performanceChart');
+
+        if (!ctx || !labels.length || !data.length) {
+            return;
+        }
+
+        const normalizedColors = (colors || []).filter(Boolean);
+        const dataset = {
+            label: '{{ chart_series_label|default:"Average Percentage" }}',
+            data: data,
+            borderColor: normalizedColors[0] || '#0d6efd',
+            backgroundColor: normalizedColors,
+            borderWidth: 1,
+        };
+
+        if (chartType === 'line') {
+            dataset.tension = 0.35;
+            dataset.pointRadius = 4;
+            dataset.pointBackgroundColor = normalizedColors;
+            dataset.pointBorderColor = normalizedColors;
+        }
+
+        const options = {
+            responsive: true,
+            plugins: {
+                legend: { display: true, position: 'top' }
+            }
+        };
+
+        if (chartType !== 'pie' && chartType !== 'doughnut') {
+            options.scales = {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { display: true, text: '{{ chart_x_label|default:"Category" }}' }
+                },
+                x: {
+                    title: { display: true, text: '{{ chart_x_label|default:"Category" }}' }
+                }
+            };
+        }
+
+        new Chart(ctx, {
+            type: chartType,
+            data: {
+                labels: labels,
+                datasets: [dataset]
+            },
+            options: options
+        });
+    });
+</script>
 {% endblock %}

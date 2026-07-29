@@ -1,3 +1,4 @@
+from django.db.models import Q
 from .models import SchoolSettings, PageTheme, GalleryImage, HeroText, HeroButton
 from .print_utils import build_document_verification
 from announcements.models import Announcement
@@ -121,10 +122,19 @@ def school_settings(request):
             # Gallery images
             "gallery_images": GalleryImage.objects.filter(school_settings=settings, usage=GalleryImage.USAGE_GALLERY).order_by('order') if settings else [],
             # Hero images (subset of gallery images marked for the homepage hero)
-            "hero_images": GalleryImage.objects.filter(school_settings=settings, usage=GalleryImage.USAGE_HERO).order_by('order') if settings else [],
+            "hero_images": GalleryImage.objects.filter(
+                school_settings=settings,
+                usage=GalleryImage.USAGE_HERO,
+            ).exclude(image__isnull=True).exclude(image__exact='').order_by('order') if settings else [],
             # Hero text items and CTA buttons
-            "hero_texts": HeroText.objects.filter(school_settings=settings, active=True).order_by('order') if settings else [],
-            "hero_buttons": HeroButton.objects.filter(school_settings=settings, active=True).order_by('order') if settings else [],
+            "hero_texts": [
+                item for item in HeroText.objects.filter(school_settings=settings, active=True).order_by('order')
+                if (item.title or '').strip() or (item.subtitle or '').strip()
+            ] if settings else [],
+            "hero_buttons": [
+                btn for btn in HeroButton.objects.filter(school_settings=settings, active=True).order_by('order')
+                if (btn.label or '').strip() and (btn.url or '').strip()
+            ] if settings else [],
             # Hero settings
             "hero_height": settings.hero_height if settings else '80vh',
             "hero_overlay_opacity": settings.hero_overlay_opacity if settings else 50,

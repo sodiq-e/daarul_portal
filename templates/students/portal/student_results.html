@@ -148,6 +148,23 @@
         </div>
     </div>
 </div>
+</div>
+
+<style>
+    /* Constrain chart canvas height to avoid overly long print pages */
+    #performanceChart, #studentPerformanceChart, canvas[id^="performanceChart"] {
+        width: 100% !important;
+        height: 260px !important; /* reduced from 320px */
+        max-height: 320px !important; /* reduced max */
+    }
+    @media print {
+        #performanceChart, #studentPerformanceChart, canvas[id^="performanceChart"] {
+            height: 180px !important; /* reduced for printing */
+            max-height: 240px !important;
+        }
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {

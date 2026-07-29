@@ -439,7 +439,21 @@ def student_report_card(request, student_id, term_id):
     term = get_object_or_404(Term, pk=term_id)
 
     # Check if user can view this student's results
-    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user) or student.admission_no == request.user.username):
+    if request.user.is_staff or request.user.is_superuser:
+        pass
+    elif user_is_staff(request.user):
+        try:
+            teacher = request.user.teacher_profile
+            from school_classes.models import ClassTeacher
+            if not ClassTeacher.objects.filter(teacher=teacher, school_class=student.student_class).exists():
+                messages.error(request, 'You do not have permission to view this report card.')
+                return redirect('home')
+        except Exception:
+            messages.error(request, 'You do not have permission to view this report card.')
+            return redirect('home')
+    elif hasattr(request.user, 'student_profile') and request.user.student_profile == student:
+        pass
+    else:
         messages.error(request, 'You do not have permission to view this report card.')
         return redirect('home')
 
@@ -471,6 +485,27 @@ def student_report_card(request, student_id, term_id):
 
     if term_result and results.exists() and not term_result.is_complete:
         term_result.calculate_aggregates()
+
+    # Build student performance analytics for individual report card charts
+    published_results = results.filter(percentage__isnull=False)
+    average_percentage = published_results.aggregate(avg=Avg('percentage'))['avg'] or 0
+    result_count = published_results.count()
+
+    performance_summary = {
+        'result_count': result_count,
+        'average_percentage': round(float(average_percentage), 2) if average_percentage else 0,
+        'highest_percentage': published_results.aggregate(max_percent=Max('percentage'))['max_percent'] or 0,
+        'lowest_percentage': published_results.aggregate(min_percent=Min('percentage'))['min_percent'] or 0,
+    }
+
+    chart_labels = [r.class_subject.subject.name for r in published_results]
+    chart_data = [round(float(r.percentage or 0), 2) for r in published_results]
+    chart_title = f'Subject Performance for {term.display_name} ({term.academic_year})'
+    chart_series_label = 'Percentage'
+    chart_type = 'bar'
+    chart_colors = generate_distinct_chart_colors(len(chart_labels))
+
+    top_subjects = published_results.order_by('-percentage')[:5]
 
     # Get student conduct record
     student_conduct = StudentConduct.objects.filter(
@@ -536,6 +571,14 @@ def student_report_card(request, student_id, term_id):
         'has_attendance': has_attendance,
         'invoices': invoices,
         'payments': payments,
+        'performance_summary': performance_summary,
+        'top_subjects': list(top_subjects),
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+        'chart_title': chart_title,
+        'chart_series_label': chart_series_label,
+        'chart_type': chart_type,
+        'chart_colors': chart_colors,
     }
     # Prepare a string for display that preserves 0 as valid value
     context['attendance_percentage_str'] = None if attendance_percentage is None else str(attendance_percentage)
@@ -1046,6 +1089,35 @@ def teacher_class_results(request, class_id, term_id):
             'term_result': term_result,
         })
 
+    # Build class performance analytics for teacher chart display
+    published_results = StudentResult.objects.filter(
+        class_subject__school_class=school_class,
+        term=term,
+        result_template=result_template,
+        percentage__isnull=False,
+    )
+    avg_pct = published_results.aggregate(avg=Avg('percentage'))['avg'] or 0
+    result_count = published_results.count()
+
+    performance_summary = {
+        'result_count': result_count,
+        'average_percentage': round(float(avg_pct), 2) if avg_pct else 0,
+        'highest_percentage': published_results.aggregate(max_percent=Max('percentage'))['max_percent'] or 0,
+        'lowest_percentage': published_results.aggregate(min_percent=Min('percentage'))['min_percent'] or 0,
+    }
+
+    top_subjects = published_results.values('class_subject__subject__name').annotate(
+        avg_percentage=Avg('percentage')
+    ).order_by('-avg_percentage')[:5]
+
+    chart_labels = [item['class_subject__subject__name'] for item in top_subjects]
+    chart_data = [round(float(item['avg_percentage'] or 0), 2) for item in top_subjects]
+    chart_type = 'bar'
+    chart_title = f'Class Subject Performance for {school_class} - {term.display_name}'
+    chart_series_label = 'Average Percentage'
+    chart_x_label = 'Subject'
+    chart_colors = generate_distinct_chart_colors(len(chart_labels))
+
     can_print_broadsheet = False
     broadsheet_url = None
     from school_classes.models import TeacherPermission
@@ -1063,6 +1135,15 @@ def teacher_class_results(request, class_id, term_id):
         'can_print': teacher_has_permission(teacher, 'print_results'),
         'can_print_broadsheet': can_print_broadsheet,
         'broadsheet_url': broadsheet_url,
+        'performance_summary': performance_summary,
+        'top_subjects': list(top_subjects),
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+        'chart_title': chart_title,
+        'chart_series_label': chart_series_label,
+        'chart_x_label': chart_x_label,
+        'chart_type': chart_type,
+        'chart_colors': chart_colors,
     }
 
     return render(request, 'teachers/results/teacher_class_results.html', context)

@@ -58,6 +58,24 @@ def school_settings(request):
         if form_valid and gallery_valid and hero_text_valid and hero_button_valid:
             form.save()
 
+            # Remove blank hero text rows before saving them
+            for form_row in hero_text_formset.forms:
+                if not form_row.cleaned_data.get('DELETE', False):
+                    title = form_row.cleaned_data.get('title') or ''
+                    subtitle = form_row.cleaned_data.get('subtitle') or ''
+                    button_text = form_row.cleaned_data.get('button_text') or ''
+                    button_url = form_row.cleaned_data.get('button_url') or ''
+                    if not (title.strip() or subtitle.strip() or button_text.strip() or button_url.strip()):
+                        form_row.cleaned_data['DELETE'] = True
+
+            # Remove blank hero button rows before saving them
+            for form_row in hero_button_formset.forms:
+                if not form_row.cleaned_data.get('DELETE', False):
+                    label = form_row.cleaned_data.get('label') or ''
+                    url = form_row.cleaned_data.get('url') or ''
+                    if not (label.strip() or url.strip()):
+                        form_row.cleaned_data['DELETE'] = True
+
             # Process gallery formset
             instances = gallery_formset.save(commit=False)
             for instance in instances:

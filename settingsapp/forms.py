@@ -91,6 +91,12 @@ class SchoolSettingsForm(forms.ModelForm):
         required=False,
         label='Eyebrow Animation',
     )
+    homepage_welcome_text = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 4}),
+        required=False,
+        label='Homepage Welcome Text',
+        help_text='Fallback text shown on the public homepage when the hero is disabled.',
+    )
     hero_title_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=False, label='Main Heading Color')
     hero_text_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=False, label='Body Text Color')
     hero_button_text_color = forms.CharField(widget=forms.TextInput(attrs={'type': 'color'}), required=False, label='Button Text Color')
@@ -228,6 +234,7 @@ class SchoolSettingsForm(forms.ModelForm):
             'hero_button_border_color',
             'hero_button_hover_background_color',
             'hero_button_hover_text_color',
+            'homepage_welcome_text',
             'homepage_hero_eyebrow',
             'homepage_hero_title',
             'homepage_hero_intro',
@@ -358,6 +365,8 @@ class HeroTextForm(forms.ModelForm):
             if field_name in self.fields:
                 self.fields[field_name].required = False
                 self.fields[field_name].widget = forms.HiddenInput()
+        if not self.instance or not self.instance.pk:
+            self.fields['active'].initial = False
 
     class Meta:
         model = HeroText
@@ -380,6 +389,8 @@ class HeroButtonForm(forms.ModelForm):
             if field_name in self.fields:
                 self.fields[field_name].required = False
                 self.fields[field_name].widget = forms.HiddenInput()
+        if not self.instance or not self.instance.pk:
+            self.fields['active'].initial = False
 
     class Meta:
         model = HeroButton

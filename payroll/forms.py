@@ -32,7 +32,20 @@ class StudentInvoiceForm(forms.ModelForm):
         }
 
 
+class InvoiceChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        student_label = obj.student if obj.student else 'Unknown student'
+        amount_label = f"₦{obj.amount_due}"
+        fee_label = f" ({obj.fee})" if obj.fee else ''
+        return f"Invoice {obj.id} - {student_label}{fee_label} - {amount_label}"
+
+
 class StudentPaymentForm(forms.ModelForm):
+    invoice = InvoiceChoiceField(
+        queryset=StudentInvoice.objects.select_related('student', 'fee').order_by('-issued_date'),
+        empty_label='Select Invoice'
+    )
+
     class Meta:
         model = StudentPayment
         fields = ['invoice', 'amount', 'payment_date', 'payment_method', 'reference', 'notes']
