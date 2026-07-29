@@ -116,7 +116,7 @@ import os
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-STATIC_URL
+# stray STATIC_URL removed (already defined earlier)
 
 # cloudinary.config(
 #     cloud_name="da7ow7upe",

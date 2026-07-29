@@ -19,6 +19,24 @@ except ImportError:
 from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse
 from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm, DynamicAdmissionForm
 from school_classes.models import ClassTeacher
+from django.http import JsonResponse
+
+
+@login_required
+def students_by_class(request):
+    """Return students for a given class (AJAX).
+
+    Query params: class_id
+    """
+    class_id = request.GET.get('class_id')
+    if not class_id:
+        return JsonResponse({'students': []})
+    try:
+        students_qs = Student.objects.filter(student_class_id=class_id, status='active').order_by('surname', 'other_names')
+        data = [{'id': s.id, 'name': s.get_full_name() if hasattr(s, 'get_full_name') else str(s)} for s in students_qs]
+        return JsonResponse({'students': data})
+    except Exception:
+        return JsonResponse({'students': []})
 
 
 def user_profile_approved(user):

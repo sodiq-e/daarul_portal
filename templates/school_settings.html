@@ -181,6 +181,7 @@
                     {{ hero_text_formset.management_form }}
                     {% for form in hero_text_formset %}
                         <tr>
+                            {{ form.id }}
                             <td style="padding:8px; border:1px solid #ddd;">{{ form.title }}</td>
                             <td style="padding:8px; border:1px solid #ddd;">{{ form.subtitle }}</td>
                             <td style="padding:8px; border:1px solid #ddd;">{{ form.button_text }}</td>
@@ -214,6 +215,7 @@
                     {{ hero_button_formset.management_form }}
                     {% for form in hero_button_formset %}
                         <tr>
+                            {{ form.id }}
                             <td style="padding:8px; border:1px solid #ddd;">{{ form.label }}</td>
                             <td style="padding:8px; border:1px solid #ddd;">{{ form.url }}</td>
                             <td style="padding:8px; border:1px solid #ddd;">{{ form.order }}</td>

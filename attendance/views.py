@@ -580,6 +580,123 @@ class AttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView
 
 
 @method_decorator(login_required, name='dispatch')
+class AdminStudentAttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """Admin view for student attendance statistics"""
+    template_name = 'attendance/admin_student_settings.html'
+
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        selected_class_id = self.request.GET.get('class_id')
+        selected_student_id = self.request.GET.get('student_id')
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        classes = SchoolClasses.objects.all().order_by('class_name')
+        context['classes'] = classes
+        context['selected_class_id'] = selected_class_id
+        context['selected_student_id'] = selected_student_id
+        context['start_date'] = start_date
+        context['end_date'] = end_date
+
+        attendance_records = AttendanceRecord.objects.all()
+        if selected_class_id and selected_class_id != 'all':
+            try:
+                selected_class = classes.get(pk=selected_class_id)
+                attendance_records = attendance_records.filter(school_class=selected_class)
+                context['selected_class'] = selected_class
+                context['students_in_class'] = Student.objects.filter(
+                    student_class=selected_class,
+                    status='active'
+                ).order_by('surname', 'other_names')
+            except (SchoolClasses.DoesNotExist, ValueError):
+                context['selected_class_id'] = None
+
+        if selected_student_id:
+            try:
+                student = Student.objects.get(pk=selected_student_id)
+                attendance_records = attendance_records.filter(student=student)
+                context['student'] = student
+            except (Student.DoesNotExist, ValueError):
+                context['student_error'] = 'Selected student not found.'
+
+        if start_date:
+            attendance_records = attendance_records.filter(date__gte=start_date)
+        if end_date:
+            attendance_records = attendance_records.filter(date__lte=end_date)
+
+        if attendance_records.exists():
+            total_days = attendance_records.values('date').distinct().count()
+            if selected_student_id:
+                total_students = 1
+            elif selected_class_id and selected_class_id != 'all' and context.get('selected_class'):
+                total_students = context['students_in_class'].count()
+            else:
+                total_students = Student.objects.filter(status='active').count()
+            present_sessions = sum(record.present_sessions for record in attendance_records)
+            attendance_percentage = (
+                present_sessions / (total_students * total_days * 2) * 100
+            ) if total_students and total_days else 0
+            context['stats'] = [{
+                'class': 'All classes' if selected_class_id == 'all' else str(context.get('selected_class', 'Class')),
+                'total_days': total_days,
+                'total_students': total_students,
+                'present_sessions': present_sessions,
+                'attendance_percentage': round(attendance_percentage, 2)
+            }]
+        else:
+            context['stats'] = []
+
+        if context.get('student'):
+            student_records = AttendanceRecord.objects.filter(student=context['student'])
+            if selected_class_id and selected_class_id != 'all' and context.get('selected_class'):
+                student_records = student_records.filter(school_class=context['selected_class'])
+            if start_date:
+                student_records = student_records.filter(date__gte=start_date)
+            if end_date:
+                student_records = student_records.filter(date__lte=end_date)
+
+            total_records = student_records.count()
+            present_sessions = sum(int(record.morning_present) + int(record.afternoon_present) for record in student_records)
+            total_half_sessions = total_records * 2
+            absent_sessions = total_half_sessions - present_sessions
+            attendance_percentage = (present_sessions / total_half_sessions * 100) if total_half_sessions > 0 else 0
+
+            weekly_summary = {}
+            for record in student_records.order_by('date'):
+                week_no = record.date.isocalendar()[1]
+                week_stat = weekly_summary.setdefault(
+                    week_no,
+                    {'week': week_no, 'present_sessions': 0, 'absent_sessions': 0, 'days': set()}
+                )
+                week_stat['present_sessions'] += int(record.morning_present) + int(record.afternoon_present)
+                week_stat['absent_sessions'] += 2 - (int(record.morning_present) + int(record.afternoon_present))
+                week_stat['days'].add(record.date)
+
+            student_weekly_stats = []
+            for week in sorted(weekly_summary):
+                stats = weekly_summary[week]
+                days_count = len(stats['days'])
+                student_weekly_stats.append({
+                    'week': week,
+                    'present_sessions': stats['present_sessions'],
+                    'absent_sessions': stats['absent_sessions'],
+                    'days_marked': days_count,
+                    'attendance_percentage': round((stats['present_sessions'] / (days_count * 2) * 100), 2) if days_count > 0 else 0,
+                })
+
+            context['student_total_records'] = total_records
+            context['student_present_sessions'] = present_sessions
+            context['student_absent_sessions'] = absent_sessions
+            context['student_attendance_percentage'] = round(attendance_percentage, 2)
+            context['student_weekly_stats'] = student_weekly_stats
+
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
 class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
     """Students view their own attendance history"""
     template_name = 'students/attendance_history.html'
@@ -659,10 +776,6 @@ class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
         return context
 
 
-from .forms import AttendanceRecordForm, AttendanceSettingsForm
-from django.http import JsonResponse, HttpResponseForbidden
-
-
 class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     """Display and manage attendance settings"""
     template_name = 'attendance/attendance_settings.html'
@@ -674,9 +787,9 @@ class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        settings_instance, created = AttendanceSettings.objects.get_or_create(pk=1)
-        context['settings'] = settings_instance
-        context['form'] = AttendanceSettingsForm(instance=settings_instance)
+        # Get or create attendance settings
+        settings, created = AttendanceSettings.objects.get_or_create(pk=1)
+        context['settings'] = settings
         
         # Get all active and inactive holidays
         context['holidays'] = AttendanceHoliday.objects.all().order_by('-start_date')
@@ -699,179 +812,3 @@ class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         ).order_by('start_date')
         
         return context
-
-    def post(self, request, *args, **kwargs):
-        settings_instance, created = AttendanceSettings.objects.get_or_create(pk=1)
-        form = AttendanceSettingsForm(request.POST, instance=settings_instance)
-        if form.is_valid():
-            settings_obj = form.save(commit=False)
-            settings_obj.last_updated_by = request.user
-            settings_obj.save()
-            messages.success(request, 'Attendance settings were saved successfully.')
-            return redirect('attendance_settings')
-
-        context = self.get_context_data(**kwargs)
-        context['form'] = form
-        return render(request, self.template_name, context)
-
-
-@method_decorator(login_required, name='dispatch')
-class AdminStudentAttendanceView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    """Admin page to manage student attendance settings and populate class stats"""
-    template_name = 'attendance/admin_student_settings.html'
-
-    def test_func(self):
-        return self.request.user.is_staff
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        from school_classes.models import SchoolClasses
-        from django.utils import timezone
-        classes = SchoolClasses.objects.all().order_by('class_name')
-        context['classes'] = classes
-
-        class_id = (self.request.GET.get('class_id') or '').strip()
-        start_date = self.request.GET.get('start_date')
-        end_date = self.request.GET.get('end_date')
-        populate = self.request.GET.get('populate')
-
-        context['selected_class_id'] = class_id
-        context['start_date'] = start_date
-        context['end_date'] = end_date
-
-        # If a class is selected, provide its active students for optional per-student lookup
-        if class_id and class_id != 'all':
-            try:
-                from students.models import Student
-                school_class = SchoolClasses.objects.get(pk=class_id)
-                students_in_class = Student.objects.filter(student_class=school_class, status='active').order_by('surname', 'other_names')
-                context['students_in_class'] = students_in_class
-            except (SchoolClasses.DoesNotExist, ValueError):
-                context['students_in_class'] = []
-
-        # If populate requested, compute stats for selected class or all classes
-        if populate:
-            from students.models import Student
-            from .models import AttendanceRecord
-
-            target_classes = classes if not class_id or class_id == 'all' else classes.filter(pk=class_id)
-            stats = []
-            for school_class in target_classes:
-                students = Student.objects.filter(student_class=school_class, status='active')
-                class_records = AttendanceRecord.objects.filter(school_class=school_class)
-                if start_date:
-                    class_records = class_records.filter(date__gte=start_date)
-                if end_date:
-                    class_records = class_records.filter(date__lte=end_date)
-
-                total_days = class_records.values('date').distinct().count()
-                total_students = students.count()
-                total_half_sessions = total_days * total_students * 2 if total_days and total_students else 0
-                present_sessions = sum(r.present_sessions for r in class_records) if class_records.exists() else 0
-
-                percentage = round((present_sessions / total_half_sessions * 100), 2) if total_half_sessions else 0
-
-                stats.append({
-                    'class': school_class,
-                    'total_days': total_days,
-                    'total_students': total_students,
-                    'present_sessions': present_sessions,
-                    'attendance_percentage': percentage,
-                })
-
-            context['stats'] = stats
-
-        # If a specific student was requested, compute individual stats
-        student_id = (self.request.GET.get('student_id') or '').strip()
-        context['selected_student_id'] = student_id
-        if student_id:
-            try:
-                from students.models import Student
-                from .models import AttendanceRecord
-                if class_id and class_id != 'all':
-                    student = Student.objects.filter(pk=student_id, student_class__pk=class_id).first()
-                    if not student:
-                        raise Student.DoesNotExist
-                else:
-                    student = Student.objects.get(pk=student_id)
-
-                student_records = AttendanceRecord.objects.filter(student=student)
-                if start_date:
-                    student_records = student_records.filter(date__gte=start_date)
-                if end_date:
-                    student_records = student_records.filter(date__lte=end_date)
-
-                total_records = student_records.count()
-                present_count = student_records.filter(present=True).count()
-                total_half_sessions = total_records * 2
-                present_sessions = sum(int(r.morning_present) + int(r.afternoon_present) for r in student_records)
-                absent_sessions = total_half_sessions - present_sessions
-                attendance_percentage = (present_sessions / total_half_sessions * 100) if total_half_sessions > 0 else 0
-                days_marked = student_records.values('date').distinct().count()
-
-                # weekly breakdown
-                weekly_summary = {}
-                for record in student_records:
-                    week_no = record.date.isocalendar()[1]
-                    week_stat = weekly_summary.setdefault(week_no, {'week': week_no, 'present_sessions': 0, 'absent_sessions': 0, 'days': set()})
-                    week_stat['present_sessions'] += int(record.morning_present) + int(record.afternoon_present)
-                    week_stat['absent_sessions'] += 2 - (int(record.morning_present) + int(record.afternoon_present))
-                    week_stat['days'].add(record.date)
-
-                weekly_stats = []
-                for week in sorted(weekly_summary):
-                    stats_w = weekly_summary[week]
-                    days_count = len(stats_w['days'])
-                    weekly_stats.append({
-                        'week': week,
-                        'present_sessions': stats_w['present_sessions'],
-                        'absent_sessions': stats_w['absent_sessions'],
-                        'days_marked': days_count,
-                        'attendance_percentage': round((stats_w['present_sessions'] / (days_count * 2) * 100), 2) if days_count > 0 else 0,
-                    })
-
-                context['student'] = student
-                context['student_total_records'] = total_records
-                context['student_present_count'] = present_count
-                context['student_total_half_sessions'] = total_half_sessions
-                context['student_present_sessions'] = present_sessions
-                context['student_absent_sessions'] = absent_sessions
-                context['student_days_marked'] = days_marked
-                context['student_attendance_percentage'] = round(attendance_percentage, 2)
-                context['student_weekly_stats'] = weekly_stats
-
-            except Student.DoesNotExist:
-                context['student_error'] = 'Student not found for the given ID or selected class.'
-
-        return context
-
-
-def students_by_class(request):
-    """Return JSON list of active students for a given class id. GET param: class_id"""
-    if not request.user.is_authenticated or not request.user.is_staff:
-        return HttpResponseForbidden('Forbidden')
-
-    class_id = request.GET.get('class_id')
-    if not class_id:
-        return JsonResponse({'students': []})
-
-    try:
-        from students.models import Student
-        students = Student.objects.filter(student_class__pk=class_id, status='active').order_by('first_name', 'last_name')
-        data = [{'id': s.pk, 'name': (s.get_full_name() if hasattr(s, 'get_full_name') else str(s))} for s in students]
-        return JsonResponse({'students': data})
-    except Exception as e:
-        return JsonResponse({'students': [], 'error': str(e)})
-
-
-def classes_list(request):
-    """Return JSON list of classes (id and name)."""
-    if not request.user.is_authenticated or not request.user.is_staff:
-        return HttpResponseForbidden('Forbidden')
-    try:
-        from school_classes.models import SchoolClasses
-        classes = SchoolClasses.objects.all().order_by('class_name')
-        data = [{'id': c.pk, 'name': str(c)} for c in classes]
-        return JsonResponse({'classes': data})
-    except Exception:
-        return JsonResponse({'classes': [], 'error': 'Could not load classes'})

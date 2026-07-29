@@ -15,7 +15,7 @@ def home(request):
         is_published=True,
         show_on_homepage=True
     )
-    print("PAGES:", pages)
+    # Debug print removed to avoid noisy logs in production
 
     return render(request, 'home.html', {
         'pages': pages
@@ -50,9 +50,6 @@ urlpatterns = [
     path('teachers/', include((teacher_urlpatterns, 'teachers'))),
 
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -28,8 +28,43 @@ def _get_page_key_from_path(path):
 def school_settings(request):
     """Context processor for school settings with defensive error handling"""
     try:
-        settings = SchoolSettings.objects.first()
-        
+        # Ensure a canonical single settings row exists (use id=1)
+        settings, _created = SchoolSettings.objects.get_or_create(id=1)
+
+        # Seed demo homepage content if missing (safe no-op if exists)
+        try:
+            if not HeroText.objects.filter(school_settings=settings).exists():
+                HeroText.objects.create(
+                    school_settings=settings,
+                    title='Excellence in Motion',
+                    subtitle='A premium learning experience for future leaders.',
+                    button_text='Explore School Life',
+                    button_url='https://example.com',
+                    order=1,
+                    active=True,
+                    animation_type='fade',
+                    display_seconds=4,
+                )
+                HeroText.objects.create(
+                    school_settings=settings,
+                    title='Faith, Knowledge, and Growth',
+                    subtitle='Nurturing confident students in a values-led community.',
+                    button_text='Meet the Community',
+                    button_url='https://example.com',
+                    order=2,
+                    active=True,
+                    animation_type='fade',
+                    display_seconds=4,
+                )
+
+            if not HeroButton.objects.filter(school_settings=settings).exists():
+                HeroButton.objects.create(school_settings=settings, label='Apply for Admission', url='/apply/', order=1, active=True, open_in_new_tab=False)
+                HeroButton.objects.create(school_settings=settings, label='Contact Us', url='/contact/', order=2, active=True, open_in_new_tab=False)
+                HeroButton.objects.create(school_settings=settings, label='View Gallery', url='/gallery/', order=3, active=True, open_in_new_tab=False)
+        except Exception:
+            # If seeding fails, continue with defaults rather than crashing the request
+            pass
+
         # Get default theme colors from global settings
         default_theme = {
             "primary_color": settings.primary_color if settings else "#4b2e83",

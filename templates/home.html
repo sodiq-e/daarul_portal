@@ -82,7 +82,7 @@
                 <a href="{{ btn.url|default:'#' }}" class="button{% if forloop.counter == 2 %} secondary{% elif forloop.counter == 3 %} tertiary{% endif %}" {% if btn.open_in_new_tab %}target="_blank" rel="noopener"{% endif %} style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ btn.label }}</a>
               {% endfor %}
             {% else %}
-              <a href="{% url 'student_application' %}" class="button" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_primary_cta_label|default:"Apply for Admission" }}</a>
+              <a href="{% url 'students:student_application' %}" class="button" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_primary_cta_label|default:"Apply for Admission" }}</a>
               <a href="{% url 'contact' %}" class="button secondary" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_secondary_cta_label|default:"Contact Us" }}</a>
               <a href="{% url 'gallery' %}" class="button tertiary" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }}; color: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; background: {{ school_settings.hero_button_background_color|default:'#4b2e83' }}; border-color: {{ school_settings.hero_button_border_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_tertiary_cta_label|default:"View Gallery" }}</a>
             {% endif %}
@@ -686,7 +686,7 @@
       <h1 class="hero-heading">Welcome to Daarul Bayaan Portal</h1>
       <p class="hero-copy-text">{{ school_settings.homepage_welcome_text|default:"Welcome to the official digital platform of DAARUL BAYAAN ISLAMIC SCHOOL — a place designed to make learning, communication, and school management easier, faster, and more accessible for everyone." }}</p>
       <div class="hero-actions">
-        <a href="{% url 'student_application' %}" class="button btn-premium">Apply for Admission</a>
+        <a href="{% url 'students:student_application' %}" class="button btn-premium">Apply for Admission</a>
         <a href="{% url 'contact' %}" class="button secondary btn-premium">Contact Us</a>
       </div>
     </div>
@@ -741,22 +741,22 @@
     {% else %}
       <!-- STUDENT PORTAL -->
       {% if user.student_profile %}
-      <a href="{% url 'student_portal_dashboard' %}" class="nav-card card-hover stagger-item" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+      <a href="{% url 'students:student_portal_dashboard' %}" class="nav-card card-hover stagger-item" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
         <div class="nav-icon icon-hover">🎓</div>
         <h3>Student Portal</h3>
         <p>Access your academic information</p>
       </a>
-      <a href="{% url 'student_portal_profile' %}" class="nav-card card-hover stagger-item">
+      <a href="{% url 'students:student_portal_profile' %}" class="nav-card card-hover stagger-item">
         <div class="nav-icon icon-hover">👤</div>
         <h3>My Profile</h3>
         <p>View your personal information</p>
       </a>
-      <a href="{% url 'student_portal_results' %}" class="nav-card card-hover stagger-item">
+      <a href="{% url 'students:student_portal_results' %}" class="nav-card card-hover stagger-item">
         <div class="nav-icon icon-hover">📊</div>
         <h3>My Results</h3>
         <p>Check your grades and academic performance</p>
       </a>
-      <a href="{% url 'student_portal_fees' %}" class="nav-card card-hover stagger-item">
+      <a href="{% url 'students:student_portal_fees' %}" class="nav-card card-hover stagger-item">
         <div class="nav-icon icon-hover">💰</div>
         <h3>School Fees</h3>
         <p>View invoices and payment history</p>
@@ -796,7 +796,7 @@
       <p>{{ school_settings.homepage_overview_card_2_description|default:"Check timetables, subject details, and classroom assignments at a glance." }}</p>
     </a>
 
-    <a href="{% url 'student_list' %}" class="overview-card card-hover stagger-item">
+    <a href="{% url 'students:student_list' %}" class="overview-card card-hover stagger-item">
       <h3>{{ school_settings.homepage_overview_card_3_title|default:"Receive school updates" }}</h3>
       <p>{{ school_settings.homepage_overview_card_3_description|default:"Stay informed with announcements, news, and important school events." }}</p>
     </a>

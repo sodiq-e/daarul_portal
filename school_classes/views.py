@@ -23,6 +23,19 @@ from exams.models import Subject, ClassSubject
 from exams.forms import ClassSubjectForm
 from students.models import Student
 
+from django.http import JsonResponse
+
+
+@login_required
+def classes_list(request):
+    """Return a simple JSON list of classes for AJAX consumers."""
+    try:
+        qs = SchoolClasses.objects.all().order_by('class_name')
+        data = [{'id': c.id, 'name': str(c)} for c in qs]
+        return JsonResponse({'classes': data})
+    except Exception:
+        return JsonResponse({'classes': []})
+
 
 def user_profile_approved(user):
     """Defensively check if user profile is approved"""

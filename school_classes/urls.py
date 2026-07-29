@@ -4,6 +4,7 @@ from . import views
 # School Classes URLs
 class_urlpatterns = [
     path('', views.ClassListView.as_view(), name='class_list'),
+    path('ajax/list/', views.classes_list, name='classes_list'),
     path('add/', views.add_class, name='add_class'),
     path('<int:pk>/', views.ClassDetailView.as_view(), name='class_detail'),
     path('<int:class_id>/subjects/', views.class_subjects_list, name='class_subjects_list'),

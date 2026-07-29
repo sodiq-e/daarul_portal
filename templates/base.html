@@ -533,7 +533,7 @@
       box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
     }
 
-    /* @media (max-width: 1024px) {
+    @media (max-width: 1024px) {
       .mobile-bottom-nav {
         display: flex;
       }
@@ -545,7 +545,7 @@
       footer {
         margin-bottom: 0 !important;
       }
-    } */
+    }
 
     .nav-item {
       flex: 1;
@@ -2593,9 +2593,9 @@
   }
 
   /* Show headers on mobile */
-  /* .sidebar .menu-header {
+  .sidebar .menu-header {
     display: flex !important;
-  } */
+  }
 
   /* SIDEBAR LINKS (clean UI) */
   .sidebar a {
@@ -2621,9 +2621,9 @@
   }
 
   /* BETTER MOBILE TEXT */
-  /* body {
+  body {
     font-size: 16px;
-  } */
+  }
 
   .container {
     width: 100% !important;
@@ -2656,10 +2656,10 @@
   }
 
   /* ===== MOBILE CONTENT & TABLES ===== */
-  /* .content {
+  .content {
     overflow-x: visible !important;
     -webkit-overflow-scrolling: touch;
-  } */
+  }
 
   .table-wrapper,
   .table-responsive {
@@ -2912,7 +2912,7 @@ body {
     padding: 12px 20px !important;
   }
 
-  /* Force desktop-style grid layout for printed pages
+  Force desktop-style grid layout for printed pages
   .row {
     display: flex !important;
     flex-wrap: wrap !important;
@@ -2947,7 +2947,7 @@ body {
   .d-flex {
     display: flex !important;
     flex-wrap: wrap !important;
-  } */
+  }
 
   /* Stable print layout */
 .row,
@@ -2985,9 +2985,9 @@ body {
     align-items: center !important;
   }
 
-  /* .text-center {
+  .text-center {
     text-align: left !important;
-  } */
+  }
 
   .card,
   .box,
@@ -3018,9 +3018,9 @@ body {
     text-align: left !important;
   }
 
-  /* .page-break {
+  .page-break {
     page-break-before: always !important;
-  } */
+  }
 
   .no-break {
     page-break-inside: avoid !important;
@@ -3358,7 +3358,7 @@ body {
     line-height: 1.5 !important;
   }
 
-  /* Links visible but not colored */
+    /* Links visible but not colored */
   a {
     border-bottom: 1px solid #999 !important;
   }
@@ -3368,7 +3368,45 @@ body {
     widows: 3;
     orphans: 3;
   }
-}
+  }
+
+  /* Mobile: ensure sidebar shows labels when opened (override collapsed desktop state) */
+  @media (max-width: 1023px) {
+    .sidebar.active a span,
+    .sidebar.active form button,
+    .sidebar.active a .notification-badge {
+      display: inline-block !important;
+      font-size: 14px !important;
+      margin-left: 8px !important;
+      vertical-align: middle !important;
+    }
+
+    /* When sidebar is active on mobile, make sure it uses full width and is visible */
+    .sidebar.active {
+      width: 300px !important;
+      max-width: 85% !important;
+      transform: translateX(0) !important;
+    }
+
+    /* Keep mobile open sidebar sections visible even if desktop saved state collapsed them */
+    .sidebar.active .menu-header {
+      display: flex !important;
+      opacity: 1 !important;
+    }
+
+    .sidebar.active .menu-content,
+    .sidebar.active .menu-content.collapsed {
+      max-height: none !important;
+      overflow: visible !important;
+      display: block !important;
+    }
+
+    /* If a saved desktop-collapsed state exists, do not hide text on mobile when sidebar is active */
+    .sidebar.collapsed.active a span {
+      display: inline-block !important;
+      font-size: 14px !important;
+    }
+  }
 
   </style>
 
@@ -3606,14 +3644,29 @@ body {
     const overlay = document.getElementById('overlay');
     if (!sidebar) return;
 
-    if (state.desktopCollapsed) {
-      sidebar.classList.add('collapsed');
-    } else {
-      sidebar.classList.remove('collapsed');
+    // Apply saved desktopCollapsed only on desktop viewports
+    try {
+      const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+      if (state.desktopCollapsed && isDesktop) {
+        sidebar.classList.add('collapsed');
+      } else {
+        sidebar.classList.remove('collapsed');
+      }
+    } catch (e) {
+      // fallback: apply as before
+      if (state.desktopCollapsed) {
+        sidebar.classList.add('collapsed');
+      } else {
+        sidebar.classList.remove('collapsed');
+      }
     }
 
     if (state.mobileActive) {
+      // Mobile open state: ensure labels and sections are visible
       sidebar.classList.add('active');
+      sidebar.classList.remove('collapsed');
+      document.querySelectorAll('.sidebar .menu-content').forEach((content) => content.classList.remove('collapsed'));
+      document.querySelectorAll('.sidebar .menu-header').forEach((header) => header.classList.add('active'));
       if (overlay) {
         overlay.classList.add('show');
       }
@@ -3711,11 +3764,11 @@ body {
           <i class="fas fa-cog"></i><span> Django Admin</span>
         </a>
 
-        <a href="{% url 'bulk_student_permissions' %}" data-tooltip="Clear">
+        <a href="{% url 'students:bulk_student_permissions' %}" data-tooltip="Clear">
           <i class="fas fa-broom"></i><span> Clear Selection</span>
         </a>
 
-        <a href="{% url 'student_list' %}" data-tooltip="Back">
+        <a href="{% url 'students:student_list' %}" data-tooltip="Back">
           <i class="fas fa-arrow-left"></i><span> Back to Students</span>
         </a>
       </div>
@@ -3925,7 +3978,7 @@ body {
       <span class="arrow">›</span>
     </div>
     <div class="menu-content">
-      <a href="{% url 'student_application' %}" data-tooltip="Apply Student">
+      <a href="{% url 'students:student_application' %}" data-tooltip="Apply Student">
         <i class="fas fa-file-alt"></i><span> Apply for Admission</span>
       </a>
 
@@ -3984,6 +4037,53 @@ body {
   }
 })();
 </script>
+
+<script>
+(function() {
+  // Ensure every actionable item in the sidebar has an icon. Non-destructive: only adds icons when missing.
+  try {
+    const mapping = new Map([
+      ['logout','fas fa-sign-out-alt'],
+      ['sign in','fas fa-sign-in-alt'],
+      ['sign up','fas fa-user-plus'],
+      ['profile','fas fa-user'],
+      ['teacher','fas fa-chalkboard-teacher'],
+      ['teachers','fas fa-users'],
+      ['messages','fas fa-envelope'],
+      ['message','fas fa-envelope'],
+      ['search','fas fa-search'],
+      ['settings','fas fa-cog'],
+      ['result','fas fa-chart-bar'],
+      ['results','fas fa-chart-bar'],
+      ['announcement','fas fa-bullhorn'],
+      ['gallery','fas fa-image'],
+      ['classes','fas fa-chalkboard'],
+      ['home','fas fa-home'],
+      ['fees','fas fa-wallet'],
+      ['attendance','fas fa-calendar-check'],
+      ['cbt','fas fa-laptop-code'],
+      ['portal','fas fa-comments'],
+    ]);
+
+    const items = document.querySelectorAll('#sidebar a, #sidebar form button');
+    items.forEach(el => {
+      if (el.querySelector('i')) return; // already has an icon
+      const txt = (el.getAttribute('data-tooltip') || el.textContent || '').toLowerCase();
+      let cls = 'fas fa-link';
+      for (const [k, v] of mapping.entries()) {
+        if (txt.indexOf(k) !== -1) { cls = v; break; }
+      }
+      const i = document.createElement('i');
+      i.className = cls;
+      el.insertBefore(i, el.firstChild);
+    });
+  } catch (e) {
+    // non-fatal
+    console.warn('sidebar: icon injection failed', e);
+  }
+})();
+</script>
+
   <main class="content">
         {% block content %}{% endblock %}
 
@@ -4234,8 +4334,11 @@ menuBtn.addEventListener('click', function(e) {
   const screenWidth = window.innerWidth;
 
   if (screenWidth < 1024) {
-    // Mobile: toggle drawer
+    // Mobile: toggle drawer and always show the full content while open
     sidebar.classList.toggle('active');
+    sidebar.classList.remove('collapsed');
+    document.querySelectorAll('.sidebar .menu-content').forEach((content) => content.classList.remove('collapsed'));
+    document.querySelectorAll('.sidebar .menu-header').forEach((header) => header.classList.add('active'));
     overlay.classList.toggle('show');
     document.body.classList.toggle('no-scroll');
   } else {

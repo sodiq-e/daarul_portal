@@ -50,50 +50,52 @@ def school_settings(request):
         hero_text_formset = HeroTextFormSet(request.POST, queryset=hero_texts_qs, prefix='herotext')
         hero_button_formset = HeroButtonFormSet(request.POST, queryset=hero_buttons_qs, prefix='herobutton')
 
-        if form.is_valid():
+        form_valid = form.is_valid()
+        gallery_valid = gallery_formset.is_valid()
+        hero_text_valid = hero_text_formset.is_valid()
+        hero_button_valid = hero_button_formset.is_valid()
+
+        if form_valid and gallery_valid and hero_text_valid and hero_button_valid:
             form.save()
 
             # Process gallery formset
-            if gallery_formset.is_valid():
-                instances = gallery_formset.save(commit=False)
-                for instance in instances:
-                    if not instance.school_settings_id:
-                        instance.school_settings = settings_obj
-                    instance.save()
-                for obj in gallery_formset.deleted_objects:
-                    obj.delete()
-            else:
-                messages.error(request, gallery_formset.errors)
+            instances = gallery_formset.save(commit=False)
+            for instance in instances:
+                if not instance.school_settings_id:
+                    instance.school_settings = settings_obj
+                instance.save()
+            for obj in gallery_formset.deleted_objects:
+                obj.delete()
 
             # Process hero text formset
-            if hero_text_formset.is_valid():
-                ht_instances = hero_text_formset.save(commit=False)
-                for instance in ht_instances:
-                    if not instance.school_settings_id:
-                        instance.school_settings = settings_obj
-                    instance.save()
-                for obj in hero_text_formset.deleted_objects:
-                    obj.delete()
-            else:
-                messages.error(request, hero_text_formset.errors)
+            ht_instances = hero_text_formset.save(commit=False)
+            for instance in ht_instances:
+                if not instance.school_settings_id:
+                    instance.school_settings = settings_obj
+                instance.save()
+            for obj in hero_text_formset.deleted_objects:
+                obj.delete()
 
             # Process hero button formset
-            if hero_button_formset.is_valid():
-                hb_instances = hero_button_formset.save(commit=False)
-                for instance in hb_instances:
-                    if not instance.school_settings_id:
-                        instance.school_settings = settings_obj
-                    instance.save()
-                for obj in hero_button_formset.deleted_objects:
-                    obj.delete()
-            else:
-                messages.error(request, hero_button_formset.errors)
+            hb_instances = hero_button_formset.save(commit=False)
+            for instance in hb_instances:
+                if not instance.school_settings_id:
+                    instance.school_settings = settings_obj
+                instance.save()
+            for obj in hero_button_formset.deleted_objects:
+                obj.delete()
 
             messages.success(request, 'School settings and media updated successfully!')
-
             return redirect('school_settings')
-        else:
+
+        if not form_valid:
             messages.error(request, 'Please correct the errors in the form.')
+        if not gallery_valid:
+            messages.error(request, 'Please correct the errors in the gallery section.')
+        if not hero_text_valid:
+            messages.error(request, 'Please correct the errors in the hero animated text section.')
+        if not hero_button_valid:
+            messages.error(request, 'Please correct the errors in the hero CTA buttons section.')
     else:
         form = SchoolSettingsForm(instance=settings_obj)
         gallery_formset = GalleryImageFormSet(queryset=gallery_images, prefix='gallery')

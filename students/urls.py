@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'students'
+
 urlpatterns = [
     # Student Portal - Student Only Views
     path('portal/dashboard/', views.StudentDashboardView.as_view(), name='student_portal_dashboard'),
@@ -32,4 +34,6 @@ urlpatterns = [
     path('admin/permissions/<int:student_id>/grant/<str:permission_code>/', views.grant_student_permission, name='grant_student_permission'),
     path('admin/permissions/<int:student_id>/revoke/<str:permission_code>/', views.revoke_student_permission, name='revoke_student_permission'),
     path('admin/permissions/bulk/', views.BulkStudentPermissionView.as_view(), name='bulk_student_permissions'),
+    # AJAX: students by class
+    path('by-class/', views.students_by_class, name='students_by_class'),
 ]

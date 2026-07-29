@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // If server didn't render class options (only 'All Classes'), fetch classes
   if (classSelect.options.length <= 1) {
-    fetch('{% url "classes_list" %}', { credentials: 'same-origin' })
+    fetch('{% url "school_classes:classes_list" %}', { credentials: 'same-origin' })
       .then(resp => resp.json())
       .then(data => {
         (data.classes || []).forEach(c => {
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    fetch('{% url "students_by_class" %}?class_id=' + encodeURIComponent(classId), { credentials: 'same-origin' })
+    fetch('{% url "students:students_by_class" %}?class_id=' + encodeURIComponent(classId), { credentials: 'same-origin' })
       .then(resp => {
         if (!resp.ok) throw new Error('Network response was not ok ' + resp.status);
         return resp.json();
