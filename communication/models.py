@@ -74,6 +74,10 @@ class PortalMessage(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    # Attachment support
+    attachment = models.FileField(upload_to='portal_attachments/', null=True, blank=True)
+    # Message delivery status: sent -> delivered -> read
+    status = models.CharField(max_length=12, choices=[('sent', 'Sent'), ('delivered', 'Delivered'), ('read', 'Read')], default='sent')
 
     class Meta:
         ordering = ['created_at']

@@ -8,6 +8,8 @@ from .views import (
     AdminPortalThreadView,
     PortalInboxView,
     PortalThreadDetailView,
+    send_portal_message_ajax,
+    fetch_portal_messages,
 )
 
 urlpatterns = [
@@ -21,4 +23,7 @@ urlpatterns = [
 
     path('portal/messages/', PortalInboxView.as_view(), name='portal_messages_list'),
     path('portal/messages/thread/', PortalThreadDetailView.as_view(), name='portal_thread_detail'),
+    path('portal/messages/thread/send_ajax/', send_portal_message_ajax, name='send_portal_message_ajax'),
+    path('portal/messages/thread/fetch/', fetch_portal_messages, name='fetch_portal_messages'),
+    path('portal/messages/thread/statuses/', fetch_portal_statuses, name='fetch_portal_statuses'),
 ]

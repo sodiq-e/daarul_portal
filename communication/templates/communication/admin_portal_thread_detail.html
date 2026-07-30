@@ -30,16 +30,42 @@
             {% if messages %}
                 {% for message in messages %}
                     {% if message.sender == request.user %}
-                        <div style="align-self: flex-end; max-width: 75%; background: #198754; color: white; padding: 16px; border-radius: 20px 20px 4px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                            <div style="font-size: 14px; margin-bottom: 8px; font-weight: 600;">You</div>
-                            <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
-                            <div style="font-size: 12px; margin-top: 10px; opacity: 0.8; text-align: right;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                        <div class="msg msg-out" data-id="{{ message.id }}" style="align-self: flex-end; width: 100%; background: transparent;">
+                            <div style="display: block; background: #198754; color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">You</div>
+                                <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
+                                {% if message.attachment %}
+                                    <div style="margin-top:8px;">
+                                        {% with name=message.attachment.name|lower %}
+                                            {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
+                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                            {% else %}
+                                                <a href="{{ message.attachment.url }}" target="_blank" style="color: #fff; text-decoration: underline;">{{ message.attachment.name|default:'Attachment' }}</a>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                {% endif %}
+                                <div style="font-size: 12px; margin-top: 8px; opacity: 0.9; text-align: right;">{{ message.created_at|date:"M d, Y H:i" }} &middot; <span class="msg-status">{{ message.status|capfirst }}</span></div>
+                            </div>
                         </div>
                     {% else %}
-                        <div style="align-self: flex-start; max-width: 75%; background: #ffffff; color: #212529; padding: 16px; border-radius: 20px 20px 20px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
-                            <div style="font-size: 14px; margin-bottom: 8px; font-weight: 600;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
-                            <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
-                            <div style="font-size: 12px; margin-top: 10px; opacity: 0.8;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                        <div class="msg msg-in" data-id="{{ message.id }}" style="align-self: flex-start; width: 100%; background: transparent;">
+                            <div style="display: block; background: #ffffff; color: #212529; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
+                                <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
+                                <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
+                                {% if message.attachment %}
+                                    <div style="margin-top:8px;">
+                                        {% with name=message.attachment.name|lower %}
+                                            {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
+                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                            {% else %}
+                                                <a href="{{ message.attachment.url }}" target="_blank">{{ message.attachment.name|default:'Attachment' }}</a>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                {% endif %}
+                                <div style="font-size: 12px; margin-top: 8px; opacity: 0.9;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                            </div>
                         </div>
                     {% endif %}
                 {% endfor %}
@@ -51,23 +77,99 @@
         </div>
 
         <div style="padding: 20px; border-top: 1px solid #e9ecef; background: #ffffff;">
-            <form method="post" style="display: grid; gap: 14px;">
+            <form id="admin-msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 10px;">
                 {% csrf_token %}
-                <textarea name="content" rows="5" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 14px; font-size: 14px; resize: vertical;" required></textarea>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                    <button type="submit" style="padding: 12px 20px; background: #0d6efd; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">Send Reply</button>
-                    <span style="color: #6c757d; font-size: 13px;">Your reply is delivered directly into the user's portal inbox.</span>
+                <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 12px; font-size: 14px; resize: vertical;"></textarea>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label for="admin-attachment" class="file-btn" style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; background:#f1f3f5; border-radius:8px; border:1px solid #dfe3e6; cursor:pointer;">📎 Attach</label>
+                    <input type="file" id="admin-attachment" name="attachment" accept="image/*,.pdf,.doc,.docx" style="position: absolute; left: -9999px;" />
+                    <button id="admin-send-btn" type="submit" style="padding: 10px 16px; background: #0d6efd; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">Send Reply</button>
+                    <span style="color: #6c757d; font-size: 13px; margin-left: auto;">Your reply is delivered directly into the user's portal inbox.</span>
                 </div>
+                <div id="admin-attachment-preview" style="margin-top:6px;"></div>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    window.addEventListener('load', function() {
+    // scroll to bottom on load
+    document.addEventListener('DOMContentLoaded', function() {
         var chat = document.getElementById('chat-window');
-        if (chat) {
-            chat.scrollTop = chat.scrollHeight;
+        if (chat) chat.scrollTop = chat.scrollHeight;
+
+        // admin attachment preview
+        const adminAttach = document.getElementById('admin-attachment');
+        const adminPreview = document.getElementById('admin-attachment-preview');
+        if (adminAttach && adminPreview) {
+            adminAttach.addEventListener('change', function(){
+                adminPreview.innerHTML = '';
+                const f = this.files[0];
+                if (!f) return;
+                if (f.type && f.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(f);
+                    img.style.maxWidth = '160px'; img.style.borderRadius='6px';
+                    adminPreview.appendChild(img);
+                } else {
+                    const div = document.createElement('div'); div.textContent = f.name; adminPreview.appendChild(div);
+                }
+            });
+        }
+
+        // AJAX send for admin
+        const adminForm = document.getElementById('admin-msg-form');
+        const adminBtn = document.getElementById('admin-send-btn');
+        const adminContent = document.getElementById('admin-content');
+        if (adminForm) {
+            adminForm.addEventListener('submit', function(e){
+                e.preventDefault();
+                // create temporary message UI with 'Sending' status
+                const tempId = 'tmp-' + Date.now();
+                const tempMsg = {
+                    id: tempId,
+                    content: adminContent.value.trim(),
+                    attachment_url: adminAttach && adminAttach.files[0] ? URL.createObjectURL(adminAttach.files[0]) : null,
+                    attachment_name: adminAttach && adminAttach.files[0] ? adminAttach.files[0].name : null,
+                    created_at: new Date().toLocaleString(),
+                    sender: '{{ request.user.get_full_name|escapejs }}',
+                    status: 'Sending'
+                };
+                // append temp element
+                const tmpWrapper = document.createElement('div');
+                tmpWrapper.className = 'msg msg-out'; tmpWrapper.dataset.id = tempId; tmpWrapper.style.width = '100%';
+                const tmpInner = document.createElement('div'); tmpInner.style.display='block'; tmpInner.style.padding='14px'; tmpInner.style.borderRadius='12px'; tmpInner.style.background='#198754'; tmpInner.style.color='#fff';
+                const tmpWho = document.createElement('div'); tmpWho.style.fontWeight='700'; tmpWho.style.marginBottom='6px'; tmpWho.textContent = 'You'; tmpInner.appendChild(tmpWho);
+                if (tempMsg.content) { const c = document.createElement('div'); c.textContent = tempMsg.content; c.style.whiteSpace='pre-wrap'; c.style.lineHeight='1.6'; tmpInner.appendChild(c);} 
+                if (tempMsg.attachment_url) { const at = document.createElement('div'); at.style.marginTop='8px'; const a = document.createElement('a'); a.href = tempMsg.attachment_url; a.target='_blank'; a.textContent = tempMsg.attachment_name || 'Attachment'; at.appendChild(a); tmpInner.appendChild(at);} 
+                const tmpMeta = document.createElement('div'); tmpMeta.style.fontSize='12px'; tmpMeta.style.marginTop='8px'; tmpMeta.style.textAlign='right'; tmpMeta.innerHTML = (tempMsg.created_at||'') + ' &middot; <span class="msg-status">' + (tempMsg.status||'Sending') + '</span>';
+                tmpInner.appendChild(tmpMeta); tmpWrapper.appendChild(tmpInner); chat.appendChild(tmpWrapper); chat.scrollTop = chat.scrollHeight;
+
+                adminBtn.disabled = true;
+                const fd = new FormData();
+                fd.append('content', adminContent.value.trim());
+                const csrfInput = adminForm.querySelector('input[name="csrfmiddlewaretoken"]');
+                if (csrfInput) fd.append('csrfmiddlewaretoken', csrfInput.value);
+                if (adminAttach && adminAttach.files[0]) fd.append('attachment', adminAttach.files[0]);
+
+                fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                }).then(r => r.json()).then(data => {
+                    adminBtn.disabled = false;
+                    if (data.success) {
+                        // update temp element
+                        tmpWrapper.dataset.id = data.message.id;
+                        const statusEl = tmpWrapper.querySelector('.msg-status'); if (statusEl) statusEl.textContent = (data.message.status||'Sent');
+                        // reset form
+                        adminContent.value=''; if (adminAttach) adminAttach.value=''; if (adminPreview) adminPreview.innerHTML='';
+                    } else {
+                        const statusEl = tmpWrapper.querySelector('.msg-status'); if (statusEl) statusEl.textContent = 'Failed';
+                        alert(data.error || 'Could not send reply.');
+                    }
+                }).catch(()=>{ adminBtn.disabled=false; const statusEl = tmpWrapper.querySelector('.msg-status'); if (statusEl) statusEl.textContent = 'Failed'; alert('Could not send reply.'); });
+            });
         }
     });
 </script>
@@ -79,5 +181,9 @@
     a {
         text-decoration: none;
     }
+    .file-btn:hover { background: #e9ecef; }
+    .msg-status { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 11px; vertical-align: middle; background: rgba(255,255,255,0.15); color: inherit; border: 1px solid rgba(0,0,0,0.05); }
+    .msg-out .msg-status { background: rgba(255,255,255,0.18); color: white; }
+    .msg-in .msg-status { background: #f1f3f5; color: #333; }
 </style>
 {% endblock %}

@@ -18,16 +18,42 @@
             {% if messages %}
                 {% for message in messages %}
                     {% if message.sender == request.user %}
-                        <div style="align-self: flex-end; max-width: 75%; background: #0d6efd; color: white; padding: 16px; border-radius: 20px 20px 4px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-                            <div style="font-size: 14px; margin-bottom: 8px; font-weight: 600;">You</div>
-                            <div style="white-space: pre-wrap; line-height: 1.7;">{{ message.content }}</div>
-                            <div style="font-size: 12px; margin-top: 10px; opacity: 0.85; text-align: right;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                        <div class="msg msg-out" data-id="{{ message.id }}" style="align-self: flex-end; width: 100%; background: transparent;">
+                            <div style="display: block; background: #0d6efd; color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">You</div>
+                                <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
+                                {% if message.attachment %}
+                                    <div style="margin-top:8px;">
+                                        {% with name=message.attachment.name|lower %}
+                                            {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
+                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                            {% else %}
+                                                <a href="{{ message.attachment.url }}" target="_blank" style="color: #fff; text-decoration: underline;">{{ message.attachment.name|default:'Attachment' }}</a>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                {% endif %}
+                                <div style="font-size: 12px; margin-top: 8px; opacity: 0.9; text-align: right;">{{ message.created_at|date:"M d, Y H:i" }} &middot; <span class="msg-status">{{ message.status|capfirst }}</span></div>
+                            </div>
                         </div>
                     {% else %}
-                        <div style="align-self: flex-start; max-width: 75%; background: #ffffff; color: #212529; padding: 16px; border-radius: 20px 20px 20px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
-                            <div style="font-size: 14px; margin-bottom: 8px; font-weight: 600;">Administrator</div>
-                            <div style="white-space: pre-wrap; line-height: 1.7;">{{ message.content }}</div>
-                            <div style="font-size: 12px; margin-top: 10px; opacity: 0.85;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                        <div class="msg msg-in" data-id="{{ message.id }}" style="align-self: flex-start; width: 100%; background: transparent;">
+                            <div style="display: block; background: #ffffff; color: #212529; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
+                                <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">Administrator</div>
+                                <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
+                                {% if message.attachment %}
+                                    <div style="margin-top:8px;">
+                                        {% with name=message.attachment.name|lower %}
+                                            {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
+                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                            {% else %}
+                                                <a href="{{ message.attachment.url }}" target="_blank">{{ message.attachment.name|default:'Attachment' }}</a>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                {% endif %}
+                                <div style="font-size: 12px; margin-top: 8px; opacity: 0.9;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                            </div>
                         </div>
                     {% endif %}
                 {% endfor %}
@@ -40,30 +66,252 @@
         </div>
 
         <div style="padding: 20px; border-top: 1px solid #e9ecef; background: #ffffff;">
-            <form method="post" style="display: grid; gap: 14px;">
+            <form id="msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 10px;">
                 {% csrf_token %}
-                <textarea name="content" rows="5" placeholder="Write your message here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 14px; font-size: 14px; resize: vertical;" required></textarea>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                    <button type="submit" style="padding: 12px 20px; background: #198754; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">Send Message</button>
-                    <span style="color: #6c757d; font-size: 13px;">This message will be sent to the school administrator.</span>
+                <textarea name="content" id="msg-content" rows="3" placeholder="Write your message here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 12px; font-size: 14px; resize: vertical;"></textarea>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label for="msg-attachment" class="file-btn" style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; background:#f1f3f5; border-radius:8px; border:1px solid #dfe3e6; cursor:pointer;">
+                        📎 Attach
+                    </label>
+                    <input type="file" id="msg-attachment" name="attachment" accept="image/*,.pdf,.doc,.docx" style="position: absolute; left: -9999px;" />
+                    <button id="send-btn" type="submit" style="padding: 10px 16px; background: #198754; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">Send</button>
+                    <span style="color: #6c757d; font-size: 13px; margin-left: auto;">This message will be sent to the school administrator.</span>
                 </div>
+                <div id="attachment-preview" style="margin-top:6px;"></div>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    window.addEventListener('load', function() {
-        var chat = document.getElementById('chat-window');
-        if (chat) {
-            chat.scrollTop = chat.scrollHeight;
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    let chat = document.getElementById('chat-window');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+
+    // initialize lastMessageId from existing DOM messages
+    let lastMessageId = 0;
+    document.querySelectorAll('#chat-window [data-id]').forEach(function(n){
+        const id = parseInt(n.dataset.id || 0);
+        if (id > lastMessageId) lastMessageId = id;
+    });
+
+    // AJAX send
+    const form = document.getElementById('msg-form');
+    const sendBtn = document.getElementById('send-btn');
+    const contentEl = document.getElementById('msg-content');
+    const attachmentEl = document.getElementById('msg-attachment');
+    const previewEl = document.getElementById('attachment-preview');
+
+    attachmentEl.addEventListener('change', function() {
+        previewEl.innerHTML = '';
+        const f = this.files[0];
+        if (!f) return;
+        if (f.type.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(f);
+            img.style.maxWidth = '160px';
+            img.style.borderRadius = '6px';
+            previewEl.appendChild(img);
+        } else {
+            const a = document.createElement('div');
+            a.textContent = f.name;
+            previewEl.appendChild(a);
         }
     });
+
+    form.addEventListener('submit', function(e){
+        e.preventDefault();
+        // create a temporary message UI with 'Sending' status
+        const tempId = 'tmp-' + Date.now();
+        const tempMsg = {
+            id: tempId,
+            content: contentEl.value.trim(),
+            attachment_url: attachmentEl.files[0] ? URL.createObjectURL(attachmentEl.files[0]) : null,
+            attachment_name: attachmentEl.files[0] ? attachmentEl.files[0].name : null,
+            created_at: new Date().toLocaleString(),
+            sender: '{{ request.user.get_full_name|escapejs }}',
+            status: 'Sending'
+        };
+        appendMessageToChat(tempMsg, true);
+        sendBtn.disabled = true;
+        const fd = new FormData();
+        fd.append('content', contentEl.value.trim());
+        if (attachmentEl.files[0]) fd.append('attachment', attachmentEl.files[0]);
+
+        fetch('{% url "send_portal_message_ajax" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: fd
+        }).then(r => r.json()).then(data => {
+            sendBtn.disabled = false;
+            if (data.success) {
+                // update temporary message element with real id and status
+                const tempEl = document.querySelector('[data-id="' + tempId + '"]');
+                if (tempEl) {
+                    tempEl.dataset.id = data.message.id;
+                    const statusEl = tempEl.querySelector('.msg-status');
+                    if (statusEl) statusEl.textContent = (data.message.status || 'Sent');
+                }
+                contentEl.value = '';
+                attachmentEl.value = '';
+                previewEl.innerHTML = '';
+                // ensure lastMessageId updates
+                if (data.message.id) lastMessageId = Math.max(lastMessageId, data.message.id);
+            } else {
+                // mark temp message as Failed
+                const tempEl = document.querySelector('[data-id="' + tempId + '"]');
+                if (tempEl) {
+                    const statusEl = tempEl.querySelector('.msg-status');
+                    if (statusEl) statusEl.textContent = 'Failed';
+                }
+                alert(data.error || 'Could not send message.');
+            }
+        }).catch(err => {
+            sendBtn.disabled = false;
+            // mark temp message as Failed
+            const tempEl = document.querySelector('[data-id="' + tempId + '"]');
+            if (tempEl) {
+                const statusEl = tempEl.querySelector('.msg-status');
+                if (statusEl) statusEl.textContent = 'Failed';
+            }
+            alert('Could not send message.');
+        });
+    });
+
+    // Append message object to chat window
+    function appendMessageToChat(msg, outgoing){
+        // only update lastMessageId if id is numeric
+        const numericId = Number(msg.id);
+        if (isFinite(numericId)) lastMessageId = Math.max(lastMessageId, numericId);
+        const wrapper = document.createElement('div');
+        wrapper.className = outgoing ? 'msg msg-out' : 'msg msg-in';
+        wrapper.dataset.id = msg.id;
+        wrapper.style.width = '100%';
+        const inner = document.createElement('div');
+        inner.style.display = 'block';
+        inner.style.padding = '14px';
+        inner.style.borderRadius = '12px';
+        inner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+        inner.style.background = outgoing ? '#0d6efd' : '#ffffff';
+        inner.style.color = outgoing ? '#fff' : '#212529';
+
+        const who = document.createElement('div');
+        who.style.fontWeight = '700';
+        who.style.marginBottom = '6px';
+        who.textContent = outgoing ? 'You' : msg.sender;
+        inner.appendChild(who);
+
+        if (msg.content) {
+            const contentDiv = document.createElement('div');
+            contentDiv.style.whiteSpace = 'pre-wrap';
+            contentDiv.style.lineHeight = '1.6';
+            contentDiv.textContent = msg.content;
+            inner.appendChild(contentDiv);
+        }
+
+        if (msg.attachment_url) {
+            const at = document.createElement('div');
+            at.style.marginTop = '8px';
+            if (msg.attachment_name && (msg.attachment_name.match(/\.(jpg|jpeg|png|gif)$/i))) {
+                const img = document.createElement('img');
+                img.src = msg.attachment_url;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.borderRadius = '6px';
+                at.appendChild(img);
+            } else if (msg.attachment_name && msg.attachment_name.toLowerCase().endsWith('.pdf')) {
+                const a = document.createElement('a');
+                a.href = msg.attachment_url; a.target = '_blank';
+                a.textContent = msg.attachment_name || 'Attachment (PDF)';
+                at.appendChild(a);
+            } else {
+                const a = document.createElement('a');
+                a.href = msg.attachment_url; a.target = '_blank';
+                a.textContent = msg.attachment_name || 'Attachment';
+                at.appendChild(a);
+            }
+            inner.appendChild(at);
+        }
+
+        const meta = document.createElement('div');
+        meta.style.fontSize = '12px';
+        meta.style.marginTop = '8px';
+        meta.style.opacity = '0.9';
+        meta.style.textAlign = outgoing ? 'right' : 'left';
+        meta.innerHTML = (msg.created_at || '') + (outgoing ? ' &middot; <span class="msg-status">' + (msg.status||'Sent') + '</span>' : '');
+        inner.appendChild(meta);
+
+        wrapper.appendChild(inner);
+        chat.appendChild(wrapper);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Polling for new messages every 3s
+    setInterval(function(){
+        fetch('{% url "fetch_portal_messages" %}?since_id=' + lastMessageId, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(r => r.json()).then(data => {
+            if (data.success && data.messages && data.messages.length) {
+                data.messages.forEach(m => {
+                    // skip messages already present
+                    if (!document.querySelector('[data-id="' + m.id + '"]')) {
+                        appendMessageToChat(m, m.sender == '{{ request.user.get_full_name|escapejs }}' || false);
+                    }
+                });
+            }
+        }).catch(()=>{});
+    }, 3000);
+
+    // Poll for status updates every 2s
+    setInterval(function(){
+        fetch('{% url "fetch_portal_statuses" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r=>r.json()).then(data=>{
+            if (data.success && data.statuses) {
+                data.statuses.forEach(s => {
+                    const el = document.querySelector('[data-id="' + s.id + '"]');
+                    if (el) {
+                        const statusEl = el.querySelector('.msg-status');
+                        if (statusEl) statusEl.textContent = s.status.charAt(0).toUpperCase() + s.status.slice(1);
+                    }
+                });
+            }
+        }).catch(()=>{});
+    }, 2000);
 </script>
 
 <style>
     h1 {
         color: var(--heading-text-color);
     }
+    /* Visible file attach button and status badge */
+    .file-btn:hover { background: #e9ecef; }
+    .msg-status {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        vertical-align: middle;
+        background: rgba(255,255,255,0.15);
+        color: inherit;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .msg-out .msg-status { background: rgba(255,255,255,0.18); color: white; }
+    .msg-in .msg-status { background: #f1f3f5; color: #333; }
 </style>
 {% endblock %}

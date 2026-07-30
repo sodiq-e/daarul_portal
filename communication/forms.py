@@ -1,5 +1,5 @@
 from django import forms
-from .models import Message
+from .models import Message, PortalMessage
 
 
 class MessageForm(forms.ModelForm):
@@ -11,11 +11,13 @@ class MessageForm(forms.ModelForm):
         }
 
 
-class PortalMessageForm(forms.Form):
-    content = forms.CharField(
-        label='Message',
-        widget=forms.Textarea(attrs={
-            'rows': 5,
-            'placeholder': 'Write your message here...'
-        })
-    )
+class PortalMessageForm(forms.ModelForm):
+    class Meta:
+        model = PortalMessage
+        fields = ['content', 'attachment']
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Write your message here...'
+            })
+        }
