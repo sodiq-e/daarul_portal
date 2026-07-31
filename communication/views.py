@@ -372,13 +372,15 @@ def fetch_portal_messages(request):
         except ValueError:
             pass
 
-    messages_list = []
-    # mark newly received messages as delivered (but don't mark read here)
-    qs.exclude(sender=request.user).filter(status='sent').update(status='delivered')
+    messages_qs = qs.order_by('created_at')
+    # mark newly received messages as delivered when the user has the thread open
+    messages_qs.exclude(sender=request.user).filter(status='sent').update(status='delivered')
 
-    for m in qs.order_by('created_at'):
+    messages_list = []
+    for m in messages_qs:
         messages_list.append({
             'id': m.id,
+            'sender_id': m.sender.id if m.sender else None,
             'sender': m.sender.get_full_name() if m.sender else 'System',
             'content': m.content,
             'created_at': m.created_at.strftime('%b %d, %Y %H:%M'),
@@ -389,6 +391,55 @@ def fetch_portal_messages(request):
         })
 
     return JsonResponse({'success': True, 'messages': messages_list})
+
+
+@login_required
+def fetch_admin_portal_messages(request, user_id):
+    if not is_admin(request.user):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    user = get_object_or_404(get_active_accounts(), pk=user_id)
+    thread, _ = PortalThread.objects.get_or_create(user=user)
+    since_id = request.GET.get('since_id')
+    qs = thread.messages.select_related('sender')
+    if since_id:
+        try:
+            since_id = int(since_id)
+            qs = qs.filter(id__gt=since_id)
+        except ValueError:
+            pass
+
+    messages_qs = qs.order_by('created_at')
+    messages_qs.exclude(sender=request.user).filter(status='sent').update(status='delivered')
+    messages_qs.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
+
+    messages_list = []
+    for m in messages_qs:
+        messages_list.append({
+            'id': m.id,
+            'sender_id': m.sender.id if m.sender else None,
+            'sender': m.sender.get_full_name() if m.sender else 'System',
+            'content': m.content,
+            'created_at': m.created_at.strftime('%b %d, %Y %H:%M'),
+            'attachment_url': m.attachment.url if m.attachment else None,
+            'attachment_name': getattr(m.attachment, 'name', None),
+            'is_read': m.is_read,
+            'status': m.status,
+        })
+
+    return JsonResponse({'success': True, 'messages': messages_list})
+
+
+@login_required
+def fetch_admin_portal_statuses(request, user_id):
+    if not is_admin(request.user):
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    user = get_object_or_404(get_active_accounts(), pk=user_id)
+    thread, _ = PortalThread.objects.get_or_create(user=user)
+    qs = PortalMessage.objects.filter(thread=thread, sender=request.user).exclude(status='sent')
+    statuses = [{'id': m.id, 'status': m.status} for m in qs]
+    return JsonResponse({'success': True, 'statuses': statuses})
 
 
 @login_required

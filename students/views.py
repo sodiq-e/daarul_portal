@@ -568,7 +568,7 @@ class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
                 term_id = request.GET.get('term_id', '').strip()
                 if not term_id:
                     messages.error(request, 'Please select a term before downloading a report card.')
-                    return redirect('student_portal_report_card')
+                    return redirect('students:student_portal_report_card')
 
                 selected_term = get_object_or_404(Term, pk=term_id)
                 selected_term_result = TermResult.objects.filter(
@@ -632,7 +632,7 @@ class StudentDownloadReportCardView(LoginRequiredMixin, TemplateView):
                 return response
         except Student.DoesNotExist:
             messages.error(request, 'Student profile not found.')
-            return redirect('student_portal_dashboard')
+            return redirect('students:student_portal_dashboard')
 
         return super().get(request, *args, **kwargs)
 

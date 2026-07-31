@@ -96,7 +96,89 @@
     // scroll to bottom on load
     document.addEventListener('DOMContentLoaded', function() {
         var chat = document.getElementById('chat-window');
-        if (chat) chat.scrollTop = chat.scrollHeight;
+        const currentUserId = {{ request.user.id|default:0 }};
+        let lastMessageId = 0;
+        if (chat) {
+            chat.scrollTop = chat.scrollHeight;
+            document.querySelectorAll('#chat-window [data-id]').forEach(function(n){
+                const id = parseInt(n.dataset.id || 0);
+                if (id > lastMessageId) lastMessageId = id;
+            });
+        }
+
+        function appendAdminChatMessage(msg, outgoing) {
+            const numericId = Number(msg.id);
+            if (isFinite(numericId)) {
+                lastMessageId = Math.max(lastMessageId, numericId);
+            }
+            const wrapper = document.createElement('div');
+            wrapper.className = outgoing ? 'msg msg-out' : 'msg msg-in';
+            wrapper.dataset.id = msg.id;
+            wrapper.style.alignSelf = outgoing ? 'flex-end' : 'flex-start';
+            wrapper.style.width = '100%';
+            wrapper.style.background = 'transparent';
+
+            const inner = document.createElement('div');
+            inner.style.display = 'block';
+            inner.style.padding = '14px';
+            inner.style.borderRadius = '12px';
+            inner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            inner.style.background = outgoing ? '#198754' : '#ffffff';
+            inner.style.color = outgoing ? '#fff' : '#212529';
+            if (!outgoing) {
+                inner.style.border = '1px solid #dee2e6';
+            }
+
+            const who = document.createElement('div');
+            who.style.fontSize = '13px';
+            who.style.marginBottom = '6px';
+            who.style.fontWeight = '700';
+            who.textContent = outgoing ? 'You' : msg.sender;
+            inner.appendChild(who);
+
+            if (msg.content) {
+                const contentDiv = document.createElement('div');
+                contentDiv.style.whiteSpace = 'pre-wrap';
+                contentDiv.style.lineHeight = '1.6';
+                contentDiv.textContent = msg.content;
+                inner.appendChild(contentDiv);
+            }
+
+            if (msg.attachment_url) {
+                const at = document.createElement('div');
+                at.style.marginTop = '8px';
+                if (msg.attachment_name && msg.attachment_name.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                    const img = document.createElement('img');
+                    img.src = msg.attachment_url;
+                    img.style.maxWidth = '100%';
+                    img.style.height = 'auto';
+                    img.style.borderRadius = '8px';
+                    at.appendChild(img);
+                } else {
+                    const a = document.createElement('a');
+                    a.href = msg.attachment_url;
+                    a.target = '_blank';
+                    a.textContent = msg.attachment_name || 'Attachment';
+                    a.style.color = outgoing ? '#fff' : '#212529';
+                    at.appendChild(a);
+                }
+                inner.appendChild(at);
+            }
+
+            const meta = document.createElement('div');
+            meta.style.fontSize = '12px';
+            meta.style.marginTop = '8px';
+            meta.style.opacity = '0.9';
+            meta.style.textAlign = outgoing ? 'right' : 'left';
+            meta.innerHTML = (msg.created_at || '') + (outgoing ? ' &middot; <span class="msg-status">' + (msg.status || 'Sent') + '</span>' : '');
+            inner.appendChild(meta);
+
+            wrapper.appendChild(inner);
+            if (chat) {
+                chat.appendChild(wrapper);
+                chat.scrollTop = chat.scrollHeight;
+            }
+        }
 
         // admin attachment preview
         const adminAttach = document.getElementById('admin-attachment');
@@ -132,18 +214,11 @@
                     attachment_url: adminAttach && adminAttach.files[0] ? URL.createObjectURL(adminAttach.files[0]) : null,
                     attachment_name: adminAttach && adminAttach.files[0] ? adminAttach.files[0].name : null,
                     created_at: new Date().toLocaleString(),
+                    sender_id: currentUserId,
                     sender: '{{ request.user.get_full_name|escapejs }}',
                     status: 'Sending'
                 };
-                // append temp element
-                const tmpWrapper = document.createElement('div');
-                tmpWrapper.className = 'msg msg-out'; tmpWrapper.dataset.id = tempId; tmpWrapper.style.width = '100%';
-                const tmpInner = document.createElement('div'); tmpInner.style.display='block'; tmpInner.style.padding='14px'; tmpInner.style.borderRadius='12px'; tmpInner.style.background='#198754'; tmpInner.style.color='#fff';
-                const tmpWho = document.createElement('div'); tmpWho.style.fontWeight='700'; tmpWho.style.marginBottom='6px'; tmpWho.textContent = 'You'; tmpInner.appendChild(tmpWho);
-                if (tempMsg.content) { const c = document.createElement('div'); c.textContent = tempMsg.content; c.style.whiteSpace='pre-wrap'; c.style.lineHeight='1.6'; tmpInner.appendChild(c);} 
-                if (tempMsg.attachment_url) { const at = document.createElement('div'); at.style.marginTop='8px'; const a = document.createElement('a'); a.href = tempMsg.attachment_url; a.target='_blank'; a.textContent = tempMsg.attachment_name || 'Attachment'; at.appendChild(a); tmpInner.appendChild(at);} 
-                const tmpMeta = document.createElement('div'); tmpMeta.style.fontSize='12px'; tmpMeta.style.marginTop='8px'; tmpMeta.style.textAlign='right'; tmpMeta.innerHTML = (tempMsg.created_at||'') + ' &middot; <span class="msg-status">' + (tempMsg.status||'Sending') + '</span>';
-                tmpInner.appendChild(tmpMeta); tmpWrapper.appendChild(tmpInner); chat.appendChild(tmpWrapper); chat.scrollTop = chat.scrollHeight;
+                appendAdminChatMessage(tempMsg, true);
 
                 adminBtn.disabled = true;
                 const fd = new FormData();
@@ -160,17 +235,58 @@
                     adminBtn.disabled = false;
                     if (data.success) {
                         // update temp element
-                        tmpWrapper.dataset.id = data.message.id;
-                        const statusEl = tmpWrapper.querySelector('.msg-status'); if (statusEl) statusEl.textContent = (data.message.status||'Sent');
+                        const tempEl = document.querySelector('[data-id="' + tempId + '"]');
+                        if (tempEl) {
+                            tempEl.dataset.id = data.message.id;
+                            const statusEl = tempEl.querySelector('.msg-status');
+                            if (statusEl) statusEl.textContent = (data.message.status||'Sent');
+                        }
                         // reset form
                         adminContent.value=''; if (adminAttach) adminAttach.value=''; if (adminPreview) adminPreview.innerHTML='';
                     } else {
-                        const statusEl = tmpWrapper.querySelector('.msg-status'); if (statusEl) statusEl.textContent = 'Failed';
+                        const tempEl = document.querySelector('[data-id="' + tempId + '"]');
+                        if (tempEl) {
+                            const statusEl = tempEl.querySelector('.msg-status');
+                            if (statusEl) statusEl.textContent = 'Failed';
+                        }
                         alert(data.error || 'Could not send reply.');
                     }
-                }).catch(()=>{ adminBtn.disabled=false; const statusEl = tmpWrapper.querySelector('.msg-status'); if (statusEl) statusEl.textContent = 'Failed'; alert('Could not send reply.'); });
+                }).catch(()=>{ adminBtn.disabled=false; const tempEl = document.querySelector('[data-id="' + tempId + '"]'); if (tempEl) { const statusEl = tempEl.querySelector('.msg-status'); if (statusEl) statusEl.textContent = 'Failed'; } alert('Could not send reply.'); });
             });
         }
+
+        function pollAdminMessages() {
+            fetch('{% url "fetch_admin_portal_messages" thread.user.id %}?since_id=' + lastMessageId, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(r => r.json()).then(data => {
+                if (data.success && data.messages && data.messages.length) {
+                    data.messages.forEach(m => {
+                        if (!document.querySelector('[data-id="' + m.id + '"]')) {
+                            const outgoing = m.sender_id === currentUserId;
+                            appendAdminChatMessage(m, outgoing);
+                        }
+                    });
+                }
+            }).catch(()=>{});
+        }
+
+        function pollAdminStatuses() {
+            fetch('{% url "fetch_admin_portal_statuses" thread.user.id %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()).then(data => {
+                if (data.success && data.statuses) {
+                    data.statuses.forEach(s => {
+                        const el = document.querySelector('[data-id="' + s.id + '"]');
+                        if (el) {
+                            const statusEl = el.querySelector('.msg-status');
+                            if (statusEl) statusEl.textContent = s.status.charAt(0).toUpperCase() + s.status.slice(1);
+                        }
+                    });
+                }
+            }).catch(()=>{});
+        }
+
+        pollAdminMessages();
+        setInterval(pollAdminMessages, 1000);
+        setInterval(pollAdminStatuses, 1000);
     });
 </script>
 

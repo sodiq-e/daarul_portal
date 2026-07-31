@@ -3854,17 +3854,17 @@ body {
         <span class="arrow">›</span>
       </div>
       <div class="menu-content">
-        <a href="{% url 'student_portal_dashboard' %}" data-tooltip="Dashboard"
+        <a href="{% url 'students:student_portal_dashboard' %}" data-tooltip="Dashboard"
            class="{% if request.resolver_match.url_name == 'student_portal_dashboard' %}active{% endif %}">
           <i class="fas fa-home"></i><span> My Dashboard</span>
         </a>
 
-        <a href="{% url 'student_portal_profile' %}" data-tooltip="Profile"
+        <a href="{% url 'students:student_portal_profile' %}" data-tooltip="Profile"
            class="{% if request.resolver_match.url_name == 'student_portal_profile' %}active{% endif %}">
           <i class="fas fa-user"></i><span> My Profile</span>
         </a>
 
-        <a href="{% url 'student_portal_results' %}" data-tooltip="Results"
+        <a href="{% url 'students:student_portal_results' %}" data-tooltip="Results"
            class="{% if request.resolver_match.url_name == 'student_portal_results' %}active{% endif %}">
           <i class="fas fa-chart-line"></i><span> My Results</span>
         </a>
@@ -3874,7 +3874,7 @@ body {
           <i class="fas fa-laptop-code"></i><span> CBT Exams</span>
         </a>
 
-        <a href="{% url 'student_portal_fees' %}" data-tooltip="Fees"
+        <a href="{% url 'students:student_portal_fees' %}" data-tooltip="Fees"
            class="{% if request.resolver_match.url_name == 'student_portal_fees' %}active{% endif %}">
           <i class="fas fa-wallet"></i><span> School Fees</span>
         </a>

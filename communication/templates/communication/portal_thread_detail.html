@@ -102,6 +102,7 @@
     let chat = document.getElementById('chat-window');
     if (chat) chat.scrollTop = chat.scrollHeight;
 
+    const currentUserId = {{ request.user.id|default:0 }};
     // initialize lastMessageId from existing DOM messages
     let lastMessageId = 0;
     document.querySelectorAll('#chat-window [data-id]').forEach(function(n){
@@ -143,6 +144,7 @@
             attachment_url: attachmentEl.files[0] ? URL.createObjectURL(attachmentEl.files[0]) : null,
             attachment_name: attachmentEl.files[0] ? attachmentEl.files[0].name : null,
             created_at: new Date().toLocaleString(),
+            sender_id: {{ request.user.id|default:0 }},
             sender: '{{ request.user.get_full_name|escapejs }}',
             status: 'Sending'
         };
@@ -263,23 +265,26 @@
         chat.scrollTop = chat.scrollHeight;
     }
 
-    // Polling for new messages every 3s
-    setInterval(function(){
+    function pollPortalMessages() {
         fetch('{% url "fetch_portal_messages" %}?since_id=' + lastMessageId, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         }).then(r => r.json()).then(data => {
             if (data.success && data.messages && data.messages.length) {
                 data.messages.forEach(m => {
-                    // skip messages already present
                     if (!document.querySelector('[data-id="' + m.id + '"]')) {
-                        appendMessageToChat(m, m.sender == '{{ request.user.get_full_name|escapejs }}' || false);
+                        const outgoing = m.sender_id === currentUserId;
+                        appendMessageToChat(m, outgoing);
                     }
                 });
             }
         }).catch(()=>{});
-    }, 3000);
+    }
 
-    // Poll for status updates every 2s
+    // Start polling immediately and then every second while the thread is open.
+    pollPortalMessages();
+    setInterval(pollPortalMessages, 1000);
+
+    // Poll for status updates every second as well.
     setInterval(function(){
         fetch('{% url "fetch_portal_statuses" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r=>r.json()).then(data=>{
             if (data.success && data.statuses) {
@@ -292,7 +297,7 @@
                 });
             }
         }).catch(()=>{});
-    }, 2000);
+    }, 1000);
 </script>
 
 <style>

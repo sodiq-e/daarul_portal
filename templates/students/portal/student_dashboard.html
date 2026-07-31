@@ -93,7 +93,7 @@
             <div class="row">
                 {# View Profile - shown by default #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_profile' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_profile' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">👤 View Profile</h5>
                             <p class="card-text small text-muted">View your personal information</p>
@@ -103,7 +103,7 @@
                 
                 {# View Results - shown by default #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_results' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_results' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">📊 View Results</h5>
                             <p class="card-text small text-muted">Check your academic results and grades</p>
@@ -122,7 +122,7 @@
 
                 {# Download Report Card #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_report_card' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_report_card' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">📄 Download Report Card</h5>
                             <p class="card-text small text-muted">Download your report card as PDF</p>
@@ -133,7 +133,7 @@
                 {# School Fees - show only if student has invoices or admin enabled it #}
                 {% if pending_invoices or total_owing %}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_fees' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_fees' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">💰 School Fees</h5>
                             <p class="card-text small text-muted">View invoices and payment history</p>
@@ -144,7 +144,7 @@
 
                 {# Class Timetable #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_timetable' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_timetable' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">🕒 Class Timetable</h5>
                             <p class="card-text small text-muted">View your class timetable and schedule</p>
@@ -154,7 +154,7 @@
 
                 {# Class Announcements #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_announcements' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_announcements' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">📢 Class Announcements</h5>
                             <p class="card-text small text-muted">View announcements for your class</p>
@@ -164,7 +164,7 @@
 
                 {# Attendance #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_attendance' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_attendance' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">✅ My Attendance</h5>
                             <p class="card-text small text-muted">View your attendance records</p>
@@ -174,7 +174,7 @@
 
                 {# Contact Teachers #}
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <a href="{% url 'student_portal_contact_teacher' %}" class="card text-decoration-none h-100 shadow-sm">
+                    <a href="{% url 'students:student_portal_contact_teacher' %}" class="card text-decoration-none h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title">✉️ Contact Teachers</h5>
                             <p class="card-text small text-muted">Send messages to your teachers</p>
