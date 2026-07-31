@@ -387,7 +387,7 @@ def fetch_portal_messages(request):
             'is_read': m.is_read,
             'status': m.status,
         })
-    
+
     return JsonResponse({'success': True, 'messages': messages_list})
 
 

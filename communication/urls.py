@@ -10,6 +10,7 @@ from .views import (
     PortalThreadDetailView,
     send_portal_message_ajax,
     fetch_portal_messages,
+    fetch_portal_statuses,
 )
 
 urlpatterns = [
