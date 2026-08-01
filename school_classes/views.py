@@ -141,6 +141,9 @@ class ClassDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
             status='active'
         ).order_by('surname', 'other_names')
         context['can_modify'] = user_is_staff(self.request.user)
+        context['can_message_class'] = self.request.user.is_authenticated and (
+            user_is_staff(self.request.user) or hasattr(self.request.user, 'teacher_profile')
+        )
         context['teachers'] = ClassTeacher.objects.filter(
             school_class=school_class,
             is_active=True

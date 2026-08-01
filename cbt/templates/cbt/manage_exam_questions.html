@@ -32,7 +32,8 @@
             {% endif %}
             <button type="button" id="btn-add-question" class="btn btn-primary btn-add-question">Add Question</button>
             <button type="button" id="btn-import-bank" class="btn btn-info">Import Bank</button>
-            <button type="button" class="btn-open-upload btn btn-secondary">Upload CSV / JSON</button>
+            <button type="button" class="btn-open-upload btn btn-secondary">Upload CSV / JSON / TXT</button>
+            <button type="button" id="btn-import-server-top" class="btn btn-secondary">Upload & Import</button>
             <button type="button" id="btn-save-all" class="btn btn-success btn-save-all">Save All</button>
         </div>
     </div>
@@ -160,9 +161,27 @@
             <div class="card mt-3">
                 <div class="card-body">
                     <h6>Bulk Upload</h6>
-                    <p class="text-muted">Upload CSV or JSON files formatted for CBT questions.</p>
+                    <p class="text-muted">Upload CSV, JSON, TXT, DOCX or XLSX files formatted for CBT questions.</p>
                     <button type="button" class="btn-open-upload btn btn-sm btn-outline-secondary w-100 mb-2">Choose File</button>
-                    <a href="#" id="download-template" class="d-block">Download sample template</a>
+                    <button type="button" id="btn-import-server" class="btn btn-sm btn-outline-secondary w-100 mb-2">Choose File and Import</button>
+                    <button type="button" id="btn-export-json" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export JSON</button>
+                    <button type="button" id="btn-export-csv" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export CSV</button>
+                    <button type="button" id="btn-export-xlsx" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export Excel</button>
+                    <button type="button" id="btn-export-docx" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export Word</button>
+                    <button type="button" id="btn-export-pdf" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export PDF</button>
+                    <button type="button" id="btn-export-zip" class="btn btn-sm btn-outline-secondary w-100">Export backup ZIP</button>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6>Export</h6>
+                    <a href="{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='json' %}" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export JSON</a>
+                    <a href="{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='csv' %}" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export CSV</a>
+                    <a href="{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='xlsx' %}" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export Excel</a>
+                    <a href="{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='docx' %}" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export Word</a>
+                    <a href="{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='pdf' %}" class="btn btn-sm btn-outline-secondary w-100 mb-1">Export PDF</a>
+                    <a href="{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='zip' %}" class="btn btn-sm btn-outline-secondary w-100">Export backup ZIP</a>
                 </div>
             </div>
 
@@ -181,7 +200,7 @@
         </div>
     </div>
 </div>
-<input type="file" id="upload-file" accept=".csv,.json" style="display:none">
+<input type="file" id="upload-file" accept=".csv,.json,.txt,.docx,.xlsx" style="display:none">
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container"></div>
 
 {% endblock %}
@@ -468,6 +487,54 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
             }).catch(err => { console.error(err); showToast('Unable to save questions', 'danger'); });
     }
 
+    // Autosave implementation (JSON-only, does not upload files)
+    let autosaveTimer = null;
+    let autosaveInProgress = false;
+    const AUTOSAVE_DEBOUNCE_MS = 2000;
+    const AUTOSAVE_PERIODIC_MS = 60000; // periodic flush
+
+    function scheduleAutosave(){
+        if (autosaveInProgress) return;
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(() => { autosaveTimer = null; autosaveNow(); }, AUTOSAVE_DEBOUNCE_MS);
+    }
+
+    async function autosaveNow(){
+        if (autosaveInProgress) return;
+        const questions = collectQuestions();
+        if (!questions.length && deletedQuestionIds.length === 0) return;
+        autosaveInProgress = true;
+        try{
+            const url = `{% url 'teacher_cbt:manage_questions' exam_pk=exam.pk %}`;
+            const resp = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrfToken}, body: JSON.stringify({questions, deleted_question_ids: deletedQuestionIds})});
+            const data = await resp.json();
+            if (resp.ok && data.status === 'ok'){
+                showToast('Autosaved', 'success');
+                // clear deleted IDs that were saved
+                deletedQuestionIds.length = 0;
+            } else {
+                showToast(data.error || 'Autosave failed', 'danger');
+            }
+        }catch(err){ console.error('Autosave error', err); showToast('Autosave failed', 'danger'); }
+        finally{ autosaveInProgress = false; }
+    }
+
+    // Bind change listeners for autosave
+    document.addEventListener('input', function(ev){
+        const el = ev.target;
+        if (!el) return;
+        if (el.closest && el.closest('#questions-container')){
+            scheduleAutosave();
+        }
+    }, {capture: true});
+
+    // Periodic autosave flush
+    setInterval(() => { if (!autosaveInProgress) autosaveNow(); }, AUTOSAVE_PERIODIC_MS);
+
+    // When performing manual save, cancel pending autosave
+    const saveButtons = document.querySelectorAll('.btn-save-all');
+    saveButtons.forEach(b => b.addEventListener('click', function(){ if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; } }));
+
     function updateStats(){
         const blocks = Array.from(document.querySelectorAll('#questions-container .question-block'));
         const total = blocks.length;
@@ -520,11 +587,50 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
                 } catch(err){ showToast('Invalid JSON file', 'danger'); }
             } else if(ext === 'csv'){
                 importCsv(text);
+            } else if(ext === 'txt'){
+                importText(text);
             } else {
                 showToast('Unsupported file type', 'danger');
             }
         };
         reader.readAsText(file);
+    }
+
+    function importText(text){
+        const blocks = text.split(/\r?\n\s*\r?\n/).map(block => block.trim()).filter(Boolean);
+        if(!blocks.length){
+            showToast('Text file contains no question data', 'danger');
+            return;
+        }
+        blocks.forEach(block => {
+            const lines = block.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            const data = {prompt:'', question_type:'mcq', mark_value:1, difficulty:'medium', topic:'', explanation:'', choices:[]};
+            let inChoices = false;
+            lines.forEach(line => {
+                const lower = line.toLowerCase();
+                if(lower.startsWith('prompt:') || lower.startsWith('question:')){
+                    data.prompt = line.split(':',2)[1].trim();
+                    inChoices = false;
+                    return;
+                }
+                if(lower.startsWith('type:')){ data.question_type = line.split(':',2)[1].trim() || 'mcq'; inChoices = false; return; }
+                if(lower.startsWith('marks:') || lower.startsWith('mark_value:')){ data.mark_value = parseFloat(line.split(':',2)[1].trim()) || 1; inChoices = false; return; }
+                if(lower.startsWith('difficulty:')){ data.difficulty = line.split(':',2)[1].trim() || 'medium'; inChoices = false; return; }
+                if(lower.startsWith('topic:')){ data.topic = line.split(':',2)[1].trim(); inChoices = false; return; }
+                if(lower.startsWith('explanation:')){ data.explanation = line.split(':',2)[1].trim(); inChoices = false; return; }
+                if(lower.startsWith('choices:') || lower.startsWith('options:')){ inChoices = true; return; }
+                if(inChoices && (line.startsWith('-') || line.startsWith('*'))){
+                    const raw = line.replace(/^[-*]+/, '').trim();
+                    const correct = raw.startsWith('*') || raw.startsWith('✓');
+                    const textValue = raw.replace(/^\*|^✓/, '').trim();
+                    if(textValue) data.choices.push({text:textValue, is_correct:correct});
+                    return;
+                }
+                if(inChoices && line){ data.choices.push({text: line, is_correct:false}); }
+            });
+            if(data.prompt){ addUploadedQuestion(data); }
+        });
+        showToast('Text imported successfully', 'success');
     }
 
     function importCsv(text){
@@ -663,8 +769,75 @@ document.addEventListener('DOMContentLoaded', function(){ (function(){
     // File change handler
     const uploadFile = document.getElementById('upload-file');
     if(uploadFile){
-        uploadFile.addEventListener('change', function(){ if(this.files && this.files[0]) parseUploadFile(this.files[0]); });
+        uploadFile.addEventListener('change', function(){ if(this.files && this.files[0]) handleFileUpload(this.files[0]); this.value = ''; });
     } else console.warn('CBT builder: upload-file element missing');
+
+    function handleFileUpload(file){
+        const importMode = uploadFile.dataset.importMode === 'server';
+        const ext = file.name.split('.').pop().toLowerCase();
+        if(importMode){
+            uploadFile.dataset.importMode = '';
+            importFileToServer(file);
+            return;
+        }
+        if(['json','csv','txt'].includes(ext)){
+            parseUploadFile(file);
+        } else {
+            showToast('Unsupported local import format. Use server upload for DOCX/XLSX/TXT.', 'warning');
+        }
+    }
+
+    function importFileToServer(file){
+        const url = `{% url 'teacher_cbt:import_questions' exam_pk=exam.pk %}`;
+        const formData = new FormData();
+        formData.append('file', file);
+        showToast('Uploading file to the server...', 'info');
+        fetch(url, {method:'POST', headers:{'X-CSRFToken': csrfToken}, body: formData})
+            .then(r => r.json())
+            .then(data => {
+                if(data.status === 'ok'){
+                    showToast(`Imported ${data.created} questions`, 'success');
+                    if(data.errors && data.errors.length){
+                        showToast(data.errors.join(' | '), 'warning');
+                    }
+                    setTimeout(()=> location.reload(), 800);
+                } else {
+                    showToast(data.error || 'Server import failed', 'danger');
+                }
+            }).catch(err => { console.error(err); showToast('Server import failed', 'danger'); });
+    }
+
+    function openUploadFile(importMode){
+        if(uploadFile){
+            if(importMode === 'server'){
+                uploadFile.dataset.importMode = 'server';
+            } else {
+                uploadFile.dataset.importMode = '';
+            }
+            uploadFile.click();
+        }
+    }
+
+    document.querySelectorAll('#btn-import-server, #btn-import-server-top').forEach(btn => {
+        btn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            openUploadFile('server');
+        });
+    });
+
+    document.querySelectorAll('.btn-open-upload').forEach(btn => {
+        btn.addEventListener('click', function(ev){
+            ev.preventDefault();
+            openUploadFile('local');
+        });
+    });
+
+    document.getElementById('btn-export-json')?.addEventListener('click', function(){ window.location.href = `{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='json' %}`; });
+    document.getElementById('btn-export-csv')?.addEventListener('click', function(){ window.location.href = `{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='csv' %}`; });
+    document.getElementById('btn-export-xlsx')?.addEventListener('click', function(){ window.location.href = `{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='xlsx' %}`; });
+    document.getElementById('btn-export-docx')?.addEventListener('click', function(){ window.location.href = `{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='docx' %}`; });
+    document.getElementById('btn-export-pdf')?.addEventListener('click', function(){ window.location.href = `{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='pdf' %}`; });
+    document.getElementById('btn-export-zip')?.addEventListener('click', function(){ window.location.href = `{% url 'teacher_cbt:export_questions' exam_pk=exam.pk format='zip' %}`; });
 
     Array.from(document.querySelectorAll('#questions-container .question-block')).forEach(block => {
         const typeSelect = block.querySelector('.question-type');

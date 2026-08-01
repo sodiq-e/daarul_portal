@@ -67,7 +67,7 @@
                     <tr>
                         <td style="padding: 10px; border: 1px solid #ddd;">{{ student.admission_no }}</td>
                         <td style="padding: 10px; border: 1px solid #ddd;">
-                            <a href="{% url 'student_detail' student.pk %}" style="color: #007bff; text-decoration: none;">
+                            <a href="{% url 'students:student_detail' student.pk %}" style="color: #007bff; text-decoration: none;">
                                 {{ student.full_name }}
                             </a>
                         </td>
@@ -75,7 +75,7 @@
                         <td style="padding: 10px; border: 1px solid #ddd;">{{ student.get_gender_display|default:"N/A" }}</td>
                         {% if can_modify %}
                         <td style="padding: 10px; border: 1px solid #ddd;">
-                            <a href="{% url 'student_edit' student.pk %}" style="color: #007bff; text-decoration: none; margin-right: 10px;">Edit</a>
+                            <a href="{% url 'students:student_edit' student.pk %}" style="color: #007bff; text-decoration: none; margin-right: 10px;">Edit</a>
                         </td>
                         {% endif %}
                     </tr>
@@ -88,10 +88,13 @@
     </section>
 
     <!-- Navigation -->
-    <div style="margin-top: 30px;">
+    <div style="margin-top: 30px; display:flex; gap:10px; flex-wrap:wrap;">
         <a href="{% url 'school_classes:class_list' %}" style="display: inline-block; background: #007bff; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none; margin-right: 10px;">
             Back to Classes
         </a>
+        {% if can_message_class %}
+        <a href="{% url 'start_class_thread' school_class.id %}" style="display: inline-block; background: #17a2b8; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none;">Message Class</a>
+        {% endif %}
         {% if can_modify %}
         <a href="{% url 'school_classes:add_class' %}" style="display: inline-block; background: #28a745; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none;">
             Add New Class

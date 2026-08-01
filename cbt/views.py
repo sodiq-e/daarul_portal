@@ -1,49 +1,55 @@
+import csv
 import json
 import logging
 import os
+import re
 import time
+import zipfile
+from io import BytesIO, StringIO
+from urllib.parse import quote
 
-from django.shortcuts import get_object_or_404, redirect, render
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.urls import reverse_lazy, reverse
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Avg, Q, Count, Max
+from django.http import FileResponse, HttpResponse, HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse_lazy, reverse
 from django.utils import timezone
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView
+from django.utils.text import slugify
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from django.core.cache import cache
+from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView
+from docx import Document
+
+from .ai_provider import generate_ai_questions
+from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
+from .gemini_service import (
+    GeminiAPIError,
+    GeminiInvalidAPIKeyError,
+    GeminiJSONError,
+    GeminiModelNotFoundError,
+    GeminiQuotaError,
+    GeminiTimeoutError,
+    generate_ss1_questions,
+    validate_generated_question_payload,
+)
 from .models import (
+    AIRequestMetric,
+    CBTAnswer,
+    CBTAttemptIntegrityEvent,
     CBTExam,
+    CBTChoice,
     CBTQuestion,
     CBTStudentAttempt,
-    CBTAnswer,
-    CBTChoice,
     QuestionBank,
     StudentAttemptQuestion,
-    CBTAttemptIntegrityEvent,
-    AIRequestMetric,
 )
-from .forms import CBTExamForm, CBTQuestionForm, CBTChoiceFormSet
-from .services import create_attempt, grade_attempt, save_answer, build_attempt_context
-from .ai_provider import generate_ai_questions
-from .gemini_service import (
-    validate_generated_question_payload,
-    generate_ss1_questions,
-    GeminiQuotaError,
-    GeminiInvalidAPIKeyError,
-    GeminiModelNotFoundError,
-    GeminiTimeoutError,
-    GeminiJSONError,
-    GeminiAPIError,
-)
-import logging
-import time
-from django.http import JsonResponse, HttpResponseForbidden
-import json
+from .services import build_attempt_context, create_attempt, grade_attempt, save_answer
 
 AI_GENERATION_THROTTLE_SECONDS = int(os.getenv('AI_GENERATION_THROTTLE_SECONDS', '8'))
 AI_GENERATION_SESSION_KEY = 'cbt_ai_generation'
@@ -260,6 +266,24 @@ def start_real_exam(request, pk):
 
 def attempt_detail(request, uuid):
     attempt = get_object_or_404(CBTStudentAttempt, uuid=uuid)
+    # Permission enforcement:
+    # - If the attempt belongs to an authenticated student, allow only that student, the exam owner (teacher), or staff.
+    # - If the attempt is a practice attempt (no student), allow only when session_key matches or the exam owner/staff.
+    if attempt.student:
+        # attempt is tied to a user account; require authentication
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden()
+        # allow student themselves, the exam creator (teacher), or staff
+        if not (request.user == attempt.student or request.user == attempt.exam.created_by or request.user.is_staff):
+            return HttpResponseForbidden()
+    else:
+        # practice attempt tied to a session_key
+        session_key = _ensure_session(request)
+        if attempt.session_key and attempt.session_key != session_key:
+            # allow exam owner or staff to inspect practice attempts
+            if not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+                return HttpResponseForbidden()
+
     if attempt.is_submitted:
         context = build_attempt_context(attempt)
         return render(request, 'cbt/attempt_result.html', context)
@@ -378,8 +402,17 @@ def api_save_answer(request):
 
     attempt = get_object_or_404(CBTStudentAttempt, uuid=attempt_uuid)
     # permission check
-    if attempt.student and attempt.student != request.user:
-        return HttpResponseForbidden()
+    if attempt.student:
+        # student-owned attempt: must be the student, exam owner, or staff
+        if attempt.student != request.user and not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+            return HttpResponseForbidden()
+    else:
+        # practice attempt tied to a session_key: require matching session or exam owner/staff
+        session_key = _ensure_session(request)
+        if not attempt.session_key or attempt.session_key != session_key:
+            if not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+                return HttpResponseForbidden()
+
     if attempt.is_submitted:
         return JsonResponse({'error': 'attempt already submitted'}, status=400)
 
@@ -454,8 +487,17 @@ def api_submit_attempt(request):
         return HttpResponseForbidden()
 
     attempt = get_object_or_404(CBTStudentAttempt, uuid=attempt_uuid)
-    if attempt.student and attempt.student != request.user:
-        return HttpResponseForbidden()
+    # Permission: allow student owner, exam owner, or staff; for practice attempts require matching session or owner/staff
+    if attempt.student:
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden()
+        if not (request.user == attempt.student or request.user == attempt.exam.created_by or request.user.is_staff):
+            return HttpResponseForbidden()
+    else:
+        session_key = _ensure_session(request)
+        if not attempt.session_key or attempt.session_key != session_key:
+            if not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+                return HttpResponseForbidden()
     if attempt.is_submitted:
         return JsonResponse({'error': 'already submitted'}, status=400)
 
@@ -479,6 +521,19 @@ def api_generate_ai_questions(request, exam_pk):
     exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
     if not exam.allow_ai_questions:
         return JsonResponse({'error': 'AI question generation is not enabled for this exam.'}, status=403)
+
+    # Prevent concurrent generation requests for the same user+exam
+    lock_key = f'cbt:ai:lock:{request.user.pk}:{exam.pk}'
+    got_lock = cache.add(lock_key, 1, AI_GENERATION_THROTTLE_SECONDS)
+    if not got_lock:
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_THROTTLED,
+            error_code='concurrent_request'
+        )
+        return JsonResponse({'error': 'Another generation request is in progress. Please wait a moment.'}, status=429)
 
     try:
         data = json.loads(request.body.decode())
@@ -607,6 +662,12 @@ def api_generate_ai_questions(request, exam_pk):
         )
         return JsonResponse({'error': 'AI generation failed. Please try again later.'}, status=500)
 
+    finally:
+        try:
+            cache.delete(lock_key)
+        except Exception:
+            pass
+
     validated_questions = []
     for question in questions:
         valid, error = validate_generated_question_payload(question)
@@ -647,6 +708,12 @@ def api_generate_ss1_questions(request):
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST required'}, status=400)
+
+    # add a concurrency guard for SS1 generation as well
+    lock_key = f'cbt:ai:ss1:lock:{request.user.pk}'
+    got_lock = cache.add(lock_key, 1, AI_GENERATION_THROTTLE_SECONDS)
+    if not got_lock:
+        return JsonResponse({'success': False, 'error': 'Another AI request is in progress. Please wait.'}, status=429)
 
     try:
         data = json.loads(request.body.decode() or '{}')
@@ -689,6 +756,11 @@ def api_generate_ss1_questions(request):
     except Exception as exc:
         logging.exception('Failed to generate SS1 questions')
         return JsonResponse({'success': False, 'error': 'AI generation failed: ' + str(exc)}, status=500)
+    finally:
+        try:
+            cache.delete(lock_key)
+        except Exception:
+            pass
 
     # Return the validated list directly (safe=False allows non-dict top-level JSON)
     return JsonResponse(questions, safe=False)
@@ -722,6 +794,13 @@ def api_save_generated_ai_questions(request, exam_pk):
             for idx, question in enumerate(questions):
                 valid, error = validate_generated_question_payload(question)
                 if not valid:
+                    AIRequestMetric.objects.create(
+                        user=request.user,
+                        exam=exam,
+                        request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+                        status=AIRequestMetric.STATUS_FAILURE,
+                        error_code=f'validation_error_{idx}'
+                    )
                     return JsonResponse({'error': f'Invalid question payload at index {idx}: {error}'}, status=400)
 
                 qobj = CBTQuestion.objects.create(
@@ -747,9 +826,543 @@ def api_save_generated_ai_questions(request, exam_pk):
 
                 created_question_ids.append(qobj.id)
     except Exception as exc:
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_FAILURE,
+            error_code=exc.__class__.__name__,
+        )
         return JsonResponse({'error': f'Failed to save generated questions: {str(exc)}'}, status=500)
 
+    # record success metric
+    try:
+        AIRequestMetric.objects.create(
+            user=request.user,
+            exam=exam,
+            request_type=AIRequestMetric.REQUEST_TYPE_GENERATE_AI,
+            status=AIRequestMetric.STATUS_SUCCESS,
+            latency_ms=0,
+            token_usage=None,
+        )
+    except Exception:
+        pass
+
     return JsonResponse({'status': 'ok', 'created_question_ids': created_question_ids})
+
+
+def _normalize_text(value):
+    return value.strip() if isinstance(value, str) else ''
+
+
+def _parse_json_questions(text):
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f'Invalid JSON content: {str(exc)}')
+
+    if isinstance(data, dict):
+        if 'questions' in data and isinstance(data['questions'], list):
+            return data['questions']
+        if 'items' in data and isinstance(data['items'], list):
+            return data['items']
+        return [data]
+    if not isinstance(data, list):
+        raise ValueError('JSON file must contain a list of questions or a single question object.')
+    return data
+
+
+def _parse_csv_questions(text):
+    reader = csv.DictReader(StringIO(text))
+    if not reader.fieldnames:
+        raise ValueError('CSV must contain a header row.')
+
+    questions = []
+    for idx, row in enumerate(reader):
+        record = {key.strip().lower(): (_normalize_text(value) if value is not None else '') for key, value in row.items()}
+        raw_choices = record.get('choices', '')
+        raw_correct = record.get('correct_answers', record.get('correct_answer', ''))
+        correct_values = [item.strip() for item in re.split(r'[;|,]', raw_correct) if item.strip()]
+        choices = []
+        for choice_text in re.split(r'[;|,]', raw_choices):
+            choice_text = choice_text.strip()
+            if choice_text:
+                choices.append({
+                    'text': choice_text,
+                    'is_correct': choice_text in correct_values,
+                })
+
+        questions.append({
+            'prompt': record.get('prompt', ''),
+            'question_type': record.get('question_type', '') or CBTQuestion.MCQ,
+            'mark_value': float(record.get('mark_value', '1') or 1),
+            'difficulty': record.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM),
+            'topic': record.get('topic', ''),
+            'explanation': record.get('explanation', ''),
+            'tags': record.get('tags', ''),
+            'choices': choices,
+            'order': int(record.get('order', idx) or idx),
+        })
+    return questions
+
+
+def _extract_json_from_text(text):
+    content = text.strip()
+    if content.startswith('{') or content.startswith('['):
+        return _parse_json_questions(content)
+
+    match = re.search(r'([\[{].*[\]}])', content, re.S)
+    if match:
+        return _parse_json_questions(match.group(1))
+
+    return None
+
+
+def _parse_plain_text_questions(text):
+    sections = [section.strip() for section in re.split(r'\n\s*\n+', text.strip()) if section.strip()]
+    questions = []
+    for section in sections:
+        if not section:
+            continue
+        json_candidate = _extract_json_from_text(section)
+        if json_candidate is not None:
+            questions.extend(json_candidate)
+            continue
+
+        data = {
+            'prompt': '',
+            'question_type': CBTQuestion.MCQ,
+            'mark_value': 1.0,
+            'difficulty': CBTQuestion.DIFFICULTY_MEDIUM,
+            'topic': '',
+            'explanation': '',
+            'tags': '',
+            'choices': [],
+            'order': 0,
+        }
+        current_choices = []
+        for line in section.splitlines():
+            content = line.strip()
+            lower = content.lower()
+            if lower.startswith('prompt:') or lower.startswith('question:'):
+                data['prompt'] = content.split(':', 1)[1].strip()
+                continue
+            if lower.startswith('type:'):
+                data['question_type'] = content.split(':', 1)[1].strip() or CBTQuestion.MCQ
+                continue
+            if lower.startswith('marks:') or lower.startswith('mark_value:'):
+                try:
+                    data['mark_value'] = float(content.split(':', 1)[1].strip() or 1)
+                except ValueError:
+                    data['mark_value'] = 1.0
+                continue
+            if lower.startswith('difficulty:'):
+                data['difficulty'] = content.split(':', 1)[1].strip() or CBTQuestion.DIFFICULTY_MEDIUM
+                continue
+            if lower.startswith('topic:'):
+                data['topic'] = content.split(':', 1)[1].strip()
+                continue
+            if lower.startswith('explanation:'):
+                data['explanation'] = content.split(':', 1)[1].strip()
+                continue
+            if lower.startswith('tags:'):
+                data['tags'] = content.split(':', 1)[1].strip()
+                continue
+            if lower.startswith('choices:') or lower.startswith('options:'):
+                current_choices = []
+                continue
+            if content.startswith('-') or content.startswith('*'):
+                choice_text = content[1:].strip()
+                is_correct = choice_text.startswith('*') or choice_text.startswith('✓')
+                if is_correct:
+                    choice_text = choice_text.lstrip('*✓').strip()
+                current_choices.append({'text': choice_text, 'is_correct': is_correct})
+                continue
+            if current_choices and content:
+                current_choices.append({'text': content, 'is_correct': False})
+
+        if current_choices:
+            data['choices'] = current_choices
+        else:
+            data['question_type'] = CBTQuestion.SHORT_ANSWER
+            data['choices'] = []
+
+        questions.append(data)
+    return questions
+
+
+def _load_questions_from_docx(file_obj):
+    try:
+        from docx import Document as DocxDocument
+    except ImportError:
+        raise ValueError('DOCX import requires the python-docx library.')
+
+    document = DocxDocument(file_obj)
+    text = '\n\n'.join([paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()])
+    if not text:
+        raise ValueError('Word document is empty.')
+
+    json_questions = _extract_json_from_text(text)
+    if json_questions is not None:
+        return json_questions
+    return _parse_plain_text_questions(text)
+
+
+def _load_questions_from_xlsx(file_obj):
+    try:
+        import openpyxl
+    except ImportError:
+        raise ValueError('Excel import requires the openpyxl library.')
+
+    workbook = openpyxl.load_workbook(filename=BytesIO(file_obj.read()), read_only=True, data_only=True)
+    sheet = workbook.active
+    headers = [cell.strip().lower() if isinstance(cell, str) else '' for cell in next(sheet.iter_rows(values_only=True))]
+    questions = []
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        record = {headers[idx]: (_normalize_text(value) if isinstance(value, str) else (str(value) if value is not None else '')) for idx, value in enumerate(row) if idx < len(headers)}
+        raw_choices = record.get('choices', '')
+        raw_correct = record.get('correct_answers', record.get('correct_answer', ''))
+        correct_values = [item.strip() for item in re.split(r'[;|,]', raw_correct) if item.strip()]
+        choices = []
+        for choice_text in re.split(r'[;|,]', raw_choices):
+            choice_text = choice_text.strip()
+            if choice_text:
+                choices.append({
+                    'text': choice_text,
+                    'is_correct': choice_text in correct_values,
+                })
+        questions.append({
+            'prompt': record.get('prompt', ''),
+            'question_type': record.get('question_type', '') or CBTQuestion.MCQ,
+            'mark_value': float(record.get('mark_value', '1') or 1),
+            'difficulty': record.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM),
+            'topic': record.get('topic', ''),
+            'explanation': record.get('explanation', ''),
+            'tags': record.get('tags', ''),
+            'choices': choices,
+            'order': int(record.get('order', 0) or 0),
+        })
+    return questions
+
+
+def _serialize_question(q):
+    return {
+        'prompt': q.prompt,
+        'question_type': q.question_type,
+        'mark_value': float(q.mark_value),
+        'difficulty': q.difficulty,
+        'topic': q.topic,
+        'explanation': q.explanation,
+        'tags': q.tags,
+        'choices': [{'text': c.text, 'is_correct': c.is_correct, 'order': c.order} for c in q.choices.all().order_by('order')],
+        'order': q.order,
+        'is_active': q.is_active,
+    }
+
+
+def _build_export_filename(exam, suffix):
+    name = slugify(exam.name or f'exam-{exam.pk}') or f'exam-{exam.pk}'
+    return f'{name}-{suffix}'
+
+
+@login_required
+def import_exam_questions(request, exam_pk):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
+    upload = request.FILES.get('file')
+    if not upload:
+        return JsonResponse({'error': 'No file uploaded.'}, status=400)
+
+    filename = upload.name
+    ext = filename.split('.')[-1].lower()
+    try:
+        if ext == 'json':
+            questions = _parse_json_questions(upload.read().decode('utf-8'))
+        elif ext == 'csv':
+            questions = _parse_csv_questions(upload.read().decode('utf-8-sig'))
+        elif ext in ('txt', 'text'):
+            questions = _parse_plain_text_questions(upload.read().decode('utf-8'))
+        elif ext == 'docx':
+            questions = _load_questions_from_docx(upload)
+        elif ext in ('xlsx', 'xls'):
+            questions = _load_questions_from_xlsx(upload)
+        else:
+            return JsonResponse({'error': 'Unsupported file type.'}, status=400)
+    except ValueError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except Exception as exc:
+        return JsonResponse({'error': f'Failed to parse import file: {str(exc)}'}, status=500)
+
+    created_ids = []
+    errors = []
+    with transaction.atomic():
+        current_max = exam.questions.aggregate(max_order=Max('order'))['max_order']
+        if current_max is None:
+            current_max = -1
+        for idx, question_data in enumerate(questions):
+            prompt = _normalize_text(question_data.get('prompt', ''))
+            if not prompt:
+                errors.append(f'Question {idx + 1} missing prompt.')
+                continue
+            question_type = question_data.get('question_type', CBTQuestion.MCQ)
+            if question_type not in dict(CBTQuestion.QUESTION_TYPE_CHOICES):
+                question_type = CBTQuestion.MCQ
+            try:
+                mark_value = float(question_data.get('mark_value', 1) or 1)
+            except (TypeError, ValueError):
+                mark_value = 1.0
+
+            qobj = CBTQuestion.objects.create(
+                exam=exam,
+                question_bank=None,
+                prompt=prompt,
+                question_type=question_type,
+                mark_value=mark_value,
+                explanation=_normalize_text(question_data.get('explanation', '')),
+                topic=_normalize_text(question_data.get('topic', '')),
+                difficulty=question_data.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM),
+                tags=_normalize_text(question_data.get('tags', '')),
+                order=current_max + idx + 1,
+                is_active=bool(question_data.get('is_active', True)),
+            )
+
+            choices = question_data.get('choices', [])
+            if isinstance(choices, str):
+                choices = [{'text': c.strip(), 'is_correct': False} for c in re.split(r'[;|,]', choices) if c.strip()]
+            for cidx, choice_data in enumerate(choices):
+                if isinstance(choice_data, dict):
+                    text = _normalize_text(choice_data.get('text', ''))
+                    is_correct = bool(choice_data.get('is_correct', False))
+                else:
+                    text = _normalize_text(choice_data)
+                    is_correct = False
+                if not text:
+                    continue
+                CBTChoice.objects.create(question=qobj, text=text, is_correct=is_correct, order=cidx)
+            created_ids.append(qobj.id)
+
+    return JsonResponse({'status': 'ok', 'created': len(created_ids), 'created_ids': created_ids, 'errors': errors})
+
+
+@login_required
+def download_question_template(request, exam_pk):
+    exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
+    fmt = (request.GET.get('format') or 'json').lower()
+    template_data = [
+        {
+            'prompt': 'What is 2 + 2?',
+            'question_type': 'mcq',
+            'mark_value': 1,
+            'difficulty': 'medium',
+            'topic': 'Arithmetic',
+            'explanation': 'Provide the numeric answer.',
+            'tags': 'math,addition',
+            'choices': [
+                {'text': '4', 'is_correct': True},
+                {'text': '3', 'is_correct': False},
+                {'text': '5', 'is_correct': False},
+            ],
+        }
+    ]
+    filename_base = _build_export_filename(exam, 'template')
+    if fmt == 'csv':
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['prompt', 'question_type', 'mark_value', 'difficulty', 'topic', 'explanation', 'tags', 'choices', 'correct_answers'])
+        writer.writerow([
+            template_data[0]['prompt'],
+            template_data[0]['question_type'],
+            template_data[0]['mark_value'],
+            template_data[0]['difficulty'],
+            template_data[0]['topic'],
+            template_data[0]['explanation'],
+            template_data[0]['tags'],
+            ';'.join([choice['text'] for choice in template_data[0]['choices']]),
+            ';'.join([choice['text'] for choice in template_data[0]['choices'] if choice['is_correct']]),
+        ])
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{slugify(exam.name) or "exam"}-question-template.csv"'
+        return response
+    if fmt in ('txt', 'text'):
+        lines = [
+            'Prompt: What is 2 + 2?',
+            'Type: mcq',
+            'Marks: 1',
+            'Difficulty: medium',
+            'Topic: Arithmetic',
+            'Explanation: Provide the numeric answer.',
+            'Tags: math, addition',
+            'Choices:',
+            '- 4',
+            '- 3',
+            '- 5',
+            'Correct Answers: 4',
+        ]
+        response = HttpResponse('\n'.join(lines), content_type='text/plain')
+        response['Content-Disposition'] = f'attachment; filename="{slugify(exam.name) or "exam"}-question-template.txt"'
+        return response
+    if fmt == 'json':
+        response = HttpResponse(json.dumps(template_data, indent=2), content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="{slugify(exam.name) or "exam"}-question-template.json"'
+        return response
+
+    return JsonResponse({'error': 'Unsupported template format.'}, status=400)
+
+
+@login_required
+def export_exam_questions(request, exam_pk, format):
+    exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
+    questions = [_serialize_question(q) for q in exam.questions.prefetch_related('choices').order_by('order')]
+    filename_base = slugify(exam.name) or f'exam-{exam.pk}'
+    if format == 'json':
+        response = HttpResponse(json.dumps(questions, indent=2), content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}-questions.json"'
+        return response
+    if format == 'csv':
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['prompt', 'question_type', 'mark_value', 'difficulty', 'topic', 'explanation', 'tags', 'order', 'choices', 'correct_answers', 'is_active'])
+        for question in questions:
+            choice_texts = ';'.join([choice['text'] for choice in question['choices']])
+            correct_texts = ';'.join([choice['text'] for choice in question['choices'] if choice['is_correct']])
+            writer.writerow([
+                question['prompt'],
+                question['question_type'],
+                question['mark_value'],
+                question['difficulty'],
+                question['topic'],
+                question['explanation'],
+                question['tags'],
+                question['order'],
+                choice_texts,
+                correct_texts,
+                question['is_active'],
+            ])
+        response = HttpResponse(output.getvalue(), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}-questions.csv"'
+        return response
+    if format in ('docx', 'word'):
+        document = Document()
+        document.add_heading(f'Questions for {exam.name}', level=1)
+        for idx, question in enumerate(questions, start=1):
+            document.add_paragraph(f'{idx}. {question["prompt"]}', style='List Number')
+            document.add_paragraph(f'Type: {question["question_type"]}')
+            document.add_paragraph(f'Marks: {question["mark_value"]}')
+            document.add_paragraph(f'Difficulty: {question["difficulty"]}')
+            if question['topic']:
+                document.add_paragraph(f'Topic: {question["topic"]}')
+            if question['explanation']:
+                document.add_paragraph(f'Explanation: {question["explanation"]}')
+            if question['tags']:
+                document.add_paragraph(f'Tags: {question["tags"]}')
+            for choice in question['choices']:
+                item = document.add_paragraph(style='List Bullet')
+                item.add_run(choice['text'])
+                if choice['is_correct']:
+                    item.add_run(' (correct)')
+        output = BytesIO()
+        document.save(output)
+        output.seek(0)
+        response = FileResponse(output, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}-questions.docx"'
+        return response
+    if format == 'pdf':
+        html_lines = ['<html><head><meta charset="utf-8"><title>Question Export</title></head><body>']
+        html_lines.append(f'<h1>Questions for {exam.name}</h1>')
+        for idx, question in enumerate(questions, start=1):
+            html_lines.append(f'<h2>{idx}. {question["prompt"]}</h2>')
+            html_lines.append(f'<p><strong>Type:</strong> {question["question_type"]}</p>')
+            html_lines.append(f'<p><strong>Marks:</strong> {question["mark_value"]}</p>')
+            if question['topic']:
+                html_lines.append(f'<p><strong>Topic:</strong> {question["topic"]}</p>')
+            if question['explanation']:
+                html_lines.append(f'<p><strong>Explanation:</strong> {question["explanation"]}</p>')
+            if question['tags']:
+                html_lines.append(f'<p><strong>Tags:</strong> {question["tags"]}</p>')
+            html_lines.append('<ul>')
+            for choice in question['choices']:
+                label = ' (correct)' if choice['is_correct'] else ''
+                html_lines.append(f'<li>{choice["text"]}{label}</li>')
+            html_lines.append('</ul>')
+        html_lines.append('</body></html>')
+        html_string = ''.join(html_lines)
+        try:
+            from weasyprint import HTML
+            pdf = HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf()
+            response = HttpResponse(pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename_base}-questions.pdf"'
+            return response
+        except ImportError:
+            return JsonResponse({'error': 'PDF export requires WeasyPrint.'}, status=501)
+        except Exception as exc:
+            return JsonResponse({'error': f'Failed to generate PDF: {str(exc)}'}, status=500)
+    if format in ('xlsx', 'excel'):
+        try:
+            import openpyxl
+            from openpyxl import Workbook
+        except ImportError:
+            return JsonResponse({'error': 'Excel export requires the openpyxl library.'}, status=501)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Questions'
+        ws.append(['prompt', 'question_type', 'mark_value', 'difficulty', 'topic', 'explanation', 'tags', 'order', 'choices', 'correct_answers', 'is_active'])
+        for question in questions:
+            choice_texts = ';'.join([choice['text'] for choice in question['choices']])
+            correct_texts = ';'.join([choice['text'] for choice in question['choices'] if choice['is_correct']])
+            ws.append([
+                question['prompt'],
+                question['question_type'],
+                question['mark_value'],
+                question['difficulty'],
+                question['topic'],
+                question['explanation'],
+                question['tags'],
+                question['order'],
+                choice_texts,
+                correct_texts,
+                question['is_active'],
+            ])
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        response = FileResponse(output, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}-questions.xlsx"'
+        return response
+    if format in ('backup', 'zip'):
+        archive = BytesIO()
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr(f'{filename_base}-questions.json', json.dumps(questions, indent=2))
+            csv_output = StringIO()
+            csv_writer = csv.writer(csv_output)
+            csv_writer.writerow(['prompt', 'question_type', 'mark_value', 'difficulty', 'topic', 'explanation', 'tags', 'order', 'choices', 'correct_answers', 'is_active'])
+            for question in questions:
+                choice_texts = ';'.join([choice['text'] for choice in question['choices']])
+                correct_texts = ';'.join([choice['text'] for choice in question['choices'] if choice['is_correct']])
+                csv_writer.writerow([
+                    question['prompt'],
+                    question['question_type'],
+                    question['mark_value'],
+                    question['difficulty'],
+                    question['topic'],
+                    question['explanation'],
+                    question['tags'],
+                    question['order'],
+                    choice_texts,
+                    correct_texts,
+                    question['is_active'],
+                ])
+            zip_file.writestr(f'{filename_base}-questions.csv', csv_output.getvalue())
+        archive.seek(0)
+        response = FileResponse(archive, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{filename_base}-questions-backup.zip"'
+        return response
+
+    return JsonResponse({'error': 'Unsupported export format.'}, status=400)
+
+
+    return JsonResponse({'error': 'Unsupported export format.'}, status=400)
 
 
 @method_decorator(login_required, name='dispatch')

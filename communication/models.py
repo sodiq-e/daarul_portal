@@ -46,8 +46,16 @@ class PortalThread(models.Model):
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='portal_thread'
+        related_name='portal_thread',
+        null=True,
+        blank=True
     )
+    participants = models.ManyToManyField(
+        User,
+        related_name='portal_threads',
+        blank=True
+    )
+    name = models.CharField(max_length=150, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -55,7 +63,15 @@ class PortalThread(models.Model):
         ordering = ['-updated_at']
 
     def __str__(self):
-        return f'Portal thread for {self.user.get_full_name() or self.user.username}'
+        if self.name:
+            return self.name
+        participants = list(self.participants.all())
+        if participants:
+            names = [p.get_full_name() or p.username for p in participants]
+            return 'Conversation: ' + ', '.join(names)
+        if self.user:
+            return f'Portal thread for {self.user.get_full_name() or self.user.username}'
+        return 'Portal thread'
 
 
 class PortalMessage(models.Model):

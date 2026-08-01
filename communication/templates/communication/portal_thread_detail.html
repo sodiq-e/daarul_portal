@@ -39,7 +39,7 @@
                     {% else %}
                         <div class="msg msg-in" data-id="{{ message.id }}" style="align-self: flex-start; width: 100%; background: transparent;">
                             <div style="display: block; background: #ffffff; color: #212529; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
-                                <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">Administrator</div>
+                                <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
                                 <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
                                 {% if message.attachment %}
                                     <div style="margin-top:8px;">
@@ -68,6 +68,7 @@
         <div style="padding: 20px; border-top: 1px solid #e9ecef; background: #ffffff;">
             <form id="msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 10px;">
                 {% csrf_token %}
+                <input type="hidden" name="thread_id" value="{{ thread.id }}" />
                 <textarea name="content" id="msg-content" rows="3" placeholder="Write your message here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 12px; font-size: 14px; resize: vertical;"></textarea>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <label for="msg-attachment" class="file-btn" style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; background:#f1f3f5; border-radius:8px; border:1px solid #dfe3e6; cursor:pointer;">
@@ -152,6 +153,11 @@
         sendBtn.disabled = true;
         const fd = new FormData();
         fd.append('content', contentEl.value.trim());
+        // include the current thread id so messages are saved to the correct thread
+        const hiddenThreadInput = form.querySelector('input[name="thread_id"]');
+        if (hiddenThreadInput && hiddenThreadInput.value) {
+            fd.append('thread_id', hiddenThreadInput.value);
+        }
         if (attachmentEl.files[0]) fd.append('attachment', attachmentEl.files[0]);
 
         fetch('{% url "send_portal_message_ajax" %}', {
@@ -265,8 +271,11 @@
         chat.scrollTop = chat.scrollHeight;
     }
 
+    const currentThreadId = new URLSearchParams(window.location.search).get('thread_id');
+
     function pollPortalMessages() {
-        fetch('{% url "fetch_portal_messages" %}?since_id=' + lastMessageId, {
+        const url = '{% url "fetch_portal_messages" %}?since_id=' + lastMessageId + (currentThreadId ? '&thread_id=' + encodeURIComponent(currentThreadId) : '');
+        fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         }).then(r => r.json()).then(data => {
             if (data.success && data.messages && data.messages.length) {
@@ -286,7 +295,8 @@
 
     // Poll for status updates every second as well.
     setInterval(function(){
-        fetch('{% url "fetch_portal_statuses" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r=>r.json()).then(data=>{
+        const statusUrl = '{% url "fetch_portal_statuses" %}' + (currentThreadId ? '?thread_id=' + encodeURIComponent(currentThreadId) : '');
+        fetch(statusUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r=>r.json()).then(data=>{
             if (data.success && data.statuses) {
                 data.statuses.forEach(s => {
                     const el = document.querySelector('[data-id="' + s.id + '"]');

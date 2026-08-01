@@ -106,7 +106,7 @@ class CBTExamForm(forms.ModelForm):
 class CBTQuestionForm(forms.ModelForm):
     class Meta:
         model = CBTQuestion
-        fields = ['prompt', 'question_type', 'mark_value', 'topic', 'difficulty', 'explanation', 'order', 'is_active']
+        fields = ['prompt', 'question_type', 'mark_value', 'topic', 'tags', 'difficulty', 'explanation', 'order', 'is_active', 'is_favorite']
         widgets = {
             'prompt': forms.Textarea(attrs={
                 'class': 'form-control',
@@ -125,6 +125,10 @@ class CBTQuestionForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Enter topic (e.g., Algebra, Biology)'
             }),
+            'tags': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter comma-separated tags'
+            }),
             'difficulty': forms.Select(attrs={
                 'class': 'form-control'
             }),
@@ -138,6 +142,9 @@ class CBTQuestionForm(forms.ModelForm):
                 'min': '0'
             }),
             'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'is_favorite': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'
             }),
         }

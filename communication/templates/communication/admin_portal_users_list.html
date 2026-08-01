@@ -8,8 +8,9 @@
             <h1 style="margin: 0; font-size: 32px;">Portal Conversations</h1>
             <p style="margin: 5px 0 0 0; color: #666;">Select users to send bulk messages or open individual conversations.</p>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <a href="{% url 'admin_messages_list' %}" style="padding: 12px 18px; background: #007bff; color: white; text-decoration: none; border-radius: 8px;">Back to Contact Messages</a>
+            <a href="{% url 'admin_portal_groups_list' %}" style="padding: 12px 18px; background: #17a2b8; color: white; text-decoration: none; border-radius: 8px;">Manage Group Chats</a>
         </div>
     </div>
 
@@ -41,7 +42,7 @@
                             <p style="margin: 0 0 8px 0; font-size: 15px; color: #666; text-transform: uppercase; letter-spacing: 0.05em;">{{ user_data.user.profile.requested_group|default:'Account' }}</p>
                             <h2 style="margin: 0 0 6px 0; font-size: 20px;">{{ user_data.user.get_full_name|default:user_data.user.username }}</h2>
                             <p style="margin: 0; color: #555; font-size: 14px;">@{{ user_data.user.username }}{% if user_data.user.email %} · {{ user_data.user.email }}{% endif %}</p>
-                            {% if user_data.thread %}
+                            {% if user_data.threads and user_data.threads.exists %}
                                 <p style="margin: 10px 0 0 0; color: #666; font-size: 13px;">Messages: {{ user_data.total_messages }} · Unread for user: {{ user_data.unread_count }}</p>
                             {% else %}
                                 <p style="margin: 10px 0 0 0; color: #666; font-size: 13px;">No conversation yet. Click to start a thread.</p>

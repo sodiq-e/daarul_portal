@@ -629,12 +629,7 @@ class AdminStudentAttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin
 
         if attendance_records.exists():
             total_days = attendance_records.values('date').distinct().count()
-            if selected_student_id:
-                total_students = 1
-            elif selected_class_id and selected_class_id != 'all' and context.get('selected_class'):
-                total_students = context['students_in_class'].count()
-            else:
-                total_students = Student.objects.filter(status='active').count()
+            total_students = attendance_records.values('student_id').distinct().count()
             present_sessions = sum(record.present_sessions for record in attendance_records)
             attendance_percentage = (
                 present_sessions / (total_students * total_days * 2) * 100

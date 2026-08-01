@@ -17,6 +17,41 @@
         </div>
     </div>
 
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-left-primary">
+                <div class="card-body">
+                    <h6 class="text-uppercase text-muted font-weight-semibold mb-2">Total Banks</h6>
+                    <h2 class="mb-0">{{ total_banks }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-left-success">
+                <div class="card-body">
+                    <h6 class="text-uppercase text-muted font-weight-semibold mb-2">Total Questions</h6>
+                    <h2 class="mb-0">{{ total_questions }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm border-left-info">
+                <div class="card-body">
+                    <h6 class="text-uppercase text-muted font-weight-semibold mb-2">Recently Added</h6>
+                    {% if recent_questions %}
+                        <ul class="list-unstyled small mb-0">
+                            {% for question in recent_questions|slice:":5" %}
+                                <li>{{ question.prompt|truncatewords:8 }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No recent questions yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Search and Filter -->
     <div class="card mb-4">
         <div class="card-body">

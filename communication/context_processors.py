@@ -1,4 +1,5 @@
-from communication.models import PortalMessage
+from django.db.models import Q
+from communication.models import PortalThread
 
 
 def portal_messages_context(request):
@@ -7,9 +8,14 @@ def portal_messages_context(request):
     """
     if request.user.is_authenticated:
         try:
-            thread = request.user.portal_thread
-            unread_count = thread.messages.exclude(sender=request.user).filter(is_read=False).count()
-        except:
+            threads = PortalThread.objects.filter(
+                Q(participants=request.user) | Q(user=request.user)
+            ).distinct()
+            unread_count = sum(
+                thread.messages.exclude(sender=request.user).filter(is_read=False).count()
+                for thread in threads
+            )
+        except Exception:
             unread_count = 0
     else:
         unread_count = 0

@@ -5,7 +5,7 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView, D
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.template.loader import render_to_string
 from django.db.models import Q, Avg, Count, Sum, Max, Min
 from exams.models import Term
@@ -79,6 +79,15 @@ class StudentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['can_modify'] = staff_can_edit(self.request.user)
+        context['is_teacher_user'] = hasattr(self.request.user, 'teacher_profile')
+        context['teacher_class_ids'] = []
+        if context['is_teacher_user']:
+            context['teacher_class_ids'] = list(
+                ClassTeacher.objects.filter(
+                    teacher=self.request.user.teacher_profile,
+                    is_active=True
+                ).values_list('school_class_id', flat=True)
+            )
         return context
 
 
@@ -92,9 +101,6 @@ class StudentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_modify'] = staff_can_edit(self.request.user)
-        
-        # Check if user is class teacher for this student
         student = self.get_object()
         is_class_teacher = False
         if hasattr(self.request.user, 'teacher_profile') and student.student_class:
@@ -104,7 +110,13 @@ class StudentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
                 is_class_teacher=True,
                 is_active=True
             ).exists()
-        
+
+        context['can_modify'] = staff_can_edit(self.request.user)
+        context['can_message_teacher'] = self.request.user.is_authenticated and (
+            self.request.user.is_staff or
+            self.request.user == getattr(student, 'user', None) or
+            is_class_teacher
+        )
         context['is_class_teacher'] = is_class_teacher
         return context
 
@@ -113,7 +125,7 @@ class StudentCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Student
     form_class = StudentForm
     template_name = 'students/student_form.html'
-    success_url = reverse_lazy('student_list')
+    success_url = reverse_lazy('students:student_list')
 
     def test_func(self):
         return staff_can_edit(self.request.user)
@@ -127,7 +139,7 @@ class StudentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Student
     form_class = StudentForm
     template_name = 'students/student_form.html'
-    success_url = reverse_lazy('student_list')
+    success_url = reverse_lazy('students:student_list')
 
     def test_func(self):
         return staff_can_edit(self.request.user)
@@ -140,7 +152,7 @@ class StudentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 class StudentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Student
     template_name = 'students/student_confirm_delete.html'
-    success_url = reverse_lazy('student_list')
+    success_url = reverse_lazy('students:student_list')
 
     def test_func(self):
         return staff_can_edit(self.request.user)
@@ -164,7 +176,7 @@ def student_status_update(request, pk):
                 student.date_left = date_left
             student.save()
             messages.success(request, f'Student status updated to {status}.')
-            return redirect('student_detail', pk=pk)
+            return redirect('students:student_detail', pk=pk)
     return render(request, 'students/student_status_update.html', {'student': student})
 
 
@@ -172,7 +184,7 @@ class StudentApplicationCreateView(CreateView):
     model = StudentApplication
     form_class = StudentApplicationForm
     template_name = 'students/student_application_modern.html'
-    success_url = reverse_lazy('student_application')
+    success_url = reverse_lazy('students:student_application')
 
     def form_valid(self, form):
         if self.request.user.is_authenticated:
@@ -246,7 +258,7 @@ class StudentApplicationUpdateView(LoginRequiredMixin, UserPassesTestMixin, Upda
     model = StudentApplication
     form_class = StudentApplicationReviewForm
     template_name = 'students/student_application_form.html'
-    success_url = reverse_lazy('student_application_list')
+    success_url = reverse_lazy('students:student_application_list')
 
     def test_func(self):
         return staff_can_edit(self.request.user)
@@ -788,7 +800,7 @@ def grant_student_permission(request, student_id, permission_code):
         request,
         f'Permission "{perm_display}" granted to {student.full_name()}.'
     )
-    return redirect('student_permissions_detail', student_id=student_id)
+    return redirect('students:student_permissions_detail', student_id=student_id)
 
 
 @login_required
@@ -812,13 +824,10 @@ def revoke_student_permission(request, student_id, permission_code):
         request,
         f'Permission "{perm_display}" revoked from {student.full_name()}.'
     )
-    return redirect('student_permissions_detail', student_id=student_id)
+    return redirect('students:student_permissions_detail', student_id=student_id)
 
 
 class StudentPermissionsView(LoginRequiredMixin, UserPassesTestMixin, ListView):
-    """Admin manages student permissions"""
-    from .models import StudentPermission
-    
     template_name = 'students/admin/permissions_list.html'
     context_object_name = 'permissions'
     paginate_by = 50
@@ -920,4 +929,4 @@ class BulkStudentPermissionView(LoginRequiredMixin, UserPassesTestMixin, Templat
             request,
             f'Permissions updated for {student.full_name()}.'
         )
-        return redirect('student_permissions_detail', student_id=student_id)
+        return redirect('students:student_permissions_detail', student_id=student_id)

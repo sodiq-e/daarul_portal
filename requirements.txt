@@ -13,6 +13,5 @@ protobuf==7.35.1
 psycopg2-binary
 python-dotenv==1.2.2
 python_dateutil==2.9.0.post0
-python_docx==1.1.0
-weasyprint==69.0
+python_docx==1.1.0openpyxlweasyprint==69.0
 whitenoise

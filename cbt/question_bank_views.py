@@ -1,9 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 from django.urls import reverse_lazy
 from django.db.models import Q, Count
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from .models import QuestionBank, CBTQuestion, CBTChoice
 from .forms import QuestionBankForm, CBTQuestionForm, CBTChoiceFormSet
 from exams.models import Subject, Term
@@ -28,7 +29,7 @@ class TeacherQuestionBankListView(LoginRequiredMixin, UserPassesTestMixin, ListV
     def get_queryset(self):
         queryset = QuestionBank.objects.filter(
             created_by=self.request.user
-        ).annotate(question_count=Count('questions')).order_by('-created_at')
+        ).select_related('subject', 'school_class', 'term').annotate(question_count=Count('questions')).order_by('-created_at')
         
         # Search functionality
         search_query = self.request.GET.get('q')
@@ -55,6 +56,9 @@ class TeacherQuestionBankListView(LoginRequiredMixin, UserPassesTestMixin, ListV
         context['subjects'] = Subject.objects.all()
         context['classes'] = SchoolClasses.objects.all()
         context['search_query'] = self.request.GET.get('q', '')
+        context['total_banks'] = QuestionBank.objects.filter(created_by=self.request.user).count()
+        context['total_questions'] = CBTQuestion.objects.filter(question_bank__created_by=self.request.user).count()
+        context['recent_questions'] = CBTQuestion.objects.filter(question_bank__created_by=self.request.user).order_by('-created_at')[:5]
         return context
 
 
@@ -63,7 +67,7 @@ class QuestionBankCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView
     model = QuestionBank
     form_class = QuestionBankForm
     template_name = 'cbt/question_bank_form.html'
-    success_url = reverse_lazy('teacher_question_banks')
+    success_url = reverse_lazy('teacher_cbt:question_banks')
 
     def test_func(self):
         return is_teacher_or_staff(self.request.user)
@@ -83,7 +87,7 @@ class QuestionBankUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView
     model = QuestionBank
     form_class = QuestionBankForm
     template_name = 'cbt/question_bank_form.html'
-    success_url = reverse_lazy('teacher_question_banks')
+    success_url = reverse_lazy('teacher_cbt:question_banks')
 
     def test_func(self):
         question_bank = self.get_object()
@@ -99,7 +103,7 @@ class QuestionBankDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView
     """Delete a question bank"""
     model = QuestionBank
     template_name = 'cbt/question_bank_confirm_delete.html'
-    success_url = reverse_lazy('teacher_question_banks')
+    success_url = reverse_lazy('teacher_cbt:question_banks')
 
     def test_func(self):
         question_bank = self.get_object()
@@ -121,13 +125,14 @@ class QuestionBankDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView
         question_bank = self.get_object()
         
         # Get questions with search/filter
-        questions = question_bank.questions.all()
+        questions = question_bank.questions.select_related('question_bank').prefetch_related('choices')
         
         search_query = self.request.GET.get('q')
         if search_query:
             questions = questions.filter(
                 Q(prompt__icontains=search_query) |
-                Q(topic__icontains=search_query)
+                Q(topic__icontains=search_query) |
+                Q(tags__icontains=search_query)
             )
         
         # Filter by difficulty
@@ -139,12 +144,44 @@ class QuestionBankDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView
         question_type = self.request.GET.get('type')
         if question_type:
             questions = questions.filter(question_type=question_type)
+
+        topic = self.request.GET.get('topic')
+        if topic:
+            questions = questions.filter(topic=topic)
+
+        tags = self.request.GET.get('tags')
+        if tags:
+            questions = questions.filter(tags__icontains=tags)
+
+        favorite_only = self.request.GET.get('favorite')
+        if favorite_only == '1':
+            questions = questions.filter(is_favorite=True)
         
-        context['questions'] = questions.order_by('order')
+        question_list = questions.order_by('order', '-created_at')
+        question_topics = question_bank.questions.values_list('topic', flat=True).distinct().order_by('topic')
+        question_tags = []
+        for tag_list in question_bank.questions.values_list('tags', flat=True):
+            if tag_list:
+                for tag in [t.strip() for t in tag_list.split(',') if t.strip()]:
+                    if tag not in question_tags:
+                        question_tags.append(tag)
+        
+        context['questions'] = question_list
         context['question_count'] = question_bank.get_question_count()
         context['search_query'] = search_query or ''
         context['difficulties'] = CBTQuestion.DIFFICULTY_CHOICES
         context['question_types'] = CBTQuestion.QUESTION_TYPE_CHOICES
+        context['question_topics'] = question_topics
+        context['question_tags'] = question_tags
+        context['favorite_questions'] = question_bank.questions.filter(is_favorite=True).order_by('-updated_at')[:5]
+        context['recent_questions'] = question_bank.questions.order_by('-created_at')[:5]
+        context['active_questions'] = question_bank.questions.filter(is_active=True).count()
+        context['inactive_questions'] = question_bank.questions.filter(is_active=False).count()
+        context['favorite_count'] = question_bank.questions.filter(is_favorite=True).count()
+        context['used_questions'] = question_bank.questions.filter(exam__isnull=False).count()
+        context['selected_tag'] = tags or ''
+        context['selected_topic'] = topic or ''
+        context['favorite_only'] = favorite_only == '1'
         
         return context
 
@@ -182,12 +219,12 @@ class QuestionCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
             self.object = form.save()
             formset.instance = self.object
             formset.save()
-            return redirect('question_bank_detail', pk=question_bank.pk)
+            return redirect('teacher_cbt:question_bank_detail', pk=question_bank.pk)
         else:
             return self.form_invalid(form)
 
     def get_success_url(self):
-        return reverse_lazy('question_bank_detail', kwargs={'pk': self.kwargs['bank_pk']})
+        return reverse_lazy('teacher_cbt:question_bank_detail', kwargs={'pk': self.kwargs['bank_pk']})
 
 
 class QuestionUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -226,18 +263,18 @@ class QuestionUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
             formset.instance = self.object
             formset.save()
             if self.object.question_bank:
-                return redirect('question_bank_detail', pk=self.object.question_bank.pk)
+                return redirect('teacher_cbt:question_bank_detail', pk=self.object.question_bank.pk)
             else:
-                return redirect('cbt:exam_detail', pk=self.object.exam.pk)
+                return redirect('teacher_cbt:manage_questions', exam_pk=self.object.exam.pk)
         else:
             return self.form_invalid(form)
 
     def get_success_url(self):
         question = self.get_object()
         if question.question_bank:
-            return reverse_lazy('question_bank_detail', kwargs={'pk': question.question_bank.pk})
+            return reverse_lazy('teacher_cbt:question_bank_detail', kwargs={'pk': question.question_bank.pk})
         else:
-            return reverse_lazy('exam_detail', kwargs={'pk': question.exam.pk})
+            return reverse_lazy('teacher_cbt:manage_questions', kwargs={'exam_pk': question.exam.pk})
 
 
 class QuestionDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
@@ -256,9 +293,9 @@ class QuestionDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     def get_success_url(self):
         question = self.get_object()
         if question.question_bank:
-            return reverse_lazy('question_bank_detail', kwargs={'pk': question.question_bank.pk})
+            return reverse_lazy('teacher_cbt:question_bank_detail', kwargs={'pk': question.question_bank.pk})
         else:
-            return reverse_lazy('exam_detail', kwargs={'pk': question.exam.pk})
+            return reverse_lazy('teacher_cbt:manage_questions', kwargs={'exam_pk': question.exam.pk})
 
 
 class QuestionCloneView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
@@ -281,7 +318,9 @@ class QuestionCloneView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
             'mark_value': source_question.mark_value,
             'explanation': source_question.explanation,
             'topic': source_question.topic,
+            'tags': source_question.tags,
             'difficulty': source_question.difficulty,
+            'is_favorite': source_question.is_favorite,
         }
 
     def form_valid(self, form):
@@ -307,7 +346,7 @@ class QuestionCloneView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
             
             formset.instance = self.object
             formset.save()
-            return redirect('question_bank_detail', pk=question_bank.pk)
+            return redirect('teacher_cbt:question_bank_detail', pk=question_bank.pk)
         else:
             return self.form_invalid(form)
 
@@ -327,7 +366,68 @@ class QuestionCloneView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def get_success_url(self):
         source_question = get_object_or_404(CBTQuestion, pk=self.kwargs['question_pk'])
-        return reverse_lazy('question_bank_detail', kwargs={'pk': source_question.question_bank.pk})
+        return reverse_lazy('teacher_cbt:question_bank_detail', kwargs={'pk': source_question.question_bank.pk})
+
+
+class QuestionBankBulkActionView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Handle bulk actions for questions inside a question bank"""
+
+    def test_func(self):
+        question_bank = get_object_or_404(QuestionBank, pk=self.kwargs['pk'])
+        return question_bank.created_by == self.request.user
+
+    def post(self, request, *args, **kwargs):
+        question_bank = get_object_or_404(QuestionBank, pk=self.kwargs['pk'], created_by=request.user)
+        selected_ids = request.POST.getlist('selected_questions')
+        action = request.POST.get('action')
+        target_bank_id = request.POST.get('target_bank')
+
+        if not selected_ids or not action:
+            return redirect('teacher_cbt:question_bank_detail', pk=question_bank.pk)
+
+        questions = question_bank.questions.filter(pk__in=selected_ids)
+
+        if action == 'delete':
+            questions.delete()
+        elif action == 'activate':
+            questions.update(is_active=True)
+        elif action == 'deactivate':
+            questions.update(is_active=False)
+        elif action == 'favorite':
+            questions.update(is_favorite=True)
+        elif action == 'unfavorite':
+            questions.update(is_favorite=False)
+        elif action == 'duplicate':
+            for question in questions:
+                duplicate = CBTQuestion.objects.create(
+                    exam=question.exam,
+                    question_bank=question.question_bank,
+                    prompt=question.prompt,
+                    question_type=question.question_type,
+                    mark_value=question.mark_value,
+                    explanation=question.explanation,
+                    topic=question.topic,
+                    tags=question.tags,
+                    difficulty=question.difficulty,
+                    order=question.order + 1,
+                    is_active=question.is_active,
+                    is_favorite=question.is_favorite,
+                )
+                for choice in question.choices.all():
+                    CBTChoice.objects.create(
+                        question=duplicate,
+                        text=choice.text,
+                        is_correct=choice.is_correct,
+                        order=choice.order,
+                    )
+        elif action == 'move' and target_bank_id:
+            try:
+                target_bank = QuestionBank.objects.get(pk=target_bank_id, created_by=request.user)
+                questions.update(question_bank=target_bank)
+            except QuestionBank.DoesNotExist:
+                pass
+
+        return redirect('teacher_cbt:question_bank_detail', pk=question_bank.pk)
 
 
 class QuestionSearchAPIView(LoginRequiredMixin, UserPassesTestMixin, ListView):

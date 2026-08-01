@@ -10,6 +10,7 @@ from .question_bank_views import (
     QuestionUpdateView,
     QuestionDeleteView,
     QuestionCloneView,
+    QuestionBankBulkActionView,
     QuestionSearchAPIView,
 )
 
@@ -32,6 +33,7 @@ urlpatterns = [
     path('question-banks/<int:pk>/', QuestionBankDetailView.as_view(), name='question_bank_detail'),
     path('question-banks/<int:pk>/edit/', QuestionBankUpdateView.as_view(), name='question_bank_edit'),
     path('question-banks/<int:pk>/delete/', QuestionBankDeleteView.as_view(), name='question_bank_delete'),
+    path('question-banks/<int:pk>/bulk-actions/', QuestionBankBulkActionView.as_view(), name='question_bank_bulk_actions'),
     
     # Questions in banks
     path('question-banks/<int:bank_pk>/questions/add/', QuestionCreateView.as_view(), name='question_add'),
@@ -39,6 +41,9 @@ urlpatterns = [
     path('questions/<int:pk>/delete/', QuestionDeleteView.as_view(), name='question_delete'),
     path('questions/<int:question_pk>/clone/', QuestionCloneView.as_view(), name='question_clone'),
     path('manage/<int:exam_pk>/questions/', views.ManageExamQuestionsView.as_view(), name='manage_questions'),
+    path('manage/<int:exam_pk>/questions/import/', views.import_exam_questions, name='import_questions'),
+    path('manage/<int:exam_pk>/questions/export/<str:format>/', views.export_exam_questions, name='export_questions'),
+    path('manage/<int:exam_pk>/questions/template/', views.download_question_template, name='question_template'),
     path('manage/<int:exam_pk>/generate/', views.TeacherCBTAIGeneratorView.as_view(), name='generate_questions'),
     path('manage/<int:exam_pk>/generate/api/', views.api_generate_ai_questions, name='generate_ai_questions'),
     path('manage/<int:exam_pk>/generate/save/', views.api_save_generated_ai_questions, name='save_generated_ai_questions'),

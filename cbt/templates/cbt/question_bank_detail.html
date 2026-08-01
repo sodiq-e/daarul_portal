@@ -64,19 +64,27 @@
                     <div class="form-group col-md-4">
                         <input type="text" name="q" class="form-control" placeholder="Search questions..." value="{{ search_query }}">
                     </div>
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-2">
                         <select name="difficulty" class="form-control">
                             <option value="">All Difficulties</option>
                             {% for value, label in difficulties %}
-                                <option value="{{ value }}">{{ label }}</option>
+                                <option value="{{ value }}" {% if request.GET.difficulty == value %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-2">
                         <select name="type" class="form-control">
                             <option value="">All Types</option>
                             {% for value, label in question_types %}
-                                <option value="{{ value }}">{{ label }}</option>
+                                <option value="{{ value }}" {% if request.GET.type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <select name="topic" class="form-control">
+                            <option value="">All Topics</option>
+                            {% for topic in question_topics %}
+                                <option value="{{ topic }}" {% if request.GET.topic == topic %}selected{% endif %}>{{ topic }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -86,15 +94,113 @@
                         </button>
                     </div>
                 </div>
+                <div class="form-row mt-3">
+                    <div class="form-group col-md-4">
+                        <select name="tags" class="form-control">
+                            <option value="">All Tags</option>
+                            {% for tag in question_tags %}
+                                <option value="{{ tag }}" {% if selected_tag == tag %}selected{% endif %}>{{ tag }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <select name="favorite" class="form-control">
+                            <option value="">Favorites & More</option>
+                            <option value="1" {% if favorite_only %}selected{% endif %}>Only Favorites</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4 text-right">
+                        <a href="{% url 'teacher_cbt:question_bank_detail' question_bank.pk %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo"></i> Reset Filters
+                        </a>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Questions Table -->
-    {% if questions %}
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Active Questions</h6>
+                    <h3 class="font-weight-bold">{{ active_questions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Inactive Questions</h6>
+                    <h3 class="font-weight-bold">{{ inactive_questions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Favorites</h6>
+                    <h3 class="font-weight-bold">{{ favorite_count }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card shadow-sm text-center h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Used in Exams</h6>
+                    <h3 class="font-weight-bold">{{ used_questions }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions -->
+    <form method="post" action="{% url 'teacher_cbt:question_bank_bulk_actions' question_bank.pk %}" id="bulk-action-form">
+        {% csrf_token %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-row align-items-end">
+                    <div class="form-group col-md-3">
+                        <select name="action" class="form-control" required>
+                            <option value="">Bulk Action</option>
+                            <option value="delete">Delete Selected</option>
+                            <option value="activate">Activate Selected</option>
+                            <option value="deactivate">Deactivate Selected</option>
+                            <option value="duplicate">Duplicate Selected</option>
+                            <option value="favorite">Mark Favorite</option>
+                            <option value="unfavorite">Unmark Favorite</option>
+                            <option value="move">Move to Another Bank</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-4" id="target-bank-group" style="display:none;">
+                        <select name="target_bank" class="form-control">
+                            <option value="">Select target bank</option>
+                            {% for bank in request.user.created_question_banks.all %}
+                                {% if bank.pk != question_bank.pk %}
+                                    <option value="{{ bank.pk }}">{{ bank.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-check-circle"></i> Apply
+                        </button>
+                    </div>
+                    <div class="form-group col-md-2 text-right">
+                        <button type="button" class="btn btn-outline-secondary w-100" id="select-all-btn">
+                            <i class="fas fa-check-square"></i> Toggle Select All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions Table -->
+        {% if questions %}
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 10%">#</th>
@@ -109,9 +215,26 @@
                     <tbody>
                         {% for question in questions %}
                             <tr>
-                                <td>{{ question.order|add:1 }}</td>
                                 <td>
-                                    <small>{{ question.prompt|truncatewords:15 }}</small>
+                                    <div class="form-check">
+                                        <input class="form-check-input question-checkbox" type="checkbox" name="selected_questions" value="{{ question.pk }}" id="question_{{ question.pk }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-start justify-content-between">
+                                        <div>
+                                            <strong>{{ question.order|add:1 }}.</strong>
+                                            <small>{{ question.prompt|truncatewords:15 }}</small>
+                                        </div>
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-outline-info btn-preview-question" data-question-id="{{ question.pk }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm {% if question.is_favorite %}btn-warning{% else %}btn-outline-warning{% endif %} btn-favorite-toggle" data-question-id="{{ question.pk }}" data-favorite="{{ question.is_favorite|yesno:'1,0' }}" title="Toggle Favorite">
+                                                <i class="fas fa-star"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="badge badge-info">{{ question.get_question_type_display }}</span>
@@ -125,7 +248,7 @@
                                         <span class="badge badge-danger">Hard</span>
                                     {% endif %}
                                 </td>
-                                <td><small>{{ question.topic }}</small></td>
+                                <td><small>{{ question.topic }}</small><br><small class="text-muted">{{ question.tags }}</small></td>
                                 <td>{{ question.mark_value }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">
@@ -147,6 +270,8 @@
                             <tr id="choices-row-{{ question.pk }}" class="choices-row" style="display:none;">
                                 <td colspan="7">
                                     <div class="p-3 bg-light">
+                                        <strong>Preview:</strong>
+                                        <p class="mb-2">{{ question.prompt }}</p>
                                         <strong>Answer Options:</strong>
                                         <div class="mt-2">
                                             <ul class="list-unstyled mb-0">
@@ -179,6 +304,7 @@
             <a href="{% url 'teacher_cbt:question_add' question_bank.pk %}" class="alert-link">Add a question to this bank</a>.
         </div>
     {% endif %}
+    </form>
 
     <div class="mt-4">
         <a href="{% url 'teacher_cbt:question_banks' %}" class="btn btn-outline-secondary">

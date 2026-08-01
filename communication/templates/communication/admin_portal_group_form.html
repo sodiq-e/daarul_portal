@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div style="padding: 20px; max-width: 1100px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 12px; flex-wrap: wrap;">
+        <div>
+            <h1 style="margin: 0; font-size: 32px;">{{ thread.name|default:'Create Group Chat' }}</h1>
+            <p style="margin: 8px 0 0 0; color: #666;">Define a group chat name and select participants to include.</p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{% url 'admin_portal_groups_list' %}" style="padding: 12px 18px; background: #6c757d; color: white; text-decoration: none; border-radius: 8px;">Back to Group Chats</a>
+            <a href="{% url 'admin_portal_users_list' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Back to Accounts</a>
+        </div>
+    </div>
+
+    <form method="post" style="background: #fff; padding: 24px; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.05); border: 1px solid #e9ecef;">
+        {% csrf_token %}
+        <div style="display: grid; gap: 18px;">
+            <div>
+                <label for="name" style="display: block; margin-bottom: 8px; font-weight: 600;">Group Chat Name</label>
+                <input type="text" id="name" name="name" value="{{ thread.name|default:'' }}" placeholder="E.g. Class 10A Teachers, General Staff" style="width: 100%; padding: 12px 14px; border: 1px solid #ced4da; border-radius: 10px; font-size: 15px;" required>
+            </div>
+
+            <div style="display: grid; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div>
+                        <label style="font-weight: 600; margin-bottom: 8px; display: inline-block;">Participants</label>
+                        <p style="margin: 4px 0 0 0; color: #6c757d; font-size: 13px;">Choose one or more users to include in the group chat.</p>
+                    </div>
+                    <label style="font-size: 13px; color: #495057;"><input type="checkbox" name="include_admin" {% if thread and request.user in thread.participants.all %}checked{% endif %}> Include me in the group</label>
+                </div>
+                <div style="max-height: 420px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 12px; padding: 14px; background: #f8f9fa; display: grid; gap: 12px;">
+                    {% for user in users %}
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: white; border-radius: 10px; cursor: pointer; border: 1px solid #e9ecef;">
+                            <input type="checkbox" name="participants" value="{{ user.id }}" {% if user.id in selected_ids %}checked{% endif %} style="width: 18px; height: 18px;">
+                            <span>
+                                <strong>{{ user.get_full_name|default:user.username }}</strong><br>
+                                <span style="font-size: 13px; color: #6c757d;">@{{ user.username }}{% if user.email %} · {{ user.email }}{% endif %}</span>
+                            </span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                <button type="submit" style="padding: 12px 20px; background: #198754; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;">{% if thread %}Save Group{% else %}Create Group{% endif %}</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    h1 {
+        color: var(--heading-text-color);
+    }
+    input[type="checkbox"] {
+        cursor: pointer;
+    }
+    button:hover {
+        opacity: 0.95;
+    }
+</style>
+{% endblock %}

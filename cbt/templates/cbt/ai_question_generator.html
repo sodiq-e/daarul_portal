@@ -266,13 +266,34 @@
                 },
                 body: JSON.stringify({topic, difficulty, num_questions: numQuestions})
             });
-            const data = await response.json();
-            if (!response.ok || data.status !== 'ok'){
-                throw new Error(data.error || 'Unable to generate questions.');
+
+            let data = {};
+            try { data = await response.json(); } catch(e) { /* ignore json parse error */ }
+
+            if (!response.ok){
+                // handle common HTTP errors with helpful messages and retry hints
+                const status = response.status;
+                const serverMsg = data && data.error ? data.error : response.statusText || 'Server error';
+                const friendly = buildAIErrorMessage(serverMsg);
+
+                // If server sent Retry-After header, use it; otherwise use sensible defaults
+                const retryAfter = parseInt(response.headers.get('Retry-After') || '') || (status === 429 ? 30 : 60);
+                setMessage(`${friendly} ${retryAfter ? `(Retry after ${retryAfter}s)` : ''}`, 'danger');
+
+                if (status === 429 || status === 503){
+                    // temporarily disable the generate button to discourage repeated clicks
+                    btnGenerate.disabled = true;
+                    setTimeout(() => {
+                        btnGenerate.disabled = false;
+                    }, Math.max(5000, retryAfter * 1000));
+                }
+                return;
             }
 
-            if (!Array.isArray(data.questions) || !data.questions.length){
-                throw new Error('No questions returned from AI.');
+            if (data.status !== 'ok' || !Array.isArray(data.questions) || !data.questions.length){
+                const serverMsg = data && data.error ? data.error : 'No questions returned from AI.';
+                setMessage(buildAIErrorMessage(serverMsg), 'danger');
+                return;
             }
 
             previewContainer.innerHTML = '';
@@ -283,6 +304,7 @@
             previewSection.classList.remove('d-none');
             btnSave.disabled = false;
             setMessage('Preview generated. Edit question text and choices before saving.', 'success');
+
         } catch (err) {
             const friendlyMessage = buildAIErrorMessage(err.message || err);
             setMessage(friendlyMessage, 'danger');

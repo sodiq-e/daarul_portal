@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load communication_extras %}
 
 {% block content %}
 <div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 12px; flex-wrap: wrap;">
         <div>
-            <h1 style="margin: 0; font-size: 30px;">Conversation with {{ thread.user.get_full_name|default:thread.user.username }}</h1>
-            <p style="margin: 8px 0 0 0; color: #666;">Send a portal reply directly to this account.</p>
+            <h1 style="margin: 0; font-size: 30px;">{% thread_display_title thread request.user 'Conversation' %}</h1>
+            <p style="margin: 8px 0 0 0; color: #666;">Participants: {% for participant in thread.participants.all %}{{ participant.get_full_name|default:participant.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <a href="{% url 'admin_portal_users_list' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Back to Accounts</a>
@@ -256,7 +257,7 @@
         }
 
         function pollAdminMessages() {
-            fetch('{% url "fetch_admin_portal_messages" thread.user.id %}?since_id=' + lastMessageId, {
+            fetch('{% url "fetch_admin_portal_messages" thread_id=thread.id %}?since_id=' + lastMessageId, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             }).then(r => r.json()).then(data => {
                 if (data.success && data.messages && data.messages.length) {
@@ -271,7 +272,7 @@
         }
 
         function pollAdminStatuses() {
-            fetch('{% url "fetch_admin_portal_statuses" thread.user.id %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()).then(data => {
+            fetch('{% url "fetch_admin_portal_statuses" thread_id=thread.id %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()).then(data => {
                 if (data.success && data.statuses) {
                     data.statuses.forEach(s => {
                         const el = document.querySelector('[data-id="' + s.id + '"]');

@@ -10,9 +10,9 @@
             <p class="text-muted">Submitted: {{ application.application_date|date:"d/m/Y H:i" }}</p>
         </div>
         <div class="no-print">
-            <a href="{% url 'student_application_list' %}" class="btn btn-outline-secondary">← Back</a>
-            <a href="{% url 'student_application_edit' application.pk %}" class="btn btn-warning">✏️ Update Status</a>
-            <a href="{% url 'print_admission_application' application.pk %}" class="btn btn-primary" target="_blank">📥 Download PDF</a>
+            <a href="{% url 'students:student_application_list' %}" class="btn btn-outline-secondary">← Back</a>
+            <a href="{% url 'students:student_application_edit' application.pk %}" class="btn btn-warning">✏️ Update Status</a>
+            <a href="{% url 'students:print_admission_application' application.pk %}" class="btn btn-primary" target="_blank">📥 Download PDF</a>
             <button onclick="window.print()" class="btn btn-info">🖨️ Print</button>
         </div>
     </div>

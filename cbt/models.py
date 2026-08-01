@@ -176,10 +176,13 @@ class CBTQuestion(models.Model):
     explanation = models.TextField(blank=True)
     image = models.FileField(upload_to='cbt/question_images/', blank=True, null=True)
     topic = models.CharField(max_length=100, blank=True, db_index=True)
+    tags = models.CharField(max_length=250, blank=True, help_text='Comma-separated tags')
     difficulty = models.CharField(max_length=16, choices=DIFFICULTY_CHOICES, default=DIFFICULTY_MEDIUM)
+    is_favorite = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['order', 'id']
