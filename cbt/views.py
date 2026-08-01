@@ -49,6 +49,7 @@ from .models import (
     QuestionBank,
     StudentAttemptQuestion,
 )
+from .importers import QuestionImporter, ImportPreviewSerializer, QuestionImportError
 from .services import build_attempt_context, create_attempt, grade_attempt, save_answer
 
 AI_GENERATION_THROTTLE_SECONDS = int(os.getenv('AI_GENERATION_THROTTLE_SECONDS', '8'))
@@ -289,7 +290,8 @@ def attempt_detail(request, uuid):
         return render(request, 'cbt/attempt_result.html', context)
 
     if request.method == 'POST':
-        for question in attempt.exam.questions.filter(is_active=True):
+        for attempt_question in attempt.attempt_questions.select_related('question').order_by('randomized_position'):
+            question = attempt_question.question
             answer_field = request.POST.get(f'question_{question.pk}')
             selected_choice = None
             text_answer = ''
@@ -385,7 +387,6 @@ def attempt_detail(request, uuid):
     return render(request, 'cbt/student_attempt_view.html', context)
 
 
-@login_required
 def api_save_answer(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
@@ -416,8 +417,9 @@ def api_save_answer(request):
     if attempt.is_submitted:
         return JsonResponse({'error': 'attempt already submitted'}, status=400)
 
-    # Verify question belongs to the exam
-    question = get_object_or_404(CBTQuestion, pk=question_id, exam=attempt.exam)
+    # Verify question belongs to this attempt
+    attempt_question = get_object_or_404(StudentAttemptQuestion, attempt=attempt, question_id=question_id)
+    question = attempt_question.question
     
     # handle answer updates only when answer data is present
     has_answer_data = selected_choice_ids is not None or selected_choice is not None or (text_answer and text_answer.strip());
@@ -457,7 +459,6 @@ def api_save_answer(request):
 
 
 @csrf_exempt
-@login_required
 def api_submit_attempt(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=400)
@@ -978,7 +979,7 @@ def _parse_plain_text_questions(text):
                     choice_text = choice_text.lstrip('*✓').strip()
                 current_choices.append({'text': choice_text, 'is_correct': is_correct})
                 continue
-            if current_choices and content:
+            if current_choices and content and not lower.startswith('correct') and not lower.startswith('answer') and not lower.startswith('correct answers:'):
                 current_choices.append({'text': content, 'is_correct': False})
 
         if current_choices:
@@ -1071,79 +1072,76 @@ def import_exam_questions(request, exam_pk):
         return JsonResponse({'error': 'POST required'}, status=405)
 
     exam = get_object_or_404(CBTExam, pk=exam_pk, created_by=request.user)
+    importer = QuestionImporter(user=request.user, target_exam=exam)
+
+    if request.content_type and 'application/json' in request.content_type:
+        try:
+            payload = json.loads(request.body.decode('utf-8'))
+        except Exception:
+            return JsonResponse({'error': 'Invalid JSON payload.'}, status=400)
+
+        mode = payload.get('mode', 'save')
+        import_target = payload.get('import_target', 'exam')
+        bank_id = payload.get('bank_id')
+        selected_rows = payload.get('rows')
+        if not isinstance(selected_rows, list):
+            return JsonResponse({'error': 'rows must be a list.'}, status=400)
+
+        if mode == 'preview':
+            rows = []
+            for idx, row in enumerate(selected_rows, start=1):
+                question_row = importer._normalize_row(row, idx)
+                rows.append(question_row)
+            preview = ImportPreviewSerializer.serialize(rows)
+            return JsonResponse({'status': 'ok', 'preview': preview})
+
+        if mode == 'save':
+            if import_target in ('bank', 'both') and not bank_id:
+                return JsonResponse({'error': 'bank_id is required when importing into a question bank.'}, status=400)
+            bank = None
+            if bank_id:
+                bank = get_object_or_404(QuestionBank, pk=bank_id, created_by=request.user)
+            result = importer.save(selected_rows, import_target=import_target, bank=bank)
+            response_data = {'status': 'ok', **result}
+            return JsonResponse(response_data)
+
+        return JsonResponse({'error': 'Invalid import mode.'}, status=400)
+
     upload = request.FILES.get('file')
     if not upload:
         return JsonResponse({'error': 'No file uploaded.'}, status=400)
 
-    filename = upload.name
-    ext = filename.split('.')[-1].lower()
+    save_direct = request.POST.get('save_direct') == '1' or request.POST.get('mode') == 'save'
+    preview_mode = request.POST.get('mode') == 'preview'
+    import_target = request.POST.get('import_target', 'exam')
+    bank_id = request.POST.get('bank_id')
+
     try:
-        if ext == 'json':
-            questions = _parse_json_questions(upload.read().decode('utf-8'))
-        elif ext == 'csv':
-            questions = _parse_csv_questions(upload.read().decode('utf-8-sig'))
-        elif ext in ('txt', 'text'):
-            questions = _parse_plain_text_questions(upload.read().decode('utf-8'))
-        elif ext == 'docx':
-            questions = _load_questions_from_docx(upload)
-        elif ext in ('xlsx', 'xls'):
-            questions = _load_questions_from_xlsx(upload)
-        else:
-            return JsonResponse({'error': 'Unsupported file type.'}, status=400)
-    except ValueError as exc:
+        rows = importer.parse_file(upload)
+    except QuestionImportError as exc:
         return JsonResponse({'error': str(exc)}, status=400)
     except Exception as exc:
         return JsonResponse({'error': f'Failed to parse import file: {str(exc)}'}, status=500)
 
-    created_ids = []
-    errors = []
-    with transaction.atomic():
-        current_max = exam.questions.aggregate(max_order=Max('order'))['max_order']
-        if current_max is None:
-            current_max = -1
-        for idx, question_data in enumerate(questions):
-            prompt = _normalize_text(question_data.get('prompt', ''))
-            if not prompt:
-                errors.append(f'Question {idx + 1} missing prompt.')
-                continue
-            question_type = question_data.get('question_type', CBTQuestion.MCQ)
-            if question_type not in dict(CBTQuestion.QUESTION_TYPE_CHOICES):
-                question_type = CBTQuestion.MCQ
-            try:
-                mark_value = float(question_data.get('mark_value', 1) or 1)
-            except (TypeError, ValueError):
-                mark_value = 1.0
+    if preview_mode and not save_direct:
+        preview = ImportPreviewSerializer.serialize(rows)
+        return JsonResponse({'status': 'ok', 'preview': preview})
 
-            qobj = CBTQuestion.objects.create(
-                exam=exam,
-                question_bank=None,
-                prompt=prompt,
-                question_type=question_type,
-                mark_value=mark_value,
-                explanation=_normalize_text(question_data.get('explanation', '')),
-                topic=_normalize_text(question_data.get('topic', '')),
-                difficulty=question_data.get('difficulty', CBTQuestion.DIFFICULTY_MEDIUM),
-                tags=_normalize_text(question_data.get('tags', '')),
-                order=current_max + idx + 1,
-                is_active=bool(question_data.get('is_active', True)),
-            )
+    bank = None
+    if import_target in ('bank', 'both'):
+        if not bank_id:
+            return JsonResponse({'error': 'bank_id is required when importing into a question bank.'}, status=400)
+        bank = get_object_or_404(QuestionBank, pk=bank_id, created_by=request.user)
 
-            choices = question_data.get('choices', [])
-            if isinstance(choices, str):
-                choices = [{'text': c.strip(), 'is_correct': False} for c in re.split(r'[;|,]', choices) if c.strip()]
-            for cidx, choice_data in enumerate(choices):
-                if isinstance(choice_data, dict):
-                    text = _normalize_text(choice_data.get('text', ''))
-                    is_correct = bool(choice_data.get('is_correct', False))
-                else:
-                    text = _normalize_text(choice_data)
-                    is_correct = False
-                if not text:
-                    continue
-                CBTChoice.objects.create(question=qobj, text=text, is_correct=is_correct, order=cidx)
-            created_ids.append(qobj.id)
-
-    return JsonResponse({'status': 'ok', 'created': len(created_ids), 'created_ids': created_ids, 'errors': errors})
+    try:
+        row_dicts = [row.normalized for row in rows if row.valid]
+        result = importer.save(row_dicts, import_target=import_target, bank=bank)
+        response_data = {'status': 'ok', 'preview': ImportPreviewSerializer.serialize(rows), **result}
+        return JsonResponse(response_data)
+    except QuestionImportError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
+    except Exception as exc:
+        return JsonResponse({'error': f'Failed to import questions: {str(exc)}'}, status=500)
 
 
 @login_required
@@ -1466,6 +1464,9 @@ class TeacherCBTDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateV
         context['cbt_exams_created'] = exams.count()
         context['cbt_active_exams'] = exams.filter(is_active=True, is_published=True).count()
         context['cbt_attempts'] = attempts.count()
+        context['cbt_question_banks'] = QuestionBank.objects.filter(created_by=self.request.user).count()
+        context['cbt_question_bank_questions'] = CBTQuestion.objects.filter(question_bank__created_by=self.request.user).count()
+        context['cbt_recent_question_banks'] = QuestionBank.objects.filter(created_by=self.request.user).order_by('-created_at')[:5]
         context['cbt_recent_attempts'] = attempts.select_related('student', 'exam').order_by('-started_at')[:5]
         completed_attempts = attempts.filter(is_submitted=True)
         context['cbt_avg_score'] = completed_attempts.aggregate(avg_score=Avg('score'))['avg_score'] or 0

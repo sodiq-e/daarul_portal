@@ -526,6 +526,7 @@
                 setSaveStatus('Saving...');
                 fetch('{% url "cbt:api_save_answer" %}', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrftoken
@@ -570,6 +571,7 @@
 
                 fetch('{% url "cbt:api_save_answer" %}', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrftoken

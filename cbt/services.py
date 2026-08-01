@@ -131,13 +131,18 @@ def save_answer(attempt, question, selected_choice=None, text_answer=''):
     answer.save()
     attempt.last_saved_at = timezone.now()
     attempt.save(update_fields=['last_saved_at'])
+    StudentAttemptQuestion.objects.filter(attempt=attempt, question=question).update(is_answered=True)
     return answer
 
 
 def grade_attempt(attempt):
     earned = 0
     total = 0
-    for question in attempt.exam.questions.filter(is_active=True).prefetch_related('choices'):
+    for attempt_question in attempt.attempt_questions.select_related('question').order_by('randomized_position'):
+        question = attempt_question.question
+        if not question.is_active:
+            continue
+
         total += float(question.mark_value)
         try:
             answer = attempt.answers.get(question=question)

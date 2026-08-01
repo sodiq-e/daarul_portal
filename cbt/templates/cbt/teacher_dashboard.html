@@ -41,6 +41,14 @@
         <div class="col-md-3 mb-3">
             <div class="card shadow-sm h-100 text-center">
                 <div class="card-body">
+                    <h5 class="card-title">Question Banks</h5>
+                    <p class="display-6 mb-0">{{ cbt_question_banks }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card shadow-sm h-100 text-center">
+                <div class="card-body">
                     <h5 class="card-title">Average Score</h5>
                     <p class="display-6 mb-0">{{ cbt_avg_score|floatformat:1 }}</p>
                 </div>
@@ -63,6 +71,14 @@
                 <div class="card-body">
                     <h5 class="card-title">Student Attempts</h5>
                     <p class="card-text text-muted">Review submitted and ongoing attempts.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4 mb-3">
+            <a href="{% url 'teacher_cbt:question_banks' %}" class="card h-100 text-decoration-none text-dark shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Manage Question Banks</h5>
+                    <p class="card-text text-muted">Create and organize reusable question banks.</p>
                 </div>
             </a>
         </div>
@@ -101,6 +117,28 @@
                     </ul>
                     {% else %}
                     <p class="text-muted mb-0">No recent attempts yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">Recent Question Banks</div>
+                <div class="card-body">
+                    {% if cbt_recent_question_banks %}
+                    <ul class="list-group list-group-flush">
+                        {% for bank in cbt_recent_question_banks %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ bank.name }}</strong><br>
+                                <small>{{ bank.subject.name }}{% if bank.school_class %} • {{ bank.school_class.name }}{% endif %}</small>
+                            </div>
+                            <span class="badge bg-success rounded-pill">{{ bank.get_question_count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No question banks created yet.</p>
                     {% endif %}
                 </div>
             </div>

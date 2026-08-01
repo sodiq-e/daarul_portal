@@ -11,6 +11,7 @@ from .question_bank_views import (
     QuestionDeleteView,
     QuestionCloneView,
     QuestionBankBulkActionView,
+    QuestionToggleFavoriteView,
     QuestionSearchAPIView,
 )
 
@@ -40,6 +41,7 @@ urlpatterns = [
     path('questions/<int:pk>/edit/', QuestionUpdateView.as_view(), name='question_edit'),
     path('questions/<int:pk>/delete/', QuestionDeleteView.as_view(), name='question_delete'),
     path('questions/<int:question_pk>/clone/', QuestionCloneView.as_view(), name='question_clone'),
+    path('questions/<int:question_pk>/toggle-favorite/', QuestionToggleFavoriteView.as_view(), name='question_toggle_favorite'),
     path('manage/<int:exam_pk>/questions/', views.ManageExamQuestionsView.as_view(), name='manage_questions'),
     path('manage/<int:exam_pk>/questions/import/', views.import_exam_questions, name='import_questions'),
     path('manage/<int:exam_pk>/questions/export/<str:format>/', views.export_exam_questions, name='export_questions'),

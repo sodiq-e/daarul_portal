@@ -317,20 +317,86 @@
 {% block extra_js %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.btn-view-choices').forEach(function(btn) {
+            const targetBankGroup = document.getElementById('target-bank-group');
+            const actionSelect = document.querySelector('select[name="action"]');
+            const selectAllBtn = document.getElementById('select-all-btn');
+            const csrfTokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            const csrfToken = csrfTokenInput ? csrfTokenInput.value : null;
+
+            function updateTargetBankVisibility() {
+                if (!actionSelect || !targetBankGroup) return;
+                targetBankGroup.style.display = actionSelect.value === 'move' ? 'block' : 'none';
+            }
+
+            if (actionSelect) {
+                actionSelect.addEventListener('change', updateTargetBankVisibility);
+                updateTargetBankVisibility();
+            }
+
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', function() {
+                    const checkboxes = document.querySelectorAll('.question-checkbox');
+                    if (!checkboxes.length) return;
+
+                    const allChecked = Array.from(checkboxes).every(function(checkbox) {
+                        return checkbox.checked;
+                    });
+
+                    checkboxes.forEach(function(checkbox) {
+                        checkbox.checked = !allChecked;
+                    });
+                });
+            }
+
+            function toggleQuestionDetails(questionId, button) {
+                const row = document.getElementById('choices-row-' + questionId);
+                if (!row) return;
+                if (row.style.display === 'none' || row.style.display === '') {
+                    row.style.display = 'table-row';
+                    button.classList.remove('btn-outline-info');
+                    button.classList.add('btn-info');
+                } else {
+                    row.style.display = 'none';
+                    button.classList.remove('btn-info');
+                    button.classList.add('btn-outline-info');
+                }
+            }
+
+            document.querySelectorAll('.btn-view-choices, .btn-preview-question').forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    const qid = this.getAttribute('data-question-id');
-                    const row = document.getElementById('choices-row-' + qid);
-                    if (!row) return;
-                    if (row.style.display === 'none') {
-                        row.style.display = '';
-                        this.classList.remove('btn-outline-info');
-                        this.classList.add('btn-info');
-                    } else {
-                        row.style.display = 'none';
-                        this.classList.remove('btn-info');
-                        this.classList.add('btn-outline-info');
-                    }
+                    const questionId = this.getAttribute('data-question-id');
+                    toggleQuestionDetails(questionId, this);
+                });
+            });
+
+            document.querySelectorAll('.btn-favorite-toggle').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const url = this.dataset.url;
+                    if (!url || !csrfToken) return;
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                    })
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (!data.success) return;
+
+                        if (data.is_favorite) {
+                            btn.classList.remove('btn-outline-warning');
+                            btn.classList.add('btn-warning');
+                            btn.dataset.favorite = '1';
+                        } else {
+                            btn.classList.remove('btn-warning');
+                            btn.classList.add('btn-outline-warning');
+                            btn.dataset.favorite = '0';
+                        }
+                    });
                 });
             });
         });

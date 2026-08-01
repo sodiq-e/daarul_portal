@@ -430,6 +430,27 @@ class QuestionBankBulkActionView(LoginRequiredMixin, UserPassesTestMixin, View):
         return redirect('teacher_cbt:question_bank_detail', pk=question_bank.pk)
 
 
+class QuestionToggleFavoriteView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Toggle favorite status for a question in a question bank"""
+
+    def test_func(self):
+        question = get_object_or_404(CBTQuestion, pk=self.kwargs['question_pk'])
+        return question.question_bank and question.question_bank.created_by == self.request.user
+
+    def post(self, request, *args, **kwargs):
+        question = get_object_or_404(CBTQuestion, pk=self.kwargs['question_pk'])
+        if not question.question_bank or question.question_bank.created_by != request.user:
+            return HttpResponseForbidden()
+
+        question.is_favorite = not question.is_favorite
+        question.save(update_fields=['is_favorite'])
+
+        return JsonResponse({
+            'success': True,
+            'is_favorite': question.is_favorite,
+        })
+
+
 class QuestionSearchAPIView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     """API endpoint for searching questions in a question bank"""
     model = CBTQuestion
