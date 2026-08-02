@@ -13,27 +13,28 @@ class PortalPresenceTests(TestCase):
         self.thread.participants.set([self.user, self.other_user])
 
     def test_sync_portal_presence_updates_server_state(self):
-        self.client.force_login(self.other_user)
-        response = self.client.post(
-            reverse('sync_portal_presence'),
-            {'thread_id': self.thread.id},
-            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
-        )
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload['success'])
-        self.assertTrue(payload['presence']['participant']['is_online'])
-        self.assertEqual(payload['presence']['participant']['user_id'], self.user.id)
-
         self.client.force_login(self.user)
-        response = self.client.post(
+        first_response = self.client.post(
             reverse('sync_portal_presence'),
             {'thread_id': self.thread.id},
             HTTP_X_REQUESTED_WITH='XMLHttpRequest',
         )
 
-        payload = response.json()
-        self.assertTrue(payload['success'])
-        self.assertTrue(payload['presence']['participant']['is_online'])
-        self.assertEqual(payload['presence']['participant']['user_id'], self.other_user.id)
+        self.assertEqual(first_response.status_code, 200)
+        first_payload = first_response.json()
+        self.assertTrue(first_payload['success'])
+        self.assertFalse(first_payload['presence']['participant']['is_online'])
+        self.assertEqual(first_payload['presence']['participant']['user_id'], self.other_user.id)
+
+        self.client.force_login(self.other_user)
+        second_response = self.client.post(
+            reverse('sync_portal_presence'),
+            {'thread_id': self.thread.id},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(second_response.status_code, 200)
+        second_payload = second_response.json()
+        self.assertTrue(second_payload['success'])
+        self.assertTrue(second_payload['presence']['participant']['is_online'])
+        self.assertEqual(second_payload['presence']['participant']['user_id'], self.user.id)
