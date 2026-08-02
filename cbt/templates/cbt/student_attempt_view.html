@@ -491,21 +491,18 @@
                     const selected = document.querySelector('input[name="answer"]:checked');
                     if (selected) {
                         answerData.selected_choice_id = parseInt(selected.value);
-                        navigator.markCurrentAnswered();
                         hasAnswer = true;
                     }
                 } else if (question.question_type === 'short_answer') {
                     const textAnswer = document.getElementById('answer-text')?.value || '';
                     if (textAnswer.trim()) {
                         answerData.text_answer = textAnswer;
-                        navigator.markCurrentAnswered();
                         hasAnswer = true;
                     }
                 } else if (question.question_type === 'multiple') {
                     const checkedBoxes = Array.from(document.querySelectorAll('input[name="answer_multi"]:checked'));
                     if (checkedBoxes.length) {
                         answerData.selected_choice_ids = checkedBoxes.map(cb => parseInt(cb.value));
-                        navigator.markCurrentAnswered();
                         hasAnswer = true;
                     }
                 }
@@ -544,6 +541,7 @@
                         if (answerData.integrity_events) {
                             attemptData.integrityEvents = [];
                         }
+                        navigator.markCurrentAnswered();
                         setSaveStatus('Saved');
                         resolve(data);
                     } else {

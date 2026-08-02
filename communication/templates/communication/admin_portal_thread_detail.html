@@ -15,31 +15,52 @@
         </div>
     </div>
 
-    <div style="background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.05); overflow: hidden;">
-        <div style="padding: 20px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <div>
-                <p style="margin: 0; color: #6c757d; font-size: 14px;">Thread created</p>
-                <p style="margin: 6px 0 0 0; font-size: 16px; color: #212529;">{{ thread.created_at|date:"M d, Y H:i" }}</p>
+    <div style="position: relative; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.05); overflow: hidden;">
+        <div style="padding: 20px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; background: #f8f9fa;">
+            <div style="min-width: 0;">
+                <div style="font-size: 20px; font-weight: 700; margin-bottom: 6px;">{% thread_display_title thread request.user 'Conversation' %}</div>
+                <div id="participant-meta" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: #495057; font-size: 13px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:700;">With:</span>
+                        <span id="participant-name" style="font-weight:600;">
+                            {% if other_participant %}{{ other_participant.get_full_name|default:other_participant.username }}{% else %}School Administration{% endif %}
+                        </span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="participant-status-pill" style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#e9ecef; color:#212529; border-radius:999px; font-weight:600;">
+                            <span id="participant-status-dot" style="color:#6c757d;">●</span>
+                            <span id="participant-status-text">Checking...</span>
+                        </span>
+                        <span id="participant-last-seen-text" style="color:#6c757d;">
+                            {% if other_last_seen_at %}Last seen {{ other_last_seen_at|date:"M d, Y H:i" }}{% else %}No recent activity{% endif %}
+                        </span>
+                    </div>
+                </div>
             </div>
-            <div>
-                <p style="margin: 0; color: #6c757d; font-size: 14px;">Last updated</p>
-                <p style="margin: 6px 0 0 0; font-size: 16px; color: #212529;">{{ thread.updated_at|date:"M d, Y H:i" }}</p>
+            <div style="text-align: right; color: #495057; font-size: 13px;">
+                <div>Thread created</div>
+                <div style="font-weight: 600; margin-top: 4px;">{{ thread.created_at|date:"M d, Y H:i" }}</div>
+                <div style="margin-top: 8px;">Last updated</div>
+                <div style="font-weight: 600; margin-top: 4px;">{{ thread.updated_at|date:"M d, Y H:i" }}</div>
             </div>
         </div>
 
         <div id="chat-window" style="padding: 20px; max-height: 560px; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 14px;">
             {% if messages %}
                 {% for message in messages %}
+                    {% ifchanged message.created_at|date:"Ymd" %}
+                        <div class="date-separator">{{ message.created_at|date:"D, M d, Y" }}</div>
+                    {% endifchanged %}
                     {% if message.sender == request.user %}
-                        <div class="msg msg-out" data-id="{{ message.id }}" style="align-self: flex-end; width: 100%; background: transparent;">
-                            <div style="display: block; background: #198754; color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                        <div class="msg msg-out" data-id="{{ message.id }}" data-created-at-iso="{{ message.created_at|date:'c' }}" style="align-self: flex-end; width: 100%; background: transparent;">
+                            <div style="display: block; background: #198754; color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.14);">
                                 <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">You</div>
                                 <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
                                 {% if message.attachment %}
                                     <div style="margin-top:8px;">
                                         {% with name=message.attachment.name|lower %}
                                             {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
-                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px; cursor: pointer;" onclick="window.open('{{ message.attachment.url }}', '_blank')" />
                                             {% else %}
                                                 <a href="{{ message.attachment.url }}" target="_blank" style="color: #fff; text-decoration: underline;">{{ message.attachment.name|default:'Attachment' }}</a>
                                             {% endif %}
@@ -50,7 +71,7 @@
                             </div>
                         </div>
                     {% else %}
-                        <div class="msg msg-in" data-id="{{ message.id }}" style="align-self: flex-start; width: 100%; background: transparent;">
+                        <div class="msg msg-in" data-id="{{ message.id }}" data-created-at-iso="{{ message.created_at|date:'c' }}" style="align-self: flex-start; width: 100%; background: transparent;">
                             <div style="display: block; background: #ffffff; color: #212529; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
                                 <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
                                 <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
@@ -58,7 +79,7 @@
                                     <div style="margin-top:8px;">
                                         {% with name=message.attachment.name|lower %}
                                             {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
-                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                                <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px; cursor: pointer;" onclick="window.open('{{ message.attachment.url }}', '_blank')" />
                                             {% else %}
                                                 <a href="{{ message.attachment.url }}" target="_blank">{{ message.attachment.name|default:'Attachment' }}</a>
                                             {% endif %}
@@ -77,173 +98,422 @@
             {% endif %}
         </div>
 
+        <button id="scroll-newest-btn" type="button" style="display:none; position:absolute; right: 24px; bottom: 160px; z-index: 10; padding: 10px 16px; border:none; border-radius:999px; background:#0d6efd; color:#fff; font-weight:700; cursor:pointer; box-shadow:0 10px 24px rgba(13,110,253,0.18);">New messages</button>
+        <div id="attachment-modal" class="attachment-modal" style="display:none;">
+            <div class="attachment-modal-content">
+                <button id="attachment-modal-close" type="button" class="attachment-modal-close" aria-label="Close preview">&times;</button>
+                <div id="attachment-modal-title" class="attachment-modal-title"></div>
+                <div id="attachment-modal-body" class="attachment-modal-body"></div>
+            </div>
+        </div>
+
+        <div id="typing-indicator" style="display:none; padding: 16px 20px; background: #e9ecef; color: #495057; font-size: 14px; border-top: 1px solid #e9ecef;">Participant is typing...</div>
+
         <div style="padding: 20px; border-top: 1px solid #e9ecef; background: #ffffff;">
-            <form id="admin-msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 10px;">
+            <form id="admin-msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 12px;">
                 {% csrf_token %}
-                <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 12px; font-size: 14px; resize: vertical;"></textarea>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <label for="admin-attachment" class="file-btn" style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; background:#f1f3f5; border-radius:8px; border:1px solid #dfe3e6; cursor:pointer;">📎 Attach</label>
+                <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 14px; font-size: 14px; resize: vertical; min-height: 96px;"></textarea>
+                <div id="admin-attachment-dropzone" class="attachment-dropzone" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px dashed #ced4da; border-radius: 14px; background: #f8f9fa; position: relative;">
+                    <label for="admin-attachment" class="file-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ffffff; border-radius: 12px; border: 1px solid #dfe3e6; cursor: pointer;">
+                        📎 Attach
+                    </label>
+                    <span id="admin-dropzone-text" style="color: #6c757d; font-size: 13px;">Drag & drop a file here or click Attach</span>
                     <input type="file" id="admin-attachment" name="attachment" accept="image/*,.pdf,.doc,.docx" style="position: absolute; left: -9999px;" />
-                    <button id="admin-send-btn" type="submit" style="padding: 10px 16px; background: #0d6efd; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">Send Reply</button>
+                </div>
+                <div id="admin-attachment-preview" style="margin-top: 6px;"></div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button id="admin-send-btn" type="submit" style="padding: 12px 18px; background: #0d6efd; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer;">Send Reply</button>
                     <span style="color: #6c757d; font-size: 13px; margin-left: auto;">Your reply is delivered directly into the user's portal inbox.</span>
                 </div>
-                <div id="admin-attachment-preview" style="margin-top:6px;"></div>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    // scroll to bottom on load
     document.addEventListener('DOMContentLoaded', function() {
-        var chat = document.getElementById('chat-window');
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const chat = document.getElementById('chat-window');
         const currentUserId = {{ request.user.id|default:0 }};
+        const participantUserId = {{ other_participant.id|default:0 }};
+        const currentThreadId = '{{ thread.id }}';
         let lastMessageId = 0;
         if (chat) {
             chat.scrollTop = chat.scrollHeight;
-            document.querySelectorAll('#chat-window [data-id]').forEach(function(n){
-                const id = parseInt(n.dataset.id || 0);
+            document.querySelectorAll('#chat-window [data-id]').forEach(function(node) {
+                const id = parseInt(node.dataset.id || 0, 10);
                 if (id > lastMessageId) lastMessageId = id;
             });
         }
 
-        function appendAdminChatMessage(msg, outgoing) {
-            const numericId = Number(msg.id);
-            if (isFinite(numericId)) {
-                lastMessageId = Math.max(lastMessageId, numericId);
+        function updatePresenceUi(presenceData) {
+            const statusPill = document.getElementById('participant-status-pill');
+            const statusDot = document.getElementById('participant-status-dot');
+            const statusText = document.getElementById('participant-status-text');
+            const lastSeenText = document.getElementById('participant-last-seen-text');
+            if (!statusPill || !statusDot || !statusText || !lastSeenText) return;
+
+            const participantState = presenceData || null;
+            const isOnline = !!participantState && participantState.is_online;
+
+            statusDot.style.color = isOnline ? '#198754' : '#6c757d';
+            statusText.textContent = isOnline ? 'Online' : 'Offline';
+            statusPill.style.background = isOnline ? '#e8f5e9' : '#e9ecef';
+            statusPill.style.color = isOnline ? '#1b5e20' : '#212529';
+
+            if (isOnline) {
+                lastSeenText.textContent = 'Active now';
+            } else if (participantState && participantState.last_seen_at) {
+                lastSeenText.textContent = 'Last seen ' + new Date(participantState.last_seen_at * 1000).toLocaleString();
+            } else {
+                lastSeenText.textContent = '{% if other_last_seen_at %}Last seen {{ other_last_seen_at|date:"M d, Y H:i" }}{% else %}No recent activity{% endif %}';
             }
-            const wrapper = document.createElement('div');
-            wrapper.className = outgoing ? 'msg msg-out' : 'msg msg-in';
-            wrapper.dataset.id = msg.id;
-            wrapper.style.alignSelf = outgoing ? 'flex-end' : 'flex-start';
-            wrapper.style.width = '100%';
-            wrapper.style.background = 'transparent';
+        }
+
+        function syncPresenceWithServer() {
+            if (!currentUserId || !currentThreadId) return;
+            const fd = new FormData();
+            fd.append('thread_id', currentThreadId);
+            fetch('{% url "sync_portal_presence" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+                body: fd
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success && data.presence) {
+                    updatePresenceUi(data.presence);
+                }
+            }).catch(function() {});
+        }
+
+        const adminForm = document.getElementById('admin-msg-form');
+        const adminBtn = document.getElementById('admin-send-btn');
+        const adminContent = document.getElementById('admin-content');
+        const adminAttach = document.getElementById('admin-attachment');
+        const adminPreview = document.getElementById('admin-attachment-preview');
+        const dropzone = document.getElementById('admin-attachment-dropzone');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const scrollNewButton = document.getElementById('scroll-newest-btn');
+
+        function updateAttachmentPreview(file) {
+            if (!adminPreview) return;
+            adminPreview.innerHTML = '';
+            if (!file) return;
+            if (file.type && file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.style.maxWidth = '180px';
+                img.style.borderRadius = '10px';
+                img.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
+                adminPreview.appendChild(img);
+            } else {
+                const fileBlock = document.createElement('div');
+                fileBlock.textContent = file.name;
+                fileBlock.style.padding = '10px 12px';
+                fileBlock.style.borderRadius = '10px';
+                fileBlock.style.background = '#f1f3f5';
+                fileBlock.style.color = '#495057';
+                fileBlock.style.fontSize = '13px';
+                adminPreview.appendChild(fileBlock);
+            }
+        }
+
+        if (adminAttach) {
+            adminAttach.addEventListener('change', function() {
+                updateAttachmentPreview(this.files[0]);
+            });
+        }
+
+        ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function(eventName) {
+            window.addEventListener(eventName, syncPresenceWithServer, { passive: true });
+        });
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                syncPresenceWithServer();
+            }
+        });
+
+        if (dropzone) {
+            dropzone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropzone.style.borderColor = '#0d6efd';
+                dropzone.style.background = '#e9f2ff';
+            });
+            dropzone.addEventListener('dragleave', function() {
+                dropzone.style.borderColor = '#ced4da';
+                dropzone.style.background = '#f8f9fa';
+            });
+            dropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropzone.style.borderColor = '#ced4da';
+                dropzone.style.background = '#f8f9fa';
+                const files = e.dataTransfer.files;
+                if (!files || !files[0]) return;
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                if (adminAttach) {
+                    adminAttach.files = dt.files;
+                    updateAttachmentPreview(files[0]);
+                }
+            });
+        }
+
+        function createAdminMessageBubble(msg, outgoing) {
+            const bubble = document.createElement('div');
+            bubble.className = outgoing ? 'msg msg-out' : 'msg msg-in';
+            bubble.dataset.id = msg.id;
+            if (msg.created_at_iso) {
+                bubble.dataset.createdAtIso = msg.created_at_iso;
+            }
+            bubble.style.alignSelf = outgoing ? 'flex-end' : 'flex-start';
+            bubble.style.width = '100%';
 
             const inner = document.createElement('div');
             inner.style.display = 'block';
-            inner.style.padding = '14px';
-            inner.style.borderRadius = '12px';
-            inner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            inner.style.padding = '16px';
+            inner.style.borderRadius = '16px';
+            inner.style.boxShadow = '0 2px 16px rgba(0,0,0,0.08)';
             inner.style.background = outgoing ? '#198754' : '#ffffff';
             inner.style.color = outgoing ? '#fff' : '#212529';
-            if (!outgoing) {
-                inner.style.border = '1px solid #dee2e6';
-            }
+            inner.style.border = outgoing ? '1px solid rgba(255,255,255,0.14)' : '1px solid #dee2e6';
 
             const who = document.createElement('div');
-            who.style.fontSize = '13px';
-            who.style.marginBottom = '6px';
             who.style.fontWeight = '700';
+            who.style.marginBottom = '8px';
             who.textContent = outgoing ? 'You' : msg.sender;
             inner.appendChild(who);
 
             if (msg.content) {
                 const contentDiv = document.createElement('div');
                 contentDiv.style.whiteSpace = 'pre-wrap';
-                contentDiv.style.lineHeight = '1.6';
+                contentDiv.style.lineHeight = '1.8';
+                contentDiv.style.fontSize = '15px';
                 contentDiv.textContent = msg.content;
                 inner.appendChild(contentDiv);
             }
 
             if (msg.attachment_url) {
-                const at = document.createElement('div');
-                at.style.marginTop = '8px';
+                const attachmentBlock = document.createElement('div');
+                attachmentBlock.style.marginTop = '12px';
+                attachmentBlock.style.display = 'inline-flex';
+                attachmentBlock.style.flexDirection = 'column';
+                attachmentBlock.style.gap = '6px';
+
                 if (msg.attachment_name && msg.attachment_name.match(/\.(jpg|jpeg|png|gif)$/i)) {
                     const img = document.createElement('img');
                     img.src = msg.attachment_url;
                     img.style.maxWidth = '100%';
                     img.style.height = 'auto';
-                    img.style.borderRadius = '8px';
-                    at.appendChild(img);
+                    img.style.borderRadius = '12px';
+                    img.style.cursor = 'pointer';
+                    img.addEventListener('click', function() {
+                        openAttachmentModal(msg.attachment_url, msg.attachment_name, 'image');
+                    });
+                    attachmentBlock.appendChild(img);
+                } else if (msg.attachment_name && msg.attachment_name.toLowerCase().endsWith('.pdf')) {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.style.color = outgoing ? '#fff' : '#0d6efd';
+                    link.style.textDecoration = 'underline';
+                    link.textContent = msg.attachment_name || 'PDF Preview';
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        openAttachmentModal(msg.attachment_url, msg.attachment_name || 'PDF Preview', 'pdf');
+                    });
+                    attachmentBlock.appendChild(link);
                 } else {
-                    const a = document.createElement('a');
-                    a.href = msg.attachment_url;
-                    a.target = '_blank';
-                    a.textContent = msg.attachment_name || 'Attachment';
-                    a.style.color = outgoing ? '#fff' : '#212529';
-                    at.appendChild(a);
+                    const link = document.createElement('a');
+                    link.href = msg.attachment_url;
+                    link.target = '_blank';
+                    link.style.color = outgoing ? '#fff' : '#0d6efd';
+                    link.style.textDecoration = 'underline';
+                    link.textContent = msg.attachment_name || 'Open attachment';
+                    attachmentBlock.appendChild(link);
                 }
-                inner.appendChild(at);
+
+                inner.appendChild(attachmentBlock);
             }
 
             const meta = document.createElement('div');
             meta.style.fontSize = '12px';
-            meta.style.marginTop = '8px';
-            meta.style.opacity = '0.9';
+            meta.style.marginTop = '12px';
+            meta.style.opacity = '0.85';
             meta.style.textAlign = outgoing ? 'right' : 'left';
             meta.innerHTML = (msg.created_at || '') + (outgoing ? ' &middot; <span class="msg-status">' + (msg.status || 'Sent') + '</span>' : '');
             inner.appendChild(meta);
 
-            wrapper.appendChild(inner);
-            if (chat) {
-                chat.appendChild(wrapper);
-                chat.scrollTop = chat.scrollHeight;
+            bubble.appendChild(inner);
+            return bubble;
+        }
+
+        function appendAdminChatMessage(msg, outgoing) {
+            const numericId = Number(msg.id);
+            if (isFinite(numericId)) lastMessageId = Math.max(lastMessageId, numericId);
+            if (!chat) return;
+            const bubble = createAdminMessageBubble(msg, outgoing);
+            chat.appendChild(bubble);
+            if (shouldAutoScroll()) {
+                scrollChatToBottom();
+            } else {
+                showScrollNewButton();
             }
         }
 
-        // admin attachment preview
-        const adminAttach = document.getElementById('admin-attachment');
-        const adminPreview = document.getElementById('admin-attachment-preview');
-        if (adminAttach && adminPreview) {
-            adminAttach.addEventListener('change', function(){
-                adminPreview.innerHTML = '';
-                const f = this.files[0];
-                if (!f) return;
-                if (f.type && f.type.startsWith('image/')) {
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(f);
-                    img.style.maxWidth = '160px'; img.style.borderRadius='6px';
-                    adminPreview.appendChild(img);
-                } else {
-                    const div = document.createElement('div'); div.textContent = f.name; adminPreview.appendChild(div);
-                }
+        function shouldAutoScroll() {
+            if (!chat) return true;
+            const threshold = 120;
+            return chat.scrollHeight - chat.scrollTop - chat.clientHeight < threshold;
+        }
+
+        function scrollChatToBottom() {
+            if (!chat) return;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function updateMessageStatus(messageId, status) {
+            const el = document.querySelector('[data-id="' + messageId + '"]');
+            if (!el) return;
+            const statusEl = el.querySelector('.msg-status');
+            if (!statusEl) return;
+            const normalized = status.charAt(0).toUpperCase() + status.slice(1);
+            if (statusEl.textContent !== normalized) {
+                statusEl.textContent = normalized;
+            }
+        }
+
+        function markTyping(active) {
+            if (!typingIndicator) return;
+            typingIndicator.style.display = active ? 'block' : 'none';
+        }
+
+        function sendTypingSignal() {
+            if (window.MessagingBus && currentThreadId) {
+                window.MessagingBus.emit('typing', { threadId: currentThreadId, senderId: currentUserId });
+            }
+        }
+
+        if (adminContent) {
+            adminContent.addEventListener('input', function() {
+                sendTypingSignal();
             });
         }
 
-        // AJAX send for admin
-        const adminForm = document.getElementById('admin-msg-form');
-        const adminBtn = document.getElementById('admin-send-btn');
-        const adminContent = document.getElementById('admin-content');
+        function openAttachmentModal(url, title, type) {
+            const modal = document.getElementById('attachment-modal');
+            const titleEl = document.getElementById('attachment-modal-title');
+            const bodyEl = document.getElementById('attachment-modal-body');
+            if (!modal || !titleEl || !bodyEl) return;
+
+            titleEl.textContent = title || 'Attachment Preview';
+            bodyEl.innerHTML = '';
+
+            if (type === 'image') {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '80vh';
+                img.style.borderRadius = '12px';
+                bodyEl.appendChild(img);
+            } else if (type === 'pdf') {
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.style.width = '100%';
+                iframe.style.height = '80vh';
+                iframe.style.border = 'none';
+                bodyEl.appendChild(iframe);
+            } else {
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                link.textContent = 'Open attachment in a new tab';
+                bodyEl.appendChild(link);
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeAttachmentModal() {
+            const modal = document.getElementById('attachment-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        const attachmentModal = document.getElementById('attachment-modal');
+        const attachmentModalClose = document.getElementById('attachment-modal-close');
+        if (attachmentModal) {
+            attachmentModal.addEventListener('click', function(event) {
+                if (event.target === attachmentModal) {
+                    closeAttachmentModal();
+                }
+            });
+        }
+        if (attachmentModalClose) {
+            attachmentModalClose.addEventListener('click', closeAttachmentModal);
+        }
+
         if (adminForm) {
-            adminForm.addEventListener('submit', function(e){
+            adminForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                // create temporary message UI with 'Sending' status
+                const messageText = adminContent ? adminContent.value.trim() : '';
+                const hasAttachment = adminAttach && adminAttach.files[0];
+                if (!messageText && !hasAttachment) {
+                    alert('Please enter a message or attach a file.');
+                    return;
+                }
+
                 const tempId = 'tmp-' + Date.now();
                 const tempMsg = {
                     id: tempId,
-                    content: adminContent.value.trim(),
-                    attachment_url: adminAttach && adminAttach.files[0] ? URL.createObjectURL(adminAttach.files[0]) : null,
-                    attachment_name: adminAttach && adminAttach.files[0] ? adminAttach.files[0].name : null,
+                    content: messageText,
+                    attachment_url: hasAttachment ? URL.createObjectURL(adminAttach.files[0]) : null,
+                    attachment_name: hasAttachment ? adminAttach.files[0].name : null,
                     created_at: new Date().toLocaleString(),
                     sender_id: currentUserId,
                     sender: '{{ request.user.get_full_name|escapejs }}',
                     status: 'Sending'
                 };
                 appendAdminChatMessage(tempMsg, true);
+                markTyping(false);
+                if (adminBtn) adminBtn.disabled = true;
 
-                adminBtn.disabled = true;
                 const fd = new FormData();
-                fd.append('content', adminContent.value.trim());
+                fd.append('content', messageText);
                 const csrfInput = adminForm.querySelector('input[name="csrfmiddlewaretoken"]');
                 if (csrfInput) fd.append('csrfmiddlewaretoken', csrfInput.value);
-                if (adminAttach && adminAttach.files[0]) fd.append('attachment', adminAttach.files[0]);
+                if (hasAttachment) fd.append('attachment', adminAttach.files[0]);
 
                 fetch(window.location.href, {
                     method: 'POST',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: fd
                 }).then(r => r.json()).then(data => {
-                    adminBtn.disabled = false;
+                    if (adminBtn) adminBtn.disabled = false;
                     if (data.success) {
-                        // update temp element
                         const tempEl = document.querySelector('[data-id="' + tempId + '"]');
                         if (tempEl) {
                             tempEl.dataset.id = data.message.id;
                             const statusEl = tempEl.querySelector('.msg-status');
-                            if (statusEl) statusEl.textContent = (data.message.status||'Sent');
+                            if (statusEl) statusEl.textContent = (data.message.status || 'Sent');
                         }
-                        // reset form
-                        adminContent.value=''; if (adminAttach) adminAttach.value=''; if (adminPreview) adminPreview.innerHTML='';
+                        if (adminContent) adminContent.value = '';
+                        if (adminAttach) adminAttach.value = '';
+                        if (adminPreview) adminPreview.innerHTML = '';
                     } else {
                         const tempEl = document.querySelector('[data-id="' + tempId + '"]');
                         if (tempEl) {
@@ -252,42 +522,141 @@
                         }
                         alert(data.error || 'Could not send reply.');
                     }
-                }).catch(()=>{ adminBtn.disabled=false; const tempEl = document.querySelector('[data-id="' + tempId + '"]'); if (tempEl) { const statusEl = tempEl.querySelector('.msg-status'); if (statusEl) statusEl.textContent = 'Failed'; } alert('Could not send reply.'); });
+                }).catch(function() {
+                    if (adminBtn) adminBtn.disabled = false;
+                    const tempEl = document.querySelector('[data-id="' + tempId + '"]');
+                    if (tempEl) {
+                        const statusEl = tempEl.querySelector('.msg-status');
+                        if (statusEl) statusEl.textContent = 'Failed';
+                    }
+                    alert('Could not send reply.');
+                });
             });
         }
 
         function pollAdminMessages() {
             fetch('{% url "fetch_admin_portal_messages" thread_id=thread.id %}?since_id=' + lastMessageId, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(r => r.json()).then(data => {
-                if (data.success && data.messages && data.messages.length) {
-                    data.messages.forEach(m => {
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success && Array.isArray(data.messages) && data.messages.length) {
+                    data.messages.forEach(function(m) {
                         if (!document.querySelector('[data-id="' + m.id + '"]')) {
                             const outgoing = m.sender_id === currentUserId;
                             appendAdminChatMessage(m, outgoing);
+                            if (!outgoing && window.NotificationManager) {
+                                window.NotificationManager.notifyConversation({
+                                    threadId: currentThreadId,
+                                    messageId: m.id,
+                                    senderName: m.sender,
+                                    preview: m.content ? m.content.substring(0, 80) : 'Attachment',
+                                    currentThreadId: currentThreadId,
+                                    onClick: function() {
+                                        window.location.href = window.location.href;
+                                    }
+                                });
+                            }
+                            if (!outgoing && window.MessagingBus) {
+                                window.MessagingBus.emit('new_message', { message: m, threadId: currentThreadId });
+                            }
                         }
                     });
                 }
-            }).catch(()=>{});
+            }).catch(function() {});
         }
 
         function pollAdminStatuses() {
-            fetch('{% url "fetch_admin_portal_statuses" thread_id=thread.id %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(r => r.json()).then(data => {
-                if (data.success && data.statuses) {
-                    data.statuses.forEach(s => {
-                        const el = document.querySelector('[data-id="' + s.id + '"]');
-                        if (el) {
-                            const statusEl = el.querySelector('.msg-status');
-                            if (statusEl) statusEl.textContent = s.status.charAt(0).toUpperCase() + s.status.slice(1);
+            fetch('{% url "fetch_admin_portal_statuses" thread_id=thread.id %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && Array.isArray(data.statuses)) {
+                        data.statuses.forEach(function(s) {
+                            updateMessageStatus(s.id, s.status);
+                            if (window.MessagingBus) {
+                                window.MessagingBus.emit('message_status_update', {
+                                    messageId: s.id,
+                                    status: s.status,
+                                    threadId: currentThreadId
+                                });
+                            }
+                        });
+                    }
+                }).catch(function() {});
+        }
+
+        if (window.MessagingBus) {
+            window.MessagingBus.on('message_status_update', function(payload) {
+                if (payload && payload.threadId === currentThreadId) {
+                    updateMessageStatus(payload.messageId, payload.status);
+                }
+            });
+
+            window.MessagingBus.on('new_message', function(payload) {
+                if (!payload || payload.threadId !== currentThreadId || !payload.message) return;
+                if (document.querySelector('[data-id="' + payload.message.id + '"]')) return;
+                appendAdminChatMessage(payload.message, false);
+                const isVisible = document.visibilityState === 'visible';
+                if (!isVisible && window.NotificationManager) {
+                    window.NotificationManager.notifyConversation({
+                        threadId: currentThreadId,
+                        messageId: payload.message.id,
+                        senderName: payload.message.sender,
+                        preview: payload.message.content ? payload.message.content.substring(0, 80) : 'Attachment',
+                        onClick: function() {
+                            window.focus();
                         }
                     });
                 }
-            }).catch(()=>{});
+            });
+
+            window.MessagingBus.on('typing', function(payload) {
+                if (!payload || payload.threadId !== currentThreadId || payload.senderId === currentUserId) return;
+                markTyping(true);
+                if (typingTimeout) clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(function() {
+                    markTyping(false);
+                }, 2500);
+            });
         }
 
+        if (chat) {
+            chat.addEventListener('scroll', function() {
+                if (shouldAutoScroll()) {
+                    hideScrollNewButton();
+                }
+            });
+        }
+        if (scrollNewButton) {
+            scrollNewButton.addEventListener('click', function() {
+                scrollChatToBottom();
+                hideScrollNewButton();
+            });
+        }
+
+        function showScrollNewButton() {
+            if (scrollNewButton) scrollNewButton.style.display = 'inline-flex';
+        }
+
+        function hideScrollNewButton() {
+            if (scrollNewButton) scrollNewButton.style.display = 'none';
+        }
+
+        let typingTimeout = null;
+
+        syncPresenceWithServer();
         pollAdminMessages();
-        setInterval(pollAdminMessages, 1000);
-        setInterval(pollAdminStatuses, 1000);
+        setInterval(function() {
+            syncPresenceWithServer();
+            pollAdminMessages();
+            pollAdminStatuses();
+        }, 1000);
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                syncPresenceWithServer();
+                pollAdminMessages();
+                pollAdminStatuses();
+            }
+        });
     });
 </script>
 
@@ -299,8 +668,68 @@
         text-decoration: none;
     }
     .file-btn:hover { background: #e9ecef; }
+    .attachment-dropzone { transition: all 0.2s ease; }
+    .attachment-dropzone:hover { border-color: #0d6efd; background: #eef4ff; }
+    .attachment-dropzone input[type="file"] { position: absolute; left: -9999px; }
+    .date-separator {
+        width: fit-content;
+        margin: 0 auto 18px auto;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: rgba(108,117,125,0.12);
+        color: #495057;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .attachment-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        background: rgba(15,23,42,0.55);
+        padding: 24px;
+    }
+    .attachment-modal-content {
+        max-width: 920px;
+        width: 100%;
+        max-height: 90vh;
+        overflow: hidden;
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 24px 48px rgba(15,23,42,0.24);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+    .attachment-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        padding: 20px 24px 0;
+        color: #111827;
+    }
+    .attachment-modal-body {
+        padding: 0 24px 24px;
+        overflow: auto;
+    }
+    .attachment-modal-close {
+        position: absolute;
+        right: 20px;
+        top: 18px;
+        border: none;
+        background: transparent;
+        font-size: 32px;
+        line-height: 1;
+        cursor: pointer;
+        color: #475569;
+    }
     .msg-status { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 11px; vertical-align: middle; background: rgba(255,255,255,0.15); color: inherit; border: 1px solid rgba(0,0,0,0.05); }
     .msg-out .msg-status { background: rgba(255,255,255,0.18); color: white; }
     .msg-in .msg-status { background: #f1f3f5; color: #333; }
+    #chat-window { scrollbar-width: thin; scrollbar-color: rgba(33,37,41,0.3) transparent; }
+    #chat-window::-webkit-scrollbar { width: 8px; }
+    #chat-window::-webkit-scrollbar-thumb { background: rgba(33,37,41,0.24); border-radius: 999px; }
+    #chat-window::-webkit-scrollbar-track { background: transparent; }
 </style>
 {% endblock %}

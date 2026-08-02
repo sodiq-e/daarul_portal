@@ -20,7 +20,12 @@
                 <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 2px 20px rgba(0,0,0,0.04); display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;">
                     <div>
                         <p style="margin: 0 0 8px 0; color: #6c757d; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase;">{{ thread.name|default:'Direct Conversation' }}</p>
-                        <h2 style="margin: 0 0 8px 0; font-size: 22px; color: #212529;">{% thread_display_title thread request.user 'Personal Chat' %}</h2>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <h2 style="margin: 0; font-size: 22px; color: #212529;">{% thread_display_title thread request.user 'Personal Chat' %}</h2>
+                            {% if thread.unread_count|default:0 > 0 %}
+                                <span style="background: #dc3545; color: white; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700;">{{ thread.unread_count }} unread</span>
+                            {% endif %}
+                        </div>
                         <p style="margin: 0; color: #555; font-size: 14px;">
                             Participants: {% for participant in thread.participants.all|slice:":3" %}{{ participant.get_full_name|default:participant.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if thread.participants.count > 3 %}, +{{ thread.participants.count|add:'-3' }} more{% endif %}
                         </p>

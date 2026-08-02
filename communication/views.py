@@ -12,6 +12,8 @@ from django.http import JsonResponse, Http404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.utils.decorators import method_decorator
+from django.core.cache import cache
+import time
 
 from .forms import MessageForm, PortalMessageForm
 from .models import Message, PortalThread, PortalMessage
@@ -63,6 +65,9 @@ def get_active_accounts():
 
 
 def get_user_threads(user):
+    if user.is_staff or user.is_superuser:
+        return PortalThread.objects.all().order_by('-updated_at')
+
     return PortalThread.objects.filter(
         Q(participants=user) | Q(user=user)
     ).distinct().order_by('-updated_at')
@@ -86,6 +91,45 @@ def get_user_thread_or_404(user, thread_id):
         thread.participants.add(user)
 
     return thread
+
+
+def mark_thread_messages_as_delivered(thread, reader):
+    """Mark all undelivered incoming messages as delivered when read by the recipient."""
+    return thread.messages.exclude(sender=reader).filter(status='sent').update(status='delivered')
+
+
+def mark_thread_messages_as_read(thread, reader):
+    """Mark incoming messages as read when the recipient opens the thread."""
+    return thread.messages.exclude(sender=reader).filter(is_read=False).update(is_read=True, status='read')
+
+
+def _get_presence_state_for_thread(thread, viewer):
+    participant = thread.participants.exclude(pk=viewer.pk).first()
+    if not participant and thread.user and thread.user != viewer:
+        participant = thread.user
+
+    now = int(time.time())
+    presence_timeout_seconds = 5
+    online = False
+    last_seen_at = None
+
+    if participant:
+        last_seen_at = cache.get(f'portal_presence:{thread.id}:{participant.id}')
+        if last_seen_at is not None:
+            online = (now - int(last_seen_at)) <= presence_timeout_seconds
+
+    return {
+        'participant': {
+            'user_id': participant.id if participant else None,
+            'is_online': online,
+            'last_seen_at': last_seen_at,
+            'updated_at': now,
+        },
+        'user_id': participant.id if participant else None,
+        'is_online': online,
+        'last_seen_at': last_seen_at,
+        'updated_at': now,
+    }
 
 
 def get_or_create_thread_for_users(users, primary_user=None, name=None):
@@ -286,9 +330,17 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         thread = self.get_thread(**kwargs)
+        mark_thread_messages_as_read(thread, self.request.user)
+        other_participant = thread.participants.exclude(pk=self.request.user.pk).first()
+        if not other_participant and thread.user and thread.user != self.request.user:
+            other_participant = thread.user
+        last_other_message = thread.messages.exclude(sender=self.request.user).order_by('-created_at').first()
+
         context['thread'] = thread
         context['messages'] = thread.messages.select_related('sender').all()
         context['form'] = PortalMessageForm()
+        context['other_participant'] = other_participant
+        context['other_last_seen_at'] = last_other_message.created_at if last_other_message else None
         return context
 
     def post(self, request, *args, **kwargs):
@@ -319,6 +371,7 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
                 'id': msg.id,
                 'content': msg.content,
                 'created_at': msg.created_at.strftime('%b %d, %Y %H:%M'),
+                'created_at_iso': msg.created_at.isoformat(),
                 'sender': request.user.get_full_name() or request.user.username,
                 'attachment_url': msg.attachment.url if msg.attachment else None,
                 'attachment_name': getattr(msg.attachment, 'name', None),
@@ -329,7 +382,12 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         django_messages.success(request, 'Portal reply sent.')
         if kwargs.get('thread_id'):
             return redirect('admin_portal_thread_detail', thread_id=thread.id)
-        return redirect('admin_portal_thread_detail', user_id=thread.user.id if thread.user else request.user.id)
+        if kwargs.get('user_id'):
+            return redirect('admin_portal_thread_detail', user_id=kwargs.get('user_id'))
+        other_participant = thread.participants.exclude(pk=request.user.pk).first()
+        if other_participant:
+            return redirect('admin_portal_thread_detail', user_id=other_participant.id)
+        return redirect('admin_portal_thread_detail', thread_id=thread.id)
 
 
 class AdminPortalGroupsListView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -549,12 +607,14 @@ class PortalInboxView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        threads = get_user_threads(self.request.user).prefetch_related('participants', 'messages')
-        context['threads'] = threads
-        context['unread_count'] = sum(
-            thread.messages.exclude(sender=self.request.user).filter(is_read=False).count()
-            for thread in threads
+        threads = get_user_threads(self.request.user).prefetch_related('participants').annotate(
+            unread_count=Count(
+                'messages',
+                filter=Q(messages__is_read=False) & ~Q(messages__sender=self.request.user)
+            )
         )
+        context['threads'] = threads
+        context['unread_count'] = sum(thread.unread_count for thread in threads)
         return context
 
 
@@ -584,11 +644,18 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
         else:
             thread = get_user_threads(self.request.user).first()
 
-        messages_qs = thread.messages.select_related('sender').all()
-        messages_qs.filter(is_read=False).exclude(sender=self.request.user).update(is_read=True)
+        mark_thread_messages_as_read(thread, self.request.user)
+        other_participant = thread.participants.exclude(pk=self.request.user.pk).first()
+        if not other_participant and thread.user and thread.user != self.request.user:
+            other_participant = thread.user
+
+        last_other_message = thread.messages.exclude(sender=self.request.user).order_by('-created_at').first()
+
         context['thread'] = thread
-        context['messages'] = messages_qs
+        context['messages'] = thread.messages.select_related('sender').all()
         context['form'] = PortalMessageForm()
+        context['other_participant'] = other_participant
+        context['other_last_seen_at'] = last_other_message.created_at if last_other_message else None
         return context
 
     def post(self, request, *args, **kwargs):
@@ -625,15 +692,35 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
                 'id': msg.id,
                 'content': msg.content,
                 'created_at': msg.created_at.strftime('%b %d, %Y %H:%M'),
+                'created_at_iso': msg.created_at.isoformat(),
                 'sender': request.user.get_full_name() or request.user.username,
+                'sender_id': request.user.id,
                 'attachment_url': msg.attachment.url if msg.attachment else None,
                 'attachment_name': getattr(msg.attachment, 'name', None),
                 'status': msg.status,
+                'is_read': msg.is_read,
             }
             return JsonResponse({'success': True, 'message': data})
 
         django_messages.success(request, 'Your message was sent.')
         return redirect(f'{reverse("portal_thread_detail")}?thread_id={thread.id}')
+
+
+@login_required
+@require_POST
+def sync_portal_presence(request):
+    """Record a heartbeat from the current user for the active thread and return presence for the other participant."""
+    thread_id = request.POST.get('thread_id')
+    if thread_id:
+        thread = get_user_thread_or_404(request.user, thread_id)
+    else:
+        thread = get_or_create_user_thread(request.user)
+
+    now = int(time.time())
+    cache.set(f'portal_presence:{thread.id}:{request.user.id}', now, 10)
+
+    presence = _get_presence_state_for_thread(thread, request.user)
+    return JsonResponse({'success': True, 'presence': presence})
 
 
 @login_required
@@ -669,6 +756,7 @@ def send_portal_message_ajax(request):
         'id': msg.id,
         'content': msg.content,
         'created_at': msg.created_at.strftime('%b %d, %Y %H:%M'),
+        'created_at_iso': msg.created_at.isoformat(),
         'sender': request.user.get_full_name() or request.user.username,
         'attachment_url': msg.attachment.url if msg.attachment else None,
         'attachment_name': getattr(msg.attachment, 'name', None),
@@ -698,7 +786,7 @@ def fetch_portal_messages(request):
             pass
 
     messages_qs = qs.order_by('created_at')
-    messages_qs.exclude(sender=request.user).filter(status='sent').update(status='delivered')
+    mark_thread_messages_as_delivered(thread, request.user)
 
     messages_list = []
     for m in messages_qs:
@@ -708,6 +796,7 @@ def fetch_portal_messages(request):
             'sender': m.sender.get_full_name() if m.sender else 'System',
             'content': m.content,
             'created_at': m.created_at.strftime('%b %d, %Y %H:%M'),
+            'created_at_iso': m.created_at.isoformat(),
             'attachment_url': m.attachment.url if m.attachment else None,
             'attachment_name': getattr(m.attachment, 'name', None),
             'is_read': m.is_read,
@@ -756,8 +845,8 @@ def fetch_admin_portal_messages(request, user_id=None, thread_id=None):
             pass
 
     messages_qs = qs.order_by('created_at')
-    messages_qs.exclude(sender=request.user).filter(status='sent').update(status='delivered')
-    messages_qs.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
+    mark_thread_messages_as_delivered(thread, request.user)
+    thread.messages.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
 
     messages_list = []
     for m in messages_qs:
@@ -767,6 +856,7 @@ def fetch_admin_portal_messages(request, user_id=None, thread_id=None):
             'sender': m.sender.get_full_name() if m.sender else 'System',
             'content': m.content,
             'created_at': m.created_at.strftime('%b %d, %Y %H:%M'),
+            'created_at_iso': m.created_at.isoformat(),
             'attachment_url': m.attachment.url if m.attachment else None,
             'attachment_name': getattr(m.attachment, 'name', None),
             'is_read': m.is_read,

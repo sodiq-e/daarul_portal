@@ -3731,6 +3731,9 @@ body {
         <a href="{% url 'admin_portal_users_list' %}" data-tooltip="Portal"
            class="{% if request.resolver_match.url_name == 'admin_portal_users_list' %}active{% endif %}">
           <i class="fas fa-comments"></i><span> Portal Conversations</span>
+          {% if portal_unread_count > 0 %}
+            <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
+          {% endif %}
         </a>
 
         <a href="{% url 'results_admin:dashboard' %}" data-tooltip="Results"
@@ -4128,11 +4131,12 @@ body {
 <script>
 // ===== TOAST NOTIFICATION SYSTEM =====
 class Toast {
-  constructor(title, message, type = 'info', duration = 5000) {
+  constructor(title, message, type = 'info', duration = 5000, onClick = null) {
     this.title = title;
     this.message = message;
     this.type = type; // success, error, warning, info
     this.duration = duration;
+    this.onClick = onClick;
     this.element = null;
     this.show();
   }
@@ -4158,6 +4162,17 @@ class Toast {
       <button class="toast-close">&times;</button>
     `;
 
+    if (typeof this.onClick === 'function') {
+      this.element.style.cursor = 'pointer';
+      this.element.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target && target.classList.contains('toast-close')) {
+          return;
+        }
+        this.onClick();
+      });
+    }
+
     container.appendChild(this.element);
 
     const closeBtn = this.element.querySelector('.toast-close');
@@ -4177,9 +4192,261 @@ class Toast {
 }
 
 // Global toast functions
-window.showToast = (title, message, type = 'info', duration = 5000) => {
-  return new Toast(title, message, type, duration);
+window.showToast = (titleOrOptions, message = '', type = 'info', duration = 5000, onClick = null) => {
+  if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
+    const opts = titleOrOptions;
+    return new Toast(opts.title || 'Notification', opts.message || '', opts.type || 'info', opts.duration || 5000, opts.onClick);
+  }
+  return new Toast(titleOrOptions, message, type, duration, onClick);
 };
+
+window.NotificationManager = {
+  toastIds: new Set(),
+  unreadCounts: {},
+  totalUnread: 0,
+  sounds: {
+    default: 'default',
+    message: 'message',
+    announcement: 'announcement'
+  },
+  audioContext: null,
+  soundEnabled: true,
+
+  init() {
+    if (window.AudioContext || window.webkitAudioContext) {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    this.updateBadgeNodes();
+  },
+
+  requestPermission() {
+    if (!('Notification' in window)) {
+      return Promise.resolve('unsupported');
+    }
+    if (Notification.permission === 'default') {
+      return Notification.requestPermission();
+    }
+    return Promise.resolve(Notification.permission);
+  },
+
+  createToastId({ threadId = '', messageId = '', title = '', text = '', category = '' } = {}) {
+    return `${category}|${threadId}|${messageId}|${title}|${text}`;
+  },
+
+  updateBadgeNodes() {
+    this.badgeNodes = Array.from(document.querySelectorAll('.notification-badge'));
+  },
+
+  setUnreadCount(count, category = 'messages') {
+    this.unreadCounts[category] = count;
+    this.totalUnread = Object.values(this.unreadCounts).reduce((sum, value) => sum + Number(value || 0), 0);
+    this.syncBadges();
+  },
+
+  incrementUnread(amount = 1, category = 'messages') {
+    this.unreadCounts[category] = (Number(this.unreadCounts[category] || 0) + amount);
+    this.totalUnread = Object.values(this.unreadCounts).reduce((sum, value) => sum + Number(value || 0), 0);
+    this.syncBadges();
+  },
+
+  decrementUnread(amount = 1, category = 'messages') {
+    this.unreadCounts[category] = Math.max(0, Number(this.unreadCounts[category] || 0) - amount);
+    this.totalUnread = Object.values(this.unreadCounts).reduce((sum, value) => sum + Number(value || 0), 0);
+    this.syncBadges();
+  },
+
+  syncBadges() {
+    this.updateBadgeNodes();
+    if (!this.badgeNodes) return;
+    this.badgeNodes.forEach((badge) => {
+      const badgeType = badge.dataset.notificationType || 'messages';
+      const count = this.unreadCounts[badgeType] || 0;
+      badge.textContent = count > 0 ? count : '';
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+    });
+  },
+
+  playSound(sound = 'default') {
+    if (!this.soundEnabled || !this.audioContext) {
+      return;
+    }
+    try {
+      const now = this.audioContext.currentTime;
+      const oscillator = this.audioContext.createOscillator();
+      const gain = this.audioContext.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = sound === 'message' ? 880 : 660;
+      oscillator.connect(gain);
+      gain.connect(this.audioContext.destination);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0, now + 0.2);
+      oscillator.start(now);
+      oscillator.stop(now + 0.2);
+    } catch (error) {
+      console.warn('NotificationManager sound playback failed', error);
+    }
+  },
+
+  showToast({ title = 'Notification', message = '', type = 'info', duration = 5000, toastId = null, onClick = null, avatarUrl = null, subtitle = '', time = '', badgeLabel = '' } = {}) {
+    if (toastId) {
+      if (this.toastIds.has(toastId)) {
+        return null;
+      }
+      this.toastIds.add(toastId);
+      setTimeout(() => this.toastIds.delete(toastId), duration + 500);
+    }
+
+    const container = document.getElementById('toastContainer');
+    const toast = new Toast(title, message, type, duration, onClick);
+
+    const content = toast.element.querySelector('.toast-content');
+    if (!content) {
+      return toast;
+    }
+
+    if (avatarUrl) {
+      const avatar = document.createElement('div');
+      avatar.className = 'toast-avatar';
+      avatar.innerHTML = `<img src="${avatarUrl}" alt="${title} avatar">`;
+      toast.element.insertBefore(avatar, toast.element.firstChild);
+    }
+
+    if (subtitle || time || badgeLabel) {
+      const meta = document.createElement('div');
+      meta.className = 'toast-meta';
+      const left = document.createElement('div');
+      left.textContent = subtitle || '';
+      const right = document.createElement('div');
+      right.textContent = time || badgeLabel || '';
+      if (subtitle) {
+        left.className = 'toast-subtitle';
+      }
+      meta.appendChild(left);
+      meta.appendChild(right);
+      content.appendChild(meta);
+    }
+
+    return toast;
+  },
+
+  async showDesktopNotification({ title = 'Notification', message = '', icon = null, tag = null, onClick = null } = {}) {
+    if (!('Notification' in window)) {
+      return null;
+    }
+    const permission = await this.requestPermission();
+    if (permission !== 'granted') {
+      return null;
+    }
+
+    try {
+      const options = { body: message, tag: tag || undefined };
+      if (icon) {
+        options.icon = icon;
+      }
+      const notification = new Notification(title, options);
+      if (typeof onClick === 'function') {
+        notification.onclick = (event) => {
+          event.preventDefault();
+          onClick();
+          window.focus();
+        };
+      }
+      return notification;
+    } catch (error) {
+      console.warn('NotificationManager failed to show native notification', error);
+      return null;
+    }
+  },
+
+  async notify({ type = 'info', category = 'general', title = 'Notification', message = '', groupName = '', threadId = null, messageId = null, avatarUrl = null, timestamp = '', icon = null, duration = 5000, onClick = null, sound = 'default', badgeIncrement = false, toastId = null } = {}) {
+    const summary = message || 'You have a new notification.';
+    const finalTitle = groupName ? `${title} · ${groupName}` : title;
+    const finalToastId = toastId || this.createToastId({ threadId, messageId, title: finalTitle, text: summary, category });
+    const subtitle = groupName ? `${groupName}` : '';
+    const timeLabel = timestamp ? timestamp : '';
+
+    if (badgeIncrement) {
+      this.incrementUnread(1, category);
+    }
+
+    this.playSound(sound);
+    this.showToast({ title: finalTitle, message: summary, type, duration, toastId: finalToastId, onClick, avatarUrl, subtitle, time: timeLabel });
+
+    if (category === 'message' && threadId) {
+      await this.showDesktopNotification({ title: finalTitle, message: summary, icon, tag: threadId, onClick });
+    }
+  },
+
+  notifyConversation(params = {}) {
+    return this.notify(Object.assign({ category: 'message', type: 'info', sound: 'message', badgeIncrement: true }, params));
+  },
+
+  notifyAnnouncement(params = {}) {
+    return this.notify(Object.assign({ category: 'announcement', type: 'info', sound: 'announcement', badgeIncrement: true }, params));
+  },
+
+  resetUnread(category = 'messages') {
+    this.setUnreadCount(0, category);
+  }
+};
+
+window.NotificationManager.init();
+
+window.MessagingBus = {
+  listeners: {},
+  channel: null,
+
+  init() {
+    if ('BroadcastChannel' in window) {
+      try {
+        this.channel = new BroadcastChannel('portal_messaging');
+        this.channel.onmessage = (event) => {
+          const { type, payload } = event.data || {};
+          if (type) {
+            this.emit(type, payload, true);
+          }
+        };
+      } catch (error) {
+        console.warn('MessagingBus broadcast init failed', error);
+      }
+    }
+  },
+
+  on(type, callback) {
+    if (!this.listeners[type]) {
+      this.listeners[type] = [];
+    }
+    this.listeners[type].push(callback);
+  },
+
+  off(type, callback) {
+    if (!this.listeners[type]) return;
+    this.listeners[type] = this.listeners[type].filter((cb) => cb !== callback);
+  },
+
+  emit(type, payload = {}, fromRemote = false) {
+    if (this.listeners[type]) {
+      this.listeners[type].forEach((callback) => {
+        try {
+          callback(payload);
+        } catch (error) {
+          console.error(`MessagingBus listener error for ${type}:`, error);
+        }
+      });
+    }
+
+    if (!fromRemote && this.channel) {
+      try {
+        this.channel.postMessage({ type, payload });
+      } catch (error) {
+        console.warn('MessagingBus postMessage failed', error);
+      }
+    }
+  }
+};
+
+window.MessagingBus.init();
 
 {% if messages %}
 (function() {
