@@ -2843,7 +2843,7 @@
     display: none !important;
   }
 
-  /* Disable screen-only effects */
+  /* Disable screen-only effects and force strong print text contrast */
   *,
   *::before,
   *::after {
@@ -2852,6 +2852,26 @@
     box-shadow: none !important;
     filter: none !important;
     text-shadow: none !important;
+    color: black !important;
+    opacity: 1 !important;
+  }
+
+  body,
+  body * {
+    color: black !important;
+    opacity: 1 !important;
+  }
+
+  .text-muted,
+  .text-secondary,
+  .small,
+  small,
+  .text-muted *,
+  .text-secondary *,
+  .small *,
+  small * {
+    color: black !important;
+    opacity: 1 !important;
   }
 
   body > *:not(.print-watermark) {
