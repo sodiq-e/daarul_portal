@@ -156,34 +156,6 @@
     .toast.error {
       border-left-color: #dc3545;
     }
-    @media print {
-      .print-verification-footer {
-        margin-top: 4px !important;
-        padding: 2px 0 !important;
-        font-size: 10px !important;
-        page-break-inside: avoid !important;
-        overflow: visible !important;
-      }
-      .print-verification-footer > div {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 8px !important;
-      }
-      .print-verification-footer .qr-box {
-        width: 64px !important;
-        padding: 0 !important;
-        border: 0 !important;
-        background: transparent !important;
-      }
-      .print-verification-footer .qr-box img,
-      .print-verification-footer .qr-box svg {
-        width: 100% !important;
-        height: auto !important;
-        display: block !important;
-      }
-    }
-
     .toast.warning {
       border-left-color: #ffc107;
     }
@@ -2819,19 +2791,34 @@
 }
 
 @media print {
-
+  /* Page setup */
   @page {
-    size: A4 portrait;
     margin: 8mm;
-}
-html,
-body {
+  }
+
+  html,
+  body {
     width: auto !important;
     min-width: auto !important;
     min-height: auto !important;
     height: auto !important;
-}
-  /* Hide all interactive elements */
+    overflow: visible !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+    widows: 3;
+    orphans: 3;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hidden elements */
   #menuBtn,
   .sidebar,
   .mobile-bottom-nav,
@@ -2843,135 +2830,81 @@ body {
   .overlay,
   nav,
   aside,
-  .nav-breadcrumb,
-  .breadcrumb,
   footer,
+  .breadcrumb,
   .breadcrumb-navigation,
+  .nav-breadcrumb,
   .command-palette,
-  .toast-container {
+  .toast-container,
+  .no-print,
+  button,
+  [type="button"],
+  [type="submit"] {
     display: none !important;
   }
 
-  /* Remove animations for printing */
-  * {
+  /* Disable screen-only effects */
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
-  }
-
-  /* Body and container setup */
-  body {
-    background: white !important;
-    color: black !important;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Reset mobile responsive layout for print so printed output matches desktop-style documents */
-  .table-responsive thead {
-    display: table-header-group !important;
-  }
-
-  .table-responsive tbody,
-  .table-responsive tr {
-    display: table-row-group !important;
-    width: auto !important;
-    margin: 0 !important;
-    border: none !important;
     box-shadow: none !important;
-    background: transparent !important;
+    filter: none !important;
+    text-shadow: none !important;
   }
 
-  .table-responsive td {
-    display: table-cell !important;
-    justify-content: left !important;
-    align-items: stretch !important;
-    padding: 8px !important;
-    border-bottom: 1px solid #333 !important;
+  body > *:not(.print-watermark) {
+    position: relative !important;
+    z-index: 1 !important;
   }
 
-  html,
-  body {
-    width: auto !important;
-    min-width: auto !important;
-    min-height: auto !important;
-    height: auto !important;
-  }
-
+  /* Layout */
+  .container,
+  .container-fluid,
   .content,
   .layout,
   .page-content,
-  .page-wrapper {
+  .page-wrapper,
+  .report-card,
+  .card,
+  .box,
+  [class*="container"],
+  [class*="wrapper"],
+  .row,
+  .table-responsive,
+  .card-header,
+  .card-body,
+  .card-footer,
+  [class*="col-"] {
+    display: block !important;
     width: auto !important;
-    max-width: none !important;
+    max-width: 100% !important;
+    float: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 
   .container {
-    /* Use desktop container width for print so documents match desktop layout */
-    max-width: 1140px !important;
     margin: 0 auto !important;
     padding: 12px 20px !important;
   }
 
-  Force desktop-style grid layout for printed pages
   .row {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    margin-right: -15px !important;
-    margin-left: -15px !important;
-  }
-
-  .row > [class*="col-"] {
-    position: relative !important;
-    width: auto !important;
-    min-height: 1px !important;
-    padding-right: 15px !important;
-    padding-left: 15px !important;
-    float: left !important;
-  }
-
-  .col-md-3 {
-    width: 25% !important;
-  }
-
-  .col-lg-6 {
-    width: 50% !important;
+    display: block !important;
   }
 
   .col-12,
   .col-sm-12,
   .col-md-12,
-  .col-lg-12 {
+  .col-lg-12,
+  .col-md-3,
+  .col-lg-6 {
     width: 100% !important;
   }
-
-  .d-flex {
-    display: flex !important;
-    flex-wrap: wrap !important;
-  }
-
-  /* Stable print layout */
-.row,
-.d-flex,
-.flex-row,
-.flex-column,
-.container,
-.container-fluid,
-.card,
-[class*="col-"] {
-
-    display: block !important;
-
-    width: 100% !important;
-    max-width: 100% !important;
-
-    float: none !important;
-
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-}
 
   .justify-content-between {
     justify-content: space-between !important;
@@ -2989,15 +2922,6 @@ body {
     text-align: left !important;
   }
 
-  .card,
-  .box,
-  [class*="card"],
-  [class*="box"] {
-    width: auto !important;
-    max-width: none !important;
-    display: block !important;
-  }
-
   .card-header,
   .card-body,
   .card-footer {
@@ -3006,10 +2930,8 @@ body {
   }
 
   .list-group-item {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    justify-content: space-between !important;
-    align-items: center !important;
+    display: block !important;
+    text-align: left !important;
   }
 
   .list-group-item .badge,
@@ -3018,21 +2940,11 @@ body {
     text-align: left !important;
   }
 
-  .page-break {
-    page-break-before: always !important;
-  }
-
-  .no-break {
-    page-break-inside: avoid !important;
-  }
-
   .layout {
     display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
-  /* Keep the portal header visible when printing, while making it a prominent letterhead block */
+  /* Header */
   header {
     display: block !important;
     width: 100% !important;
@@ -3051,7 +2963,7 @@ body {
   }
 
   .header-left {
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
     display: flex !important;
     align-items: center !important;
   }
@@ -3074,7 +2986,6 @@ body {
     gap: 6px !important;
   }
 
-  /* Match desktop header font sizing and alignment when printing */
   .header-center a,
   .header-center div {
     color: black !important;
@@ -3110,140 +3021,26 @@ body {
   }
 
   .header-right {
-    /* Ensure right-side header content (e.g., school address) appears in print */
     display: flex !important;
     justify-content: flex-end !important;
   }
 
-  /* Content area */
   .content {
     background: transparent !important;
     padding: 20px !important;
     margin: 0 !important;
   }
 
-  /* Print watermark and clean page chrome */
-  body {
-    background: transparent !important;
-    color: black !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
+  /* Watermark */
   .print-watermark {
-    display: none;
-  }
-
-  .container,
-  .content,
-  .card,
-  .box,
-  [class*="container"],
-  [class*="wrapper"] {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 0 !important;
+    opacity: 0.08 !important;
+    pointer-events: none !important;
+    mix-blend-mode: multiply !important;
     background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-
-  @media print {
-    .print-watermark {
-      display: block !important;
-      position: fixed !important;
-      inset: 0 !important;
-      z-index: 0 !important;
-      opacity: 0.08 !important;
-      pointer-events: none !important;
-      mix-blend-mode: multiply !important;
-    }
-
-    *,
-    *::before,
-    *::after {
-      background: transparent !important;
-      box-shadow: none !important;
-      filter: none !important;
-      text-shadow: none !important;
-      color: black !important;
-      page-break-after: auto !important;
-      page-break-before: auto !important;
-      page-break-inside: auto !important;
-      break-after: auto !important;
-      break-before: auto !important;
-      break-inside: auto !important;
-    }
-
-    body > *:not(.print-watermark) {
-      position: relative !important;
-      z-index: 1 !important;
-    }
-
-    body,
-    .container,
-    .content,
-    .layout,
-    .page-content,
-    .page-wrapper,
-    .container-fluid,
-    .card,
-    .box,
-    [class*="container"],
-    [class*="wrapper"],
-    .report-card,
-    .print-application-container,
-    .print-container,
-    .row,
-    .col,
-    .table-responsive,
-    .card-header,
-    .card-body,
-    .card-footer {
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-    }
-
-    .site-header,
-    .main-header,
-    .navbar,
-    .breadcrumb,
-    .breadcrumb-navigation,
-    .page-loader,
-    .announcement-ticker,
-    .theme-customizer,
-    .toast-container,
-    .overlay,
-    .sidebar,
-    .mobile-bottom-nav,
-    .command-palette,
-    nav,
-    aside,
-    footer,
-    button,
-    [type="button"],
-    [type="submit"],
-    .no-print {
-      display: none !important;
-    }
-
-    .content {
-      padding: 0 !important;
-      margin: 0 !important;
-    }
-
-    .container {
-      margin: 0 auto !important;
-      padding: 0 !important;
-      max-width: 100% !important;
-    }
-
-    html,
-    body {
-      width: auto !important;
-      min-width: auto !important;
-      min-height: auto !important;
-      height: auto !important;
-      overflow: visible !important;
-    }
   }
 
   .print-watermark img {
@@ -3253,19 +3050,70 @@ body {
     filter: brightness(1) !important;
   }
 
-  /* Tables styling for print */
+  .print-verification-footer {
+    margin-top: 4px !important;
+    padding: 2px 0 !important;
+    font-size: 10px !important;
+    page-break-inside: avoid !important;
+    overflow: visible !important;
+  }
+
+  .print-verification-footer > div {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .print-verification-footer .qr-box {
+    width: 64px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .print-verification-footer .qr-box img,
+  .print-verification-footer .qr-box svg {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  /* Tables */
+  .table-responsive thead,
+  thead {
+    display: table-header-group !important;
+  }
+
+  .table-responsive tbody,
+  .table-responsive tr,
+  tbody,
+  tr {
+    display: table-row-group !important;
+    width: auto !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .table-responsive td,
+  td,
+  th {
+    border: 1px solid #333 !important;
+    padding: 8px !important;
+    text-align: left !important;
+  }
+
   table {
     width: 100% !important;
     border-collapse: collapse !important;
     margin-bottom: 15px !important;
-    page-break-inside: avoid !important;
+    page-break-inside: auto !important;
     display: table !important;
   }
 
-  table, th, td {
-    border: 1px solid #333 !important;
-    padding: 8px !important;
-    text-align: left !important;
+  tr {
+    page-break-inside: avoid !important;
   }
 
   th {
@@ -3274,57 +3122,20 @@ body {
     font-weight: bold !important;
   }
 
-  tr {
-    page-break-inside: avoid !important;
-  }
-
-  /* Text styling */
-  a {
-    color: black !important;
-    text-decoration: none !important;
-  }
-
-  /* Remove background colors from elements */
-  /* div, span, p, li {
+  tbody tr:nth-child(odd) {
     background: transparent !important;
-    color: black !important;
-  } */
+  }
 
-  /* Card and box styling for print */
+  /* Card & form styling */
   .card,
   .box,
-  [class*="container"],
-  [class*="wrapper"] {
+  [class*="card"],
+  [class*="box"] {
     border: 1px solid #ccc !important;
     page-break-inside: avoid !important;
     background: transparent !important;
   }
 
-  /* Page breaks */
-  /* .page-break {
-    page-break-before: always !important;
-  } */
-
-  .no-break {
-    page-break-inside: avoid !important;
-  }
-
-  /* Forms and inputs */
-  input, select, textarea {
-    border: 1px solid #333 !important;
-    padding: 4px !important;
-    font-family: Arial, sans-serif !important;
-  }
-
-  button, [type="button"], [type="submit"], .no-print {
-    display: none !important;
-  }
-
-  .table-responsive {
-    overflow: visible !important;
-  }
-
-  /* Report card specific */
   .report-card-header,
   .report-card-title,
   .student-info,
@@ -3332,8 +3143,25 @@ body {
     page-break-inside: avoid !important;
   }
 
-  /* Margins and spacing */
-  h1, h2, h3, h4, h5, h6 {
+  input,
+  select,
+  textarea {
+    border: 1px solid #333 !important;
+    padding: 4px !important;
+    font-family: Arial, sans-serif !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  /* Typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     margin-top: 15px !important;
     margin-bottom: 10px !important;
     page-break-after: avoid !important;
@@ -3345,32 +3173,14 @@ body {
     line-height: 1.5 !important;
   }
 
-  /* Remove box shadows and effects */
-  * {
-    box-shadow: none !important;
-    filter: none !important;
-    text-shadow: none !important;
-  }
-
-  /* Ensure text is readable */
-  body {
-    font-size: 12pt !important;
-    line-height: 1.5 !important;
-  }
-
-    /* Links visible but not colored */
   a {
-    border-bottom: 1px solid #999 !important;
+    color: black !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
   }
+}
 
-  /* Print specific page setup */
-  body {
-    widows: 3;
-    orphans: 3;
-  }
-  }
-
-  /* Mobile: ensure sidebar shows labels when opened (override collapsed desktop state) */
+/* Mobile: ensure sidebar shows labels when opened (override collapsed desktop state) */
   @media (max-width: 1023px) {
     .sidebar.active a span,
     .sidebar.active form button,
