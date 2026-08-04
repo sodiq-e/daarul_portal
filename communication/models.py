@@ -1,5 +1,31 @@
 from django.db import models
+from django.db.models import Count, Q
 from django.contrib.auth.models import User
+
+
+class PortalThreadQuerySet(models.QuerySet):
+    def for_user(self, user):
+        return self.filter(Q(participants=user) | Q(user=user)).distinct()
+
+    def personal(self):
+        return self.filter(thread_type='personal')
+
+    def group(self):
+        return self.filter(thread_type='group')
+
+    def class_threads(self):
+        return self.filter(thread_type='class')
+
+    def with_exact_participants(self, users):
+        user_ids = sorted({u.id for u in users if u is not None})
+        qs = self
+        for uid in user_ids:
+            qs = qs.filter(participants__id=uid)
+        return qs.annotate(num_participants=Count('participants')).filter(num_participants=len(user_ids))
+
+
+class PortalThreadManager(models.Manager.from_queryset(PortalThreadQuerySet)):
+    pass
 
 
 class Message(models.Model):
@@ -43,6 +69,16 @@ class Message(models.Model):
 
 
 class PortalThread(models.Model):
+    THREAD_TYPE_PERSONAL = 'personal'
+    THREAD_TYPE_GROUP = 'group'
+    THREAD_TYPE_CLASS = 'class'
+
+    THREAD_TYPE_CHOICES = [
+        (THREAD_TYPE_PERSONAL, 'Personal'),
+        (THREAD_TYPE_GROUP, 'Group'),
+        (THREAD_TYPE_CLASS, 'Class'),
+    ]
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -56,22 +92,57 @@ class PortalThread(models.Model):
         blank=True
     )
     name = models.CharField(max_length=150, blank=True)
+    thread_type = models.CharField(
+        max_length=10,
+        choices=THREAD_TYPE_CHOICES,
+        default=THREAD_TYPE_GROUP,
+        help_text='Explicit type of portal conversation.'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = PortalThreadManager()
 
     class Meta:
         ordering = ['-updated_at']
 
-    def __str__(self):
+    @property
+    def is_personal(self):
+        return self.thread_type == self.THREAD_TYPE_PERSONAL
+
+    @property
+    def is_group(self):
+        return self.thread_type == self.THREAD_TYPE_GROUP
+
+    @property
+    def is_class(self):
+        return self.thread_type == self.THREAD_TYPE_CLASS
+
+    def get_other_participant(self, viewer):
+        participants = self.participants.exclude(pk=viewer.pk)
+        if participants.exists():
+            return participants.first()
+        if self.user and self.user != viewer:
+            return self.user
+        return None
+
+    def get_display_title(self, current_user=None, default_label='Conversation'):
         if self.name:
             return self.name
-        participants = list(self.participants.all())
-        if participants:
-            names = [p.get_full_name() or p.username for p in participants]
-            return 'Conversation: ' + ', '.join(names)
-        if self.user:
-            return f'Portal thread for {self.user.get_full_name() or self.user.username}'
-        return 'Portal thread'
+        if self.is_personal:
+            if current_user:
+                other = self.get_other_participant(current_user)
+                if other:
+                    return other.get_full_name() or other.username
+            return 'Personal Conversation'
+        if self.is_class:
+            return self.name or 'Class Conversation'
+        if self.is_group:
+            return self.name or 'Group Conversation'
+        return default_label
+
+    def __str__(self):
+        return self.get_display_title()
 
 
 class PortalMessage(models.Model):

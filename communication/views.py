@@ -73,8 +73,17 @@ def get_user_threads(user):
     ).distinct().order_by('-updated_at')
 
 
+def get_user_personal_threads(user):
+    if user.is_staff or user.is_superuser:
+        return PortalThread.objects.personal().order_by('-updated_at')
+
+    return PortalThread.objects.personal().filter(
+        Q(participants=user) | Q(user=user)
+    ).distinct().order_by('-updated_at')
+
+
 def get_or_create_user_thread(user):
-    thread, created = PortalThread.objects.get_or_create(user=user)
+    thread, created = PortalThread.objects.personal().get_or_create(user=user, defaults={'thread_type': PortalThread.THREAD_TYPE_PERSONAL})
     if not thread.participants.filter(pk=user.pk).exists():
         thread.participants.add(user)
     return thread
@@ -91,6 +100,49 @@ def get_user_thread_or_404(user, thread_id):
         thread.participants.add(user)
 
     return thread
+
+
+def get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_GROUP, name=None):
+    users = [u for u in users if u is not None]
+    if len(users) < 2:
+        raise ValueError('At least two participants are required for this thread type.')
+
+    participant_ids = sorted({u.id for u in users})
+    qs = PortalThread.objects.filter(thread_type=thread_type)
+    for uid in participant_ids:
+        qs = qs.filter(participants__id=uid)
+    qs = qs.annotate(num_participants=Count('participants')).filter(num_participants=len(participant_ids))
+    thread = qs.first()
+
+    if thread is None:
+        thread = PortalThread.objects.create(thread_type=thread_type, name=name or '')
+        thread.participants.set(users)
+        if not thread.participants.filter(pk=users[0].pk).exists():
+            thread.participants.add(users[0])
+    elif name and not thread.name:
+        thread.name = name
+        thread.save()
+
+    return thread
+
+
+def get_or_create_personal_thread_for_users(users, name=None):
+    users = [u for u in users if u is not None]
+    if len(users) != 2:
+        raise ValueError('Personal threads must have exactly two participants.')
+    return get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_PERSONAL, name=name)
+
+
+def get_or_create_group_thread_for_users(users, name=None):
+    if not name:
+        raise ValueError('Group threads must have a name.')
+    return get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_GROUP, name=name)
+
+
+def get_or_create_class_thread_for_users(users, name):
+    if not name:
+        raise ValueError('Class threads must have a name.')
+    return get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_CLASS, name=name)
 
 
 def mark_thread_messages_as_delivered(thread, reader):
@@ -130,30 +182,6 @@ def _get_presence_state_for_thread(thread, viewer):
         'last_seen_at': last_seen_at,
         'updated_at': now,
     }
-
-
-def get_or_create_thread_for_users(users, primary_user=None, name=None):
-    users = [u for u in users if u is not None]
-    if not users:
-        raise ValueError('At least one participant is required')
-
-    participant_ids = sorted({u.id for u in users})
-    qs = PortalThread.objects.all()
-    for uid in participant_ids:
-        qs = qs.filter(participants__id=uid)
-    qs = qs.annotate(num_participants=Count('participants')).filter(num_participants=len(participant_ids))
-    thread = qs.first()
-    if thread is None:
-        # Create a dedicated thread for this participant set.
-        # Do NOT assign `user` here — `PortalThread.user` is a OneToOneField
-        # reserved for per-user personal threads. Assigning it for multi-user
-        # threads can lead to accidental reuse of a user's personal thread
-        # and expose private messages when participants change.
-        thread = PortalThread.objects.create(name=name or '')
-        thread.participants.set(users)
-        if primary_user and primary_user not in users:
-            thread.participants.add(primary_user)
-    return thread
 
 
 class AdminMessageListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -200,7 +228,7 @@ class AdminMessageDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView
             message.reply_method = 'portal'
             message.save()
 
-            thread, _ = PortalThread.objects.get_or_create(user=message.user)
+            thread = get_or_create_personal_thread_for_users([request.user, message.user])
             PortalMessage.objects.create(
                 thread=thread,
                 sender=request.user,
@@ -253,7 +281,7 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
         context = super().get_context_data(**kwargs)
         users_with_counts = []
         for user in context['users']:
-            threads = get_user_threads(user)
+            threads = get_user_personal_threads(user)
             unread_count = 0
             total_messages = 0
             if threads.exists():
@@ -285,21 +313,35 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
             django_messages.error(request, 'Please enter a message to send.')
             return redirect('admin_portal_users_list')
 
-        sent_count = 0
+        participants = []
         for user_id in selected_users:
             try:
                 user = User.objects.get(id=user_id, is_active=True)
-                thread, _ = PortalThread.objects.get_or_create(user=user)
-                PortalMessage.objects.create(
-                    thread=thread,
-                    sender=request.user,
-                    content=bulk_message
-                )
-                thread.updated_at = timezone.now()
-                thread.save()
-                sent_count += 1
+                participants.append(user)
             except User.DoesNotExist:
                 continue
+
+        if not participants:
+            django_messages.error(request, 'No valid selected users found.')
+            return redirect('admin_portal_users_list')
+
+        if request.user not in participants:
+            participants.append(request.user)
+
+        if len(participants) == 2:
+            thread = get_or_create_personal_thread_for_users(participants)
+        else:
+            thread_name = f"Bulk Message — {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+            thread = get_or_create_group_thread_for_users(participants, name=thread_name)
+
+        PortalMessage.objects.create(
+            thread=thread,
+            sender=request.user,
+            content=bulk_message
+        )
+        thread.updated_at = timezone.now()
+        thread.save()
+        sent_count = len(participants) - 1
 
         if sent_count > 0:
             django_messages.success(request, f'Bulk message sent to {sent_count} user(s).')
@@ -323,7 +365,7 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         user_id = kwargs.get('user_id')
         if user_id:
             user = get_object_or_404(get_active_accounts(), pk=user_id)
-            return get_or_create_thread_for_users([self.request.user, user], primary_user=user)
+            return get_or_create_personal_thread_for_users([self.request.user, user])
 
         raise Http404('Thread not found.')
 
@@ -400,7 +442,9 @@ class AdminPortalGroupsListView(LoginRequiredMixin, UserPassesTestMixin, Templat
         from school_classes.models import SchoolClasses
         users = get_active_accounts().select_related('profile').prefetch_related('groups')
         classes = SchoolClasses.objects.all().order_by('class_name')
-        threads = PortalThread.objects.filter(name__isnull=False).order_by('-updated_at')
+        threads = PortalThread.objects.filter(
+            thread_type__in=[PortalThread.THREAD_TYPE_GROUP, PortalThread.THREAD_TYPE_CLASS]
+        ).order_by('-updated_at')
         context = super().get_context_data(**kwargs)
         context.update({
             'threads': threads,
@@ -446,8 +490,9 @@ class AdminPortalGroupCreateView(LoginRequiredMixin, UserPassesTestMixin, Templa
         if include_admin and request.user not in participants:
             participants.append(request.user)
 
-        thread = PortalThread.objects.create(name=name)
+        thread = PortalThread.objects.create(thread_type=PortalThread.THREAD_TYPE_GROUP, name=name)
         thread.participants.set(participants)
+        thread.user = None
         thread.updated_at = timezone.now()
         thread.save()
 
@@ -493,6 +538,8 @@ class AdminPortalGroupEditView(LoginRequiredMixin, UserPassesTestMixin, Template
         if include_admin and request.user not in participants:
             participants.append(request.user)
 
+        thread.thread_type = PortalThread.THREAD_TYPE_GROUP
+        thread.user = None
         thread.name = name
         thread.participants.set(participants)
         thread.updated_at = timezone.now()
@@ -509,7 +556,7 @@ def admin_portal_thread_start(request, user_id):
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
 
     user = get_object_or_404(get_active_accounts(), pk=user_id)
-    thread = get_or_create_thread_for_users([request.user, user], primary_user=user)
+    thread = get_or_create_personal_thread_for_users([request.user, user])
     return redirect('admin_portal_thread_detail', thread_id=thread.id)
 
 
@@ -544,11 +591,7 @@ def start_class_thread(request, class_id):
         return redirect('school_classes:class_detail', class_id)
 
     name = f"{school_class.class_name} — Class Chat"
-    thread = get_or_create_thread_for_users(participants, primary_user=request.user, name=name)
-    # Ensure thread has a descriptive name for admin listing
-    if not thread.name:
-        thread.name = name
-        thread.save()
+    thread = get_or_create_class_thread_for_users(participants, name=name)
 
     return redirect(f"{reverse('portal_thread_detail')}?thread_id={thread.id}")
 
@@ -595,10 +638,10 @@ def student_message_teacher(request, student_id):
         return redirect('student_detail', student.pk)
 
     name = f"{school_class.class_name} — Teachers & {student.full_name()}"
-    thread = get_or_create_thread_for_users(participants, primary_user=request.user, name=name)
-    if not thread.name:
-        thread.name = name
-        thread.save()
+    if len(participants) == 2:
+        thread = get_or_create_personal_thread_for_users(participants)
+    else:
+        thread = get_or_create_group_thread_for_users(participants, name=name)
     return redirect(f"{reverse('portal_thread_detail')}?thread_id={thread.id}")
 
 
@@ -820,7 +863,7 @@ def portal_message_compose(request):
     if target_user == request.user:
         return redirect('portal_messages_list')
 
-    thread = get_or_create_thread_for_users([request.user, target_user], primary_user=request.user)
+    thread = get_or_create_personal_thread_for_users([request.user, target_user])
     return redirect(f'{reverse("portal_thread_detail")}?thread_id={thread.id}')
 
 
