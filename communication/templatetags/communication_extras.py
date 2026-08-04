@@ -7,6 +7,10 @@ def thread_display_title(thread, current_user, default_label='Conversation'):
     if not thread or isinstance(thread, str):
         return default_label
 
+    title = getattr(thread, 'get_display_title', None)
+    if callable(title):
+        return title(current_user=current_user, default_label=default_label)
+
     if getattr(thread, 'name', None):
         return thread.name
 

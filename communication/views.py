@@ -68,35 +68,32 @@ def get_user_threads(user):
     if user.is_staff or user.is_superuser:
         return PortalThread.objects.all().order_by('-updated_at')
 
-    return PortalThread.objects.filter(
-        Q(participants=user) | Q(user=user)
-    ).distinct().order_by('-updated_at')
+    return PortalThread.objects.for_user(user).order_by('-updated_at')
 
 
 def get_user_personal_threads(user):
     if user.is_staff or user.is_superuser:
         return PortalThread.objects.personal().order_by('-updated_at')
 
-    return PortalThread.objects.personal().filter(
-        Q(participants=user) | Q(user=user)
-    ).distinct().order_by('-updated_at')
+    return PortalThread.objects.personal().for_user(user).order_by('-updated_at')
 
 
 def get_or_create_user_thread(user):
-    thread, created = PortalThread.objects.personal().get_or_create(user=user, defaults={'thread_type': PortalThread.THREAD_TYPE_PERSONAL})
+    thread, created = PortalThread.objects.personal().get_or_create(
+        user=user,
+        defaults={'thread_type': PortalThread.THREAD_TYPE_PERSONAL}
+    )
     if not thread.participants.filter(pk=user.pk).exists():
         thread.participants.add(user)
     return thread
 
 
 def get_user_thread_or_404(user, thread_id):
-    thread = PortalThread.objects.filter(pk=thread_id).filter(
-        Q(participants=user) | Q(user=user)
-    ).first()
+    thread = PortalThread.objects.for_user(user).filter(pk=thread_id).first()
     if thread is None:
         raise Http404('Thread not found')
 
-    if thread.user == user and not thread.participants.exists():
+    if thread.is_personal and thread.user == user and not thread.participants.exists():
         thread.participants.add(user)
 
     return thread
@@ -107,21 +104,41 @@ def get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_G
     if len(users) < 2:
         raise ValueError('At least two participants are required for this thread type.')
 
-    participant_ids = sorted({u.id for u in users})
-    qs = PortalThread.objects.filter(thread_type=thread_type)
-    for uid in participant_ids:
-        qs = qs.filter(participants__id=uid)
-    qs = qs.annotate(num_participants=Count('participants')).filter(num_participants=len(participant_ids))
-    thread = qs.first()
+    distinct_users = []
+    seen_ids = set()
+    for user in users:
+        if user.id not in seen_ids:
+            seen_ids.add(user.id)
+            distinct_users.append(user)
+
+    participant_ids = sorted({u.id for u in distinct_users})
+    requested_signature = set(participant_ids)
+
+    candidate_qs = PortalThread.objects.filter(thread_type=thread_type).prefetch_related('participants')
+    thread = None
+    for candidate in candidate_qs.distinct():
+        candidate_ids = set(candidate.participants.values_list('id', flat=True))
+        if candidate.user_id is not None:
+            candidate_ids.add(candidate.user_id)
+        if candidate_ids == requested_signature:
+            thread = candidate
+            break
 
     if thread is None:
         thread = PortalThread.objects.create(thread_type=thread_type, name=name or '')
-        thread.participants.set(users)
-        if not thread.participants.filter(pk=users[0].pk).exists():
-            thread.participants.add(users[0])
-    elif name and not thread.name:
-        thread.name = name
-        thread.save()
+        thread.participants.set(distinct_users)
+        if thread_type == PortalThread.THREAD_TYPE_PERSONAL and distinct_users:
+            thread.user = distinct_users[0]
+            thread.save(update_fields=['user'])
+        elif thread_type != PortalThread.THREAD_TYPE_PERSONAL and distinct_users and not thread.participants.filter(pk=distinct_users[0].pk).exists():
+            thread.participants.add(distinct_users[0])
+    else:
+        if thread_type == PortalThread.THREAD_TYPE_PERSONAL and thread.user_id is None and distinct_users:
+            thread.user = distinct_users[0]
+            thread.save(update_fields=['user'])
+        if name and not thread.name:
+            thread.name = name
+            thread.save(update_fields=['name'])
 
     return thread
 
@@ -156,9 +173,7 @@ def mark_thread_messages_as_read(thread, reader):
 
 
 def _get_presence_state_for_thread(thread, viewer):
-    participant = thread.participants.exclude(pk=viewer.pk).first()
-    if not participant and thread.user and thread.user != viewer:
-        participant = thread.user
+    participant = thread.get_other_participant(viewer)
 
     now = int(time.time())
     presence_timeout_seconds = 5
@@ -328,7 +343,7 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
         if request.user not in participants:
             participants.append(request.user)
 
-        if len(participants) == 2:
+        if len(selected_users) == 1:
             thread = get_or_create_personal_thread_for_users(participants)
         else:
             thread_name = f"Bulk Message — {timezone.now().strftime('%Y-%m-%d %H:%M')}"
@@ -357,10 +372,19 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
     def test_func(self):
         return is_admin(self.request.user)
 
+    def dispatch(self, request, *args, **kwargs):
+        thread_id = kwargs.get('thread_id')
+        if thread_id:
+            thread = PortalThread.objects.filter(pk=thread_id).first()
+            if thread is None:
+                django_messages.error(request, 'This conversation no longer exists.')
+                return redirect('admin_portal_users_list')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_thread(self, **kwargs):
         thread_id = kwargs.get('thread_id')
         if thread_id:
-            return get_object_or_404(PortalThread, pk=thread_id)
+            return PortalThread.objects.filter(pk=thread_id).first()
 
         user_id = kwargs.get('user_id')
         if user_id:
@@ -373,9 +397,7 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         context = super().get_context_data(**kwargs)
         thread = self.get_thread(**kwargs)
         mark_thread_messages_as_read(thread, self.request.user)
-        other_participant = thread.participants.exclude(pk=self.request.user.pk).first()
-        if not other_participant and thread.user and thread.user != self.request.user:
-            other_participant = thread.user
+        other_participant = thread.get_other_participant(self.request.user)
         last_other_message = thread.messages.exclude(sender=self.request.user).order_by('-created_at').first()
 
         context['thread'] = thread
@@ -393,7 +415,8 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
         if not content and not attachment:
             if kwargs.get('thread_id'):
                 return redirect('admin_portal_thread_detail', thread_id=thread.id)
-            return redirect('admin_portal_thread_detail', user_id=thread.user.id if thread.user else request.user.id)
+            other_participant = thread.get_other_participant(request.user)
+            return redirect('admin_portal_thread_detail', user_id=other_participant.id if other_participant else request.user.id)
 
         if not thread.participants.filter(pk=request.user.pk).exists():
             thread.participants.add(request.user)
@@ -688,9 +711,7 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
             thread = get_user_threads(self.request.user).first()
 
         mark_thread_messages_as_read(thread, self.request.user)
-        other_participant = thread.participants.exclude(pk=self.request.user.pk).first()
-        if not other_participant and thread.user and thread.user != self.request.user:
-            other_participant = thread.user
+        other_participant = thread.get_other_participant(self.request.user)
 
         last_other_message = thread.messages.exclude(sender=self.request.user).order_by('-created_at').first()
 
@@ -876,7 +897,7 @@ def fetch_admin_portal_messages(request, user_id=None, thread_id=None):
         thread = get_object_or_404(PortalThread, pk=thread_id)
     else:
         user = get_object_or_404(get_active_accounts(), pk=user_id)
-        thread = get_or_create_thread_for_users([request.user, user], primary_user=user)
+        thread = get_or_create_personal_thread_for_users([request.user, user])
 
     since_id = request.GET.get('since_id')
     qs = thread.messages.select_related('sender')
@@ -918,7 +939,7 @@ def fetch_admin_portal_statuses(request, user_id=None, thread_id=None):
         thread = get_object_or_404(PortalThread, pk=thread_id)
     else:
         user = get_object_or_404(get_active_accounts(), pk=user_id)
-        thread = get_or_create_thread_for_users([request.user, user], primary_user=user)
+        thread = get_or_create_personal_thread_for_users([request.user, user])
 
     qs = PortalMessage.objects.filter(thread=thread, sender=request.user).exclude(status='sent')
     statuses = [{'id': m.id, 'status': m.status} for m in qs]

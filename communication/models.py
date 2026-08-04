@@ -16,12 +16,12 @@ class PortalThreadQuerySet(models.QuerySet):
     def class_threads(self):
         return self.filter(thread_type='class')
 
-    def with_exact_participants(self, users):
+    def with_exact_participants(self, users, thread_type=None):
         user_ids = sorted({u.id for u in users if u is not None})
-        qs = self
+        qs = self.filter(thread_type=thread_type) if thread_type else self
         for uid in user_ids:
             qs = qs.filter(participants__id=uid)
-        return qs.annotate(num_participants=Count('participants')).filter(num_participants=len(user_ids))
+        return qs.annotate(num_participants=Count('participants', distinct=True)).filter(num_participants=len(user_ids)).distinct()
 
 
 class PortalThreadManager(models.Manager.from_queryset(PortalThreadQuerySet)):

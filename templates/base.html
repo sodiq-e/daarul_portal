@@ -3218,16 +3218,15 @@
       transform: translateX(0) !important;
     }
 
-    /* Keep mobile open sidebar sections visible even if desktop saved state collapsed them */
+    /* Keep mobile open sidebar sections visible when expanded, but do not override per-section collapse state */
     .sidebar.active .menu-header {
       display: flex !important;
       opacity: 1 !important;
     }
 
-    .sidebar.active .menu-content,
     .sidebar.active .menu-content.collapsed {
-      max-height: none !important;
-      overflow: visible !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
       display: block !important;
     }
 
@@ -4431,11 +4430,9 @@ menuBtn.addEventListener('click', function(e) {
   const screenWidth = window.innerWidth;
 
   if (screenWidth < 1024) {
-    // Mobile: toggle drawer and always show the full content while open
+    // Mobile: toggle drawer only; preserve per-section collapsed state
     sidebar.classList.toggle('active');
     sidebar.classList.remove('collapsed');
-    document.querySelectorAll('.sidebar .menu-content').forEach((content) => content.classList.remove('collapsed'));
-    document.querySelectorAll('.sidebar .menu-header').forEach((header) => header.classList.add('active'));
     overlay.classList.toggle('show');
     document.body.classList.toggle('no-scroll');
   } else {
