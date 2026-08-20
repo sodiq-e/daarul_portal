@@ -16,6 +16,41 @@
 
     <form method="post" id="bulk-message-form">
         {% csrf_token %}
+        {% if selected_thread %}
+            <div style="background: white; border: 1px solid #dee2e6; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.04); margin-bottom: 24px; overflow: hidden;">
+                <div style="background: #f8f9fa; border-bottom: 1px solid #e9ecef; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div>
+                        <div style="font-size: 13px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Active conversation</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #212529;">{{ selected_other_participant.get_full_name|default:selected_other_participant.username }}</div>
+                    </div>
+                    <a href="{% url 'admin_portal_users_list' %}" style="padding: 10px 16px; background: #6c757d; color: white; text-decoration: none; border-radius: 8px;">Close Thread</a>
+                </div>
+                <div style="padding: 20px; max-height: 420px; overflow-y: auto; background: #fff; display: flex; flex-direction: column; gap: 14px;">
+                    {% if selected_messages %}
+                        {% for message in selected_messages %}
+                            {% if message.sender == request.user %}
+                                <div style="align-self: flex-end; max-width: 80%; background: #0d6efd; color: white; padding: 12px 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(13,110,253,0.15);">
+                                    <div style="font-size: 12px; margin-bottom: 6px; font-weight: 700; opacity: 0.9;">You</div>
+                                    <div style="white-space: pre-wrap; line-height: 1.5;">{{ message.content }}</div>
+                                    <div style="font-size: 11px; margin-top: 8px; opacity: 0.8; text-align: right;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                            {% else %}
+                                <div style="align-self: flex-start; max-width: 80%; background: #f8f9fa; color: #212529; border: 1px solid #e9ecef; padding: 12px 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+                                    <div style="font-size: 12px; margin-bottom: 6px; font-weight: 700; opacity: 0.8;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
+                                    <div style="white-space: pre-wrap; line-height: 1.5;">{{ message.content }}</div>
+                                    <div style="font-size: 11px; margin-top: 8px; opacity: 0.8;">{{ message.created_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div style="padding: 30px; border: 1px dashed #ced4da; border-radius: 12px; text-align: center; color: #6c757d;">
+                            No messages yet in this thread.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
         <!-- Bulk Message Block -->
         <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid #dee2e6;">
             <h3 style="margin: 0 0 15px 0; color: #495057;">Send Bulk Message</h3>
@@ -49,7 +84,7 @@
                             {% endif %}
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
-                            <a href="{% url 'admin_portal_thread_detail' user_data.user.id %}" style="padding: 10px 16px; background: #198754; color: white; text-decoration: none; border-radius: 8px;">Open Chat</a>
+                            <a href="{% url 'admin_portal_users_list' %}?user_id={{ user_data.user.id }}" style="padding: 10px 16px; background: #198754; color: white; text-decoration: none; border-radius: 8px;">Open Chat</a>
                             <span style="font-size: 12px; color: #999;">Active account</span>
                         </div>
                     </div>

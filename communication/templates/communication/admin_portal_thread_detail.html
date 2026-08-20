@@ -112,7 +112,12 @@
         <div style="padding: 20px; border-top: 1px solid #e9ecef; background: #ffffff;">
             <form id="admin-msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 12px;">
                 {% csrf_token %}
-                <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 14px; font-size: 14px; resize: vertical; min-height: 96px;"></textarea>
+                <div style="position: relative;">
+                    <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 16px; padding: 16px 56px 16px 16px; font-size: 14px; resize: vertical; min-height: 96px; box-sizing: border-box;"></textarea>
+                    <button id="admin-send-btn" type="submit" aria-label="Send reply" title="Send reply" style="position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border: none; border-radius: 999px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 20px rgba(13, 110, 253, 0.18);">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+                    </button>
+                </div>
                 <div id="admin-attachment-dropzone" class="attachment-dropzone" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px dashed #ced4da; border-radius: 14px; background: #f8f9fa; position: relative;">
                     <label for="admin-attachment" class="file-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ffffff; border-radius: 12px; border: 1px solid #dfe3e6; cursor: pointer;">
                         📎 Attach
@@ -122,7 +127,6 @@
                 </div>
                 <div id="admin-attachment-preview" style="margin-top: 6px;"></div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <button id="admin-send-btn" type="submit" style="padding: 12px 18px; background: #0d6efd; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer;">Send Reply</button>
                     <span style="color: #6c757d; font-size: 13px; margin-left: auto;">Your reply is delivered directly into the user's portal inbox.</span>
                 </div>
             </form>

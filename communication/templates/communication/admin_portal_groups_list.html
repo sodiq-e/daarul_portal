@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load communication_extras %}
 
 {% block content %}
 <div style="padding: 20px; max-width: 1100px; margin: 0 auto;">
@@ -20,7 +21,7 @@
                 <div style="background: white; padding: 20px; border-radius: 16px; box-shadow: 0 2px 20px rgba(0,0,0,0.04); display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center;">
                     <div>
                         <p style="margin: 0 0 8px 0; color: #6c757d; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase;">{{ thread.thread_type|title }}</p>
-                        <h2 style="margin: 0 0 8px 0; font-size: 22px; color: #212529;">{{ thread.get_display_title|default:thread.name|default:'Unnamed Group' }}</h2>
+                        <h2 style="margin: 0 0 8px 0; font-size: 22px; color: #212529;">{% thread_display_title thread request.user 'Conversation' %}</h2>
                         <p style="margin: 0; color: #555; font-size: 14px;">Participants: {% for participant in thread.participants.all|slice:":4" %}{{ participant.get_full_name|default:participant.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if thread.participants.count > 4 %}, +{{ thread.participants.count|add:'-4' }} more{% endif %}</p>
                         <p style="margin: 8px 0 0 0; color: #666; font-size: 13px;">Updated {{ thread.updated_at|date:"M d, Y H:i" }}</p>
                     </div>

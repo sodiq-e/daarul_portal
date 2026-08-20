@@ -17,6 +17,20 @@ import time
 
 from .forms import MessageForm, PortalMessageForm
 from .models import Message, PortalThread, PortalMessage
+from .services.threads import (
+    get_or_create_class_thread_for_users,
+    get_or_create_group_thread_for_users,
+    get_or_create_personal_thread_for_users,
+    get_or_create_thread_for_users,
+    get_or_create_user_thread,
+)
+from .services.messages import create_portal_message, serialize_message_for_json
+from .services.statuses import (
+    get_status_updates_for_thread,
+    mark_thread_messages_as_delivered,
+    mark_thread_messages_as_read,
+)
+from .services.presence import get_presence_state_for_thread
 from school_classes.models import SchoolClasses, ClassTeacher
 from students.models import Student
 from settingsapp.email_service import send_contact_message_email, send_contact_message_confirmation_email
@@ -79,13 +93,23 @@ def get_user_personal_threads(user):
 
 
 def get_or_create_user_thread(user):
-    thread, created = PortalThread.objects.personal().get_or_create(
-        user=user,
-        defaults={'thread_type': PortalThread.THREAD_TYPE_PERSONAL}
-    )
-    if not thread.participants.filter(pk=user.pk).exists():
-        thread.participants.add(user)
-    return thread
+    return __import__('communication.services.threads', fromlist=['get_or_create_user_thread']).get_or_create_user_thread(user)
+
+
+def get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_GROUP, name=None):
+    return __import__('communication.services.threads', fromlist=['get_or_create_thread_for_users']).get_or_create_thread_for_users(users, thread_type=thread_type, name=name)
+
+
+def get_or_create_personal_thread_for_users(users, name=None):
+    return __import__('communication.services.threads', fromlist=['get_or_create_personal_thread_for_users']).get_or_create_personal_thread_for_users(users, name=name)
+
+
+def get_or_create_group_thread_for_users(users, name=None):
+    return __import__('communication.services.threads', fromlist=['get_or_create_group_thread_for_users']).get_or_create_group_thread_for_users(users, name=name)
+
+
+def get_or_create_class_thread_for_users(users, name):
+    return __import__('communication.services.threads', fromlist=['get_or_create_class_thread_for_users']).get_or_create_class_thread_for_users(users, name=name)
 
 
 def get_user_thread_or_404(user, thread_id):
@@ -99,104 +123,8 @@ def get_user_thread_or_404(user, thread_id):
     return thread
 
 
-def get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_GROUP, name=None):
-    users = [u for u in users if u is not None]
-    if len(users) < 2:
-        raise ValueError('At least two participants are required for this thread type.')
-
-    distinct_users = []
-    seen_ids = set()
-    for user in users:
-        if user.id not in seen_ids:
-            seen_ids.add(user.id)
-            distinct_users.append(user)
-
-    participant_ids = sorted({u.id for u in distinct_users})
-    requested_signature = set(participant_ids)
-
-    candidate_qs = PortalThread.objects.filter(thread_type=thread_type).prefetch_related('participants')
-    thread = None
-    for candidate in candidate_qs.distinct():
-        candidate_ids = set(candidate.participants.values_list('id', flat=True))
-        if candidate.user_id is not None:
-            candidate_ids.add(candidate.user_id)
-        if candidate_ids == requested_signature:
-            thread = candidate
-            break
-
-    if thread is None:
-        thread = PortalThread.objects.create(thread_type=thread_type, name=name or '')
-        thread.participants.set(distinct_users)
-        if thread_type == PortalThread.THREAD_TYPE_PERSONAL and distinct_users:
-            thread.user = distinct_users[0]
-            thread.save(update_fields=['user'])
-        elif thread_type != PortalThread.THREAD_TYPE_PERSONAL and distinct_users and not thread.participants.filter(pk=distinct_users[0].pk).exists():
-            thread.participants.add(distinct_users[0])
-    else:
-        if thread_type == PortalThread.THREAD_TYPE_PERSONAL and thread.user_id is None and distinct_users:
-            thread.user = distinct_users[0]
-            thread.save(update_fields=['user'])
-        if name and not thread.name:
-            thread.name = name
-            thread.save(update_fields=['name'])
-
-    return thread
-
-
-def get_or_create_personal_thread_for_users(users, name=None):
-    users = [u for u in users if u is not None]
-    if len(users) != 2:
-        raise ValueError('Personal threads must have exactly two participants.')
-    return get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_PERSONAL, name=name)
-
-
-def get_or_create_group_thread_for_users(users, name=None):
-    if not name:
-        raise ValueError('Group threads must have a name.')
-    return get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_GROUP, name=name)
-
-
-def get_or_create_class_thread_for_users(users, name):
-    if not name:
-        raise ValueError('Class threads must have a name.')
-    return get_or_create_thread_for_users(users, thread_type=PortalThread.THREAD_TYPE_CLASS, name=name)
-
-
-def mark_thread_messages_as_delivered(thread, reader):
-    """Mark all undelivered incoming messages as delivered when read by the recipient."""
-    return thread.messages.exclude(sender=reader).filter(status='sent').update(status='delivered')
-
-
-def mark_thread_messages_as_read(thread, reader):
-    """Mark incoming messages as read when the recipient opens the thread."""
-    return thread.messages.exclude(sender=reader).filter(is_read=False).update(is_read=True, status='read')
-
-
 def _get_presence_state_for_thread(thread, viewer):
-    participant = thread.get_other_participant(viewer)
-
-    now = int(time.time())
-    presence_timeout_seconds = 5
-    online = False
-    last_seen_at = None
-
-    if participant:
-        last_seen_at = cache.get(f'portal_presence:{thread.id}:{participant.id}')
-        if last_seen_at is not None:
-            online = (now - int(last_seen_at)) <= presence_timeout_seconds
-
-    return {
-        'participant': {
-            'user_id': participant.id if participant else None,
-            'is_online': online,
-            'last_seen_at': last_seen_at,
-            'updated_at': now,
-        },
-        'user_id': participant.id if participant else None,
-        'is_online': online,
-        'last_seen_at': last_seen_at,
-        'updated_at': now,
-    }
+    return get_presence_state_for_thread(thread, viewer)
 
 
 class AdminMessageListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -244,11 +172,7 @@ class AdminMessageDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView
             message.save()
 
             thread = get_or_create_personal_thread_for_users([request.user, message.user])
-            PortalMessage.objects.create(
-                thread=thread,
-                sender=request.user,
-                content=reply_text
-            )
+            create_portal_message(thread, request.user, reply_text)
             django_messages.success(request, 'Reply saved to the user portal conversation.')
         else:
             message.reply_message = reply_text
@@ -313,6 +237,24 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
             })
         context['users_with_counts'] = users_with_counts
         context['form'] = PortalMessageForm()
+
+        selected_user_id = self.request.GET.get('user_id')
+        selected_user = None
+        selected_thread = None
+        if selected_user_id:
+            try:
+                selected_user = get_active_accounts().get(pk=selected_user_id)
+            except (ValueError, User.DoesNotExist):
+                selected_user = None
+
+        if selected_user is not None and selected_user != self.request.user:
+            selected_thread = get_or_create_personal_thread_for_users([self.request.user, selected_user])
+            mark_thread_messages_as_read(selected_thread, self.request.user)
+            context['selected_user'] = selected_user
+            context['selected_thread'] = selected_thread
+            context['selected_other_participant'] = selected_thread.get_other_participant(self.request.user)
+            context['selected_messages'] = selected_thread.messages.select_related('sender').all()
+
         return context
 
     def post(self, request, *args, **kwargs):
@@ -349,13 +291,7 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
             thread_name = f"Bulk Message — {timezone.now().strftime('%Y-%m-%d %H:%M')}"
             thread = get_or_create_group_thread_for_users(participants, name=thread_name)
 
-        PortalMessage.objects.create(
-            thread=thread,
-            sender=request.user,
-            content=bulk_message
-        )
-        thread.updated_at = timezone.now()
-        thread.save()
+        create_portal_message(thread, request.user, bulk_message)
         sent_count = len(participants) - 1
 
         if sent_count > 0:
@@ -418,18 +354,7 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
             other_participant = thread.get_other_participant(request.user)
             return redirect('admin_portal_thread_detail', user_id=other_participant.id if other_participant else request.user.id)
 
-        if not thread.participants.filter(pk=request.user.pk).exists():
-            thread.participants.add(request.user)
-
-        msg = PortalMessage.objects.create(
-            thread=thread,
-            sender=request.user,
-            content=content,
-            attachment=attachment,
-            status='sent'
-        )
-        thread.updated_at = timezone.now()
-        thread.save()
+        msg = create_portal_message(thread, request.user, content, attachment=attachment, status='sent')
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             data = {
@@ -738,18 +663,7 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
             django_messages.error(request, 'Please enter a message or attach a file.')
             return redirect(f'{reverse("portal_thread_detail")}?thread_id={thread.id}')
 
-        if not thread.participants.filter(pk=request.user.pk).exists():
-            thread.participants.add(request.user)
-
-        msg = PortalMessage.objects.create(
-            thread=thread,
-            sender=request.user,
-            content=content,
-            attachment=attachment,
-            status='sent'
-        )
-        thread.updated_at = timezone.now()
-        thread.save()
+        msg = create_portal_message(thread, request.user, content, attachment=attachment, status='sent')
 
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             data = {
@@ -803,18 +717,7 @@ def send_portal_message_ajax(request):
     if not content and not attachment:
         return JsonResponse({'success': False, 'error': 'Empty message.'}, status=400)
 
-    if not thread.participants.filter(pk=request.user.pk).exists():
-        thread.participants.add(request.user)
-
-    msg = PortalMessage.objects.create(
-        thread=thread,
-        sender=request.user,
-        content=content,
-        attachment=attachment,
-        status='sent'
-    )
-    thread.updated_at = timezone.now()
-    thread.save()
+    msg = create_portal_message(thread, request.user, content, attachment=attachment, status='sent')
 
     data = {
         'id': msg.id,
@@ -827,6 +730,44 @@ def send_portal_message_ajax(request):
         'status': msg.status,
     }
     return JsonResponse({'success': True, 'message': data})
+
+
+@login_required
+@require_POST
+def edit_portal_message_ajax(request, message_id):
+    """Edit a user's own portal message via AJAX."""
+    message = get_object_or_404(PortalMessage, pk=message_id)
+    if message.sender_id != request.user.id:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    content = request.POST.get('content', '').strip()
+    if not content:
+        return JsonResponse({'success': False, 'error': 'Empty message.'}, status=400)
+
+    message.content = content
+    message.save(update_fields=['content'])
+
+    return JsonResponse({
+        'success': True,
+        'message': {
+            'id': message.id,
+            'content': message.content,
+            'status': message.status,
+            'created_at': message.created_at.strftime('%b %d, %Y %H:%M'),
+        }
+    })
+
+
+@login_required
+@require_POST
+def delete_portal_message_ajax(request, message_id):
+    """Delete a user's own portal message via AJAX."""
+    message = get_object_or_404(PortalMessage, pk=message_id)
+    if message.sender_id != request.user.id:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+    message.delete()
+    return JsonResponse({'success': True, 'deleted_id': message_id})
 
 
 @login_required
@@ -852,20 +793,7 @@ def fetch_portal_messages(request):
     messages_qs = qs.order_by('created_at')
     mark_thread_messages_as_delivered(thread, request.user)
 
-    messages_list = []
-    for m in messages_qs:
-        messages_list.append({
-            'id': m.id,
-            'sender_id': m.sender.id if m.sender else None,
-            'sender': m.sender.get_full_name() if m.sender else 'System',
-            'content': m.content,
-            'created_at': m.created_at.strftime('%b %d, %Y %H:%M'),
-            'created_at_iso': m.created_at.isoformat(),
-            'attachment_url': m.attachment.url if m.attachment else None,
-            'attachment_name': getattr(m.attachment, 'name', None),
-            'is_read': m.is_read,
-            'status': m.status,
-        })
+    messages_list = [serialize_message_for_json(m) for m in messages_qs]
 
     return JsonResponse({'success': True, 'messages': messages_list})
 
@@ -912,20 +840,7 @@ def fetch_admin_portal_messages(request, user_id=None, thread_id=None):
     mark_thread_messages_as_delivered(thread, request.user)
     thread.messages.exclude(sender=request.user).filter(is_read=False).update(is_read=True)
 
-    messages_list = []
-    for m in messages_qs:
-        messages_list.append({
-            'id': m.id,
-            'sender_id': m.sender.id if m.sender else None,
-            'sender': m.sender.get_full_name() if m.sender else 'System',
-            'content': m.content,
-            'created_at': m.created_at.strftime('%b %d, %Y %H:%M'),
-            'created_at_iso': m.created_at.isoformat(),
-            'attachment_url': m.attachment.url if m.attachment else None,
-            'attachment_name': getattr(m.attachment, 'name', None),
-            'is_read': m.is_read,
-            'status': m.status,
-        })
+    messages_list = [serialize_message_for_json(m) for m in messages_qs]
 
     return JsonResponse({'success': True, 'messages': messages_list})
 
@@ -941,8 +856,7 @@ def fetch_admin_portal_statuses(request, user_id=None, thread_id=None):
         user = get_object_or_404(get_active_accounts(), pk=user_id)
         thread = get_or_create_personal_thread_for_users([request.user, user])
 
-    qs = PortalMessage.objects.filter(thread=thread, sender=request.user).exclude(status='sent')
-    statuses = [{'id': m.id, 'status': m.status} for m in qs]
+    statuses = get_status_updates_for_thread(thread, sender=request.user)
     return JsonResponse({'success': True, 'statuses': statuses})
 
 
@@ -954,6 +868,5 @@ def fetch_portal_statuses(request):
         thread = get_user_thread_or_404(request.user, thread_id)
     else:
         thread = get_or_create_user_thread(request.user)
-    qs = PortalMessage.objects.filter(thread=thread, sender=request.user).exclude(status='sent')
-    statuses = [{'id': m.id, 'status': m.status} for m in qs]
+    statuses = get_status_updates_for_thread(thread, sender=request.user)
     return JsonResponse({'success': True, 'statuses': statuses})

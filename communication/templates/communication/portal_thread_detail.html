@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load communication_extras %}
 
 {% block content %}
 <div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px;">
         <div>
-            <h1 style="margin: 0; font-size: 30px;">My Conversation</h1>
-            <p style="margin: 8px 0 0 0; color: #666;">Message directly with the administration through your portal.</p>
+            <h1 style="margin: 0; font-size: 30px;">{% thread_display_title thread request.user 'Conversation' %}</h1>
+            <p style="margin: 8px 0 0 0; color: #666;">Thread participants: {% for participant in thread.participants.all %}{{ participant.get_full_name|default:participant.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
         </div>
         <div>
             <a href="{% url 'portal_messages_list' %}" style="padding: 12px 18px; background: #6c757d; color: white; text-decoration: none; border-radius: 8px;">Back to Inbox</a>
@@ -16,8 +17,8 @@
     <div style="position: relative; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(0,0,0,0.05); overflow: hidden;">
         <div id="chat-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 20px; border-bottom: 1px solid #e9ecef; background: #f8f9fa;">
             <div style="min-width: 0;">
-                <div style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">My Conversation</div>
-                <div style="color: #6c757d; font-size: 14px;">Direct communication with your school administration.</div>
+                <div style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">{% thread_display_title thread request.user 'Conversation' %}</div>
+                <div style="color: #6c757d; font-size: 14px;">Active conversation: {% if other_participant %}{{ other_participant.get_full_name|default:other_participant.username }}{% else %}Portal thread{% endif %}</div>
                 <div id="participant-meta" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: #495057; font-size: 13px;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="font-weight:700;">With:</span>
@@ -105,7 +106,12 @@
             <form id="msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 12px;">
                 {% csrf_token %}
                 <input type="hidden" name="thread_id" value="{{ thread.id }}" />
-                <textarea name="content" id="msg-content" rows="3" placeholder="Write your message here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 12px; padding: 14px; font-size: 14px; resize: vertical; min-height: 90px;"></textarea>
+                <div style="position: relative;">
+                    <textarea name="content" id="msg-content" rows="3" placeholder="Write your message here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 16px; padding: 16px 56px 16px 16px; font-size: 14px; resize: vertical; min-height: 92px; box-sizing: border-box;"></textarea>
+                    <button id="send-btn" type="submit" aria-label="Send message" title="Send message" style="position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border: none; border-radius: 999px; background: linear-gradient(135deg, #198754 0%, #146c43 100%); color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 20px rgba(25, 135, 84, 0.18);">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+                    </button>
+                </div>
                 <div id="attachment-dropzone" class="attachment-dropzone" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px dashed #ced4da; border-radius: 14px; background: #f8f9fa;">
                     <label for="msg-attachment" class="file-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ffffff; border-radius: 12px; border: 1px solid #dfe3e6; cursor: pointer;">
                         📎 Attach
@@ -115,7 +121,6 @@
                 </div>
                 <div id="attachment-preview" style="margin-top: 4px;"></div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <button id="send-btn" type="submit" style="padding: 12px 18px; background: #198754; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer;">Send</button>
                     <span style="color: #6c757d; font-size: 13px; margin-left: auto;">This message will be sent to the school administrator.</span>
                 </div>
             </form>
@@ -283,6 +288,114 @@
         inner.style.background = outgoing ? '#0d6efd' : '#ffffff';
         inner.style.color = outgoing ? '#fff' : '#212529';
         inner.style.border = outgoing ? '1px solid rgba(255,255,255,0.12)' : '1px solid #dee2e6';
+        inner.style.position = 'relative';
+        inner.style.cursor = 'pointer';
+        inner.dataset.messageId = msg.id;
+
+        const actions = document.createElement('div');
+        actions.style.position = 'absolute';
+        actions.style.top = '8px';
+        actions.style.right = '8px';
+        actions.style.display = 'none';
+        actions.style.gap = '6px';
+        actions.style.alignItems = 'center';
+        actions.style.zIndex = '2';
+        actions.style.padding = '4px';
+        actions.style.borderRadius = '999px';
+        actions.style.background = 'rgba(15, 23, 42, 0.08)';
+        actions.style.backdropFilter = 'blur(2px)';
+
+        const actionCopy = document.createElement('button');
+        actionCopy.type = 'button';
+        actionCopy.title = 'Copy message';
+        actionCopy.textContent = '⧉';
+        actionCopy.style.border = 'none';
+        actionCopy.style.background = 'transparent';
+        actionCopy.style.color = outgoing ? '#ffffff' : '#0f172a';
+        actionCopy.style.cursor = 'pointer';
+        actionCopy.style.fontSize = '14px';
+        actionCopy.addEventListener('click', function(event) {
+            event.stopPropagation();
+            if (!msg.content) return;
+            navigator.clipboard.writeText(msg.content).then(function() {
+                actionCopy.textContent = '✓';
+                setTimeout(function() { actionCopy.textContent = '⧉'; }, 1000);
+            }).catch(function() {});
+        });
+
+        const actionEdit = document.createElement('button');
+        actionEdit.type = 'button';
+        actionEdit.title = 'Edit message';
+        actionEdit.textContent = '✎';
+        actionEdit.style.border = 'none';
+        actionEdit.style.background = 'transparent';
+        actionEdit.style.color = outgoing ? '#ffffff' : '#0f172a';
+        actionEdit.style.cursor = 'pointer';
+        actionEdit.style.fontSize = '14px';
+        actionEdit.addEventListener('click', function(event) {
+            event.stopPropagation();
+            if (!outgoing) return;
+            const text = window.prompt('Edit your message:', msg.content || '');
+            if (text === null) return;
+            const trimmed = text.trim();
+            if (!trimmed) return;
+            fetch('/portal/messages/thread/' + encodeURIComponent(msg.id) + '/edit/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: 'content=' + encodeURIComponent(trimmed)
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success && data.message) {
+                    const contentNode = inner.querySelector('[data-role="content"]');
+                    if (contentNode) contentNode.textContent = data.message.content;
+                    const statusNode = inner.querySelector('.msg-status');
+                    if (statusNode) statusNode.textContent = (data.message.status || 'Sent');
+                } else {
+                    alert(data.error || 'Unable to edit message.');
+                }
+            }).catch(function() { alert('Unable to edit message.'); });
+        });
+
+        const actionDelete = document.createElement('button');
+        actionDelete.type = 'button';
+        actionDelete.title = 'Delete message';
+        actionDelete.textContent = '🗑';
+        actionDelete.style.border = 'none';
+        actionDelete.style.background = 'transparent';
+        actionDelete.style.color = outgoing ? '#ffffff' : '#0f172a';
+        actionDelete.style.cursor = 'pointer';
+        actionDelete.style.fontSize = '14px';
+        actionDelete.addEventListener('click', function(event) {
+            event.stopPropagation();
+            if (!outgoing) return;
+            if (!window.confirm('Delete this message?')) return;
+            fetch('/portal/messages/thread/' + encodeURIComponent(msg.id) + '/delete/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                }
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    const container = bubble.parentNode;
+                    if (container) container.removeChild(bubble);
+                } else {
+                    alert(data.error || 'Unable to delete message.');
+                }
+            }).catch(function() { alert('Unable to delete message.'); });
+        });
+
+        if (outgoing) {
+            actions.appendChild(actionEdit);
+            actions.appendChild(actionDelete);
+        }
+        actions.appendChild(actionCopy);
+
+        inner.appendChild(actions);
 
         const who = document.createElement('div');
         who.style.fontWeight = '700';
@@ -292,6 +405,7 @@
 
         if (msg.content) {
             const contentDiv = document.createElement('div');
+            contentDiv.dataset.role = 'content';
             contentDiv.style.whiteSpace = 'pre-wrap';
             contentDiv.style.lineHeight = '1.8';
             contentDiv.style.fontSize = '15px';
@@ -348,6 +462,17 @@
         meta.style.textAlign = outgoing ? 'right' : 'left';
         meta.innerHTML = (msg.created_at || '') + (outgoing ? ' &middot; <span class="msg-status">' + (msg.status || 'Sent') + '</span>' : '');
         inner.appendChild(meta);
+
+        inner.addEventListener('mouseenter', function() {
+            actions.style.display = 'inline-flex';
+        });
+        inner.addEventListener('mouseleave', function() {
+            actions.style.display = 'none';
+        });
+        inner.addEventListener('click', function() {
+            const shouldHide = actions.style.display === 'inline-flex';
+            actions.style.display = shouldHide ? 'none' : 'inline-flex';
+        });
 
         bubble.appendChild(inner);
         return bubble;

@@ -18,6 +18,8 @@ from .views import (
     fetch_portal_statuses,
     fetch_admin_portal_messages,
     fetch_admin_portal_statuses,
+    edit_portal_message_ajax,
+    delete_portal_message_ajax,
     start_class_thread,
     student_message_teacher,
 )
@@ -44,6 +46,8 @@ urlpatterns = [
     path('portal/messages/', PortalInboxView.as_view(), name='portal_messages_list'),
     path('portal/messages/thread/', PortalThreadDetailView.as_view(), name='portal_thread_detail'),
     path('portal/messages/thread/send_ajax/', send_portal_message_ajax, name='send_portal_message_ajax'),
+    path('portal/messages/thread/<int:message_id>/edit/', edit_portal_message_ajax, name='edit_portal_message_ajax'),
+    path('portal/messages/thread/<int:message_id>/delete/', delete_portal_message_ajax, name='delete_portal_message_ajax'),
     path('portal/messages/thread/presence/', sync_portal_presence, name='sync_portal_presence'),
     path('portal/messages/thread/fetch/', fetch_portal_messages, name='fetch_portal_messages'),
     path('portal/messages/thread/statuses/', fetch_portal_statuses, name='fetch_portal_statuses'),

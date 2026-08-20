@@ -4,7 +4,8 @@ from django.contrib.auth.models import User
 
 from accounts.models import Profile
 from .models import PortalThread
-from .views import get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users
+from .services.threads import get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users
+from .views import get_or_create_group_thread_for_users as legacy_get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users as legacy_get_or_create_personal_thread_for_users
 
 
 class PortalThreadTypeRegressionTests(TestCase):
@@ -30,6 +31,15 @@ class PortalThreadTypeRegressionTests(TestCase):
         self.assertEqual(first.thread_type, PortalThread.THREAD_TYPE_GROUP)
         self.assertEqual(first.name, 'Staff Group')
         self.assertEqual(set(first.participants.values_list('id', flat=True)), {self.user.id, self.other_user.id, self.third_user.id})
+
+    def test_service_and_legacy_thread_helpers_match_behavior(self):
+        service_thread = get_or_create_personal_thread_for_users([self.user, self.other_user])
+        legacy_thread = legacy_get_or_create_personal_thread_for_users([self.other_user, self.user])
+
+        self.assertEqual(service_thread.id, legacy_thread.id)
+        self.assertEqual(service_thread.thread_type, PortalThread.THREAD_TYPE_PERSONAL)
+        self.assertEqual(service_thread.user_id, self.user.id)
+        self.assertEqual(set(service_thread.participants.values_list('id', flat=True)), {self.user.id, self.other_user.id})
 
 
 class AdminPortalThreadAccessTests(TestCase):
@@ -78,3 +88,38 @@ class PortalPresenceTests(TestCase):
         self.assertTrue(second_payload['success'])
         self.assertTrue(second_payload['presence']['participant']['is_online'])
         self.assertEqual(second_payload['presence']['participant']['user_id'], self.user.id)
+
+
+class PortalMessageActionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='alice', password='pw')
+        self.other_user = User.objects.create_user(username='bob', password='pw')
+        self.thread = PortalThread.objects.create()
+        self.thread.participants.set([self.user, self.other_user])
+        self.message = self.thread.messages.create(sender=self.user, content='Original message', status='sent')
+
+    def test_user_can_edit_own_portal_message(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('edit_portal_message_ajax', args=[self.message.id]),
+            {'content': 'Updated message'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.message.refresh_from_db()
+        self.assertEqual(self.message.content, 'Updated message')
+
+    def test_user_can_delete_own_portal_message(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('delete_portal_message_ajax', args=[self.message.id]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertFalse(self.thread.messages.filter(pk=self.message.pk).exists())
