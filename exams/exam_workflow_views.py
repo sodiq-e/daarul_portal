@@ -22,6 +22,7 @@ from .models import ExamPaper, ExamSection, Question, ApprovalLog
 from .forms import ExamApprovalForm, ExamExportForm
 from .export_utils import export_exam_to_docx, export_exam_to_pdf_html
 from accounts.models import User
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_has_tenant_access
 
 
 def user_is_teacher(user):
@@ -29,7 +30,7 @@ def user_is_teacher(user):
     try:
         return (
             user.profile.is_approved and
-            user.groups.filter(name='Teacher').exists()
+            user_has_tenant_access(user, get_request_tenant(getattr(user, '_tenant_request', None)), roles=['teacher'])
         )
     except AttributeError:
         return False
@@ -40,10 +41,10 @@ def user_is_admin(user):
     try:
         return (
             user.profile.is_approved and
-            (user.is_staff or user.groups.filter(name__in=['Admin', 'Staff']).exists())
+            user_is_tenant_admin(user, tenant=get_request_tenant(getattr(user, '_tenant_request', None)))
         )
     except AttributeError:
-        return user.is_staff
+        return False
 
 
 class ExamPaperPreviewView(LoginRequiredMixin, UserPassesTestMixin, DetailView):

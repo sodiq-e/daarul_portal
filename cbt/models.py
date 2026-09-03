@@ -4,9 +4,10 @@ from django.db import models
 from django.utils import timezone
 import hashlib
 import json
+from settingsapp.models import TenantModel
 
 
-class QuestionBank(models.Model):
+class QuestionBank(TenantModel):
     """Independent question storage for reuse across exams"""
     name = models.CharField(max_length=180)
     subject = models.ForeignKey('exams.Subject', on_delete=models.PROTECT, related_name='cbt_question_banks')
@@ -35,7 +36,7 @@ class QuestionBank(models.Model):
         return self.questions.filter(is_active=True).count()
 
 
-class CBTExam(models.Model):
+class CBTExam(TenantModel):
     REAL = 'real'
     PRACTICE = 'practice'
     EXAM_MODE_CHOICES = [
@@ -147,7 +148,7 @@ class AIRequestMetric(models.Model):
         return f"{self.user or 'Unknown'} {self.request_type} {self.status} on {self.date}"
 
 
-class CBTQuestion(models.Model):
+class CBTQuestion(TenantModel):
     MCQ = 'mcq'
     MULTIPLE = 'multiple'
     TRUE_FALSE = 'true_false'
@@ -204,7 +205,7 @@ class CBTChoice(models.Model):
         return self.text
 
 
-class CBTStudentAttempt(models.Model):
+class CBTStudentAttempt(TenantModel):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     exam = models.ForeignKey(CBTExam, on_delete=models.CASCADE, related_name='attempts')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='cbt_attempts')
@@ -230,7 +231,7 @@ class CBTStudentAttempt(models.Model):
         return self.exam.is_practice_exam()
 
 
-class CBTAnswer(models.Model):
+class CBTAnswer(TenantModel):
     attempt = models.ForeignKey(CBTStudentAttempt, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(CBTQuestion, on_delete=models.CASCADE, related_name='answers')
     selected_choice = models.ForeignKey(CBTChoice, on_delete=models.SET_NULL, null=True, blank=True)

@@ -29,6 +29,7 @@ from .models import Subject, Exam, ExamPaper, ExamSection, Question, QuestionOpt
 from .forms import SubjectForm, ExamForm, ExamPaperForm, ExamReviewForm
 from school_classes.models import SchoolClasses, ClassTeacher
 from settingsapp.models import SchoolSettings
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
 
 def user_profile_approved(user):
@@ -39,13 +40,16 @@ def user_profile_approved(user):
         return False
 
 
-def user_is_staff(user):
-    """Defensively check if user is staff"""
+def user_is_staff(user, request=None):
+    """Defensively check if user is staff for the active tenant."""
     try:
-        return (
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = get_request_tenant(request) if request is not None else None
+        if tenant is None:
+            return (
+                user.profile.is_approved and
+                user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+            )
+        return user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
         return False
 
@@ -53,10 +57,8 @@ def user_is_staff(user):
 def user_is_admin(user):
     """Check if user is admin"""
     try:
-        return (
-            user.profile.is_approved and
-            user.is_staff
-        )
+        tenant = get_request_tenant(getattr(user, '_tenant_request', None))
+        return user.profile.is_approved and user_is_tenant_admin(user, tenant=tenant)
     except AttributeError:
         return False
 

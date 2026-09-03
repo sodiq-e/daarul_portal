@@ -97,10 +97,17 @@ class SchemeOfWorkForm(forms.ModelForm):
     class Meta:
         model = SchemeOfWork
         fields = [
-            'title', 'objectives', 'academic_year'
+            'title', 'objectives', 'reference', 'academic_year'
         ]
+        labels = {
+            'objectives': 'Topics (Weekly Topic List)',
+        }
         widgets = {
             'objectives': forms.Textarea(attrs={'rows': 4}),
+            'reference': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'List the books, schemes, guides, websites, or other references used.'
+            }),
         }
 
 

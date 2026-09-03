@@ -14,6 +14,8 @@ from .forms import AttendanceRecordForm
 from students.models import Student
 from school_classes.models import SchoolClasses, ClassTeacher, Teacher
 from exams.models import Term
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
 
 def get_attendance_settings():
@@ -48,13 +50,16 @@ def user_profile_approved(user):
         return False
 
 
-def user_is_staff(user):
-    """Defensively check if user is staff"""
+def user_is_staff(user, request=None):
+    """Defensively check if user is staff for the current tenant."""
     try:
-        return (
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = get_request_tenant(request) if request is not None else None
+        if tenant is None:
+            return (
+                user.profile.is_approved and
+                user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+            )
+        return user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
         return False
 
@@ -585,7 +590,7 @@ class AdminStudentAttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin
     template_name = 'attendance/admin_student_settings.html'
 
     def test_func(self):
-        return self.request.user.is_staff or self.request.user.is_superuser
+        return self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -777,7 +782,7 @@ class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
     
     def test_func(self):
         """Only staff/admin can view"""
-        return self.request.user.is_staff or self.request.user.is_superuser
+        return self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

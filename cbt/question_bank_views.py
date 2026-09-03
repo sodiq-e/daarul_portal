@@ -9,11 +9,15 @@ from .models import QuestionBank, CBTQuestion, CBTChoice
 from .forms import QuestionBankForm, CBTQuestionForm, CBTChoiceFormSet
 from exams.models import Subject, Term
 from school_classes.models import SchoolClasses
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
 
 
-def is_teacher_or_staff(user):
-    """Check if user is a teacher or staff member"""
-    return user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+def is_teacher_or_staff(user, request=None):
+    """Check if user is a teacher or staff member for the active tenant."""
+    tenant = get_request_tenant(request) if request is not None else None
+    if tenant is None:
+        return user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+    return user_is_tenant_staff(user, tenant=tenant)
 
 
 class TeacherQuestionBankListView(LoginRequiredMixin, UserPassesTestMixin, ListView):

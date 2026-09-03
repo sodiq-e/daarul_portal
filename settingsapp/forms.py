@@ -1,5 +1,66 @@
 from django import forms
-from .models import SchoolSettings, PageTheme, GalleryImage
+from urllib.parse import urlsplit
+from django.contrib.auth import get_user_model
+from .models import SchoolSettings, PageTheme, GalleryImage, Tenant, TenantMembership
+from .tenant_utils import get_tenant_base_domain
+
+
+class TenantForm(forms.ModelForm):
+    access_mode = forms.ChoiceField(
+        choices=Tenant.ACCESS_MODE_CHOICES,
+        required=False,
+        initial='custom_domain',
+        label='Portal URL mode',
+        help_text='Use a custom domain/subdomain when the domain points to this app. Use shared path on PythonAnywhere free plan.',
+    )
+    hostname = forms.CharField(required=False, help_text='Required for custom domain mode. Leave blank for shared path mode.')
+
+    class Meta:
+        model = Tenant
+        fields = ['name', 'slug', 'hostname', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'School display name'}),
+            'slug': forms.TextInput(attrs={'placeholder': 'schoola'}),
+            'hostname': forms.TextInput(attrs={'placeholder': 'schoola.example.com'}),
+        }
+
+    def clean_hostname(self):
+        hostname = self.cleaned_data['hostname'].strip().lower().rstrip('.')
+        access_mode = self.data.get('access_mode') or self.instance.access_mode or 'custom_domain'
+        if access_mode == 'shared_path':
+            return None
+        if not hostname:
+            hostname = f"{self.cleaned_data['slug']}.{get_tenant_base_domain()}"
+        if '://' in hostname:
+            hostname = urlsplit(hostname).hostname or ''
+        else:
+            hostname = urlsplit(f'//{hostname}').hostname or ''
+        if not hostname:
+            raise forms.ValidationError('Enter a valid hostname, such as schoola.localhost.')
+        return hostname
+
+    def clean_slug(self):
+        return self.cleaned_data['slug'].strip().lower()
+
+
+class TenantMembershipForm(forms.ModelForm):
+    class Meta:
+        model = TenantMembership
+        fields = ['user', 'role', 'is_active']
+
+    def __init__(self, *args, tenant=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tenant = tenant
+        self.fields['user'].queryset = get_user_model().objects.filter(is_active=True).order_by('username')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        user = cleaned_data.get('user')
+        if self.tenant is not None and user is not None:
+            self.instance.tenant = self.tenant
+        return cleaned_data
+
+
 class SchoolSettingsForm(forms.ModelForm):
     school_name = forms.CharField(required=True, label='School Name')
     motto = forms.CharField(required=True, label='Motto')
@@ -116,43 +177,42 @@ class SchoolSettingsForm(forms.ModelForm):
     def clean_primary_color(self):
         value = self.cleaned_data.get('primary_color')
         if value in [None, '']:
-            return self._get_existing_value('primary_color', '#4b2e83')
+            return self._get_existing_value('primary_color', '#0f766e')
         return value
-
     def clean_secondary_color(self):
         value = self.cleaned_data.get('secondary_color')
         if value in [None, '']:
-            return self._get_existing_value('secondary_color', '#7f5af0')
+            return self._get_existing_value('secondary_color', '#115e59')
         return value
 
     def clean_accent_color(self):
         value = self.cleaned_data.get('accent_color')
         if value in [None, '']:
-            return self._get_existing_value('accent_color', '#ffc107')
+            return self._get_existing_value('accent_color', '#f59e0b')
         return value
 
     def clean_background_color(self):
         value = self.cleaned_data.get('background_color')
         if value in [None, '']:
-            return self._get_existing_value('background_color', '#f5f5ff')
+            return self._get_existing_value('background_color', '#f8fafc')
         return value
 
     def clean_text_color(self):
         value = self.cleaned_data.get('text_color')
         if value in [None, '']:
-            return self._get_existing_value('text_color', '#202040')
+            return self._get_existing_value('text_color', '#334155')
         return value
 
     def clean_heading_text_color(self):
         value = self.cleaned_data.get('heading_text_color')
         if value in [None, '']:
-            return self._get_existing_value('heading_text_color', '#2a2a2a')
+            return self._get_existing_value('heading_text_color', '#0f172a')
         return value
 
     def clean_icon_plate_color(self):
         value = self.cleaned_data.get('icon_plate_color')
         if value in [None, '']:
-            return self._get_existing_value('icon_plate_color', '#e8e0ff')
+            return self._get_existing_value('icon_plate_color', '#ccfbf1')
         return value
 
     def clean_header_heading_color(self):
@@ -164,7 +224,7 @@ class SchoolSettingsForm(forms.ModelForm):
     def clean_icon_color(self):
         value = self.cleaned_data.get('icon_color')
         if value in [None, '']:
-            return self._get_existing_value('icon_color', '#4b2e83')
+            return self._get_existing_value('icon_color', '#0f766e')
         return value
 
     def clean_hero_overlay_opacity(self):

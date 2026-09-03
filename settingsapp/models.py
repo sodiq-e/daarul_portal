@@ -1,7 +1,102 @@
+from django.conf import settings
 from django.db import models
 #from cloudinary.models import CloudinaryField
 
+from settingsapp.tenant_utils import TenantAwareManager, get_current_tenant
+
+
+class Tenant(models.Model):
+    ACCESS_MODE_CHOICES = [
+        ('custom_domain', 'Custom domain or subdomain'),
+        ('shared_path', 'Shared domain path'),
+    ]
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=80, unique=True)
+    access_mode = models.CharField(
+        max_length=20,
+        choices=ACCESS_MODE_CHOICES,
+        default='custom_domain',
+    )
+    hostname = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class TenantModel(models.Model):
+    """
+    Abstract base model for all tenant-scoped data.
+    Any model that should be isolated per tenant should inherit from this instead of models.Model.
+    Automatically adds tenant FK and provides TenantAwareManager for .for_request(request) filtering.
+    """
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='%(class)s_set'
+    )
+    objects = TenantAwareManager()
+
+    def save(self, *args, **kwargs):
+        if self.tenant_id is None:
+            current_tenant = get_current_tenant()
+            if current_tenant is not None:
+                self.tenant = current_tenant
+        return super().save(*args, **kwargs)
+
+    class Meta:
+        abstract = True
+
+
+class TenantMembership(models.Model):
+    """A user’s active membership in a tenant and role within that tenant."""
+    ROLE_CHOICES = [
+        ('school_admin', 'School Admin'),
+        ('teacher', 'Teacher'),
+        ('staff', 'Staff'),
+        ('student', 'Student'),
+        ('parent', 'Parent'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='tenant_memberships'
+    )
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='memberships'
+    )
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (('user', 'tenant', 'role'),)
+        ordering = ['tenant__name', 'role']
+
+    def __str__(self):
+        return f'{self.user} @ {self.tenant} ({self.role})'
+
+
 class SchoolSettings(models.Model):
+    tenant = models.OneToOneField(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='portal_settings',
+        null=True,
+        blank=True,
+    )
     school_name = models.CharField(
         max_length=200,
         default="Daarul Bayaan Islamic School",
@@ -29,43 +124,43 @@ class SchoolSettings(models.Model):
     )
     primary_color = models.CharField(
         max_length=7,
-        default="#4b2e83",
+        default="#0f766e",
         help_text="Primary color for header and accents (hex format)"
     )
 
     secondary_color = models.CharField(
         max_length=7,
-        default="#7f5af0",
+        default="#115e59",
         help_text="Secondary color for gradients (hex format)"
     )
 
     accent_color = models.CharField(
         max_length=7,
-        default="#ffc107",
+        default="#f59e0b",
         help_text="Accent color for buttons and highlights (hex format)"
     )
 
     background_color = models.CharField(
         max_length=7,
-        default="#f5f5ff",
+        default="#f8fafc",
         help_text="Background color (hex format)"
     )
 
     text_color = models.CharField(
         max_length=7,
-        default="#202040",
+        default="#334155",
         help_text="Main text color (hex format)"
     )
 
     heading_text_color = models.CharField(
         max_length=7,
-        default="#2a2a2a",
+        default="#0f172a",
         help_text="Heading text color (hex format)"
     )
 
     icon_plate_color = models.CharField(
         max_length=7,
-        default="#e8e0ff",
+        default="#ccfbf1",
         help_text="Icon plate/background color (hex format)"
     )
 
@@ -77,7 +172,7 @@ class SchoolSettings(models.Model):
 
     icon_color = models.CharField(
         max_length=7,
-        default="#4b2e83",
+        default="#0f766e",
         help_text="Icon/emoji color (hex format)"
     )
 
@@ -198,7 +293,7 @@ class SchoolSettings(models.Model):
 
     hero_button_background_color = models.CharField(
         max_length=7,
-        default='#4b2e83',
+        default='#0f766e',
         blank=True,
         help_text='Background color for hero CTA buttons'
     )
@@ -219,7 +314,7 @@ class SchoolSettings(models.Model):
 
     hero_button_hover_text_color = models.CharField(
         max_length=7,
-        default='#4b2e83',
+        default='#0f766e',
         blank=True,
         help_text='Hover text color for hero CTA buttons'
     )
@@ -538,6 +633,32 @@ class SchoolSettings(models.Model):
     def __str__(self):
         return self.school_name or "School Settings"
 
+    @classmethod
+    def ensure_default_tenant(cls):
+        from .models import Tenant
+        from .tenant_utils import get_tenant_base_domain
+
+        tenant = Tenant.objects.filter(slug='daarulbayaan').first()
+        if tenant is None:
+            tenant = Tenant.objects.create(
+                name='Daarul Bayaan Islamic School',
+                slug='daarulbayaan',
+                hostname=f'daarulbayaan.{get_tenant_base_domain()}',
+                is_active=True,
+            )
+
+        settings = cls.objects.filter(tenant=tenant).first()
+        if settings is None:
+            fallback = cls.objects.order_by('id').first()
+            if fallback is not None:
+                fallback.tenant = tenant
+                fallback.save(update_fields=['tenant'])
+                settings = fallback
+            else:
+                settings = cls.objects.create(tenant=tenant)
+
+        return tenant, settings
+
 
 class PageTheme(models.Model):
     """Define custom theme for specific pages/routes"""
@@ -581,43 +702,43 @@ class PageTheme(models.Model):
     # Theme colors
     primary_color = models.CharField(
         max_length=7,
-        default="#4b2e83",
+        default="#0f766e",
         help_text="Primary color for header and accents (hex format)"
     )
 
     secondary_color = models.CharField(
         max_length=7,
-        default="#7f5af0",
+        default="#115e59",
         help_text="Secondary color for gradients (hex format)"
     )
 
     accent_color = models.CharField(
         max_length=7,
-        default="#ffc107",
+        default="#f59e0b",
         help_text="Accent color for buttons and highlights (hex format)"
     )
 
     background_color = models.CharField(
         max_length=7,
-        default="#f5f5ff",
+        default="#f8fafc",
         help_text="Background color (hex format)"
     )
 
     text_color = models.CharField(
         max_length=7,
-        default="#202040",
+        default="#334155",
         help_text="Main text color (hex format)"
     )
 
     heading_text_color = models.CharField(
         max_length=7,
-        default="#2a2a2a",
+        default="#0f172a",
         help_text="Heading text color (hex format)"
     )
 
     icon_plate_color = models.CharField(
         max_length=7,
-        default="#e8e0ff",
+        default="#ccfbf1",
         help_text="Icon plate/background color (hex format)"
     )
 
@@ -629,7 +750,7 @@ class PageTheme(models.Model):
 
     icon_color = models.CharField(
         max_length=7,
-        default="#4b2e83",
+        default="#0f766e",
         help_text="Icon/emoji color (hex format)"
     )
 

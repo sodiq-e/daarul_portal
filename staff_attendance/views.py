@@ -108,7 +108,8 @@ class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     success_url = reverse_lazy('staff_attendance:settings')
 
     def test_func(self):
-        return self.request.user.is_staff
+        from settingsapp.tenant_utils import user_is_tenant_admin
+        return user_is_tenant_admin(self.request.user, tenant=getattr(self.request, 'tenant', None))
 
     def get_initial(self):
         active_settings = AttendanceSettings.get_current()
@@ -139,7 +140,8 @@ class StudentAttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, For
     success_url = reverse_lazy('staff_attendance:student_settings')
 
     def test_func(self):
-        return self.request.user.is_staff
+        from settingsapp.tenant_utils import user_is_tenant_admin
+        return user_is_tenant_admin(self.request.user, tenant=getattr(self.request, 'tenant', None))
 
     def get_initial(self):
         active = StudentAttendanceSettings.get_current()

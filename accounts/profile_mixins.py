@@ -6,6 +6,8 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.contrib import messages
 from django.shortcuts import redirect
 
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
+
 
 class ProfileRequiredMixin(UserPassesTestMixin):
     """
@@ -45,11 +47,12 @@ class StaffRequiredMixin(UserPassesTestMixin):
         """Check if user is staff/teacher and approved"""
         if not self.request.user.is_authenticated:
             return False
-        
+
+        tenant = get_request_tenant(self.request)
         try:
             return (
                 self.request.user.profile.is_approved and
-                self.request.user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+                user_is_tenant_staff(self.request.user, tenant=tenant)
             )
         except AttributeError:
             # Profile doesn't exist
@@ -88,11 +91,11 @@ def check_user_staff(user):
     """
     if not user or not user.is_authenticated:
         return False
-    
+
     try:
-        return (
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = getattr(user, 'tenant', None)
+        if tenant is None:
+            return user.profile.is_approved and user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        return user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
         return False

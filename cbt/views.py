@@ -38,6 +38,7 @@ from .gemini_service import (
     generate_ss1_questions,
     validate_generated_question_payload,
 )
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
 from .models import (
     AIRequestMetric,
     CBTAnswer,
@@ -51,6 +52,7 @@ from .models import (
 )
 from .importers import QuestionImporter, ImportPreviewSerializer, QuestionImportError
 from .services import build_attempt_context, create_attempt, grade_attempt, save_answer
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
 
 AI_GENERATION_THROTTLE_SECONDS = int(os.getenv('AI_GENERATION_THROTTLE_SECONDS', '8'))
 AI_GENERATION_SESSION_KEY = 'cbt_ai_generation'
@@ -79,9 +81,20 @@ def _enforce_ai_rate_limit(request):
 
 def is_cbt_teacher(user):
     try:
-        return user.profile.is_approved and user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+        tenant = get_request_tenant(getattr(user, '_tenant_request', None)) if hasattr(user, '_tenant_request') else getattr(user, 'tenant', None)
+        return user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except Exception:
-        return user.is_staff
+        return False
+
+
+def can_manage_attempt(request, attempt):
+    """Return true when the current user owns or manages the attempt's tenant."""
+    if not request.user.is_authenticated:
+        return False
+    if request.user == attempt.exam.created_by:
+        return True
+    tenant = get_request_tenant(request)
+    return request.user.is_superuser or user_is_tenant_staff(request.user, tenant=tenant)
 
 
 def is_cbt_authenticated(user):
@@ -275,14 +288,14 @@ def attempt_detail(request, uuid):
         if not request.user.is_authenticated:
             return HttpResponseForbidden()
         # allow student themselves, the exam creator (teacher), or staff
-        if not (request.user == attempt.student or request.user == attempt.exam.created_by or request.user.is_staff):
+        if not (request.user == attempt.student or can_manage_attempt(request, attempt)):
             return HttpResponseForbidden()
     else:
         # practice attempt tied to a session_key
         session_key = _ensure_session(request)
         if attempt.session_key and attempt.session_key != session_key:
             # allow exam owner or staff to inspect practice attempts
-            if not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+            if not can_manage_attempt(request, attempt):
                 return HttpResponseForbidden()
 
     if attempt.is_submitted:
@@ -405,13 +418,13 @@ def api_save_answer(request):
     # permission check
     if attempt.student:
         # student-owned attempt: must be the student, exam owner, or staff
-        if attempt.student != request.user and not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+        if attempt.student != request.user and not can_manage_attempt(request, attempt):
             return HttpResponseForbidden()
     else:
         # practice attempt tied to a session_key: require matching session or exam owner/staff
         session_key = _ensure_session(request)
         if not attempt.session_key or attempt.session_key != session_key:
-            if not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+            if not can_manage_attempt(request, attempt):
                 return HttpResponseForbidden()
 
     if attempt.is_submitted:
@@ -492,12 +505,12 @@ def api_submit_attempt(request):
     if attempt.student:
         if not request.user.is_authenticated:
             return HttpResponseForbidden()
-        if not (request.user == attempt.student or request.user == attempt.exam.created_by or request.user.is_staff):
+        if not (request.user == attempt.student or can_manage_attempt(request, attempt)):
             return HttpResponseForbidden()
     else:
         session_key = _ensure_session(request)
         if not attempt.session_key or attempt.session_key != session_key:
-            if not (request.user.is_authenticated and (request.user == attempt.exam.created_by or request.user.is_staff)):
+            if not can_manage_attempt(request, attempt):
                 return HttpResponseForbidden()
     if attempt.is_submitted:
         return JsonResponse({'error': 'already submitted'}, status=400)

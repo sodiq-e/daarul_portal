@@ -2,10 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.html import format_html
-from settingsapp.models import GalleryImage
+from settingsapp.models import GalleryImage, TenantModel
 
 
-class Announcement(models.Model):
+class Announcement(TenantModel):
     title = models.CharField(max_length=200, help_text='Title of the announcement')
     content = models.TextField(help_text='Full content of the announcement')
     created_by = models.ForeignKey(
@@ -113,11 +113,12 @@ class Announcement(models.Model):
         }.get(self.title_alignment, 'text-start')
 
 
-class AnnouncementCategory(models.Model):
+class AnnouncementCategory(TenantModel):
     """Lightweight category model for announcements"""
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
 
     class Meta:
+        unique_together = (('tenant', 'name'),)
         ordering = ['name']
         verbose_name = 'Announcement Category'
         verbose_name_plural = 'Announcement Categories'

@@ -11,6 +11,9 @@ from school_classes.urls import class_urlpatterns, teacher_urlpatterns
 
 
 def home(request):
+    if request.user.is_authenticated and request.user.is_superuser and getattr(request, 'tenant', None) is None:
+        return settings_views.platform_home(request)
+
     pages = Page.objects.filter(
         is_published=True,
         show_on_homepage=True

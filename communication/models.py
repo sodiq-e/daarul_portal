@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import Count, Q
 from django.contrib.auth.models import User
+from settingsapp.models import TenantModel
+from settingsapp.tenant_utils import TenantAwareManager
 
 
 class PortalThreadQuerySet(models.QuerySet):
@@ -24,11 +26,36 @@ class PortalThreadQuerySet(models.QuerySet):
         return qs.annotate(num_participants=Count('participants', distinct=True)).filter(num_participants=len(user_ids)).distinct()
 
 
-class PortalThreadManager(models.Manager.from_queryset(PortalThreadQuerySet)):
-    pass
+class PortalThreadManager(TenantAwareManager):
+    def create(self, **kwargs):
+        kwargs.setdefault('tenant', self.get_current_tenant())
+        return super().create(**kwargs)
+
+    def get_queryset(self):
+        tenant = self.get_current_tenant()
+        queryset = PortalThreadQuerySet(self.model, using=self._db)
+        if tenant is not None:
+            return queryset.filter(tenant=tenant)
+        return queryset.none()
+
+    def for_user(self, user):
+        return self.get_queryset().for_user(user)
+
+    def personal(self):
+        return self.get_queryset().personal()
+
+    def group(self):
+        return self.get_queryset().group()
+
+    def class_threads(self):
+        return self.get_queryset().class_threads()
+
+    def get_current_tenant(self):
+        from settingsapp.tenant_utils import get_current_tenant
+        return get_current_tenant()
 
 
-class Message(models.Model):
+class Message(TenantModel):
     name = models.CharField(max_length=100, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
@@ -68,7 +95,7 @@ class Message(models.Model):
         return self.name if self.name else "Anonymous Message"
 
 
-class PortalThread(models.Model):
+class PortalThread(TenantModel):
     THREAD_TYPE_PERSONAL = 'personal'
     THREAD_TYPE_GROUP = 'group'
     THREAD_TYPE_CLASS = 'class'

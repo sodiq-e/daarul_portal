@@ -6,6 +6,8 @@ from datetime import date, time
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from settingsapp.models import TenantModel
+from settingsapp.tenant_utils import TenantAwareManager
 
 
 class AttendanceSettingsQuerySet(models.QuerySet):
@@ -19,7 +21,26 @@ class AttendanceSettingsQuerySet(models.QuerySet):
         return self.order_by('-updated_at').first()
 
 
-class StudentAttendanceSettings(models.Model):
+class AttendanceSettingsManager(TenantAwareManager):
+    def get_queryset(self):
+        tenant = self.get_current_tenant()
+        queryset = AttendanceSettingsQuerySet(self.model, using=self._db)
+        if tenant is not None:
+            return queryset.filter(tenant=tenant)
+        return queryset.none()
+
+    def get_current_tenant(self):
+        from settingsapp.tenant_utils import get_current_tenant
+        return get_current_tenant()
+
+    def active(self):
+        return self.get_queryset().active()
+
+    def current(self):
+        return self.get_queryset().current()
+
+
+class StudentAttendanceSettings(TenantModel):
     """Settings specific to student attendance (separate from staff settings)."""
     enable_student_attendance = models.BooleanField(
         default=True,
@@ -48,7 +69,7 @@ class StudentAttendanceSettings(models.Model):
     def save(self, *args, **kwargs):
         if self.active:
             StudentAttendanceSettings.objects.exclude(pk=self.pk).update(active=False)
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     @classmethod
     def get_current(cls):
@@ -68,7 +89,7 @@ class StudentAttendanceSettings(models.Model):
         return f"Student Attendance Settings (active={self.active})"
 
 
-class AttendanceSettings(models.Model):
+class AttendanceSettings(TenantModel):
     school_latitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
@@ -117,7 +138,7 @@ class AttendanceSettings(models.Model):
     )
     updated_at = models.DateTimeField(auto_now=True)
 
-    objects = AttendanceSettingsQuerySet.as_manager()
+    objects = AttendanceSettingsManager()
 
     class Meta:
         verbose_name = 'Attendance Setting'
@@ -127,7 +148,7 @@ class AttendanceSettings(models.Model):
     def save(self, *args, **kwargs):
         if self.active:
             AttendanceSettings.objects.exclude(pk=self.pk).update(active=False)
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     @classmethod
     def get_current(cls):
@@ -150,7 +171,7 @@ class AttendanceSettings(models.Model):
         return f"Attendance Settings (active={self.active})"
 
 
-class StaffAttendance(models.Model):
+class StaffAttendance(TenantModel):
     STATUS_PRESENT = 'present'
     STATUS_LATE = 'late'
     STATUS_ABSENT = 'absent'

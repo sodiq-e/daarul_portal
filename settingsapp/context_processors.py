@@ -2,6 +2,11 @@ from django.db.models import Q
 from .models import SchoolSettings, PageTheme, GalleryImage, HeroText, HeroButton
 from .print_utils import build_document_verification
 from announcements.models import Announcement
+from .tenant_utils import resolve_tenant, user_is_tenant_admin
+
+
+def get_tenant_from_request(request):
+    return getattr(request, 'tenant', None) or resolve_tenant(request)
 
 def _get_page_key_from_path(path):
     """Determine which page the user is on based on the URL path"""
@@ -27,10 +32,20 @@ def _get_page_key_from_path(path):
         return 'home'
 
 def school_settings(request):
-    """Context processor for school settings with defensive error handling"""
+    """Context processor for school settings with defensive error handling."""
     try:
-        # Ensure a canonical single settings row exists (use id=1)
-        settings, _created = SchoolSettings.objects.get_or_create(id=1)
+        tenant = get_tenant_from_request(request)
+
+        if tenant is not None:
+            settings = getattr(tenant, 'portal_settings', None)
+            if settings is None:
+                settings = SchoolSettings.objects.create(tenant=tenant)
+        else:
+            settings = SchoolSettings.objects.filter(tenant__isnull=True).first()
+            if settings is None:
+                settings = SchoolSettings.objects.order_by('id').first()
+            if settings is None:
+                settings = SchoolSettings.objects.create()
 
         # Seed demo homepage content if missing (safe no-op if exists)
         try:
@@ -68,15 +83,15 @@ def school_settings(request):
 
         # Get default theme colors from global settings
         default_theme = {
-            "primary_color": settings.primary_color if settings else "#4b2e83",
-            "secondary_color": settings.secondary_color if settings else "#7f5af0",
-            "accent_color": settings.accent_color if settings else "#ffc107",
-            "background_color": settings.background_color if settings else "#f5f5ff",
-            "text_color": settings.text_color if settings else "#202040",
-            "heading_text_color": settings.heading_text_color if settings else "#2a2a2a",
-            "icon_plate_color": settings.icon_plate_color if settings else "#e8e0ff",
+            "primary_color": settings.primary_color if settings else "#0f766e",
+            "secondary_color": settings.secondary_color if settings else "#115e59",
+            "accent_color": settings.accent_color if settings else "#f59e0b",
+            "background_color": settings.background_color if settings else "#f8fafc",
+            "text_color": settings.text_color if settings else "#334155",
+            "heading_text_color": settings.heading_text_color if settings else "#0f172a",
+            "icon_plate_color": settings.icon_plate_color if settings else "#ccfbf1",
             "header_heading_color": settings.header_heading_color if settings else "#ffffff",
-            "icon_color": settings.icon_color if settings else "#4b2e83",
+            "icon_color": settings.icon_color if settings else "#0f766e",
         }
         
         # Check if current page has a custom theme
@@ -98,6 +113,8 @@ def school_settings(request):
             theme = default_theme
 
         return {
+            "is_platform_admin": bool(request.user.is_authenticated and request.user.is_superuser and tenant is None),
+            "is_tenant_admin": bool(request.user.is_authenticated and user_is_tenant_admin(request.user, tenant=tenant)),
             "school_name": settings.school_name if settings else "School Name",
             "motto": settings.motto if settings else "",
             "school_logo": settings.logo.url if settings and settings.logo else None,
@@ -160,15 +177,15 @@ def school_settings(request):
             "footer_copyright_text": "",
             "footer_copyright_link": "",
             "school_settings": None,
-            "primary_color": "#4b2e83",
-            "secondary_color": "#7f5af0",
-            "accent_color": "#ffc107",
-            "background_color": "#f5f5ff",
-            "text_color": "#202040",
-            "heading_text_color": "#2a2a2a",
-            "icon_plate_color": "#e8e0ff",
+            "primary_color": "#0f766e",
+            "secondary_color": "#115e59",
+            "accent_color": "#f59e0b",
+            "background_color": "#f8fafc",
+            "text_color": "#334155",
+            "heading_text_color": "#0f172a",
+            "icon_plate_color": "#ccfbf1",
             "header_heading_color": "#ffffff",
-            "icon_color": "#4b2e83",
+            "icon_color": "#0f766e",
             "current_page": "home",
             "gallery_images": [],
             "hero_images": [],

@@ -25,6 +25,8 @@ from students.models import Student
 
 from django.http import JsonResponse
 
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
+
 
 @login_required
 def classes_list(request):
@@ -46,12 +48,12 @@ def user_profile_approved(user):
 
 
 def user_is_staff(user):
-    """Defensively check if user is staff"""
+    """Defensively check if user is staff on the current tenant."""
     try:
-        return (
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = get_request_tenant(getattr(user, '_tenant_request', None)) if hasattr(user, '_tenant_request') else getattr(user, 'tenant', None)
+        if tenant is None:
+            tenant = get_request_tenant(getattr(user, '_tenant_request', None))
+        return user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
         return False
 
@@ -59,10 +61,8 @@ def user_is_staff(user):
 def user_is_admin(user):
     """Check if user is admin"""
     try:
-        return (
-            user.profile.is_approved and
-            user.is_staff
-        )
+        tenant = get_request_tenant(getattr(user, '_tenant_request', None))
+        return user.profile.is_approved and user_is_tenant_admin(user, tenant=tenant)
     except AttributeError:
         return False
 
@@ -942,7 +942,7 @@ class TeacherSchemeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVie
         try:
             teacher = self.request.user.teacher_profile
             scheme = self.get_object()
-            return scheme.teacher == teacher and teacher_has_permission(teacher, 'edit_scheme')
+            return scheme.teacher == teacher and user_is_staff(self.request.user)
         except Teacher.DoesNotExist:
             return False
 
@@ -950,7 +950,14 @@ class TeacherSchemeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailVie
         context = super().get_context_data(**kwargs)
         scheme = self.get_object()
         context['weeks'] = SchemeWeek.objects.filter(scheme=scheme).order_by('week_number')
+        context['can_edit_scheme'] = teacher_has_permission(scheme.teacher, 'edit_scheme')
         context['can_submit'] = not scheme.is_submitted
+        context['can_submit_completion'] = (
+            scheme.is_approved and
+            bool(context['weeks']) and
+            all(week.is_completed for week in context['weeks']) and
+            not scheme.completion_submitted
+        )
         return context
 
 
@@ -965,7 +972,11 @@ class TeacherSchemeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateVie
         try:
             teacher = self.request.user.teacher_profile
             scheme = self.get_object()
-            return scheme.teacher == teacher and teacher_has_permission(teacher, 'edit_scheme') and not scheme.is_submitted
+            return (
+                scheme.teacher == teacher and
+                teacher_has_permission(teacher, 'edit_scheme') and
+                (not scheme.is_submitted or scheme.is_approved)
+            )
         except Teacher.DoesNotExist:
             return False
 
@@ -988,7 +999,11 @@ class SchemeWeekCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         try:
             teacher = self.request.user.teacher_profile
             scheme = SchemeOfWork.objects.get(pk=self.kwargs.get('scheme_id'))
-            return scheme.teacher == teacher and teacher_has_permission(teacher, 'edit_scheme') and not scheme.is_submitted
+            return (
+                scheme.teacher == teacher and
+                teacher_has_permission(teacher, 'edit_scheme') and
+                (not scheme.is_submitted or scheme.is_approved)
+            )
         except (Teacher.DoesNotExist, SchemeOfWork.DoesNotExist):
             return False
 
@@ -1042,7 +1057,7 @@ class SchemeWeekUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
             return (
                 week.scheme.teacher == teacher and
                 teacher_has_permission(teacher, 'edit_scheme') and
-                not week.scheme.is_submitted
+                (not week.scheme.is_submitted or week.scheme.is_approved)
             )
         except Teacher.DoesNotExist:
             return False
@@ -1062,10 +1077,14 @@ def mark_week_complete(request, week_id):
     
     try:
         teacher = request.user.teacher_profile
-        if week.scheme.teacher != teacher or week.scheme.is_submitted:
+        if week.scheme.teacher != teacher:
             messages.error(request, 'You do not have permission to complete this week.')
             return redirect('home')
         
+        if not week.scheme.is_approved:
+            messages.error(request, 'Weekly lessons can only be completed after the main scheme is approved.')
+            return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
+
         if not teacher_has_permission(teacher, 'edit_scheme'):
             messages.error(request, 'You do not have permission.')
             return redirect('home')
@@ -1075,9 +1094,16 @@ def mark_week_complete(request, week_id):
 
     week.is_completed = True
     week.completed_date = timezone.now().date()
+    week.is_acknowledged = True
+    week.acknowledged_at = timezone.now()
+    week.is_approved = False
+    week.is_rejected = False
+    week.approved_by = None
+    week.approved_at = None
+    week.rejected_at = None
     week.save()
 
-    messages.success(request, f'Week {week.week_number} marked as completed.')
+    messages.success(request, f'Week {week.week_number} completed and submitted to the school admin for review.')
     return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
 
@@ -1088,7 +1114,7 @@ def mark_week_incomplete(request, week_id):
     
     try:
         teacher = request.user.teacher_profile
-        if week.scheme.teacher != teacher or week.scheme.is_submitted:
+        if week.scheme.teacher != teacher:
             messages.error(request, 'You do not have permission to mark this week incomplete.')
             return redirect('home')
         
@@ -1101,6 +1127,13 @@ def mark_week_incomplete(request, week_id):
 
     week.is_completed = False
     week.completed_date = None
+    week.is_acknowledged = False
+    week.acknowledged_at = None
+    week.is_approved = False
+    week.is_rejected = False
+    week.approved_by = None
+    week.approved_at = None
+    week.rejected_at = None
     week.save()
 
     messages.success(request, f'Week {week.week_number} marked as not completed.')
@@ -1126,14 +1159,15 @@ def acknowledge_week_completion(request, week_id):
         return redirect('home')
 
     if not week.is_completed:
-        messages.error(request, 'Please mark the week as completed before acknowledging.')
+        messages.error(request, 'Please mark the week as completed before submitting it.')
         return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
     week.is_acknowledged = True
     week.acknowledged_at = timezone.now()
+    week.is_rejected = False
     week.save()
 
-    messages.success(request, f'Week {week.week_number} acknowledged. Waiting for admin approval.')
+    messages.success(request, f'Week {week.week_number} submitted for admin review.')
     return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
 
 
@@ -1154,14 +1188,37 @@ def approve_week_completion(request, week_id):
         admin_notes = request.POST.get('admin_notes', '').strip()
         
         week.is_approved = True
+        week.is_rejected = False
         week.approved_by = request.user
         week.approved_at = timezone.now()
+        week.rejected_at = None
         week.admin_notes = admin_notes
         week.save()
 
         messages.success(request, f'Week {week.week_number} approved successfully.')
     
     return redirect('teachers:teacher_scheme_detail', pk=week.scheme.pk)
+
+
+@login_required
+def reject_week_completion(request, week_id):
+    """Admin rejects a completed week and provides feedback to the teacher."""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to reject weeks.')
+        return redirect('home')
+
+    week = get_object_or_404(SchemeWeek, pk=week_id)
+    if request.method == 'POST':
+        week.is_approved = False
+        week.is_rejected = True
+        week.rejected_at = timezone.now()
+        week.approved_by = None
+        week.approved_at = None
+        week.admin_notes = request.POST.get('admin_notes', '').strip()
+        week.save()
+        messages.success(request, f'Week {week.week_number} was returned to the teacher.')
+
+    return redirect('admin_weeks_pending')
 
 
 @method_decorator(login_required, name='dispatch')
@@ -1178,7 +1235,8 @@ class AdminSchemeWeeksListView(LoginRequiredMixin, UserPassesTestMixin, Template
         # Get pending weeks (acknowledged but not approved)
         pending_weeks = SchemeWeek.objects.filter(
             is_acknowledged=True,
-            is_approved=False
+            is_approved=False,
+            is_rejected=False,
         ).select_related('scheme__teacher__user', 'scheme__school_class', 'scheme__subject').order_by('-acknowledged_at')
         
         # Get approved weeks
@@ -1188,6 +1246,11 @@ class AdminSchemeWeeksListView(LoginRequiredMixin, UserPassesTestMixin, Template
         
         context['pending_weeks'] = pending_weeks
         context['approved_weeks'] = approved_weeks
+        context['pending_completions'] = SchemeOfWork.objects.filter(
+            completion_submitted=True,
+            completion_acknowledged=False,
+            completion_rejected=False,
+        ).select_related('teacher__user', 'school_class', 'subject', 'term').order_by('-completion_submitted_at')
         
         return context
 
@@ -1293,7 +1356,7 @@ def approve_scheme(request, scheme_id):
     scheme.save()
 
     messages.success(request, f'Scheme approved for {scheme.teacher}.')
-    return redirect('admin_scheme_detail', pk=scheme_id)
+    return redirect('teachers:admin_scheme_detail', pk=scheme_id)
 
 
 @login_required
@@ -1315,4 +1378,76 @@ def reject_scheme(request, scheme_id):
     scheme.save()
 
     messages.success(request, f'Scheme returned to {scheme.teacher} for revision.')
-    return redirect('admin_scheme_list')
+    return redirect('teachers:admin_scheme_list')
+
+
+@login_required
+def submit_scheme_completion(request, scheme_id):
+    """Teacher submits the completed termly scheme for final admin review."""
+    scheme = get_object_or_404(SchemeOfWork, pk=scheme_id)
+
+    try:
+        teacher = request.user.teacher_profile
+        if scheme.teacher != teacher or not teacher_has_permission(teacher, 'edit_scheme'):
+            messages.error(request, 'You do not have permission to submit this completion report.')
+            return redirect('home')
+    except Teacher.DoesNotExist:
+        messages.error(request, 'You must be a teacher to access this page.')
+        return redirect('home')
+
+    weeks = list(scheme.weeks.all())
+    if not scheme.is_approved:
+        messages.error(request, 'The main scheme must be approved before final completion.')
+    elif not weeks or not all(week.is_completed for week in weeks):
+        messages.error(request, 'Complete every weekly lesson before submitting the full scheme.')
+    else:
+        scheme.completion_submitted = True
+        scheme.completion_submitted_at = timezone.now()
+        scheme.completion_acknowledged = False
+        scheme.completion_rejected = False
+        scheme.completion_reviewed_at = None
+        scheme.completion_reviewed_by = None
+        scheme.save()
+        messages.success(request, 'Full scheme completion submitted to the school admin.')
+
+    return redirect('teachers:teacher_scheme_detail', pk=scheme.pk)
+
+
+@login_required
+def acknowledge_scheme_completion(request, scheme_id):
+    """Admin acknowledges the teacher's final scheme completion report."""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to review scheme completion.')
+        return redirect('home')
+
+    scheme = get_object_or_404(SchemeOfWork, pk=scheme_id)
+    if request.method == 'POST':
+        scheme.completion_submitted = True
+        scheme.completion_acknowledged = True
+        scheme.completion_rejected = False
+        scheme.completion_reviewed_at = timezone.now()
+        scheme.completion_reviewed_by = request.user
+        scheme.completion_admin_notes = request.POST.get('admin_notes', '').strip()
+        scheme.save()
+        messages.success(request, f'Completion acknowledged for {scheme}.')
+    return redirect('teachers:admin_scheme_detail', pk=scheme.pk)
+
+
+@login_required
+def reject_scheme_completion(request, scheme_id):
+    """Admin returns a final scheme completion report with feedback."""
+    if not user_is_admin(request.user):
+        messages.error(request, 'You do not have permission to review scheme completion.')
+        return redirect('home')
+
+    scheme = get_object_or_404(SchemeOfWork, pk=scheme_id)
+    if request.method == 'POST':
+        scheme.completion_submitted = False
+        scheme.completion_acknowledged = False
+        scheme.completion_rejected = True
+        scheme.completion_reviewed_at = timezone.now()
+        scheme.completion_reviewed_by = request.user
+        scheme.completion_admin_notes = request.POST.get('admin_notes', '').strip()
+        scheme.save()
+        messages.success(request, f'Completion returned to {scheme.teacher} with admin feedback.')
+    return redirect('teachers:admin_scheme_detail', pk=scheme.pk)

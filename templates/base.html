@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=0.75.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ SCHOOL_NAME }}</title>
   {% load static %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -21,6 +21,12 @@
       --icon-plate-color: {{ icon_plate_color }};
       --header-heading-color: {{ header_heading_color }};
       --icon-color: {{ icon_color }};
+      --action-color: color-mix(in srgb, var(--primary-color) 76%, #101828);
+      --action-hover-color: color-mix(in srgb, var(--secondary-color) 76%, #101828);
+      --action-soft-color: color-mix(in srgb, var(--primary-color) 12%, white);
+      --surface-color: color-mix(in srgb, var(--background-color) 92%, white);
+      --surface-strong-color: color-mix(in srgb, var(--background-color) 78%, white);
+      --border-color: color-mix(in srgb, var(--text-color) 16%, transparent);
     }
 
     body {
@@ -30,6 +36,22 @@
       background: var(--background-color);
       color: var(--text-color);
       animation: fadeIn 0.4s ease-in;
+    }
+
+    .btn-primary,
+    .button:not(.secondary):not(.tertiary),
+    button[type="submit"] {
+      background-color: var(--action-color);
+      border-color: var(--action-color);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover,
+    .button:not(.secondary):not(.tertiary):hover,
+    button[type="submit"]:hover {
+      background-color: var(--action-hover-color);
+      border-color: var(--action-hover-color);
+      color: #ffffff;
     }
 
     /* prevent scrolling when menu open */
@@ -2102,7 +2124,7 @@
   width: 300px;
   max-width: 85%;
   height: 100%;
-  background: var(--primary-color);
+  background: var(--action-color);
   color: white;
   padding: 20px;
   padding-top: 30px;
@@ -2152,19 +2174,21 @@
 @media (min-width: 1024px) {
 
   .layout {
-    display: flex;
+    display: block;
+    position: relative;
   }
 
   .sidebar {
-    position: relative;
+    position: absolute;
+    top: 0;
     left: 0;
     transform: translateX(0);
-    height: auto;
+    height: calc(100vh - 48px);
     width: 300px;
-    transition: width 0.3s ease;
-    /* Ensure sidebar content can scroll instead of overlapping other sections */
-    max-height: calc(100vh - 48px);
+    transition: width 0.3s ease, box-shadow 0.3s ease;
     overflow-y: auto;
+    box-shadow: 10px 0 34px rgba(15, 23, 42, 0.18);
+    pointer-events: auto;
   }
 
   /* COLLAPSED STATE ON DESKTOP */
@@ -2246,7 +2270,8 @@
 
   /* Hover expand collapsed sidebar on desktop */
   .content {
-    flex: 1;
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -2526,7 +2551,7 @@
 .sidebar a:hover::after {
   left: 0;
 }
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
 
   /* RESET LAYOUT */
   .layout {
@@ -2539,12 +2564,15 @@
     top: 0;
     left: 0;
     width: 80%;
-    height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
     transform: translateX(-100%);
     z-index: 2000;
     box-shadow: 6px 0 25px rgba(0,0,0,0.25);
     overflow-y: auto;
     overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .sidebar.active {
@@ -2618,8 +2646,8 @@
   }
 
   .sidebar .menu-content {
-    max-height: 500px;
-    overflow: hidden;
+    max-height: none;
+    overflow: visible;
   }
 
   .sidebar .menu-content.collapsed {
@@ -3520,7 +3548,28 @@
     {{ user.get_full_name|default:user.username }}
   </div>
 
-  {% if user.is_staff or user.is_superuser %}
+    {% if is_platform_admin %}
+      <div class="menu-section">
+        <div class="menu-header active" data-menu-key="platform-admin" onclick="toggleMenu(this)">
+          <span>PLATFORM ADMIN</span>
+          <span class="arrow">›</span>
+        </div>
+        <div class="menu-content">
+          <a href="{% url 'tenant_dashboard' %}" data-tooltip="Tenants"
+             class="{% if request.resolver_match.url_name == 'tenant_dashboard' %}active{% endif %}">
+            <i class="fas fa-school"></i><span> Tenant Schools</span>
+          </a>
+          <a href="{% url 'tenant_create' %}" data-tooltip="Add Tenant"
+             class="{% if request.resolver_match.url_name == 'tenant_create' %}active{% endif %}">
+            <i class="fas fa-plus-circle"></i><span> Add Tenant</span>
+          </a>
+          <a href="/admin/" data-tooltip="Django Admin">
+            <i class="fas fa-cog"></i><span> Django Admin</span>
+          </a>
+        </div>
+      </div>
+
+    {% elif is_tenant_admin or user.is_staff %}
     <div class="menu-section">
       <div class="menu-header active" data-menu-key="admin" onclick="toggleMenu(this)">
         <span>👨‍💼 ADMIN</span>

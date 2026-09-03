@@ -383,7 +383,7 @@ Your account has been approved! You can now log in to the portal using your cred
 - Username: {user.username}
 - Email: {user.email}
 
-Log in here: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'https://daarulbayaan.pythonanywhere.com'}/login/
+    Log in here: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'http://localhost.com'}/login/
 
 If you have any issues, please contact the school administration.
 

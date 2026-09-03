@@ -8,12 +8,14 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-9x4k8f2z3y!temporary-safe-key-change-me'
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+TENANT_BASE_DOMAIN = os.environ.get('TENANT_BASE_DOMAIN', 'localhost').strip().lower().strip('.')
 ALLOWED_HOSTS = [
-    "daarulbayaan.pythonanywhere.com",
     "127.0.0.1",
     "localhost",
     "onrender.com",
     "daarul-portal.onrender.com",
+    TENANT_BASE_DOMAIN,
+    f'.{TENANT_BASE_DOMAIN}',
 ]
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -56,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'settingsapp.middleware.TenantMiddleware',
 ]
 ROOT_URLCONF = 'daarul_portal.urls'
 TEMPLATES = [

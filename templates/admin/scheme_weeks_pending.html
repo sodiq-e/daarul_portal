@@ -105,6 +105,13 @@
                             <i class="fas fa-thumbs-up"></i> Approve Week
                         </button>
                     </form>
+                    <form method="post" action="{% url 'teachers:reject_week_completion' week.pk %}" class="mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="admin_notes" value="Returned for review. See admin feedback.">
+                        <button type="submit" class="btn btn-sm btn-warning w-100">
+                            <i class="fas fa-undo"></i> Return to Teacher
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -114,6 +121,27 @@
     <div class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="fas fa-check-circle"></i> <strong>All caught up!</strong> No pending week approvals at this time.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    {% if pending_completions %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-clipboard-check"></i> Full Scheme Completions</h5>
+        </div>
+        <div class="card-body">
+            {% for scheme in pending_completions %}
+            <div class="border-bottom pb-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <strong>{{ scheme.teacher.user.get_full_name }}</strong> - {{ scheme.school_class }} / {{ scheme.subject }}<br>
+                        <small class="text-muted">{{ scheme.term }} | Submitted {{ scheme.completion_submitted_at|date:"M d, Y H:i" }}</small>
+                    </div>
+                    <a href="{% url 'teachers:admin_scheme_detail' scheme.pk %}" class="btn btn-sm btn-outline-primary">Review Scheme</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
     {% endif %}
 

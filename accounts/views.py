@@ -10,8 +10,10 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.generic import FormView
 from django.contrib.auth.forms import AuthenticationForm
+from django.utils import timezone
 from .forms import StudentSignUpForm, UserProfileForm
 from .models import Profile
+from settingsapp.tenant_utils import get_request_tenant, user_has_tenant_access, user_is_tenant_admin, ensure_user_tenant_membership
 
 
 @login_required
@@ -43,6 +45,14 @@ def student_signup(request):
         form = StudentSignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
+            tenant = get_request_tenant(request)
+            if tenant is not None:
+                ensure_user_tenant_membership(
+                    user,
+                    tenant,
+                    form.cleaned_data['requested_group'].lower(),
+                    is_active=True,
+                )
             messages.success(
                 request,
                 f'Welcome {user.username}! Your account has been created successfully and is pending admin approval.'
@@ -56,6 +66,37 @@ def student_signup(request):
         form = StudentSignUpForm()
 
     return render(request, 'accounts/signup.html', {'form': form})
+
+
+@login_required
+def tenant_approval_queue(request):
+    tenant = get_request_tenant(request)
+    if not user_is_tenant_admin(request.user, tenant=tenant):
+        return redirect('home')
+
+    pending_memberships = request.user.tenant_memberships.model.objects.filter(
+        tenant=tenant,
+        is_active=True,
+        role__in=['teacher', 'staff', 'student'],
+        user__profile__is_approved=False,
+    ).select_related('user', 'user__profile').order_by('user__username')
+
+    if request.method == 'POST':
+        membership_id = request.POST.get('membership_id')
+        membership = pending_memberships.filter(pk=membership_id).first()
+        if membership is not None:
+            profile = membership.user.profile
+            profile.is_approved = True
+            profile.approved_at = timezone.now()
+            profile.approved_by = request.user
+            profile.save(update_fields=['is_approved', 'approved_at', 'approved_by'])
+            messages.success(request, f'{membership.user.username} approved for {tenant.name}.')
+        return redirect('tenant_approval_queue')
+
+    return render(request, 'accounts/tenant_approval_queue.html', {
+        'tenant': tenant,
+        'pending_memberships': pending_memberships,
+    })
 
 
 class StudentPasswordResetView(PasswordResetView):
@@ -108,7 +149,14 @@ class CustomLoginView(FormView):
 
         if user is not None:
             if user.is_active:
-                # Check if user is approved
+                tenant = get_request_tenant(self.request)
+                if not user.is_superuser and tenant is not None and not user_has_tenant_access(user, tenant):
+                    error_message = 'This account is not assigned to this school. Please contact the school administrator.'
+                    messages.error(self.request, error_message)
+                    if self.is_ajax():
+                        return self.json_error([error_message])
+                    return self.form_invalid(form)
+
                 try:
                     profile = user.profile
                     if profile.is_approved:

@@ -1,19 +1,39 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from settingsapp.models import Tenant, TenantModel
+from settingsapp.tenant_utils import TenantAwareManager, get_current_tenant
 
 
-class SchoolClasses(models.Model):
-    class_name = models.CharField(max_length=50, unique=True)
+class SchoolClasses(TenantModel):
+    class_name = models.CharField(max_length=50)
     level = models.CharField(max_length=50, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.class_name
 
+    class Meta:
+        unique_together = (('tenant', 'class_name'),)
+
 
 class Teacher(models.Model):
     """Teacher profile with approval status"""
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='teachers',
+        null=True,
+        blank=True,
+    )
+    objects = TenantAwareManager()
+
+    def save(self, *args, **kwargs):
+        if self.tenant_id is None:
+            current_tenant = get_current_tenant()
+            if current_tenant is not None:
+                self.tenant = current_tenant
+        return super().save(*args, **kwargs)
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -42,7 +62,7 @@ class Teacher(models.Model):
         return f"{self.user.get_full_name()} ({self.employee_id})"
 
 
-class ClassTeacher(models.Model):
+class ClassTeacher(TenantModel):
     """Assignment of teachers to classes"""
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='class_assignments')
     school_class = models.ForeignKey(SchoolClasses, on_delete=models.CASCADE, related_name='teachers')
@@ -55,13 +75,13 @@ class ClassTeacher(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('teacher', 'school_class', 'subject')
+        unique_together = (('tenant', 'teacher', 'school_class', 'subject'),)
 
     def __str__(self):
         return f"{self.teacher} - {self.school_class} - {self.subject}"
 
 
-class SchemeOfWork(models.Model):
+class SchemeOfWork(TenantModel):
     """14-week scheme of work for teachers"""
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='schemes_of_work')
     school_class = models.ForeignKey(SchoolClasses, on_delete=models.CASCADE)
@@ -72,6 +92,10 @@ class SchemeOfWork(models.Model):
     # Scheme details
     title = models.CharField(max_length=200)
     objectives = models.TextField(blank=True)
+    reference = models.TextField(
+        blank=True,
+        help_text='Books, guides, websites, or other references used to prepare this scheme.'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
 
@@ -88,14 +112,29 @@ class SchemeOfWork(models.Model):
     )
     approval_notes = models.TextField(blank=True)
 
+    # End-of-term completion workflow
+    completion_submitted = models.BooleanField(default=False)
+    completion_submitted_at = models.DateTimeField(null=True, blank=True)
+    completion_acknowledged = models.BooleanField(default=False)
+    completion_rejected = models.BooleanField(default=False)
+    completion_reviewed_at = models.DateTimeField(null=True, blank=True)
+    completion_reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_scheme_completions'
+    )
+    completion_admin_notes = models.TextField(blank=True)
+
     class Meta:
-        unique_together = ('teacher', 'school_class', 'subject', 'term', 'academic_year')
+        unique_together = (('tenant', 'teacher', 'school_class', 'subject', 'term', 'academic_year'),)
 
     def __str__(self):
         return f"{self.title} - {self.teacher} ({self.term})"
 
 
-class SchemeWeek(models.Model):
+class SchemeWeek(TenantModel):
     """Individual weeks in a scheme of work"""
     scheme = models.ForeignKey(SchemeOfWork, on_delete=models.CASCADE, related_name='weeks')
     week_number = models.PositiveIntegerField()
@@ -124,6 +163,8 @@ class SchemeWeek(models.Model):
     )
     approved_at = models.DateTimeField(null=True, blank=True)
     admin_notes = models.TextField(blank=True)
+    is_rejected = models.BooleanField(default=False)
+    rejected_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('scheme', 'week_number')

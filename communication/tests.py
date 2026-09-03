@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 
@@ -6,13 +6,20 @@ from accounts.models import Profile
 from .models import PortalThread
 from .services.threads import get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users
 from .views import get_or_create_group_thread_for_users as legacy_get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users as legacy_get_or_create_personal_thread_for_users
+from settingsapp.models import Tenant
+from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
 
 
 class PortalThreadTypeRegressionTests(TestCase):
     def setUp(self):
+        self.tenant = Tenant.objects.create(name='Thread School', slug='thread-school', hostname='thread-school.localhost')
+        set_current_tenant(self.tenant)
         self.user = User.objects.create_user(username='alice', password='pw')
         self.other_user = User.objects.create_user(username='bob', password='pw')
         self.third_user = User.objects.create_user(username='carol', password='pw')
+
+    def tearDown(self):
+        clear_current_tenant()
 
     def test_personal_thread_reuses_existing_thread_for_same_two_participants(self):
         first = get_or_create_personal_thread_for_users([self.user, self.other_user])
@@ -55,12 +62,19 @@ class AdminPortalThreadAccessTests(TestCase):
         self.assertEqual(response.url, reverse('admin_portal_users_list'))
 
 
+@override_settings(ALLOWED_HOSTS=['presence-school.localhost', 'testserver'])
 class PortalPresenceTests(TestCase):
     def setUp(self):
+        self.tenant = Tenant.objects.create(name='Presence School', slug='presence-school', hostname='presence-school.localhost')
+        set_current_tenant(self.tenant)
+        self.client.defaults['HTTP_HOST'] = 'presence-school.localhost'
         self.user = User.objects.create_user(username='alice', password='pw')
         self.other_user = User.objects.create_user(username='bob', password='pw')
         self.thread = PortalThread.objects.create()
         self.thread.participants.set([self.user, self.other_user])
+
+    def tearDown(self):
+        clear_current_tenant()
 
     def test_sync_portal_presence_updates_server_state(self):
         self.client.force_login(self.user)
@@ -92,11 +106,16 @@ class PortalPresenceTests(TestCase):
 
 class PortalMessageActionTests(TestCase):
     def setUp(self):
+        self.tenant = Tenant.objects.create(name='Message School', slug='message-school', hostname='message-school.localhost')
+        set_current_tenant(self.tenant)
         self.user = User.objects.create_user(username='alice', password='pw')
         self.other_user = User.objects.create_user(username='bob', password='pw')
         self.thread = PortalThread.objects.create()
         self.thread.participants.set([self.user, self.other_user])
         self.message = self.thread.messages.create(sender=self.user, content='Original message', status='sent')
+
+    def tearDown(self):
+        clear_current_tenant()
 
     def test_user_can_edit_own_portal_message(self):
         self.client.force_login(self.user)

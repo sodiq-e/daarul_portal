@@ -2,9 +2,10 @@ from django.db import models
 from django.conf import settings
 from students.models import Student
 from school_classes.models import SchoolClasses
+from settingsapp.models import TenantModel
 
 
-class AttendanceRecord(models.Model):
+class AttendanceRecord(TenantModel):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     school_class = models.ForeignKey(SchoolClasses, on_delete=models.CASCADE)
     date = models.DateField()
@@ -44,7 +45,7 @@ class AttendanceRecord(models.Model):
         return f"{self.student} - {self.date} - {'P' if self.present else 'A'}"
 
 
-class AttendanceSession(models.Model):
+class AttendanceSession(TenantModel):
     """Track attendance sessions for classes"""
     school_class = models.ForeignKey(SchoolClasses, on_delete=models.CASCADE, related_name='attendance_sessions')
     date = models.DateField()
@@ -88,7 +89,7 @@ class AttendanceSession(models.Model):
         return f"{self.school_class} - {self.date} ({self.present_count}/{self.total_students})"
 
 
-class AttendanceHoliday(models.Model):
+class AttendanceHoliday(TenantModel):
     """School holidays and breaks"""
     HOLIDAY_TYPE_CHOICES = [
         ('public_holiday', 'Public Holiday'),

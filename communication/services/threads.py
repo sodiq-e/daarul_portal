@@ -5,6 +5,7 @@ from typing import Iterable, List, Optional
 from django.contrib.auth.models import User
 
 from communication.models import PortalThread
+from settingsapp.tenant_utils import get_current_tenant
 
 
 def normalize_users(users: Iterable[Optional[User]]) -> List[User]:
@@ -23,7 +24,10 @@ def get_or_create_user_thread(user: User) -> PortalThread:
     """Create or retrieve a personal thread for a single user."""
     thread, created = PortalThread.objects.personal().get_or_create(
         user=user,
-        defaults={'thread_type': PortalThread.THREAD_TYPE_PERSONAL}
+        defaults={
+            'thread_type': PortalThread.THREAD_TYPE_PERSONAL,
+            'tenant': get_current_tenant(),
+        }
     )
     if not thread.participants.filter(pk=user.pk).exists():
         thread.participants.add(user)
@@ -53,17 +57,28 @@ def get_or_create_thread_for_users(
             break
 
     if thread is None:
-        thread = PortalThread.objects.create(thread_type=thread_type, name=name or '')
+        thread = PortalThread.objects.create(
+            thread_type=thread_type,
+            name=name or '',
+            tenant=get_current_tenant(),
+        )
         thread.participants.set(users)
         if thread_type == PortalThread.THREAD_TYPE_PERSONAL and users:
-            thread.user = users[0]
-            thread.save(update_fields=['user'])
+            # Only assign the OneToOne `user` field if it won't violate the unique constraint.
+            candidate_user = users[0]
+            conflict = PortalThread.objects.filter(user=candidate_user).exclude(pk=thread.pk).exists()
+            if not conflict:
+                thread.user = candidate_user
+                thread.save(update_fields=['user'])
         elif thread_type != PortalThread.THREAD_TYPE_PERSONAL and users and not thread.participants.filter(pk=users[0].pk).exists():
             thread.participants.add(users[0])
     else:
         if thread_type == PortalThread.THREAD_TYPE_PERSONAL and thread.user_id is None and users:
-            thread.user = users[0]
-            thread.save(update_fields=['user'])
+            candidate_user = users[0]
+            conflict = PortalThread.objects.filter(user=candidate_user).exclude(pk=thread.pk).exists()
+            if not conflict:
+                thread.user = candidate_user
+                thread.save(update_fields=['user'])
         if name and not thread.name:
             thread.name = name
             thread.save(update_fields=['name'])

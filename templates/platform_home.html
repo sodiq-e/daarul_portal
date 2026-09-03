@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div>
+            <p class="text-uppercase text-muted small mb-2">Platform administration</p>
+            <h1 class="mb-2">School management</h1>
+            <p class="text-muted mb-0">Select a tenant to manage its portal settings.</p>
+        </div>
+        <a href="{% url 'admin:index' %}" class="btn btn-primary">Open Django Admin</a>
+    </div>
+
+    <div class="row g-4">
+        {% for tenant in tenants %}
+        <div class="col-12 col-md-6 col-xl-4">
+            <article class="card h-100 shadow-sm border-0">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between gap-3 mb-3">
+                        <h2 class="h4 mb-0">{{ tenant.name }}</h2>
+                        <span class="badge {% if tenant.is_active %}bg-success{% else %}bg-secondary{% endif %} align-self-start">
+                            {% if tenant.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </div>
+                    <p class="text-muted mb-1">{{ tenant.hostname }}</p>
+                    <p class="small text-muted mb-4">Tenant slug: {{ tenant.slug }}</p>
+                    <div class="mt-auto d-flex flex-wrap gap-2">
+                        <a href="{% url 'tenant_portal_settings' tenant.id %}" class="btn btn-primary">Portal settings</a>
+                        {% if tenant.is_active %}
+                        <a href="http://{{ tenant.hostname }}" class="btn btn-outline-secondary">Open school portal</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">No tenant schools have been created yet.</div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

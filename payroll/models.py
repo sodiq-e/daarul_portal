@@ -2,9 +2,10 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from settingsapp.models import TenantModel
 
 
-class Staff(models.Model):
+class Staff(TenantModel):
     STAFF_TYPES = [
         ('teacher', 'Teacher'),
         ('admin', 'Administrator'),
@@ -12,6 +13,13 @@ class Staff(models.Model):
         ('other', 'Other'),
     ]
 
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='staff_profile'
+    )
     name = models.CharField(max_length=200)
     staff_type = models.CharField(max_length=20, choices=STAFF_TYPES, default='other')
     role = models.CharField(max_length=100, blank=True)
@@ -39,7 +47,7 @@ class Staff(models.Model):
         return f"{self.name} ({self.get_staff_type_display()})"
 
 
-class SalaryComponent(models.Model):
+class SalaryComponent(TenantModel):
     """Components that make up teacher/admin salary"""
     COMPONENT_TYPES = [
         ('basic', 'Basic Salary'),
@@ -60,7 +68,7 @@ class SalaryComponent(models.Model):
         return f"{self.staff.name} - {self.name}: ₦{self.amount}"
 
 
-class Payslip(models.Model):
+class Payslip(TenantModel):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
     month = models.DateField()
     allowances = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -119,7 +127,7 @@ class Payslip(models.Model):
         return f"{self.staff.name} - {self.month.strftime('%B %Y')}"
 
 
-class PayrollDashboard(models.Model):
+class PayrollDashboard(TenantModel):
     """Dashboard data for payroll overview"""
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
     month = models.DateField()
@@ -140,7 +148,7 @@ class PayrollDashboard(models.Model):
         return f"{self.staff.name} - {self.month.strftime('%B %Y')} Dashboard"
 
 
-class SchoolExpense(models.Model):
+class SchoolExpense(TenantModel):
     date = models.DateField()
     description = models.CharField(max_length=255)
     category = models.CharField(max_length=120, blank=True)
@@ -160,7 +168,7 @@ class SchoolExpense(models.Model):
         return f"{self.date} - {self.description[:50]}"
 
 
-class SchoolFee(models.Model):
+class SchoolFee(TenantModel):
     name = models.CharField(max_length=150)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
@@ -169,7 +177,7 @@ class SchoolFee(models.Model):
         return f"{self.name} ({self.amount})"
 
 
-class StudentInvoice(models.Model):
+class StudentInvoice(TenantModel):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('paid', 'Paid'),
@@ -214,7 +222,7 @@ class StudentInvoice(models.Model):
         return self.balance > Decimal('0.00')
 
 
-class StudentPayment(models.Model):
+class StudentPayment(TenantModel):
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='payments')
     invoice = models.ForeignKey(StudentInvoice, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=12, decimal_places=2)

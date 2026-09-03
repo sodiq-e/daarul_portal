@@ -29,6 +29,26 @@
                 </div>
             </div>
 
+            <div class="border rounded p-3 mb-4 bg-light">
+                <h4 class="mb-3">Termly Scheme Content</h4>
+                <div class="mb-3">
+                    <strong>Scheme Title:</strong>
+                    <p class="mb-0">{{ scheme.title }}</p>
+                </div>
+                <div class="mb-3">
+                    <strong>Academic Year:</strong>
+                    <p class="mb-0">{{ scheme.academic_year }}</p>
+                </div>
+                <div>
+                    <strong>Overall Objectives:</strong>
+                    {% if scheme.objectives %}
+                    <div class="mt-1">{{ scheme.objectives|linebreaks }}</div>
+                    {% else %}
+                    <p class="text-muted mb-0">No overall objectives provided.</p>
+                    {% endif %}
+                </div>
+            </div>
+
             <div class="row mb-4">
                 <div class="col-md-6">
                     <strong>Submitted:</strong> {{ scheme.submitted_at|date:"M d, Y H:i" }}
@@ -46,6 +66,18 @@
                 <strong>Notes:</strong> {{ scheme.approval_notes }}
             </div>
             {% endif %}
+            {% if scheme.reference %}
+            <div class="alert alert-light border">
+                <strong>References used:</strong><br>{{ scheme.reference|linebreaksbr }}
+            </div>
+            {% endif %}
+            {% if scheme.completion_acknowledged %}
+            <div class="alert alert-success"><strong>Final completion acknowledged</strong><br>{{ scheme.completion_admin_notes }}</div>
+            {% elif scheme.completion_rejected %}
+            <div class="alert alert-warning"><strong>Final completion returned</strong><br>{{ scheme.completion_admin_notes }}</div>
+            {% elif scheme.completion_submitted %}
+            <div class="alert alert-info"><strong>Final completion submitted for review.</strong></div>
+            {% endif %}
         </div>
     </div>
 
@@ -61,7 +93,13 @@
                     <h2 class="accordion-header" id="heading{{ week.pk }}">
                         <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ week.pk }}">
                             <strong>Week {{ week.week_number }}</strong>
-                            {% if week.is_completed %}
+                            {% if week.is_rejected %}
+                            <span class="badge bg-danger ms-2">Returned</span>
+                            {% elif week.is_approved %}
+                            <span class="badge bg-success ms-2">Acknowledged</span>
+                            {% elif week.is_acknowledged %}
+                            <span class="badge bg-warning ms-2">Awaiting Review</span>
+                            {% elif week.is_completed %}
                             <span class="badge bg-success ms-2">Completed</span>
                             {% endif %}
                         </button>
@@ -69,12 +107,30 @@
                     <div id="collapse{{ week.pk }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#weeksAccordion">
                         <div class="accordion-body">
                             <p><strong>Topic:</strong> {{ week.topic }}</p>
+                            <p><strong>Sub-topics:</strong></p>
+                            <p>{{ week.sub_topics|linebreaks }}</p>
                             <p><strong>Learning Objectives:</strong></p>
-                            <p>{{ week.learning_objectives|linebreaks }}</p>
-                            <p><strong>Activities:</strong></p>
-                            <p>{{ week.activities|linebreaks }}</p>
+                            <p>{{ week.objectives|linebreaks }}</p>
+                            <p><strong>Teaching Methods:</strong></p>
+                            <p>{{ week.teaching_methods|linebreaks }}</p>
                             <p><strong>Assessment:</strong></p>
                             <p>{{ week.assessment|linebreaks }}</p>
+                            {% if week.is_acknowledged and not week.is_approved %}
+                            <div class="border-top pt-3 mt-3">
+                                <form method="post" action="{% url 'teachers:approve_week_completion' week.pk %}" class="mb-2">
+                                    {% csrf_token %}
+                                    <textarea name="admin_notes" class="form-control mb-2" rows="2" placeholder="Acknowledgement comments..."></textarea>
+                                    <button type="submit" class="btn btn-sm btn-success">Acknowledge Week</button>
+                                </form>
+                                <form method="post" action="{% url 'teachers:reject_week_completion' week.pk %}">
+                                    {% csrf_token %}
+                                    <textarea name="admin_notes" class="form-control mb-2" rows="2" placeholder="Explain what needs correction..."></textarea>
+                                    <button type="submit" class="btn btn-sm btn-warning">Return Week</button>
+                                </form>
+                            </div>
+                            {% elif week.is_rejected and week.admin_notes %}
+                            <div class="alert alert-warning mt-3 mb-0"><strong>Admin feedback:</strong> {{ week.admin_notes }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -118,6 +174,23 @@
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if scheme.completion_submitted and not scheme.completion_acknowledged %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-primary text-white"><h4 class="mb-0">Final Completion Review</h4></div>
+        <div class="card-body">
+            <form method="post" action="{% url 'teachers:acknowledge_scheme_completion' scheme.pk %}" class="mb-3">
+                {% csrf_token %}
+                <textarea name="admin_notes" class="form-control mb-2" rows="3" placeholder="Add acknowledgement comments..."></textarea>
+                <button type="submit" class="btn btn-success">Acknowledge All</button>
+            </form>
+            <form method="post" action="{% url 'teachers:reject_scheme_completion' scheme.pk %}">
+                {% csrf_token %}
+                <textarea name="admin_notes" class="form-control mb-2" rows="3" placeholder="Explain what needs attention..."></textarea>
+                <button type="submit" class="btn btn-warning">Return With Comments</button>
+            </form>
         </div>
     </div>
     {% endif %}

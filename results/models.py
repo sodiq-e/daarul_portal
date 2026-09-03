@@ -6,9 +6,10 @@ from decimal import Decimal
 from students.models import Student
 from exams.models import Exam, Subject, ClassSubject, Term
 from school_classes.models import SchoolClasses
+from settingsapp.models import TenantModel
 
 
-class GradeScale(models.Model):
+class GradeScale(TenantModel):
     """Configurable grading system"""
     name = models.CharField(max_length=50)
     min_score = models.DecimalField(max_digits=5, decimal_places=2)
@@ -18,16 +19,16 @@ class GradeScale(models.Model):
     grade_point = models.DecimalField(max_digits=3, decimal_places=2, default=0)
 
     class Meta:
-        unique_together = ('name', 'grade')
+        unique_together = (('tenant', 'name', 'grade'),)
         ordering = ['-min_score']
 
     def __str__(self):
         return f"{self.grade} ({self.min_score}-{self.max_score})"
 
 
-class ResultTemplate(models.Model):
+class ResultTemplate(TenantModel):
     """Configurable report card template"""
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     school_class = models.ForeignKey(
         SchoolClasses,
         on_delete=models.CASCADE,
@@ -58,13 +59,13 @@ class ResultTemplate(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('school_class', 'term')
+        unique_together = (('tenant', 'school_class', 'term'),)
 
     def __str__(self):
         return f"{self.school_class} - {self.term} Template"
 
 
-class StudentResult(models.Model):
+class StudentResult(TenantModel):
     """Comprehensive student result record"""
     student = models.ForeignKey(
         Student,
@@ -167,7 +168,7 @@ class StudentResult(models.Model):
         return f"{self.student} - {self.class_subject.subject} ({self.term})"
 
 
-class TermResult(models.Model):
+class TermResult(TenantModel):
     """Aggregated term results for a student"""
     student = models.ForeignKey(
         Student,
@@ -237,7 +238,7 @@ class TermResult(models.Model):
         return f"{self.student} - {self.term} Term Result"
 
 
-class Promotion(models.Model):
+class Promotion(TenantModel):
     """Student promotions between classes"""
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
@@ -268,7 +269,7 @@ class Promotion(models.Model):
     def __str__(self):
         return f"{self.student} promoted from {self.from_class} to {self.to_class}"
 
-class ReportCardComment(models.Model):
+class ReportCardComment(TenantModel):
     """Teacher comments on student report cards"""
     term_result = models.ForeignKey(
         TermResult,
@@ -300,7 +301,7 @@ class ReportCardComment(models.Model):
         return f"Comment for {self.term_result.student} by {self.created_by}"
 
 
-class StudentConduct(models.Model):
+class StudentConduct(TenantModel):
     """Student conduct, attendance, and behavioral traits for each term"""
     
     ATTENDANCE_CHOICES = [

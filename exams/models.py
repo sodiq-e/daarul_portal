@@ -2,9 +2,10 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from school_classes.models import SchoolClasses
 from ckeditor.fields import RichTextField
+from settingsapp.models import TenantModel
 
 
-class Term(models.Model):
+class Term(TenantModel):
     """Academic terms (First Term, Second Term, Third Term)"""
     TERM_CHOICES = [
         ('first', 'First Term'),
@@ -21,24 +22,27 @@ class Term(models.Model):
     is_active = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('academic_year', 'name')
+        unique_together = (('tenant', 'academic_year', 'name'),)
 
     def __str__(self):
         return f"{self.display_name} ({self.academic_year})"
 
 
-class Subject(models.Model):
+class Subject(TenantModel):
     """School subjects"""
-    name = models.CharField(max_length=120, unique=True)
-    code = models.CharField(max_length=30, unique=True, blank=True)
+    name = models.CharField(max_length=120)
+    code = models.CharField(max_length=30, blank=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = (('tenant', 'code'), ('tenant', 'name'),)
 
     def __str__(self):
         return f"{self.code} - {self.name}" if self.code else self.name
 
 
-class ClassSubject(models.Model):
+class ClassSubject(TenantModel):
     """Subjects assigned to specific classes"""
     school_class = models.ForeignKey(
         SchoolClasses,
@@ -54,13 +58,13 @@ class ClassSubject(models.Model):
     order = models.PositiveIntegerField(default=0, help_text="Display order in report cards")
 
     class Meta:
-        unique_together = ('school_class', 'subject')
+        unique_together = (('tenant', 'school_class', 'subject'),)
 
     def __str__(self):
         return f"{self.school_class} - {self.subject}"
 
 
-class ExamType(models.Model):
+class ExamType(TenantModel):
     """Types of assessments (Test, Exam, etc.)"""
     ASSESSMENT_CHOICES = [
         ('test', 'Test'),
@@ -91,8 +95,11 @@ class ExamType(models.Model):
     def __str__(self):
         return f"{self.name} ({self.weight_percentage}%)"
 
+    class Meta:
+        unique_together = (('tenant', 'name'),)
 
-class Exam(models.Model):
+
+class Exam(TenantModel):
     """Examination sessions"""
     name = models.CharField(max_length=150)
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='exams')
@@ -106,13 +113,13 @@ class Exam(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('term', 'school_class', 'exam_type')
+        unique_together = (('tenant', 'term', 'school_class', 'exam_type'),)
 
     def __str__(self):
         return f"{self.name} - {self.school_class} ({self.term})"
 
 
-class ExamPaper(models.Model):
+class ExamPaper(TenantModel):
     STATUS_CHOICES = [
         ('draft', 'Draft'),
         ('submitted', 'Submitted'),

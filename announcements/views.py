@@ -8,6 +8,7 @@ from .models import Announcement, AnnouncementCategory
 from django.db.models import Q
 from .forms import AnnouncementForm
 from pages.models import Page
+from settingsapp.tenant_utils import user_is_tenant_admin
 
 
 class AnnouncementListView(ListView):
@@ -64,7 +65,7 @@ class AnnouncementCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView
     success_url = reverse_lazy('announcement_list')
 
     def test_func(self):
-        return self.request.user.is_staff or self.request.user.is_superuser
+        return self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
@@ -79,7 +80,7 @@ class AnnouncementUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView
     success_url = reverse_lazy('announcement_list')
 
     def test_func(self):
-        return self.request.user.is_staff or self.request.user.is_superuser
+        return self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
 
     def form_valid(self, form):
         messages.success(self.request, 'Announcement updated successfully.')
@@ -92,7 +93,7 @@ class AnnouncementDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView
     success_url = reverse_lazy('announcement_list')
 
     def test_func(self):
-        return self.request.user.is_staff or self.request.user.is_superuser
+        return self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, 'Announcement deleted successfully.')

@@ -10,11 +10,12 @@ from exams.models import Term, Subject, ClassSubject
 from results.models import GradeScale, ResultTemplate, StudentResult
 from school_classes.models import SchoolClasses
 from students.models import Student
+from settingsapp.tenant_utils import user_is_tenant_admin
 
 
 def is_admin(user):
     """Check if user is admin"""
-    return user.is_staff and user.is_superuser
+    return user.is_superuser or user_is_tenant_admin(user)
 
 
 @login_required

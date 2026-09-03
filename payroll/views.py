@@ -13,24 +13,26 @@ from .models import SchoolExpense, SchoolFee, StudentInvoice, StudentPayment, St
 from exams.models import Term
 from students.models import Student
 from .forms import SchoolExpenseForm, SchoolFeeForm, StudentInvoiceForm, StudentPaymentForm
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
 
 
-def staff_can_manage(user):
+def staff_can_manage(user, request=None):
     """Check if user can manage payroll (approve staff access)"""
     if not user or not user.is_authenticated:
         return False
-    
+
     try:
-        return (
-            getattr(user, 'profile', None) is not None and
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = get_request_tenant(request) if request is not None else None
+        if tenant is None:
+            return (
+                getattr(user, 'profile', None) is not None and
+                user.profile.is_approved and
+                user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+            )
+        return getattr(user, 'profile', None) is not None and user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
-        # Profile doesn't exist or other attribute error
         return False
     except Exception as e:
-        # Log unexpected errors but don't crash
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error in staff_can_manage: {str(e)}")

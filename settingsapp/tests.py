@@ -1,8 +1,15 @@
-from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 
 from .forms import SchoolSettingsForm
-from .models import SchoolSettings
+from .models import GalleryImage, SchoolSettings, Tenant, TenantMembership
 from .print_utils import build_document_verification, generate_document_reference
+from .tenant_utils import clear_current_tenant, resolve_tenant, set_current_tenant, user_has_tenant_access
+from .middleware import TenantMiddleware
+
+from announcements.models import Announcement
+from school_classes.models import Teacher
+from staff_attendance.models import AttendanceSettings
+from accounts.models import Profile
 
 
 class SchoolSettingsFormTests(TestCase):
@@ -80,6 +87,175 @@ class SchoolSettingsFormTests(TestCase):
         self.assertEqual(form.cleaned_data['secondary_color'], '#654321')
 
 
+class TenantScopeTests(TestCase):
+    def test_tenant_can_be_created_with_unique_hostname(self):
+        tenant = Tenant.objects.create(
+            name='School A',
+            slug='schoola',
+            hostname='schoola.oyo.com',
+            is_active=True,
+        )
+
+        self.assertEqual(str(tenant), 'School A')
+        self.assertEqual(tenant.slug, 'schoola')
+        self.assertEqual(tenant.hostname, 'schoola.oyo.com')
+
+    def test_school_settings_can_be_linked_to_a_tenant(self):
+        tenant = Tenant.objects.create(
+            name='Daarul Bayaan',
+            slug='daarulbayaan-test',
+            hostname='daarulbayaan-test.localhost',
+            is_active=True,
+        )
+
+        settings = SchoolSettings.objects.create(
+            tenant=tenant,
+            school_name='Daarul Bayaan Islamic School',
+        )
+
+        self.assertEqual(settings.tenant, tenant)
+        self.assertEqual(settings.school_name, 'Daarul Bayaan Islamic School')
+
+    def test_gallery_page_only_shows_active_tenant_media(self):
+        tenant_a = Tenant.objects.create(
+            name='School A',
+            slug='school-a-gallery',
+            hostname='school-a-gallery.localhost',
+            is_active=True,
+        )
+        tenant_b = Tenant.objects.create(
+            name='School B',
+            slug='school-b-gallery',
+            hostname='school-b-gallery.localhost',
+            is_active=True,
+        )
+        settings_a = SchoolSettings.objects.create(tenant=tenant_a, school_name='School A')
+        settings_b = SchoolSettings.objects.create(tenant=tenant_b, school_name='School B')
+        GalleryImage.objects.create(school_settings=settings_a, title='A gallery image')
+        GalleryImage.objects.create(school_settings=settings_b, title='B gallery image')
+
+        response = self.client.get('/gallery/', HTTP_HOST=tenant_a.hostname)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'A gallery image')
+        self.assertNotContains(response, 'B gallery image')
+
+    @override_settings(ALLOWED_HOSTS=['prep1.localhost'])
+    def test_approved_teacher_gets_teacher_sidebar(self):
+        from django.contrib.auth import get_user_model
+
+        tenant = Tenant.objects.create(
+            name='PREP1 School',
+            slug='prep1',
+            hostname='prep1.localhost',
+            is_active=True,
+        )
+        user = get_user_model().objects.create_user(
+            username='prep1-teacher',
+            password='testpass123',
+        )
+        profile = Profile.objects.get(user=user)
+        profile.requested_group = 'Teacher'
+        profile.is_approved = True
+        profile.save()
+        Teacher.objects.create(
+            user=user,
+            tenant=tenant,
+            employee_id='PREP1001',
+            is_approved=True,
+        )
+        TenantMembership.objects.create(user=user, tenant=tenant, role='teacher', is_active=True)
+        self.client.force_login(user)
+
+        response = self.client.get('/', HTTP_HOST='prep1.localhost')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'TEACHER')
+        self.assertNotContains(response, '>ADMIN<')
+
+
+class TenantResolutionTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.tenant = Tenant.objects.create(
+            name='School A',
+            slug='schoola',
+            hostname='schoola.onlinehost.com',
+            is_active=True,
+        )
+
+    def tearDown(self):
+        self.tenant.delete()
+        super().tearDown()
+
+    @override_settings(TENANT_BASE_DOMAIN='localhost', ALLOWED_HOSTS=['localhost', '.localhost'])
+    def test_localhost_platform_domain_and_subdomain_resolution(self):
+        self.assertIsNone(resolve_tenant(self.factory.get('/', HTTP_HOST='localhost:8000')))
+        self.assertEqual(
+            resolve_tenant(self.factory.get('/', HTTP_HOST='schoola.localhost:8000')),
+            self.tenant,
+        )
+
+    @override_settings(TENANT_BASE_DOMAIN='onlinehost.com', ALLOWED_HOSTS=['onlinehost.com', '.onlinehost.com'])
+    def test_configured_online_platform_domain_and_subdomain_resolution(self):
+        self.assertIsNone(resolve_tenant(self.factory.get('/', HTTP_HOST='onlinehost.com')))
+        self.assertEqual(
+            resolve_tenant(self.factory.get('/', HTTP_HOST='schoola.onlinehost.com')),
+            self.tenant,
+        )
+        self.assertIsNone(resolve_tenant(self.factory.get('/', HTTP_HOST='unknown.onlinehost.com')))
+        self.assertIsNone(resolve_tenant(self.factory.get('/', HTTP_HOST='www.onlinehost.com')))
+
+    @override_settings(TENANT_BASE_DOMAIN='localhost')
+    def test_tenant_form_normalizes_url_hostname(self):
+        from .forms import TenantForm
+
+        form = TenantForm(data={
+            'name': 'School A',
+            'slug': 'schoolb',
+            'hostname': 'http://schoolb.localhost:8001/',
+            'is_active': 'on',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['hostname'], 'schoolb.localhost')
+
+    @override_settings(TENANT_BASE_DOMAIN='pythonanywhere.com', ALLOWED_HOSTS=['username.pythonanywhere.com'])
+    def test_shared_path_resolution_uses_slug_on_platform_host(self):
+        self.tenant.access_mode = 'shared_path'
+        self.tenant.hostname = None
+        self.tenant.save(update_fields=['access_mode', 'hostname'])
+
+        request = self.factory.get('/schoola/gallery/', HTTP_HOST='username.pythonanywhere.com')
+
+        self.assertEqual(resolve_tenant(request), self.tenant)
+
+    @override_settings(ALLOWED_HOSTS=['username.pythonanywhere.com'])
+    def test_shared_path_request_reaches_home_view(self):
+        self.tenant.access_mode = 'shared_path'
+        self.tenant.hostname = None
+        self.tenant.save(update_fields=['access_mode', 'hostname'])
+
+        response = self.client.get('/schoola/', HTTP_HOST='username.pythonanywhere.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.wsgi_request.tenant, self.tenant)
+
+    def test_tenant_form_shared_path_does_not_require_hostname(self):
+        from .forms import TenantForm
+
+        form = TenantForm(data={
+            'name': 'Path School',
+            'slug': 'path-school',
+            'access_mode': 'shared_path',
+            'hostname': '',
+            'is_active': 'on',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data['hostname'])
+
+
 class DocumentVerificationUtilsTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -103,3 +279,92 @@ class DocumentVerificationUtilsTests(SimpleTestCase):
         self.assertIn("document_url", verification)
         self.assertIn("announcement", verification["reference"].lower())
         self.assertIn("<svg", verification["qr_svg"])
+
+
+class TenantQueryProtectionTests(TestCase):
+    def tearDown(self):
+        clear_current_tenant()
+        super().tearDown()
+
+    def test_tenant_scoped_manager_filters_by_active_tenant_automatically(self):
+        tenant_a = Tenant.objects.create(name='Alpha', slug='alpha', hostname='alpha.example.com', is_active=True)
+        tenant_b = Tenant.objects.create(name='Beta', slug='beta', hostname='beta.example.com', is_active=True)
+
+        user = self.user = __import__('django.contrib.auth').contrib.auth.models.User.objects.create_user(
+            username='alpha-user',
+            password='testpass123'
+        )
+
+        Announcement.objects.create(tenant=tenant_a, title='Alpha post', content='Alpha content', created_by=user, is_active=True)
+        Announcement.objects.create(tenant=tenant_b, title='Beta post', content='Beta content', created_by=user, is_active=True)
+
+        set_current_tenant(tenant_a)
+
+        self.assertEqual(list(Announcement.objects.values_list('title', flat=True)), ['Alpha post'])
+        self.assertEqual(Announcement.objects.count(), 1)
+        self.assertEqual(Announcement.objects.get().tenant, tenant_a)
+
+    def test_user_with_active_tenant_membership_has_access(self):
+        tenant = Tenant.objects.create(name='School A', slug='school-a', hostname='schoola.example.com', is_active=True)
+        user = __import__('django.contrib.auth').contrib.auth.models.User.objects.create_user(
+            username='school-admin',
+            password='testpass123'
+        )
+
+        TenantMembership.objects.create(user=user, tenant=tenant, role='school_admin', is_active=True)
+
+        self.assertTrue(user_has_tenant_access(user, tenant))
+        self.assertTrue(user_has_tenant_access(user, tenant, roles=['school_admin']))
+
+        membership = user.tenant_memberships.get(tenant=tenant)
+        membership.is_active = False
+        membership.save()
+
+        self.assertFalse(user_has_tenant_access(user, tenant))
+
+    @override_settings(ALLOWED_HOSTS=['tenant-a.localhost', 'tenant-b.localhost', 'localhost'])
+    def test_teacher_profile_is_not_visible_on_another_tenant(self):
+        from django.contrib.auth import get_user_model
+
+        tenant_a = Tenant.objects.create(name='Tenant A', slug='tenant-a', hostname='tenant-a.localhost', is_active=True)
+        tenant_b = Tenant.objects.create(name='Tenant B', slug='tenant-b', hostname='tenant-b.localhost', is_active=True)
+        user = get_user_model().objects.create_user(username='cross-tenant-teacher', password='testpass123')
+        teacher = Teacher._base_manager.create(user=user, tenant=tenant_a, employee_id='CROSS001')
+
+        request_factory = RequestFactory()
+
+        def inspect_profile(request):
+            profile = getattr(request.user, 'teacher_profile', None)
+            return profile.tenant_id if profile else None
+
+        with self.subTest(host='tenant-a.localhost'):
+            request = request_factory.get('/', HTTP_HOST='tenant-a.localhost')
+            request.user = user
+            TenantMiddleware(inspect_profile)(request)
+            self.assertEqual(inspect_profile(request), tenant_a.id)
+
+        request = request_factory.get('/', HTTP_HOST='tenant-b.localhost')
+        request.user = user
+        TenantMiddleware(inspect_profile)(request)
+        self.assertIsNone(inspect_profile(request))
+        teacher.delete()
+
+    def test_new_tenant_model_save_inherits_active_tenant(self):
+        from students.models import Student
+
+        tenant = Tenant.objects.create(name='Save School', slug='save-school', hostname='save-school.localhost')
+        set_current_tenant(tenant)
+        student = Student.objects.create(admission_no='SAVE001', surname='Saved', other_names='Student')
+        self.assertEqual(student.tenant_id, tenant.id)
+
+    def test_attendance_settings_are_isolated_per_tenant(self):
+        tenant_a = Tenant.objects.create(name='Attendance A', slug='attendance-a', hostname='attendance-a.localhost')
+        tenant_b = Tenant.objects.create(name='Attendance B', slug='attendance-b', hostname='attendance-b.localhost')
+        set_current_tenant(tenant_a)
+        AttendanceSettings.objects.create(active=True, allowed_radius_meters=100)
+        set_current_tenant(tenant_b)
+        AttendanceSettings.objects.create(active=True, allowed_radius_meters=200)
+
+        self.assertEqual(AttendanceSettings.objects.current().allowed_radius_meters, 200)
+        set_current_tenant(tenant_a)
+        self.assertEqual(AttendanceSettings.objects.current().allowed_radius_meters, 100)

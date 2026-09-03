@@ -17,7 +17,7 @@ from .models import (
     StudentResult, TermResult, ResultTemplate,
     GradeScale, Promotion, ReportCardComment, StudentConduct
 )
-
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
 
 def user_profile_approved(user):
@@ -29,12 +29,12 @@ def user_profile_approved(user):
 
 
 def user_is_staff(user):
-    """Check if user is staff/teacher"""
+    """Check if user is staff/teacher on the current tenant."""
     try:
-        return (
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = get_request_tenant(getattr(user, '_tenant_request', None)) if hasattr(user, '_tenant_request') else getattr(user, 'tenant', None)
+        if tenant is None:
+            tenant = get_request_tenant(getattr(user, '_tenant_request', None))
+        return user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
         return False
 
@@ -98,7 +98,7 @@ def select_class_for_report_card(request):
             messages.error(request, 'Please select both class and term.')
 
     # Get available classes
-    if request.user.is_staff or request.user.is_superuser:
+    if request.user.is_superuser or user_is_tenant_admin(request.user):
         # Admins see all classes
         classes = SchoolClasses.objects.all().order_by('class_name')
     elif user_is_staff(request.user):
@@ -139,7 +139,7 @@ def report_card_student_list(request, class_id, term_id):
     term = get_object_or_404(Term, pk=term_id)
 
     # Check permission - teachers can only view their assigned classes, admins can view all
-    if request.user.is_staff or request.user.is_superuser:
+    if request.user.is_superuser or user_is_tenant_admin(request.user):
         # Admins have access to all classes
         pass
     elif user_is_staff(request.user):
@@ -391,7 +391,7 @@ def class_results(request, class_id, term_id):
     can_print_broadsheet = False
     broadsheet_url = None
 
-    if request.user.is_staff or request.user.is_superuser:
+    if request.user.is_superuser or user_is_tenant_admin(request.user):
         can_print_broadsheet = True
         broadsheet_url = reverse('broadsheet', args=[class_id, term_id])
     elif user_is_staff(request.user):
@@ -439,7 +439,7 @@ def student_report_card(request, student_id, term_id):
     term = get_object_or_404(Term, pk=term_id)
 
     # Check if user can view this student's results
-    if request.user.is_staff or request.user.is_superuser:
+    if request.user.is_superuser or user_is_tenant_admin(request.user):
         pass
     elif user_is_staff(request.user):
         try:
@@ -589,7 +589,7 @@ def student_report_card(request, student_id, term_id):
 @login_required
 def broadsheet(request, class_id, term_id):
     """Generate printable broadsheet for a class"""
-    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user)):
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or user_is_staff(request.user)):
         messages.error(request, 'You do not have permission to view broadsheets.')
         return redirect('home')
 
@@ -756,7 +756,7 @@ def report_card(request, student_id, exam_id):
 
 @login_required
 def promotions_list(request):
-    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user)):
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or user_is_staff(request.user)):
         messages.error(request, 'You do not have permission to view promotions.')
         return redirect('home')
 
@@ -927,7 +927,7 @@ def promotions_list(request):
 
 @login_required
 def promote_student(request, student_id, exam_id):
-    if not (request.user.is_staff or request.user.is_superuser or user_is_staff(request.user)):
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or user_is_staff(request.user)):
         messages.error(request, 'You do not have permission to promote students.')
         return redirect('home')
 
@@ -1783,7 +1783,7 @@ def teacher_view_report_card_comments(request, student_id, term_id):
 def admin_is_staff(user):
     """Check if user is admin/staff"""
     try:
-        return user.is_staff or user.groups.filter(name__in=['Admin', 'Staff']).exists()
+        return user.is_superuser or user_is_tenant_admin(user)
     except:
         return False
 

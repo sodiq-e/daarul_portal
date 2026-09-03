@@ -20,6 +20,7 @@ from .models import Student, StudentApplication, AdmissionFormField, AdmissionFo
 from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm, DynamicAdmissionForm
 from school_classes.models import ClassTeacher
 from django.http import JsonResponse
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
 
 @login_required
@@ -47,17 +48,20 @@ def user_profile_approved(user):
         return False
 
 
-def staff_can_edit(user):
-    """Check if user can edit student records"""
+def staff_can_edit(user, request=None):
+    """Check if user can edit student records for the active tenant."""
     if not user or not user.is_authenticated:
         return False
-    
+
     try:
-        return (
-            getattr(user, 'profile', None) is not None and
-            user.profile.is_approved and
-            user.groups.filter(name__in=['Teacher', 'Staff']).exists()
-        )
+        tenant = get_request_tenant(request) if request is not None else None
+        if tenant is None:
+            return (
+                getattr(user, 'profile', None) is not None and
+                user.profile.is_approved and
+                user.groups.filter(name__in=['Teacher', 'Staff']).exists()
+            )
+        return getattr(user, 'profile', None) is not None and user.profile.is_approved and user_is_tenant_staff(user, tenant=tenant)
     except AttributeError:
         return False
     except Exception as e:
@@ -113,7 +117,8 @@ class StudentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
         context['can_modify'] = staff_can_edit(self.request.user)
         context['can_message_teacher'] = self.request.user.is_authenticated and (
-            self.request.user.is_staff or
+            self.request.user.is_superuser or
+            user_is_tenant_admin(self.request.user) or
             self.request.user == getattr(student, 'user', None) or
             is_class_teacher
         )
@@ -164,7 +169,7 @@ class StudentDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
 @login_required
 def student_status_update(request, pk):
-    if not request.user.is_staff:
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user)):
         return redirect('home')
     student = get_object_or_404(Student, pk=pk)
     if request.method == 'POST':
@@ -229,7 +234,7 @@ class StudentApplicationDetailView(LoginRequiredMixin, UserPassesTestMixin, Deta
 @login_required
 def print_admission_application(request, pk):
     """Print admission application in PDF format"""
-    if not request.user.is_staff:
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user)):
         return redirect('home')
     
     application = get_object_or_404(StudentApplication, pk=pk)
@@ -773,7 +778,7 @@ class StudentContactTeacherView(LoginRequiredMixin, TemplateView):
 def user_is_admin(user):
     """Check if user is admin/staff"""
     try:
-        return user.is_staff or user.groups.filter(name__in=['Admin', 'Staff']).exists()
+        return user.is_superuser or user_is_tenant_admin(user)
     except:
         return False
 

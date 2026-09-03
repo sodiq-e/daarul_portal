@@ -4,16 +4,17 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from school_classes.models import SchoolClasses
+from settingsapp.models import TenantModel
 
 
-class Student(models.Model):
+class Student(TenantModel):
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('transferred', 'Transferred'),
         ('graduated', 'Graduated'),
     ]
     
-    admission_no = models.CharField(max_length=30, unique=True)
+    admission_no = models.CharField(max_length=30)
     surname = models.CharField(max_length=120)
     other_names = models.CharField(max_length=200, blank=True)
     dob = models.DateField(null=True, blank=True)
@@ -59,8 +60,11 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.admission_no} - {self.full_name()}"
 
+    class Meta:
+        unique_together = (('tenant', 'admission_no'),)
 
-class StudentApplication(models.Model):
+
+class StudentApplication(TenantModel):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),

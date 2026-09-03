@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="container py-5">
+    <div class="d-flex justify-content-between align-items-end gap-3 mb-4">
+        <div>
+            <p class="text-uppercase text-muted small mb-2">{{ tenant.name }}</p>
+            <h1 class="h2 mb-2">Pending approvals</h1>
+            <p class="text-muted mb-0">Approve teachers, staff, and students for this school.</p>
+        </div>
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary">Back to portal</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>User</th><th>Requested role</th><th>Action</th></tr></thead>
+                    <tbody>
+                    {% for membership in pending_memberships %}
+                        <tr>
+                            <td>{{ membership.user.get_full_name|default:membership.user.username }}<br><small class="text-muted">{{ membership.user.username }}</small></td>
+                            <td>{{ membership.get_role_display }}</td>
+                            <td>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="membership_id" value="{{ membership.id }}">
+                                    <button type="submit" class="btn btn-sm btn-primary">Approve</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="text-muted">There are no pending approvals for this school.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

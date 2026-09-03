@@ -34,6 +34,7 @@ from .services.presence import get_presence_state_for_thread
 from school_classes.models import SchoolClasses, ClassTeacher
 from students.models import Student
 from settingsapp.email_service import send_contact_message_email, send_contact_message_confirmation_email
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
 
 def contact_view(request):
@@ -64,29 +65,44 @@ def contact_success(request):
 
 # ============ ADMIN MESSAGE MANAGEMENT VIEWS ============
 
-def is_admin(user):
-    """Check if user is admin"""
+def is_admin(user, request=None):
+    """Check if user is an approved admin for the active tenant."""
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return False
+
     try:
-        return user.is_staff and user.profile.is_approved
+        tenant = get_request_tenant(request) if request is not None else None
+        if tenant is not None:
+            return user.profile.is_approved and user_is_tenant_admin(user, tenant=tenant)
+        return user.is_superuser
     except AttributeError:
-        return user.is_staff
+        return bool(getattr(user, 'is_staff', False))
 
 
-def get_active_accounts():
-    return User.objects.filter(is_active=True).filter(
+def get_active_accounts(request=None):
+    accounts = User.objects.filter(is_active=True).filter(
         Q(profile__is_approved=True) | Q(profile__isnull=True)
-    ).order_by('username')
+    )
+    tenant = get_request_tenant(request) if request is not None else None
+    if tenant is not None:
+        accounts = accounts.filter(
+            tenant_memberships__tenant=tenant,
+            tenant_memberships__is_active=True,
+        )
+    return accounts.distinct().order_by('username')
 
 
-def get_user_threads(user):
-    if user.is_staff or user.is_superuser:
+def get_user_threads(user, request=None):
+    tenant = get_request_tenant(request) if request is not None else None
+    if user.is_superuser or (tenant is not None and user_is_tenant_admin(user, tenant=tenant)):
         return PortalThread.objects.all().order_by('-updated_at')
 
     return PortalThread.objects.for_user(user).order_by('-updated_at')
 
 
-def get_user_personal_threads(user):
-    if user.is_staff or user.is_superuser:
+def get_user_personal_threads(user, request=None):
+    tenant = get_request_tenant(request) if request is not None else None
+    if user.is_superuser or (tenant is not None and user_is_tenant_admin(user, tenant=tenant)):
         return PortalThread.objects.personal().order_by('-updated_at')
 
     return PortalThread.objects.personal().for_user(user).order_by('-updated_at')
@@ -136,7 +152,7 @@ class AdminMessageListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     ordering = ['-created_at']
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -152,7 +168,7 @@ class AdminMessageDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView
     context_object_name = 'message'
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def post(self, request, *args, **kwargs):
         """Handle reply submission"""
@@ -211,16 +227,16 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
     context_object_name = 'users'
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def get_queryset(self):
-        return get_active_accounts()
+        return get_active_accounts(self.request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         users_with_counts = []
         for user in context['users']:
-            threads = get_user_personal_threads(user)
+            threads = get_user_personal_threads(user, request=self.request)
             unread_count = 0
             total_messages = 0
             if threads.exists():
@@ -243,7 +259,7 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
         selected_thread = None
         if selected_user_id:
             try:
-                selected_user = get_active_accounts().get(pk=selected_user_id)
+                selected_user = get_active_accounts(self.request).get(pk=selected_user_id)
             except (ValueError, User.DoesNotExist):
                 selected_user = None
 
@@ -306,7 +322,7 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
     template_name = 'communication/admin_portal_thread_detail.html'
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def dispatch(self, request, *args, **kwargs):
         thread_id = kwargs.get('thread_id')
@@ -324,7 +340,7 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
 
         user_id = kwargs.get('user_id')
         if user_id:
-            user = get_object_or_404(get_active_accounts(), pk=user_id)
+            user = get_object_or_404(get_active_accounts(self.request), pk=user_id)
             return get_or_create_personal_thread_for_users([self.request.user, user])
 
         raise Http404('Thread not found.')
@@ -384,11 +400,11 @@ class AdminPortalGroupsListView(LoginRequiredMixin, UserPassesTestMixin, Templat
     template_name = 'communication/admin_portal_groups_list.html'
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def get_context_data(self, **kwargs):
         from school_classes.models import SchoolClasses
-        users = get_active_accounts().select_related('profile').prefetch_related('groups')
+        users = get_active_accounts(self.request).select_related('profile').prefetch_related('groups')
         classes = SchoolClasses.objects.all().order_by('class_name')
         threads = PortalThread.objects.filter(
             thread_type__in=[PortalThread.THREAD_TYPE_GROUP, PortalThread.THREAD_TYPE_CLASS]
@@ -406,11 +422,11 @@ class AdminPortalGroupCreateView(LoginRequiredMixin, UserPassesTestMixin, Templa
     template_name = 'communication/admin_portal_group_form.html'
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def get_context_data(self, **kwargs):
         from school_classes.models import SchoolClasses
-        users = get_active_accounts().select_related('profile').prefetch_related('groups')
+        users = get_active_accounts(self.request).select_related('profile').prefetch_related('groups')
         classes = SchoolClasses.objects.all().order_by('class_name')
         context = super().get_context_data(**kwargs)
         context.update({
@@ -452,12 +468,12 @@ class AdminPortalGroupEditView(LoginRequiredMixin, UserPassesTestMixin, Template
     template_name = 'communication/admin_portal_group_form.html'
 
     def test_func(self):
-        return is_admin(self.request.user)
+        return is_admin(self.request.user, request=self.request)
 
     def get_context_data(self, **kwargs):
         from school_classes.models import SchoolClasses
         thread = get_object_or_404(PortalThread, pk=self.kwargs['thread_id'])
-        users = get_active_accounts().select_related('profile').prefetch_related('groups')
+        users = get_active_accounts(self.request).select_related('profile').prefetch_related('groups')
         classes = SchoolClasses.objects.all().order_by('class_name')
         context = super().get_context_data(**kwargs)
         context.update({
@@ -500,10 +516,10 @@ class AdminPortalGroupEditView(LoginRequiredMixin, UserPassesTestMixin, Template
 @login_required
 @require_POST
 def admin_portal_thread_start(request, user_id):
-    if not is_admin(request.user):
+    if not is_admin(request.user, request=request):
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
 
-    user = get_object_or_404(get_active_accounts(), pk=user_id)
+    user = get_object_or_404(get_active_accounts(request), pk=user_id)
     thread = get_or_create_personal_thread_for_users([request.user, user])
     return redirect('admin_portal_thread_detail', thread_id=thread.id)
 
@@ -512,8 +528,13 @@ def admin_portal_thread_start(request, user_id):
 def start_class_thread(request, class_id):
     """Create/open a class-wide thread (teacher + students).
 
-    Only users with a teacher profile or staff may start a class thread.
+    Only users with a teacher/staff membership for the active tenant may start a class thread.
     """
+    tenant = get_request_tenant(request)
+    if not (request.user.is_superuser or user_is_tenant_staff(request.user, tenant=tenant)):
+        django_messages.error(request, 'You do not have permission to start a class thread for this tenant.')
+        return redirect('school_classes:class_list')
+
     try:
         school_class = SchoolClasses.objects.get(pk=class_id)
     except SchoolClasses.DoesNotExist:
@@ -561,7 +582,8 @@ def student_message_teacher(request, student_id):
         django_messages.error(request, 'Student is not assigned to a class.')
         return redirect('students:student_detail', student.pk)
 
-    if hasattr(request.user, 'teacher_profile') and not request.user.is_staff:
+    tenant = get_request_tenant(request)
+    if hasattr(request.user, 'teacher_profile') and not user_is_tenant_staff(request.user, tenant=tenant):
         if request.user != getattr(student, 'user', None):
             is_assigned_teacher = ClassTeacher.objects.filter(
                 teacher=request.user.teacher_profile,
@@ -598,7 +620,7 @@ class PortalInboxView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        threads = get_user_threads(self.request.user).prefetch_related('participants').annotate(
+        threads = get_user_threads(self.request.user, request=self.request).prefetch_related('participants').annotate(
             unread_count=Count(
                 'messages',
                 filter=Q(messages__is_read=False) & ~Q(messages__sender=self.request.user)
@@ -620,7 +642,7 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
             except Http404:
                 return redirect('portal_messages_list')
         else:
-            thread = get_user_threads(request.user).first()
+            thread = get_user_threads(request.user, request=request).first()
 
         if not thread:
             return redirect('portal_messages_list')
@@ -633,7 +655,7 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
         if thread_id:
             thread = get_user_thread_or_404(self.request.user, thread_id)
         else:
-            thread = get_user_threads(self.request.user).first()
+            thread = get_user_threads(self.request.user, request=self.request).first()
 
         mark_thread_messages_as_read(thread, self.request.user)
         other_participant = thread.get_other_participant(self.request.user)
@@ -652,7 +674,7 @@ class PortalThreadDetailView(LoginRequiredMixin, TemplateView):
         if thread_id:
             thread = get_user_thread_or_404(request.user, thread_id)
         else:
-            thread = get_user_threads(request.user).first()
+            thread = get_user_threads(request.user, request=request).first()
             if not thread:
                 return redirect('portal_messages_list')
 
@@ -777,7 +799,7 @@ def fetch_portal_messages(request):
     if thread_id:
         thread = get_user_thread_or_404(request.user, thread_id)
     else:
-        thread = get_user_threads(request.user).first()
+        thread = get_user_threads(request.user, request=request).first()
         if not thread:
             return JsonResponse({'success': True, 'messages': []})
 
@@ -805,7 +827,7 @@ def portal_message_compose(request):
         return redirect('portal_messages_list')
 
     try:
-        target_user = get_active_accounts().get(pk=target_user_id)
+        target_user = get_active_accounts(request).get(pk=target_user_id)
     except (ValueError, User.DoesNotExist):
         return redirect('portal_messages_list')
 
@@ -818,13 +840,13 @@ def portal_message_compose(request):
 
 @login_required
 def fetch_admin_portal_messages(request, user_id=None, thread_id=None):
-    if not is_admin(request.user):
+    if not is_admin(request.user, request=request):
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
 
     if thread_id:
         thread = get_object_or_404(PortalThread, pk=thread_id)
     else:
-        user = get_object_or_404(get_active_accounts(), pk=user_id)
+        user = get_object_or_404(get_active_accounts(request), pk=user_id)
         thread = get_or_create_personal_thread_for_users([request.user, user])
 
     since_id = request.GET.get('since_id')
@@ -847,13 +869,13 @@ def fetch_admin_portal_messages(request, user_id=None, thread_id=None):
 
 @login_required
 def fetch_admin_portal_statuses(request, user_id=None, thread_id=None):
-    if not is_admin(request.user):
+    if not is_admin(request.user, request=request):
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
 
     if thread_id:
         thread = get_object_or_404(PortalThread, pk=thread_id)
     else:
-        user = get_object_or_404(get_active_accounts(), pk=user_id)
+        user = get_object_or_404(get_active_accounts(request), pk=user_id)
         thread = get_or_create_personal_thread_for_users([request.user, user])
 
     statuses = get_status_updates_for_thread(thread, sender=request.user)
