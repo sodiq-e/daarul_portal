@@ -220,41 +220,6 @@ class TenantResolutionTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['hostname'], 'schoolb.localhost')
 
-    @override_settings(TENANT_BASE_DOMAIN='pythonanywhere.com', ALLOWED_HOSTS=['username.pythonanywhere.com'])
-    def test_shared_path_resolution_uses_slug_on_platform_host(self):
-        self.tenant.access_mode = 'shared_path'
-        self.tenant.hostname = None
-        self.tenant.save(update_fields=['access_mode', 'hostname'])
-
-        request = self.factory.get('/schoola/gallery/', HTTP_HOST='username.pythonanywhere.com')
-
-        self.assertEqual(resolve_tenant(request), self.tenant)
-
-    @override_settings(ALLOWED_HOSTS=['username.pythonanywhere.com'])
-    def test_shared_path_request_reaches_home_view(self):
-        self.tenant.access_mode = 'shared_path'
-        self.tenant.hostname = None
-        self.tenant.save(update_fields=['access_mode', 'hostname'])
-
-        response = self.client.get('/schoola/', HTTP_HOST='username.pythonanywhere.com')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.wsgi_request.tenant, self.tenant)
-
-    def test_tenant_form_shared_path_does_not_require_hostname(self):
-        from .forms import TenantForm
-
-        form = TenantForm(data={
-            'name': 'Path School',
-            'slug': 'path-school',
-            'access_mode': 'shared_path',
-            'hostname': '',
-            'is_active': 'on',
-        })
-
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertIsNone(form.cleaned_data['hostname'])
-
 
 class DocumentVerificationUtilsTests(SimpleTestCase):
     def setUp(self):

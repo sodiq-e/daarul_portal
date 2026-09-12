@@ -49,6 +49,7 @@ urlpatterns = [
     path('announcements/', include('announcements.urls')),
     path('payroll/', include('payroll.urls')),
     path('cbt/', include('cbt.urls')),
+    path('timetable/', include('timetable.urls')),
     path('', include('pages.urls')),
     path('teachers/', include((teacher_urlpatterns, 'teachers'))),
 

@@ -13,12 +13,12 @@ class Tenant(models.Model):
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=80, unique=True)
+    hostname = models.CharField(max_length=255, unique=True, null=True, blank=True)
     access_mode = models.CharField(
         max_length=20,
         choices=ACCESS_MODE_CHOICES,
         default='custom_domain',
     )
-    hostname = models.CharField(max_length=255, unique=True, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

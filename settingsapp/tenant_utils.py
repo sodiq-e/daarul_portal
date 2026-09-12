@@ -10,7 +10,6 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.db.models import QuerySet, Manager
 from django.core.exceptions import SuspiciousOperation
-from django.urls import set_script_prefix
 
 _current_tenant = threading.local()
 
@@ -27,30 +26,16 @@ def get_hostname(request):
 
 
 def resolve_tenant(request):
-    """Resolve a tenant from its configured host or shared-domain path."""
+    """Resolve a tenant from an exact hostname or the configured platform domain."""
     from settingsapp.models import Tenant
 
     host = get_hostname(request)
     if not host:
         return None
 
-    tenant = Tenant._base_manager.filter(
-        hostname__iexact=host,
-        access_mode='custom_domain',
-        is_active=True,
-    ).first()
+    tenant = Tenant._base_manager.filter(hostname__iexact=host, is_active=True).first()
     if tenant:
         return tenant
-
-    path_parts = (getattr(request, 'path_info', '') or '').strip('/').split('/')
-    if path_parts and path_parts[0]:
-        tenant = Tenant._base_manager.filter(
-            slug=path_parts[0],
-            access_mode='shared_path',
-            is_active=True,
-        ).first()
-        if tenant:
-            return tenant
 
     base_domain = get_tenant_base_domain()
     candidates = []
@@ -82,19 +67,6 @@ def clear_current_tenant():
     """Clear the active tenant for the current thread."""
     if hasattr(_current_tenant, 'value'):
         del _current_tenant.value
-
-
-def set_tenant_script_prefix(request, tenant):
-    """Expose shared-path URLs to Django's resolver and URL reversing."""
-    if tenant is None or tenant.access_mode != 'shared_path':
-        set_script_prefix('/')
-        return
-
-    prefix = f'/{tenant.slug}'
-    request.path_info = request.path_info[len(prefix):] or '/'
-    request.META['PATH_INFO'] = request.path_info
-    request.META['SCRIPT_NAME'] = prefix
-    set_script_prefix(prefix + '/')
 
 
 def get_request_tenant(request):

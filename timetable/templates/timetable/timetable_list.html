@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Timetables{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase small text-muted mb-1">Academic planning</p>
+      <h1 class="mb-1">Class timetables</h1>
+      <p class="text-muted mb-0">Choose a class to view its weekly teaching schedule.</p>
+    </div>
+    {% if can_manage %}<a class="btn btn-primary" href="{% url 'timetable:create' %}"><i class="fas fa-plus me-1"></i>New template</a>{% endif %}
+  </div>
+
+  <form method="get" class="row g-2 mb-4">
+    <div class="col-md-5">
+      <label class="form-label" for="class-filter">Class</label>
+      <select class="form-select" id="class-filter" name="class">
+        <option value="">All available classes</option>
+        {% for school_class in classes %}
+          <option value="{{ school_class.id }}" {% if selected_class == school_class.id|stringformat:'s' %}selected{% endif %}>{{ school_class.class_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-auto d-flex align-items-end"><button class="btn btn-outline-primary" type="submit">Filter</button></div>
+  </form>
+
+  <div class="row g-3">
+    {% for timetable in timetables %}
+      <div class="col-md-6 col-xl-4">
+        <a class="text-decoration-none" href="{% url 'timetable:detail' timetable.pk %}">
+          <article class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+              <div class="d-flex justify-content-between gap-2 mb-3">
+                <span class="badge text-bg-light">{{ timetable.term }}</span>
+                {% if timetable.is_published %}<span class="badge text-bg-success">Published</span>{% else %}<span class="badge text-bg-warning">Draft</span>{% endif %}
+              </div>
+              <h2 class="h4 text-dark">{{ timetable.school_class.class_name }}</h2>
+              <p class="text-muted mb-0">{{ timetable.name }}</p>
+            </div>
+          </article>
+        </a>
+      </div>
+    {% empty %}
+      <div class="col-12"><div class="alert alert-info">No timetable has been published for the selected class yet.</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

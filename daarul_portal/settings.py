@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'communication',
     'pages',
     'cbt.apps.CbtConfig',
+    'timetable.apps.TimetableConfig',
 ]
 
 

@@ -1,10 +1,4 @@
-from .tenant_utils import (
-    bind_user_tenant_profiles,
-    clear_current_tenant,
-    resolve_tenant,
-    set_current_tenant,
-    set_tenant_script_prefix,
-)
+from .tenant_utils import bind_user_tenant_profiles, clear_current_tenant, resolve_tenant, set_current_tenant
 
 
 class TenantMiddleware:
@@ -20,13 +14,11 @@ class TenantMiddleware:
     def __call__(self, request):
         request.tenant = self.resolve_tenant(request)
         set_current_tenant(request.tenant)
-        set_tenant_script_prefix(request, request.tenant)
         bind_user_tenant_profiles(getattr(request, 'user', None), request.tenant)
         try:
             return self.get_response(request)
         finally:
             clear_current_tenant()
-            set_tenant_script_prefix(request, None)
 
     def resolve_tenant(self, request):
         return resolve_tenant(request)

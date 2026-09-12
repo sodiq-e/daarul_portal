@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ timetable.school_class.class_name }} timetable{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <a class="text-decoration-none" href="{% url 'timetable:list' %}"><i class="fas fa-arrow-left me-1"></i>All timetables</a>
+      <p class="text-uppercase small text-muted mb-1 mt-3">{{ timetable.term }}</p>
+      <h1 class="mb-1">{{ timetable.school_class.class_name }} timetable</h1>
+      <p class="text-muted mb-0">{{ timetable.name }} · updated {{ timetable.updated_at|date:'d M Y, g:i a' }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if can_manage %}
+        <a class="btn btn-outline-primary" href="{% url 'timetable:add_slot' timetable.pk %}"><i class="fas fa-clock me-1"></i>Add time row</a>
+        <form method="post" action="{% url 'timetable:publish' timetable.pk %}" class="d-inline">
+          {% csrf_token %}
+          <input type="hidden" name="is_published" value="{% if timetable.is_published %}off{% else %}on{% endif %}">
+          <button class="btn {% if timetable.is_published %}btn-outline-warning{% else %}btn-success{% endif %}" type="submit">{% if timetable.is_published %}Unpublish{% else %}Publish{% endif %}</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if can_manage %}
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body">
+        <h2 class="h5">Copy this template</h2>
+        <form method="post" action="{% url 'timetable:copy' timetable.pk %}" class="row g-2">
+          {% csrf_token %}
+          <div class="col-md-4"><label class="form-label">Name</label><input class="form-control" name="name" value="{{ timetable.name }} (copy)" required></div>
+          <div class="col-md-4"><label class="form-label">Term</label><select class="form-select" name="term" required>{% for term in copy_terms %}<option value="{{ term.id }}">{{ term }}</option>{% endfor %}</select></div>
+          <div class="col-md-4"><label class="form-label">Class</label><select class="form-select" name="school_class" required>{% for school_class in copy_classes %}<option value="{{ school_class.id }}">{{ school_class.class_name }}</option>{% endfor %}</select></div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Copy reusable layout</button></div>
+        </form>
+      </div></div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100"><div class="card-body">
+        <h2 class="h5">Day columns</h2>
+        <form method="post" action="{% url 'timetable:add_day' timetable.pk %}" class="d-flex gap-2 mb-3">{% csrf_token %}<select class="form-select" name="day">{% for code,label in day_choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select><button class="btn btn-outline-primary" type="submit">Add</button></form>
+        <div class="d-flex flex-wrap gap-2">{% for day in days %}<form method="post" action="{% url 'timetable:delete_day' timetable.pk day.id %}">{% csrf_token %}<button class="btn btn-sm btn-light" type="submit">{{ day.get_day_display }} <i class="fas fa-times text-danger"></i></button></form>{% endfor %}</div>
+      </div></div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if can_edit %}<form method="post" action="{% url 'timetable:fill' timetable.pk %}">{% csrf_token %}{% endif %}
+  <div class="table-responsive timetable-scroll">
+    <table class="table table-bordered align-middle timetable-grid">
+      <thead><tr><th class="time-col">Time</th>{% for day in days %}<th class="text-center">{{ day.get_day_display }}{% if day.is_short_day %}<small class="d-block text-muted">Short day</small>{% endif %}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for row in grid_rows %}
+        <tr class="{% if row.slot.slot_type != 'period' %}special-row{% endif %}">
+          <th class="time-col"><strong>{{ row.slot.label }}</strong><small class="d-block text-muted">{{ row.slot.start_time|time:'g:i A' }} - {{ row.slot.end_time|time:'g:i A' }}</small>{% if can_manage %}<form method="post" action="{% url 'timetable:delete_slot' timetable.pk row.slot.id %}">{% csrf_token %}<button class="btn btn-link btn-sm text-danger p-0" type="submit">Delete row</button></form>{% endif %}</th>
+          {% for cell in row.cells %}<td>{% if row.slot.slot_type != 'period' %}<div class="special-label">{{ row.slot.get_slot_type_display }}</div>{% if can_edit %}<input class="form-control form-control-sm mt-2" name="note_{{ cell.day.id }}_{{ row.slot.id }}" value="{{ cell.entry.note|default:'' }}" placeholder="Optional note">{% elif cell.entry.note %}<small>{{ cell.entry.note }}</small>{% endif %}{% elif can_edit %}<select class="form-select form-select-sm" name="entry_{{ cell.day.id }}_{{ row.slot.id }}"><option value="">Free period</option>{% for subject in class_subjects %}<option value="{{ subject.id }}" {% if cell.entry.class_subject_id == subject.id %}selected{% endif %}>{{ subject.subject.name }}</option>{% endfor %}</select><input class="form-control form-control-sm mt-2" name="note_{{ cell.day.id }}_{{ row.slot.id }}" value="{{ cell.entry.note|default:'' }}" placeholder="Note / room">{% elif cell.entry.class_subject %}<strong>{{ cell.entry.class_subject.subject.name }}</strong>{% if cell.entry.teacher %}<small class="d-block text-muted">{{ cell.entry.teacher.user.get_full_name|default:cell.entry.teacher.user.username }}</small>{% endif %}{% elif cell.entry.note %}<span class="text-muted">{{ cell.entry.note }}</span>{% else %}<span class="text-muted">Free period</span>{% endif %}</td>{% endfor %}
+        </tr>
+      {% empty %}<tr><td colspan="{{ days|length|add:1 }}" class="text-center text-muted py-4">No time rows have been added.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if can_edit %}<button class="btn btn-primary mt-3" type="submit"><i class="fas fa-save me-1"></i>Save subjects</button></form>{% endif %}
+</div>
+
+<style>
+  .timetable-scroll { border-radius: .75rem; box-shadow: 0 8px 30px rgba(16, 24, 40, .08); }
+  .timetable-grid { min-width: 900px; margin-bottom: 0; }
+  .timetable-grid th { background: #f5f8fa; color: #153b35; }
+  .timetable-grid td { min-width: 150px; height: 78px; background: #fff; }
+  .timetable-grid .time-col { min-width: 150px; width: 170px; }
+  .timetable-grid .special-row td, .timetable-grid .special-row th { background: #fff8e8; }
+  .special-label { font-weight: 700; color: #8a5a00; }
+</style>
+{% endblock %}

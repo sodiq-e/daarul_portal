@@ -3783,6 +3783,11 @@
         <i class="fas fa-chalkboard"></i><span> Classes</span>
       </a>
 
+      <a href="{% url 'timetable:list' %}" data-tooltip="Timetables"
+         class="{% if request.resolver_match.app_name == 'timetable' %}active{% endif %}">
+        <i class="fas fa-calendar-alt"></i><span> Timetables</span>
+      </a>
+
       <a href="{% url 'announcement_list' %}" data-tooltip="Announcements"
          class="{% if request.resolver_match.url_name == 'announcement_list' %}active{% endif %}">
         <i class="fas fa-bullhorn"></i><span> Announcements</span>

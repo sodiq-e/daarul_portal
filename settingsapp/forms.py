@@ -6,14 +6,7 @@ from .tenant_utils import get_tenant_base_domain
 
 
 class TenantForm(forms.ModelForm):
-    access_mode = forms.ChoiceField(
-        choices=Tenant.ACCESS_MODE_CHOICES,
-        required=False,
-        initial='custom_domain',
-        label='Portal URL mode',
-        help_text='Use a custom domain/subdomain when the domain points to this app. Use shared path on PythonAnywhere free plan.',
-    )
-    hostname = forms.CharField(required=False, help_text='Required for custom domain mode. Leave blank for shared path mode.')
+    hostname = forms.CharField(required=False, help_text='Leave blank to use slug plus the configured platform domain.')
 
     class Meta:
         model = Tenant
@@ -26,9 +19,6 @@ class TenantForm(forms.ModelForm):
 
     def clean_hostname(self):
         hostname = self.cleaned_data['hostname'].strip().lower().rstrip('.')
-        access_mode = self.data.get('access_mode') or self.instance.access_mode or 'custom_domain'
-        if access_mode == 'shared_path':
-            return None
         if not hostname:
             hostname = f"{self.cleaned_data['slug']}.{get_tenant_base_domain()}"
         if '://' in hostname:
