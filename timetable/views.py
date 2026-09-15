@@ -38,14 +38,23 @@ def _staff(request):
     return user_is_tenant_staff(request.user, tenant=get_request_tenant(request))
 
 
+def _teacher_for_user(user):
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None
+    try:
+        return user.teacher_profile
+    except Teacher.DoesNotExist:
+        pass
+    return Teacher.objects.filter(user=user).first()
+
+
 def _can_edit(request, timetable):
     if _admin(request):
         return True
     if not _staff(request):
         return False
-    try:
-        teacher = request.user.teacher_profile
-    except Teacher.DoesNotExist:
+    teacher = _teacher_for_user(request.user)
+    if teacher is None:
         return False
     return ClassTeacher.objects.filter(
         teacher=teacher,

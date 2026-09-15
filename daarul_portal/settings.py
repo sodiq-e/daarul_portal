@@ -14,8 +14,10 @@ ALLOWED_HOSTS = [
     "localhost",
     "onrender.com",
     "daarul-portal.onrender.com",
+    "daarulbayaan.pythonanywhere.com",
     TENANT_BASE_DOMAIN,
     f'.{TENANT_BASE_DOMAIN}',
+    "https://pythonanywhere.com",
 ]
 INSTALLED_APPS = [
     'django.contrib.admin',
