@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=0.7">
   <title>{{ SCHOOL_NAME }}</title>
   {% load static %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -2129,12 +2129,24 @@
   color: white;
   padding: 20px;
   padding-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 
   transform: translateX(-100%); /* ONLY THIS controls hiding */
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 
   z-index: 2000;
   overflow-y: auto;
+}
+
+.sidebar > .menu-section:last-of-type {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.14);
+}
+
+.sidebar > .menu-section:last-of-type .menu-header {
+  display: none;
 }
 
 /* ===== MOBILE OPEN ===== */
@@ -3243,26 +3255,36 @@
 
 /* Mobile: ensure sidebar shows labels when opened (override collapsed desktop state) */
   @media (max-width: 1023px) {
+    .sidebar {
+      width: min(360px, 85vw) !important;
+      max-width: 85vw !important;
+      padding: 18px 14px 24px !important;
+    }
+
     .sidebar.active a span,
     .sidebar.active form button,
     .sidebar.active a .notification-badge {
       display: inline-block !important;
-      font-size: 14px !important;
+      font-size: 17px !important;
+      font-weight: 700 !important;
       margin-left: 8px !important;
       vertical-align: middle !important;
     }
 
     /* When sidebar is active on mobile, make sure it uses full width and is visible */
     .sidebar.active {
-      width: 300px !important;
-      max-width: 85% !important;
+      width: min(360px, 85vw) !important;
+      max-width: 85vw !important;
       transform: translateX(0) !important;
     }
 
-    /* Keep mobile open sidebar sections visible when expanded, but do not override per-section collapse state */
     .sidebar.active .menu-header {
       display: flex !important;
       opacity: 1 !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.08em !important;
+      padding: 16px 12px !important;
     }
 
     .sidebar.active .menu-content.collapsed {
@@ -3271,10 +3293,30 @@
       display: block !important;
     }
 
-    /* If a saved desktop-collapsed state exists, do not hide text on mobile when sidebar is active */
     .sidebar.collapsed.active a span {
       display: inline-block !important;
-      font-size: 14px !important;
+      font-size: 17px !important;
+      font-weight: 700 !important;
+    }
+
+    .sidebar a {
+      min-height: 56px !important;
+      padding: 16px 18px !important;
+      font-size: 17px !important;
+      font-weight: 700 !important;
+      line-height: 1.35 !important;
+      gap: 14px !important;
+    }
+
+    .sidebar a span {
+      font-size: 17px !important;
+      font-weight: 700 !important;
+    }
+
+    .sidebar i {
+      font-size: 22px !important;
+      width: 26px !important;
+      text-align: center !important;
     }
   }
 
