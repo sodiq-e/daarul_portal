@@ -272,12 +272,21 @@ def timetable_fill(request, pk):
         str(item.id): item
         for item in ClassSubject.objects.filter(school_class=timetable.school_class)
     }
+    subject_name_map = {
+        item.subject.name.strip().lower(): item
+        for item in allowed_subjects.values()
+        if item.subject and item.subject.name
+    }
     teacher = getattr(request.user, 'teacher_profile', None)
     for day in timetable.days.all():
         for slot in timetable.slots.all():
-            value = request.POST.get(f'entry_{day.id}_{slot.id}', '').strip()
+            raw_value = request.POST.get(f'entry_{day.id}_{slot.id}', '').strip()
             note = request.POST.get(f'note_{day.id}_{slot.id}', '').strip()
-            subject = allowed_subjects.get(value) if slot.slot_type == 'period' else None
+            subject = None
+            if slot.slot_type == 'period' and raw_value:
+                subject = allowed_subjects.get(raw_value)
+                if subject is None:
+                    subject = subject_name_map.get(raw_value.lower())
             assigned_teacher = teacher if teacher and slot.slot_type == 'period' else None
             TimetableEntry.objects.update_or_create(
                 tenant=tenant, timetable=timetable, day=day, slot=slot,

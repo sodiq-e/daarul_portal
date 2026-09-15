@@ -1,14 +1,17 @@
 from datetime import time
 
+from django.contrib.auth import get_user_model
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 
 from exams.models import ClassSubject, Subject, Term
-from school_classes.models import SchoolClasses
+from school_classes.models import ClassTeacher, SchoolClasses, Teacher
 from settingsapp.models import Tenant
 from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
 
 from .models import TimetableDay, TimetableEntry, TimetableSlot, TimetableTemplate
+from .views import timetable_fill
 
 
 class TimetableModelTests(TestCase):
@@ -66,3 +69,31 @@ class TimetableModelTests(TestCase):
                 slot=self.slot,
                 class_subject=self.class_subject,
             )
+
+    def test_teacher_can_fill_subject_by_name(self):
+        user = get_user_model().objects.create_user(username='teacher-1', password='secret123')
+        teacher = Teacher.objects.create(user=user, employee_id='T-1001', is_approved=True)
+        ClassTeacher.objects.create(
+            teacher=teacher,
+            school_class=self.school_class,
+            subject=self.subject,
+            is_class_teacher=True,
+            is_active=True,
+        )
+
+        factory = RequestFactory()
+        request = factory.post(
+            f'/timetable/{self.timetable.pk}/fill/',
+            {f'entry_{self.day.id}_{self.slot.id}': 'Mathematics', f'note_{self.day.id}_{self.slot.id}': 'Room 5'},
+        )
+        request.user = user
+        request.session = self.client.session
+        setattr(request, '_messages', FallbackStorage(request))
+
+        response = timetable_fill(request, self.timetable.pk)
+
+        self.assertEqual(response.status_code, 302)
+        entry = TimetableEntry.objects.get(timetable=self.timetable, day=self.day, slot=self.slot)
+        self.assertEqual(entry.class_subject, self.class_subject)
+        self.assertEqual(entry.teacher, teacher)
+        self.assertEqual(entry.note, 'Room 5')

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Attendance Report{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+    <div>
+      <h1 class="mb-1">Staff Attendance Report</h1>
+      <p class="text-muted mb-0">Review attendance for all staff members and filter by teacher or date range.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label" for="teacherFilter">Staff member</label>
+          <select id="teacherFilter" name="teacher" class="form-select">
+            <option value="">All staff</option>
+            {% for teacher in teachers %}
+              <option value="{{ teacher.id }}" {% if selected_teacher == teacher.id|stringformat:'s' %}selected{% endif %}>
+                {% if teacher.user.get_full_name %}{{ teacher.user.get_full_name }}{% else %}{{ teacher.user.username }}{% endif %}
+                {% if teacher.employee_id %}({{ teacher.employee_id }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="startDate">From</label>
+          <input id="startDate" type="date" name="start_date" value="{{ start_date }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="endDate">To</label>
+          <input id="endDate" type="date" name="end_date" value="{{ end_date }}" class="form-control">
+        </div>
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="text-muted small">Total entries</div>
+          <h3 class="mb-0">{{ total_records }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="text-muted small">Present</div>
+          <h3 class="mb-0 text-success">{{ present_count }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="text-muted small">Late</div>
+          <h3 class="mb-0 text-warning">{{ late_count }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-body">
+          <div class="text-muted small">Hours worked</div>
+          <h3 class="mb-0">{{ hours_worked_formatted }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Staff</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th>Work Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in records %}
+            <tr>
+              <td>
+                {% if record.teacher.user.get_full_name %}
+                  {{ record.teacher.user.get_full_name }}
+                {% else %}
+                  {{ record.teacher.user.username }}
+                {% endif %}
+              </td>
+              <td>{{ record.date }}</td>
+              <td>
+                {% if record.clock_in_status == 'present' %}
+                  <span class="badge bg-success">Present</span>
+                {% elif record.clock_in_status == 'late' %}
+                  <span class="badge bg-warning text-dark">Late</span>
+                {% else %}
+                  <span class="badge bg-danger">Absent</span>
+                {% endif %}
+              </td>
+              <td>{{ record.clock_in|date:'g:i A'|default:'-' }}</td>
+              <td>{{ record.clock_out|date:'g:i A'|default:'-' }}</td>
+              <td>{{ record.formatted_work_duration|default:'-' }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">No attendance records found for the selected filters.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

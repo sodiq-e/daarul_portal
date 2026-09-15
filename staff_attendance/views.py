@@ -17,6 +17,52 @@ from rest_framework.views import APIView
 
 from .forms import AttendanceSettingsForm, StudentAttendanceSettingsForm
 from .models import AttendanceSettings, StudentAttendanceSettings, StaffAttendance, calculate_distance_meters
+from school_classes.models import Teacher
+from settingsapp.tenant_utils import user_is_tenant_admin
+
+
+def get_user_queryset_for_tenant(model, request=None):
+    queryset = model._base_manager.all()
+    tenant = getattr(request, 'tenant', None) if request is not None else None
+    if tenant is not None:
+        if hasattr(model, 'tenant'):
+            queryset = queryset.filter(tenant=tenant)
+    return queryset
+
+
+def get_or_create_attendance_teacher_for_user(user, tenant=None):
+    if user is None:
+        return None
+
+    if hasattr(user, 'teacher_profile'):
+        return user.teacher_profile
+
+    if not (
+        getattr(user, 'is_superuser', False)
+        or getattr(user, 'is_staff', False)
+        or user_is_tenant_admin(user, tenant=tenant)
+    ):
+        return None
+
+    teacher_qs = Teacher._base_manager.filter(user=user)
+    if tenant is not None:
+        teacher_qs = teacher_qs.filter(tenant=tenant)
+    teacher = teacher_qs.first()
+    if teacher is not None:
+        return teacher
+
+    employee_id = f"ADM-{user.id or user.username[:8].upper()}"
+    if Teacher._base_manager.filter(employee_id=employee_id).exists():
+        employee_id = f"ADM-{user.id or user.username}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+
+    teacher = Teacher._base_manager.create(
+        user=user,
+        tenant=tenant,
+        employee_id=employee_id,
+        is_approved=True,
+        is_active=True,
+    )
+    return teacher
 
 
 class StaffAttendanceDashboardView(LoginRequiredMixin, TemplateView):
@@ -24,18 +70,20 @@ class StaffAttendanceDashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if not hasattr(self.request.user, 'teacher_profile'):
+        tenant = getattr(self.request, 'tenant', None)
+        teacher = get_or_create_attendance_teacher_for_user(self.request.user, tenant=tenant)
+        if teacher is None:
             context['permission_denied'] = True
             return context
 
-        teacher = self.request.user.teacher_profile
         today = timezone.localdate()
+        attendance_qs = get_user_queryset_for_tenant(StaffAttendance, self.request)
         context['attendance_settings'] = AttendanceSettings.get_current()
-        context['current_attendance'] = StaffAttendance.objects.filter(
+        context['current_attendance'] = attendance_qs.filter(
             teacher=teacher,
             date=today
         ).first()
-        context['monthly_summary'] = StaffAttendance.objects.filter(
+        context['monthly_summary'] = attendance_qs.filter(
             teacher=teacher,
             date__month=today.month,
             date__year=today.year
@@ -49,10 +97,65 @@ class AttendanceHistoryView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        if not hasattr(self.request.user, 'teacher_profile'):
-            return StaffAttendance.objects.none()
-        teacher = self.request.user.teacher_profile
-        return StaffAttendance.objects.filter(teacher=teacher).order_by('-date')
+        tenant = getattr(self.request, 'tenant', None)
+        teacher = get_or_create_attendance_teacher_for_user(self.request.user, tenant=tenant)
+        if teacher is None:
+            return get_user_queryset_for_tenant(StaffAttendance, self.request).none()
+        return get_user_queryset_for_tenant(StaffAttendance, self.request).filter(teacher=teacher).order_by('-date')
+
+
+class AdminStaffAttendanceReportView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'staff_attendance/admin_report.html'
+
+    def test_func(self):
+        return (
+            self.request.user.is_superuser
+            or self.request.user.is_staff
+            or user_is_tenant_admin(self.request.user, tenant=getattr(self.request, 'tenant', None))
+        )
+
+    def get_queryset(self):
+        queryset = get_user_queryset_for_tenant(StaffAttendance, self.request).select_related('teacher__user')
+        teacher_id = self.request.GET.get('teacher')
+        start_date = self.request.GET.get('start_date')
+        end_date = self.request.GET.get('end_date')
+
+        if teacher_id:
+            queryset = queryset.filter(teacher_id=teacher_id)
+        if start_date:
+            queryset = queryset.filter(date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date__lte=end_date)
+
+        return queryset.order_by('-date', '-clock_in')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+        teacher_qs = Teacher._base_manager.all()
+        if getattr(self.request, 'tenant', None) is not None:
+            teacher_qs = teacher_qs.filter(tenant=self.request.tenant)
+        teachers = teacher_qs.select_related('user').order_by('user__first_name', 'user__last_name', 'employee_id')
+
+        context['records'] = queryset
+        context['teachers'] = teachers
+        context['selected_teacher'] = self.request.GET.get('teacher', '')
+        context['start_date'] = self.request.GET.get('start_date', '')
+        context['end_date'] = self.request.GET.get('end_date', '')
+        context['total_records'] = queryset.count()
+        context['present_count'] = queryset.filter(clock_in_status=StaffAttendance.STATUS_PRESENT).count()
+        context['late_count'] = queryset.filter(clock_in_status=StaffAttendance.STATUS_LATE).count()
+        context['absent_count'] = queryset.filter(clock_in_status=StaffAttendance.STATUS_ABSENT).count()
+
+        total_work_seconds = sum(
+            int((record.clock_out - record.clock_in).total_seconds())
+            for record in queryset
+            if record.clock_in and record.clock_out and record.clock_out >= record.clock_in
+        )
+        total_work_hours = total_work_seconds / 3600 if total_work_seconds else 0
+        context['hours_worked'] = total_work_hours
+        context['hours_worked_formatted'] = f"{int(total_work_hours)}h {int((total_work_hours * 60) % 60)}m" if total_work_hours else '0h 0m'
+        return context
 
 
 class MonthlyReportView(LoginRequiredMixin, TemplateView):
@@ -60,13 +163,14 @@ class MonthlyReportView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if not hasattr(self.request.user, 'teacher_profile'):
+        tenant = getattr(self.request, 'tenant', None)
+        teacher = get_or_create_attendance_teacher_for_user(self.request.user, tenant=tenant)
+        if teacher is None:
             context['permission_denied'] = True
             return context
 
-        teacher = self.request.user.teacher_profile
         today = timezone.localdate()
-        records = StaffAttendance.objects.filter(
+        records = get_user_queryset_for_tenant(StaffAttendance, self.request).filter(
             teacher=teacher,
             date__month=today.month,
             date__year=today.year
@@ -165,9 +269,7 @@ class StaffAttendanceBaseAPI(LoginRequiredMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get_teacher(self):
-        if not hasattr(self.request.user, 'teacher_profile'):
-            return None
-        return self.request.user.teacher_profile
+        return get_or_create_attendance_teacher_for_user(self.request.user, tenant=getattr(self.request, 'tenant', None))
 
     def validate_gps(self, settings, latitude, longitude):
         if not settings.enable_gps_verification:

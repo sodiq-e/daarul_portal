@@ -105,10 +105,12 @@ def normalize_tenant_roles(roles):
 
 def user_has_tenant_access(user, tenant, roles=None):
     """Return true when the user has an active membership for the tenant."""
-    if user is None or tenant is None:
+    if user is None:
         return False
     if getattr(user, 'is_superuser', False):
         return True
+    if tenant is None:
+        return False
 
     memberships = getattr(user, 'tenant_memberships', None)
     if memberships is None:
@@ -123,6 +125,18 @@ def user_has_tenant_access(user, tenant, roles=None):
 
 def user_is_tenant_staff(user, tenant=None, roles=None):
     """Return true when the user has an active teacher/staff membership in the tenant."""
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False):
+        return True
+
+    try:
+        teacher_profile = user.teacher_profile
+    except Exception:
+        teacher_profile = None
+    if teacher_profile is not None:
+        if tenant is None:
+            return True
+        return teacher_profile.tenant_id in (None, getattr(tenant, 'id', None))
+
     if tenant is None:
         tenant = get_request_tenant(None)
     if tenant is None:
@@ -134,6 +148,8 @@ def user_is_tenant_staff(user, tenant=None, roles=None):
 
 def user_is_tenant_admin(user, tenant=None):
     """Return true when the user has an active school-admin membership in the tenant."""
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False):
+        return True
     if tenant is None:
         tenant = get_request_tenant(None)
     return user_has_tenant_access(user, tenant, roles=['school_admin'])
@@ -165,7 +181,7 @@ class TenantAwareQuerySet(QuerySet):
         """Filter by the active tenant in the request."""
         tenant = get_request_tenant(request)
         if tenant is None:
-            return self.none()
+            return self
         return self.filter(tenant=tenant)
 
 
@@ -177,7 +193,7 @@ class TenantAwareManager(Manager):
         queryset = TenantAwareQuerySet(self.model, using=self._db)
         if tenant is not None:
             return queryset.filter(tenant=tenant)
-        return queryset.none()
+        return queryset
 
     def for_request(self, request):
         """Filter by the active tenant in the request."""

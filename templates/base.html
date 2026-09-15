@@ -2114,6 +2114,7 @@
     /* ===== LAYOUT ===== */
     .layout {
       display: block;
+      width: 100%;
     }
 
     /* ===== SIDEBAR BASE ===== */
@@ -2174,18 +2175,22 @@
 @media (min-width: 1024px) {
 
   .layout {
-    display: block;
+    display: flex;
+    align-items: flex-start;
     position: relative;
+    width: 100%;
   }
 
   .sidebar {
-    position: absolute;
+    position: sticky;
     top: 0;
-    left: 0;
+    left: auto;
     transform: translateX(0);
     height: calc(100vh - 48px);
     width: 300px;
-    transition: width 0.3s ease, box-shadow 0.3s ease;
+    min-width: 300px;
+    flex-shrink: 0;
+    transition: width 0.3s ease, min-width 0.3s ease, box-shadow 0.3s ease;
     overflow-y: auto;
     box-shadow: 10px 0 34px rgba(15, 23, 42, 0.18);
     pointer-events: auto;
@@ -2194,8 +2199,16 @@
   /* COLLAPSED STATE ON DESKTOP */
   .sidebar.collapsed {
     width: 70px;
+    min-width: 70px;
     padding: 16px 0;
     overflow: visible;
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    margin-left: 0;
   }
 
   /* Expanded sidebar on desktop - show full links */
@@ -3641,6 +3654,16 @@
           <i class="fas fa-calendar-alt"></i><span> General Attendance Settings</span>
         </a>
 
+        <a href="{% url 'staff_attendance:dashboard' %}" data-tooltip="Staff Clock In / Out"
+           class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-clock"></i><span> Staff Clock In / Out</span>
+        </a>
+
+        <a href="{% url 'staff_attendance:admin_report' %}" data-tooltip="Staff Attendance Report"
+           class="{% if request.resolver_match.url_name == 'admin_report' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-user-check"></i><span> Staff Attendance Report</span>
+        </a>
+
         <a href="/admin/" data-tooltip="Django Admin">
           <i class="fas fa-cog"></i><span> Django Admin</span>
         </a>
@@ -3725,6 +3748,12 @@
            class="{% if request.resolver_match.url_name == 'monthly_report' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
           <i class="fas fa-chart-bar"></i><span> Monthly Report</span>
         </a>
+        {% if request.user.is_superuser or request.user.is_staff or is_tenant_admin %}
+        <a href="{% url 'staff_attendance:admin_report' %}" data-tooltip="Admin Attendance Report"
+           class="{% if request.resolver_match.url_name == 'admin_report' and request.resolver_match.app_name == 'staff_attendance' %}active{% endif %}">
+          <i class="fas fa-user-check"></i><span> Staff Attendance Report</span>
+        </a>
+        {% endif %}
       </div>
     </div>
 
