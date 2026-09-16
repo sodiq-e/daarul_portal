@@ -11,6 +11,7 @@ urlpatterns = [
     path('fees/<int:pk>/delete/', views.SchoolFeeDeleteView.as_view(), name='fee_delete'),
     path('invoices/', views.StudentInvoiceListView.as_view(), name='invoice_list'),
     path('invoices/add/', views.StudentInvoiceCreateView.as_view(), name='invoice_add'),
+    path('invoices/fee-options/', views.student_fee_options, name='student_fee_options'),
     path('invoices/<int:pk>/', views.StudentInvoiceDetailView.as_view(), name='invoice_detail'),
     path('invoices/print/', views.print_invoices, name='print_invoices'),
     path('payments/add/', views.StudentPaymentCreateView.as_view(), name='payment_add'),

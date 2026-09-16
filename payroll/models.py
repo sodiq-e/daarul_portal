@@ -172,6 +172,12 @@ class SchoolFee(TenantModel):
     name = models.CharField(max_length=150)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
+    school_classes = models.ManyToManyField(
+        'school_classes.SchoolClasses',
+        blank=True,
+        related_name='school_fees',
+        help_text='Students in these classes inherit this fee when creating an invoice.'
+    )
 
     def __str__(self):
         return f"{self.name} ({self.amount})"

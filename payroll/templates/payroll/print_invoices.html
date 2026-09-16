@@ -6,6 +6,23 @@
     <h3>Print Invoices</h3>
     <button onclick="window.print()" class="button">Print</button>
   </div>
+  <form method="get" class="row g-3 mb-4 no-print">
+    <div class="col-md-5">
+      <label class="form-label" for="invoice-session">Academic Session</label>
+      <select id="invoice-session" name="academic_session" class="form-select">
+        <option value="">All Sessions</option>
+        {% for session in academic_sessions %}<option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label" for="invoice-term">Term</label>
+      <select id="invoice-term" name="term" class="form-select">
+        <option value="">All Terms</option>
+        {% for term in terms %}<option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary">Filter</button></div>
+  </form>
   {% for student, invoices in invoices_by_student.items %}
     <div class="card mb-3">
       <div class="card-body">

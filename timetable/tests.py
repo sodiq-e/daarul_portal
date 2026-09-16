@@ -11,7 +11,7 @@ from settingsapp.models import Tenant
 from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
 
 from .models import TimetableDay, TimetableEntry, TimetableSlot, TimetableTemplate
-from .views import timetable_fill
+from .views import timetable_edit_slot, timetable_fill
 
 
 class TimetableModelTests(TestCase):
@@ -97,3 +97,36 @@ class TimetableModelTests(TestCase):
         self.assertEqual(entry.class_subject, self.class_subject)
         self.assertEqual(entry.teacher, teacher)
         self.assertEqual(entry.note, 'Room 5')
+
+    def test_admin_can_edit_and_reorder_period(self):
+        second_slot = TimetableSlot.objects.create(
+            timetable=self.timetable, label='Period 2',
+            start_time=time(8, 40), end_time=time(9, 20), order=1
+        )
+        user = get_user_model().objects.create_superuser(
+            username='timetable-admin', password='secret123', email='admin@example.com'
+        )
+
+        factory = RequestFactory()
+        request = factory.post(
+            f'/timetable/{self.timetable.pk}/slots/{self.slot.pk}/edit/',
+            {
+                'label': 'Morning Period',
+                'slot_type': 'period',
+                'start_time': '09:00',
+                'end_time': '09:45',
+                'order': '1',
+            },
+        )
+        request.user = user
+        request.session = self.client.session
+        setattr(request, '_messages', FallbackStorage(request))
+        response = timetable_edit_slot(request, self.timetable.pk, self.slot.pk)
+
+        self.assertEqual(response.status_code, 302)
+        self.slot.refresh_from_db()
+        second_slot.refresh_from_db()
+        self.assertEqual(self.slot.label, 'Morning Period')
+        self.assertEqual(str(self.slot.start_time), '09:00:00')
+        self.assertEqual(self.slot.order, 1)
+        self.assertEqual(second_slot.order, 0)

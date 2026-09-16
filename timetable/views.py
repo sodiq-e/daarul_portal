@@ -3,6 +3,7 @@ from copy import copy
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db import models
 from django.shortcuts import get_object_or_404, redirect, render
 from exams.models import ClassSubject, Term
 from school_classes.models import ClassTeacher, SchoolClasses, Teacher
@@ -235,6 +236,35 @@ def timetable_add_slot(request, pk):
     context = {'form': form, 'timetable': timetable, 'title': 'Add timetable row'}
     return render(request, 'timetable/slot_form.html', context)
 
+@login_required
+def timetable_edit_slot(request, pk, slot_id):
+    timetable = get_object_or_404(TimetableTemplate, pk=pk)
+    slot = get_object_or_404(TimetableSlot, timetable=timetable, pk=slot_id)
+    if not _admin(request):
+        return redirect('timetable:detail', pk=pk)
+
+    form = TimetableSlotForm(request.POST or None, instance=slot)
+    if request.method == 'POST' and form.is_valid():
+        requested_order = form.cleaned_data['order']
+        with transaction.atomic():
+            slot.label = form.cleaned_data['label']
+            slot.slot_type = form.cleaned_data['slot_type']
+            slot.start_time = form.cleaned_data['start_time']
+            slot.end_time = form.cleaned_data['end_time']
+            slot.save(update_fields=['label', 'slot_type', 'start_time', 'end_time'])
+
+            slots = list(timetable.slots.exclude(pk=slot.pk).order_by('order', 'pk'))
+            target_index = min(max(requested_order, 0), len(slots))
+            slots.insert(target_index, slot)
+            TimetableSlot.objects.filter(timetable=timetable).update(order=models.F('order') + len(slots) + 1)
+            for order, item in enumerate(slots):
+                TimetableSlot.objects.filter(pk=item.pk).update(order=order)
+
+        messages.success(request, 'Timetable period updated.')
+        return redirect('timetable:detail', pk=pk)
+
+    context = {'form': form, 'timetable': timetable, 'title': 'Edit timetable period'}
+    return render(request, 'timetable/slot_form.html', context)
 
 @login_required
 def timetable_delete_slot(request, pk, slot_id):

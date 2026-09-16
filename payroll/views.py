@@ -3,7 +3,8 @@ from django.db.models import Sum
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, CreateView, DetailView, UpdateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from datetime import datetime, timedelta
@@ -194,9 +195,9 @@ class StudentInvoiceListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context['total_paid'] = sum(inv.total_paid for inv in invoices)
         context['total_balance'] = sum(inv.balance for inv in invoices)
         context['owing_count'] = sum(1 for inv in invoices if inv.is_owing)
-        context['academic_sessions'] = invoices.order_by('academic_session').values_list('academic_session', flat=True).distinct()
-        context['terms'] = Term.objects.filter(invoices__in=invoices).distinct().order_by('academic_year', 'name')
-        context['students'] = Student.objects.filter(invoices__in=invoices).distinct().order_by('surname', 'other_names')
+        context['academic_sessions'] = Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct()
+        context['terms'] = Term.objects.order_by('academic_year', 'name')
+        context['students'] = Student.objects.order_by('surname', 'other_names')
         context['selected_academic_session'] = self.request.GET.get('academic_session', '')
         context['selected_term'] = self.request.GET.get('term', '')
         context['selected_student'] = self.request.GET.get('student', '')
@@ -248,8 +249,13 @@ def print_invoices(request):
     for inv in qs.order_by('student__surname', 'issued_date'):
         invoices_by_student.setdefault(inv.student, []).append(inv)
 
-    from django.shortcuts import render
-    return render(request, 'payroll/print_invoices.html', {'invoices_by_student': invoices_by_student})
+    return render(request, 'payroll/print_invoices.html', {
+        'invoices_by_student': invoices_by_student,
+        'academic_sessions': Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct(),
+        'terms': Term.objects.order_by('academic_year', 'name'),
+        'selected_academic_session': academic_session or '',
+        'selected_term': term_param or '',
+    })
 
 
 @login_required
@@ -292,8 +298,44 @@ def print_receipts(request):
     for r in qs.order_by('student__surname', 'payment_date'):
         receipts_by_student.setdefault(r.student, []).append(r)
 
-    from django.shortcuts import render
-    return render(request, 'payroll/print_receipts.html', {'receipts_by_student': receipts_by_student})
+    return render(request, 'payroll/print_receipts.html', {
+        'receipts_by_student': receipts_by_student,
+        'academic_sessions': Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct(),
+        'terms': Term.objects.order_by('academic_year', 'name'),
+        'selected_academic_session': academic_session or '',
+        'selected_term': term_param or '',
+    })
+
+
+@login_required
+def student_fee_options(request):
+    if not staff_can_manage(request.user):
+        return JsonResponse({'fees': []}, status=403)
+
+    student_id = request.GET.get('student')
+    if not student_id:
+        return JsonResponse({'fees': []})
+
+    try:
+        student = Student.objects.select_related('student_class').get(pk=student_id)
+    except (Student.DoesNotExist, ValueError):
+        return JsonResponse({'fees': []})
+
+    inherited_fee_ids = set(
+        SchoolFee.objects.filter(school_classes=student.student_class).values_list('id', flat=True)
+    )
+    fees = SchoolFee.objects.order_by('name')
+    return JsonResponse({
+        'fees': [
+            {
+                'id': fee.id,
+                'name': fee.name,
+                'amount': str(fee.amount),
+                'selected': fee.id in inherited_fee_ids,
+            }
+            for fee in fees
+        ]
+    })
 
 
 class StudentInvoiceDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
@@ -315,9 +357,22 @@ class StudentInvoiceCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
         return staff_can_manage(self.request.user)
 
     def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        messages.success(self.request, 'Student invoice created successfully.')
-        return super().form_valid(form)
+        invoice_data = form.cleaned_data
+        invoices = [StudentInvoice(
+            student=invoice_data['student'],
+            fee=fee,
+            issued_date=invoice_data['issued_date'],
+            due_date=invoice_data['due_date'],
+            amount_due=fee.amount,
+            academic_session=invoice_data['academic_session'],
+            term=invoice_data['term'],
+            status=invoice_data['status'],
+            notes=invoice_data['notes'],
+            created_by=self.request.user,
+        ) for fee in invoice_data['fees']]
+        StudentInvoice.objects.bulk_create(invoices)
+        messages.success(self.request, f'{len(invoices)} student invoice(s) created successfully.')
+        return redirect(self.success_url)
 
 
 class StudentPaymentCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
@@ -381,7 +436,7 @@ class StudentPaymentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context = super().get_context_data(**kwargs)
         payments = self.get_queryset()
         context['total_payments'] = payments.aggregate(total=Sum('amount'))['total'] or 0
-        context['academic_sessions'] = StudentInvoice.objects.order_by('academic_session').values_list('academic_session', flat=True).distinct()
+        context['academic_sessions'] = Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct()
         context['terms'] = Term.objects.order_by('academic_year', 'name').all()
         context['students'] = Student.objects.order_by('surname', 'other_names').all()
         context['selected_academic_session'] = self.request.GET.get('academic_session', '')
