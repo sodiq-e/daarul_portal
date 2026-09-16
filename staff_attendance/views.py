@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from .forms import AttendanceSettingsForm, StudentAttendanceSettingsForm
 from .models import AttendanceSettings, StudentAttendanceSettings, StaffAttendance, calculate_distance_meters
 from school_classes.models import Teacher
-from settingsapp.tenant_utils import user_is_tenant_admin
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin
 
 
 def get_user_queryset_for_tenant(model, request=None):
@@ -258,6 +258,18 @@ class StudentAttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, For
                 'active': active.active,
             }
         return super().get_initial()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        active = StudentAttendanceSettings.get_current()
+        if active.pk:
+            kwargs['instance'] = active
+        else:
+            kwargs['instance'] = StudentAttendanceSettings(
+                tenant=get_request_tenant(self.request),
+                active=True,
+            )
+        return kwargs
 
     def form_valid(self, form):
         form.save()

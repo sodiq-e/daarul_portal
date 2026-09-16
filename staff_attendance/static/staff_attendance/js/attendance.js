@@ -226,16 +226,67 @@ function setAttendanceButtonsDisabled(id, disabled) {
 }
 
 function getCurrentPositionAsync() {
+  return getBestPositionAsync();
+}
+
+function getBestPositionAsync(onUpdate = null) {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not available.'));
       return;
     }
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
+
+    const readings = [];
+    let settled = false;
+    let watchId = null;
+    const startedAt = Date.now();
+    const collectionWindowMs = 8000;
+
+    const finish = (position) => {
+      if (settled) return;
+      settled = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      clearTimeout(timeoutId);
+      if (position) {
+        resolve(position);
+      } else {
+        reject(new Error('Unable to obtain a location reading.'));
+      }
+    };
+
+    const handleReading = (position) => {
+      readings.push(position);
+      readings.sort((first, second) => first.coords.accuracy - second.coords.accuracy);
+      const best = readings[0];
+      if (typeof onUpdate === 'function') onUpdate(best, readings.length);
+
+      // Finish early when the device provides a reasonably precise reading.
+      if (best.coords.accuracy <= attendanceState.maxGpsAccuracy) {
+        finish(best);
+      } else if (Date.now() - startedAt >= collectionWindowMs) {
+        finish(best);
+      }
+    };
+
+    const handleError = (error) => {
+      if (readings.length) {
+        finish(readings[0]);
+      } else {
+        reject(error);
+      }
+    };
+
+    const timeoutId = setTimeout(() => finish(readings[0]), collectionWindowMs);
+    try {
+      watchId = navigator.geolocation.watchPosition(handleReading, handleError, {
       enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 10000,
-    });
+        timeout: collectionWindowMs,
+        maximumAge: 5000,
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      reject(error);
+    }
   });
 }
 
@@ -243,13 +294,22 @@ function validateGpsAccuracy(accuracy) {
   if (typeof accuracy !== 'number' || Number.isNaN(accuracy)) {
     return { valid: false, message: 'Unable to verify GPS accuracy.' };
   }
-  if (accuracy > attendanceState.maxGpsAccuracy) {
-    return {
-      valid: false,
-      message: 'Location accuracy too weak. Move outdoors or enable GPS.',
-    };
-  }
   return { valid: true };
+}
+
+function describeGpsAccuracy(accuracy) {
+  if (typeof accuracy !== 'number' || Number.isNaN(accuracy)) return 'unknown';
+  return `${accuracy.toFixed(1)} meters`;
+}
+
+function updateGpsAcquisitionStatus(position, readingCount = 1) {
+  const status = document.getElementById('locationStatus');
+  const accuracy = document.getElementById('accuracyInfo');
+  if (accuracy && position) accuracy.textContent = describeGpsAccuracy(position.coords.accuracy);
+  if (status && position) {
+    const quality = position.coords.accuracy <= attendanceState.maxGpsAccuracy ? 'Good' : 'Approximate';
+    status.textContent = `${quality} location, checking distance (${readingCount} reading${readingCount === 1 ? '' : 's'})...`;
+  }
 }
 
 function formatTimeSpan(totalSeconds) {
@@ -355,7 +415,7 @@ async function handleClockIn() {
   }
   try {
     setLoading(true, 'Getting location...');
-    const position = await getCurrentPositionAsync();
+    const position = await getBestPositionAsync(updateGpsAcquisitionStatus);
     const accuracyCheck = validateGpsAccuracy(position.coords.accuracy);
     if (!accuracyCheck.valid) {
       showMessage(accuracyCheck.message, 'error');
@@ -381,7 +441,7 @@ async function handleClockOut() {
   }
   try {
     setLoading(true, 'Getting location...');
-    const position = await getCurrentPositionAsync();
+    const position = await getBestPositionAsync(updateGpsAcquisitionStatus);
     const accuracyCheck = validateGpsAccuracy(position.coords.accuracy);
     if (!accuracyCheck.valid) {
       showMessage(accuracyCheck.message, 'error');
@@ -451,7 +511,7 @@ async function handleOfflineFallback(action, errorMessage, payload = null) {
   try {
     let record = payload;
     if (!record) {
-      const position = await getCurrentPositionAsync();
+      const position = await getBestPositionAsync(updateGpsAcquisitionStatus);
       record = {
         attendance_type: action,
         timestamp: new Date().toISOString(),
@@ -633,19 +693,21 @@ function updateLocationStatus() {
     return;
   }
 
-  getCurrentPositionAsync()
+  getBestPositionAsync(updateGpsAcquisitionStatus)
     .then((position) => {
       const coords = position.coords;
       const accuracyCheck = validateGpsAccuracy(coords.accuracy);
       if (!accuracyCheck.valid) {
         status.textContent = accuracyCheck.message;
-        accuracy.textContent = `>${attendanceState.maxGpsAccuracy} meters`;
+        accuracy.textContent = 'Unknown';
         distance.textContent = '--';
         return;
       }
 
-      accuracy.textContent = `${coords.accuracy.toFixed(1)} meters`;
-      status.textContent = 'Location available';
+      accuracy.textContent = describeGpsAccuracy(coords.accuracy);
+      status.textContent = coords.accuracy <= attendanceState.maxGpsAccuracy
+        ? 'Location available'
+        : 'Approximate location available; distance validation applies';
       const meters = computeDistanceMeters(
         attendanceState.schoolLatitude,
         attendanceState.schoolLongitude,

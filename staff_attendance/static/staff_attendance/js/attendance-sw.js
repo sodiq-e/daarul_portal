@@ -1,4 +1,4 @@
-const CACHE_NAME = 'staff-attendance-cache-v1';
+const CACHE_NAME = 'staff-attendance-cache-v2';
 const ASSETS_TO_CACHE = [
   '/static/staff_attendance/js/attendance.js',
   '/static/css/bootstrap.min.css',

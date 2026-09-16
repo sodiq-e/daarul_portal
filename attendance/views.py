@@ -3,14 +3,14 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.contrib import messages
 from django.urls import reverse_lazy
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.http import HttpResponseForbidden, JsonResponse
 from datetime import date
 from django.db.models import Count, Q
 from django.utils.decorators import method_decorator
 from .models import AttendanceRecord, AttendanceSession, AttendanceHoliday, AttendanceSettings
-from .forms import AttendanceRecordForm
+from .forms import AttendanceRecordForm, AttendanceSettingsForm, TermDateFormSet
 from students.models import Student
 from school_classes.models import SchoolClasses, ClassTeacher, Teacher
 from exams.models import Term
@@ -81,6 +81,7 @@ def teacher_has_permission(teacher, permission_code):
 def get_term_for_date(attendance_date):
     """Return the configured term for the given date, if any."""
     return Term.objects.filter(
+        is_active=True,
         start_date__isnull=False,
         end_date__isnull=False,
         start_date__lte=attendance_date,
@@ -89,6 +90,9 @@ def get_term_for_date(attendance_date):
 
 
 def attendance_terms_configured():
+    settings = get_attendance_settings()
+    if not settings.enable_term_date_restriction:
+        return False
     return Term.objects.filter(
         is_active=True,
         start_date__isnull=False,
@@ -776,20 +780,54 @@ class StudentAttendanceHistoryView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+class AttendanceSettingsView(LoginRequiredMixin, UserPassesTestMixin, FormView):
     """Display and manage attendance settings"""
     template_name = 'attendance/attendance_settings.html'
+    form_class = AttendanceSettingsForm
+    success_url = reverse_lazy('attendance_settings')
     
     def test_func(self):
         """Only staff/admin can view"""
         return self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
     
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['instance'] = get_attendance_settings()
+        return kwargs
+
+    def form_valid(self, form):
+        form.instance.last_updated_by = self.request.user
+        form.save()
+        messages.success(self.request, 'Attendance settings saved successfully.')
+        return super().form_valid(form)
+
+    def post(self, request, *args, **kwargs):
+        if 'save_term_dates' in request.POST:
+            terms = Term.objects.all().order_by('-academic_year', 'name')
+            term_forms = TermDateFormSet(
+                request.POST,
+                queryset=terms,
+                prefix='terms',
+            )
+            if term_forms.is_valid():
+                term_forms.save()
+                messages.success(request, 'School term dates saved successfully.')
+                return redirect(self.success_url)
+            form = self.get_form()
+            return self.render_to_response(self.get_context_data(form=form, term_forms=term_forms))
+        return super().post(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
         # Get or create attendance settings
         settings, created = AttendanceSettings.objects.get_or_create(pk=1)
         context['settings'] = settings
+        if 'term_forms' not in context:
+            context['term_forms'] = TermDateFormSet(
+                queryset=Term.objects.all().order_by('-academic_year', 'name'),
+                prefix='terms',
+            )
         
         # Get all active and inactive holidays
         context['holidays'] = AttendanceHoliday.objects.all().order_by('-start_date')

@@ -44,7 +44,7 @@ class AttendanceSessionAdmin(admin.ModelAdmin):
     list_filter = ('date', 'school_class', 'teacher', 'day_type')
     search_fields = ('school_class__class_name', 'teacher__user__username')
     date_hierarchy = 'date'
-    readonly_fields = ('created_at', 'week_number')
+    readonly_fields = ('weekday', 'created_at', 'week_number')
     fieldsets = (
         ('Class & Date Information', {
             'fields': ('school_class', 'date', 'weekday', 'week_number')
@@ -59,9 +59,10 @@ class AttendanceSessionAdmin(admin.ModelAdmin):
 
     def attendance_summary(self, obj):
         percentage = round((obj.present_count / obj.total_students * 100), 1) if obj.total_students > 0 else 0
+        percentage_display = f'{percentage:.1f}'
         return format_html(
-            '<strong>{}/{}</strong> ({:.1f}%)',
-            obj.present_count, obj.total_students, percentage
+            '<strong>{}/{}</strong> ({}%)',
+            obj.present_count, obj.total_students, percentage_display
         )
     attendance_summary.short_description = 'Present/Total (%)'
 
@@ -114,7 +115,15 @@ class AttendanceSettingsAdmin(admin.ModelAdmin):
             'description': 'Control whether attendance can only be marked within configured term dates'
         }),
         ('Attendance Marking', {
-            'fields': ('allow_retroactive_marking', 'school_has_morning_session', 'school_has_afternoon_session'),
+            'fields': (
+                'allow_retroactive_marking',
+                'school_has_morning_session',
+                'school_has_afternoon_session',
+                'morning_session_start',
+                'morning_session_end',
+                'afternoon_session_start',
+                'afternoon_session_end',
+            ),
             'description': 'Configure what sessions your school operates and marking permissions'
         }),
         ('Attendance Standards', {

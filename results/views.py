@@ -800,14 +800,7 @@ def promotions_list(request):
                     'selected_student_ids': selected_student_ids,
                 })
         elif not target_class_id:
-            messages.error(request, 'Please select a destination class for individual promotion.')
-            return render(request, 'results/promotions_list.html', {
-                'promotions': promotions,
-                'classes': classes,
-                'terms': terms,
-                'students': students,
-                'selected_student_ids': selected_student_ids,
-            })
+            target_class = None
         else:
             target_class = get_object_or_404(SchoolClasses, pk=target_class_id)
 
@@ -822,7 +815,7 @@ def promotions_list(request):
                 'selected_student_ids': selected_student_ids,
             })
 
-        if source_class_id and str(source_class_id) == str(target_class_id):
+        if target_class and source_class_id and str(source_class_id) == str(target_class_id):
             messages.error(request, 'The source class and destination class cannot be the same.')
             return render(request, 'results/promotions_list.html', {
                 'promotions': promotions,
@@ -890,31 +883,41 @@ def promotions_list(request):
                 'selected_student_ids': selected_student_ids,
             })
 
-            promoted_count = 0
-            for student in students_to_promote:
-                current_class = student.student_class
-                if not current_class:
-                    continue
-                if current_class.id == target_class.id:
-                    continue
+        promoted_count = 0
+        skipped_without_next_class = 0
+        for student in students_to_promote:
+            current_class = student.student_class
+            if not current_class:
+                continue
+            student_target_class = target_class or get_next_school_class(current_class)
+            if not student_target_class:
+                skipped_without_next_class += 1
+                continue
+            if current_class.id == student_target_class.id:
+                continue
 
-                student.student_class = target_class
-                student.save(update_fields=['student_class'])
-                Promotion.objects.create(
-                    student=student,
-                    from_class=current_class,
-                    to_class=target_class,
-                    term=term,
-                    remarks=remarks,
-                    promoted_by=request.user
-                )
-                promoted_count += 1
+            student.student_class = student_target_class
+            student.save(update_fields=['student_class'])
+            Promotion.objects.create(
+                student=student,
+                from_class=current_class,
+                to_class=student_target_class,
+                term=term,
+                remarks=remarks,
+                promoted_by=request.user
+            )
+            promoted_count += 1
 
-            if promoted_count:
-                messages.success(request, f'Successfully promoted {promoted_count} student(s) to {target_class}.')
-            else:
-                messages.info(request, 'No changes were made because the selected students were already in the destination class.')
-            return redirect('promotions_list')
+        if promoted_count:
+            destination = str(target_class) if target_class else 'their next class level'
+            messages.success(request, f'Successfully promoted {promoted_count} student(s) to {destination}.')
+            if skipped_without_next_class:
+                messages.warning(request, f'{skipped_without_next_class} student(s) could not be promoted because no next class exists.')
+        elif skipped_without_next_class:
+            messages.warning(request, 'No students were promoted because no next class exists for the selected students.')
+        else:
+            messages.info(request, 'No changes were made because the selected students were already in the destination class.')
+        return redirect('promotions_list')
 
     return render(request, 'results/promotions_list.html', {
         'promotions': promotions,

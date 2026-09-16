@@ -1,11 +1,55 @@
 {% extends 'base.html' %}
+
+{% block title %}Student Attendance Settings{% endblock %}
+
 {% block content %}
-<div class="container py-4">
-  <h3>Student Attendance Settings</h3>
-  <form method="post">
+<div class="container py-4" style="max-width: 900px">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <a class="text-decoration-none" href="{% url 'staff_attendance:settings' %}">Back to attendance settings</a>
+      <h1 class="h2 mt-2 mb-1">Student Attendance Settings</h1>
+      <p class="text-muted mb-0">Configure student attendance access, parent absence reasons, and warning thresholds.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'staff_attendance:dashboard' %}">Attendance dashboard</a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <form method="post" novalidate>
     {% csrf_token %}
-    {{ form.as_p }}
-    <button class="button" type="submit">Save</button>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h2 class="h5 mb-3">Student access</h2>
+        {% for field in form %}
+          <div class="mb-3{% if field.errors %} has-validation{% endif %}">
+            {% if field.field.widget.input_type == 'checkbox' %}
+              <div class="form-check">
+                {{ field }}
+                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              </div>
+            {% else %}
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'staff_attendance:settings' %}">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save student attendance settings</button>
+    </div>
   </form>
 </div>
 {% endblock %}

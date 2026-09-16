@@ -173,6 +173,10 @@ class AttendanceSettings(models.Model):
     # Session settings
     school_has_morning_session = models.BooleanField(default=True)
     school_has_afternoon_session = models.BooleanField(default=True)
+    morning_session_start = models.TimeField(default='08:00')
+    morning_session_end = models.TimeField(default='12:00')
+    afternoon_session_start = models.TimeField(default='13:00')
+    afternoon_session_end = models.TimeField(default='15:00')
     
     # Metadata
     last_updated = models.DateTimeField(auto_now=True)
