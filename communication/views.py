@@ -70,11 +70,17 @@ def is_admin(user, request=None):
     if user is None or not getattr(user, 'is_authenticated', False):
         return False
 
+    if getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False):
+        return True
+
     try:
         tenant = get_request_tenant(request) if request is not None else None
         if tenant is not None:
-            return user.profile.is_approved and user_is_tenant_admin(user, tenant=tenant)
-        return user.is_superuser
+            profile = getattr(user, 'profile', None)
+            if profile is None:
+                return user_is_tenant_admin(user, tenant=tenant)
+            return profile.is_approved and user_is_tenant_admin(user, tenant=tenant)
+        return bool(getattr(user, 'is_superuser', False))
     except AttributeError:
         return bool(getattr(user, 'is_staff', False))
 
@@ -94,18 +100,18 @@ def get_active_accounts(request=None):
 
 def get_user_threads(user, request=None):
     tenant = get_request_tenant(request) if request is not None else None
-    if user.is_superuser or (tenant is not None and user_is_tenant_admin(user, tenant=tenant)):
-        return PortalThread.objects.all().order_by('-updated_at')
-
-    return PortalThread.objects.for_user(user).order_by('-updated_at')
+    queryset = PortalThread.objects.openable().all()
+    if not (user.is_superuser or (tenant is not None and user_is_tenant_admin(user, tenant=tenant))):
+        queryset = PortalThread.objects.openable().for_user(user)
+    return queryset.deduplicated().order_by('-updated_at')
 
 
 def get_user_personal_threads(user, request=None):
     tenant = get_request_tenant(request) if request is not None else None
-    if user.is_superuser or (tenant is not None and user_is_tenant_admin(user, tenant=tenant)):
-        return PortalThread.objects.personal().order_by('-updated_at')
-
-    return PortalThread.objects.personal().for_user(user).order_by('-updated_at')
+    queryset = PortalThread.objects.openable().personal()
+    if not (user.is_superuser or (tenant is not None and user_is_tenant_admin(user, tenant=tenant))):
+        queryset = PortalThread.objects.openable().personal().for_user(user)
+    return queryset.deduplicated().order_by('-updated_at')
 
 
 def get_or_create_user_thread(user):
@@ -129,7 +135,7 @@ def get_or_create_class_thread_for_users(users, name):
 
 
 def get_user_thread_or_404(user, thread_id):
-    thread = PortalThread.objects.for_user(user).filter(pk=thread_id).first()
+    thread = PortalThread.objects.openable().for_user(user).filter(pk=thread_id).first()
     if thread is None:
         raise Http404('Thread not found')
 
@@ -298,17 +304,13 @@ class AdminPortalUserListView(LoginRequiredMixin, UserPassesTestMixin, ListView)
             django_messages.error(request, 'No valid selected users found.')
             return redirect('admin_portal_users_list')
 
-        if request.user not in participants:
-            participants.append(request.user)
-
-        if len(selected_users) == 1:
-            thread = get_or_create_personal_thread_for_users(participants)
-        else:
-            thread_name = f"Bulk Message — {timezone.now().strftime('%Y-%m-%d %H:%M')}"
-            thread = get_or_create_group_thread_for_users(participants, name=thread_name)
-
-        create_portal_message(thread, request.user, bulk_message)
-        sent_count = len(participants) - 1
+        sent_count = 0
+        for user in participants:
+            if user == request.user:
+                continue
+            thread = get_or_create_personal_thread_for_users([request.user, user])
+            create_portal_message(thread, request.user, bulk_message)
+            sent_count += 1
 
         if sent_count > 0:
             django_messages.success(request, f'Bulk message sent to {sent_count} user(s).')
@@ -327,16 +329,16 @@ class AdminPortalThreadView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
     def dispatch(self, request, *args, **kwargs):
         thread_id = kwargs.get('thread_id')
         if thread_id:
-            thread = PortalThread.objects.filter(pk=thread_id).first()
+            thread = PortalThread.objects.openable().filter(pk=thread_id).first()
             if thread is None:
-                django_messages.error(request, 'This conversation no longer exists.')
+                django_messages.error(request, 'This conversation no longer exists or is no longer available.')
                 return redirect('admin_portal_users_list')
         return super().dispatch(request, *args, **kwargs)
 
     def get_thread(self, **kwargs):
         thread_id = kwargs.get('thread_id')
         if thread_id:
-            return PortalThread.objects.filter(pk=thread_id).first()
+            return PortalThread.objects.openable().filter(pk=thread_id).first()
 
         user_id = kwargs.get('user_id')
         if user_id:
@@ -406,7 +408,7 @@ class AdminPortalGroupsListView(LoginRequiredMixin, UserPassesTestMixin, Templat
         from school_classes.models import SchoolClasses
         users = get_active_accounts(self.request).select_related('profile').prefetch_related('groups')
         classes = SchoolClasses.objects.all().order_by('class_name')
-        threads = PortalThread.objects.filter(
+        threads = PortalThread.objects.openable().filter(
             thread_type__in=[PortalThread.THREAD_TYPE_GROUP, PortalThread.THREAD_TYPE_CLASS]
         ).order_by('-updated_at')
         context = super().get_context_data(**kwargs)

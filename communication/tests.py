@@ -5,7 +5,11 @@ from django.contrib.auth.models import User
 from accounts.models import Profile
 from .models import PortalThread
 from .services.threads import get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users
-from .views import get_or_create_group_thread_for_users as legacy_get_or_create_group_thread_for_users, get_or_create_personal_thread_for_users as legacy_get_or_create_personal_thread_for_users
+from .views import (
+    get_or_create_group_thread_for_users as legacy_get_or_create_group_thread_for_users,
+    get_or_create_personal_thread_for_users as legacy_get_or_create_personal_thread_for_users,
+    get_user_threads,
+)
 from settingsapp.models import Tenant
 from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
 
@@ -27,7 +31,6 @@ class PortalThreadTypeRegressionTests(TestCase):
 
         self.assertEqual(first.id, second.id)
         self.assertEqual(first.thread_type, PortalThread.THREAD_TYPE_PERSONAL)
-        self.assertEqual(first.user_id, self.user.id)
         self.assertEqual(set(first.participants.values_list('id', flat=True)), {self.user.id, self.other_user.id})
 
     def test_group_thread_reuses_existing_thread_for_same_group_participants(self):
@@ -45,14 +48,31 @@ class PortalThreadTypeRegressionTests(TestCase):
 
         self.assertEqual(service_thread.id, legacy_thread.id)
         self.assertEqual(service_thread.thread_type, PortalThread.THREAD_TYPE_PERSONAL)
-        self.assertEqual(service_thread.user_id, self.user.id)
         self.assertEqual(set(service_thread.participants.values_list('id', flat=True)), {self.user.id, self.other_user.id})
+
+    def test_user_inbox_deduplicates_duplicate_personal_threads(self):
+        canonical = get_or_create_personal_thread_for_users([self.user, self.other_user])
+        duplicate = PortalThread.objects.create(thread_type=PortalThread.THREAD_TYPE_PERSONAL, tenant=self.tenant)
+        duplicate.participants.set([self.user, self.other_user])
+
+        duplicate.messages.create(sender=self.user, content='Duplicate copy')
+        canonical.messages.create(sender=self.user, content='Original')
+
+        threads = list(get_user_threads(self.user, request=type('Req', (), {'tenant': self.tenant})()))
+
+        self.assertEqual(len(threads), 1)
+        self.assertEqual(set(threads[0].participants.values_list('id', flat=True)), {self.user.id, self.other_user.id})
 
 
 class AdminPortalThreadAccessTests(TestCase):
     def setUp(self):
+        self.tenant = Tenant.objects.create(name='Admin Portal School', slug='admin-portal-school', hostname='admin-portal-school.localhost')
+        set_current_tenant(self.tenant)
         self.admin = User.objects.create_user(username='admin', password='pw', is_staff=True, is_superuser=True)
         Profile.objects.get_or_create(user=self.admin, defaults={'is_approved': True})
+
+    def tearDown(self):
+        clear_current_tenant()
 
     def test_deleted_thread_redirects_to_admin_portal_users_list(self):
         self.client.force_login(self.admin)
@@ -60,6 +80,31 @@ class AdminPortalThreadAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('admin_portal_users_list'))
+
+    def test_bulk_messages_are_saved_to_each_user_thread(self):
+        target = User.objects.create_user(username='target-user', password='pw')
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse('admin_portal_users_list'),
+            {'selected_users': [str(target.id)], 'bulk_message': 'Hello there'},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        thread = get_or_create_personal_thread_for_users([self.admin, target])
+        self.assertTrue(thread.messages.filter(content='Hello there', sender=self.admin).exists())
+
+    def test_invalid_threads_are_not_openable_and_are_hidden_from_active_lists(self):
+        broken_thread = PortalThread.objects.create(thread_type=PortalThread.THREAD_TYPE_PERSONAL)
+        valid_thread = PortalThread.objects.create(thread_type=PortalThread.THREAD_TYPE_PERSONAL)
+        valid_thread.user = self.admin
+        valid_thread.save(update_fields=['user'])
+        valid_thread.participants.set([self.admin, User.objects.create_user(username='valid-user', password='pw')])
+
+        self.assertFalse(broken_thread.is_openable)
+        self.assertIn(valid_thread, PortalThread.objects.openable().all())
+        self.assertNotIn(broken_thread, PortalThread.objects.openable().all())
 
 
 @override_settings(ALLOWED_HOSTS=['presence-school.localhost', 'testserver'])

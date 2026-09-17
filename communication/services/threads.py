@@ -43,16 +43,14 @@ def get_or_create_thread_for_users(
     if len(users) < 2:
         raise ValueError('At least two participants are required for this thread type.')
 
-    participant_ids = sorted({u.id for u in users})
-    requested_signature = set(participant_ids)
-
-    candidate_qs = PortalThread.objects.filter(thread_type=thread_type).prefetch_related('participants')
+    before = PortalThread.objects.filter(thread_type=thread_type).prefetch_related('participants')
+    request_ids = {u.id for u in users}
     thread = None
-    for candidate in candidate_qs.distinct():
+    for candidate in before.distinct():
         candidate_ids = set(candidate.participants.values_list('id', flat=True))
         if candidate.user_id is not None:
             candidate_ids.add(candidate.user_id)
-        if candidate_ids == requested_signature:
+        if candidate_ids == request_ids:
             thread = candidate
             break
 
@@ -63,22 +61,9 @@ def get_or_create_thread_for_users(
             tenant=get_current_tenant(),
         )
         thread.participants.set(users)
-        if thread_type == PortalThread.THREAD_TYPE_PERSONAL and users:
-            # Only assign the OneToOne `user` field if it won't violate the unique constraint.
-            candidate_user = users[0]
-            conflict = PortalThread.objects.filter(user=candidate_user).exclude(pk=thread.pk).exists()
-            if not conflict:
-                thread.user = candidate_user
-                thread.save(update_fields=['user'])
-        elif thread_type != PortalThread.THREAD_TYPE_PERSONAL and users and not thread.participants.filter(pk=users[0].pk).exists():
+        if thread_type != PortalThread.THREAD_TYPE_PERSONAL and users and not thread.participants.filter(pk=users[0].pk).exists():
             thread.participants.add(users[0])
     else:
-        if thread_type == PortalThread.THREAD_TYPE_PERSONAL and thread.user_id is None and users:
-            candidate_user = users[0]
-            conflict = PortalThread.objects.filter(user=candidate_user).exclude(pk=thread.pk).exists()
-            if not conflict:
-                thread.user = candidate_user
-                thread.save(update_fields=['user'])
         if name and not thread.name:
             thread.name = name
             thread.save(update_fields=['name'])

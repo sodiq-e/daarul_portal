@@ -98,7 +98,7 @@
             {% endif %}
         </div>
 
-        <button id="scroll-newest-btn" type="button" style="display:none; position:absolute; right: 24px; bottom: 160px; z-index: 10; padding: 10px 16px; border:none; border-radius:999px; background:#0d6efd; color:#fff; font-weight:700; cursor:pointer; box-shadow:0 10px 24px rgba(13,110,253,0.18);">New messages</button>
+        <button id="scroll-newest-btn" type="button" style="position:absolute; right: 24px; bottom: 160px; z-index: 10; padding: 10px 16px; border:none; border-radius:999px; background:#0d6efd; color:#fff; font-weight:700; cursor:pointer; box-shadow:0 10px 24px rgba(13,110,253,0.18); opacity:0; visibility:hidden; pointer-events:none; transform:translateY(6px); transition:all 0.2s ease;">New messages</button>
         <div id="attachment-modal" class="attachment-modal" style="display:none;">
             <div class="attachment-modal-content">
                 <button id="attachment-modal-close" type="button" class="attachment-modal-close" aria-label="Close preview">&times;</button>
@@ -113,17 +113,23 @@
             <form id="admin-msg-form" method="post" enctype="multipart/form-data" style="display: grid; gap: 12px;">
                 {% csrf_token %}
                 <div style="position: relative;">
-                    <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 16px; padding: 16px 56px 16px 16px; font-size: 14px; resize: vertical; min-height: 96px; box-sizing: border-box;"></textarea>
-                    <button id="admin-send-btn" type="submit" aria-label="Send reply" title="Send reply" style="position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border: none; border-radius: 999px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 20px rgba(13, 110, 253, 0.18);">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
-                    </button>
+                    <textarea name="content" id="admin-content" rows="4" placeholder="Type your portal reply here..." style="width: 100%; border: 1px solid #ced4da; border-radius: 16px; padding: 16px 166px 16px 16px; font-size: 14px; resize: vertical; min-height: 96px; box-sizing: border-box;"></textarea>
+                    <div style="position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <button id="admin-voice-btn" type="button" aria-label="Record voice note" title="Record voice note" style="width: 38px; height: 38px; border: none; border-radius: 999px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 20px rgba(245, 158, 11, 0.18);">🎙️</button>
+                        <button id="admin-camera-btn" type="button" aria-label="Use camera" title="Use camera" style="width: 38px; height: 38px; border: none; border-radius: 999px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 20px rgba(59, 130, 246, 0.18);">📷</button>
+                        <button id="admin-send-btn" type="submit" aria-label="Send reply" title="Send reply" style="width: 38px; height: 38px; border: none; border-radius: 999px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 20px rgba(13, 110, 253, 0.18);">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+                        </button>
+                    </div>
                 </div>
+                <input type="file" id="admin-voice-input" accept="audio/*" capture="microphone" style="display:none;" />
+                <input type="file" id="admin-camera-input" accept="image/*,video/*" capture="environment" style="display:none;" />
                 <div id="admin-attachment-dropzone" class="attachment-dropzone" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px dashed #ced4da; border-radius: 14px; background: #f8f9fa; position: relative;">
                     <label for="admin-attachment" class="file-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ffffff; border-radius: 12px; border: 1px solid #dfe3e6; cursor: pointer;">
                         📎 Attach
                     </label>
                     <span id="admin-dropzone-text" style="color: #6c757d; font-size: 13px;">Drag & drop a file here or click Attach</span>
-                    <input type="file" id="admin-attachment" name="attachment" accept="image/*,.pdf,.doc,.docx" style="position: absolute; left: -9999px;" />
+                    <input type="file" id="admin-attachment" name="attachment" accept="image/*,.pdf,.doc,.docx,audio/*,video/*" style="position: absolute; left: -9999px;" />
                 </div>
                 <div id="admin-attachment-preview" style="margin-top: 6px;"></div>
                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -205,12 +211,117 @@
 
         const adminForm = document.getElementById('admin-msg-form');
         const adminBtn = document.getElementById('admin-send-btn');
+        const adminVoiceBtn = document.getElementById('admin-voice-btn');
+        const adminCameraBtn = document.getElementById('admin-camera-btn');
+        const adminVoiceInput = document.getElementById('admin-voice-input');
+        const adminCameraInput = document.getElementById('admin-camera-input');
         const adminContent = document.getElementById('admin-content');
         const adminAttach = document.getElementById('admin-attachment');
         const adminPreview = document.getElementById('admin-attachment-preview');
         const dropzone = document.getElementById('admin-attachment-dropzone');
         const typingIndicator = document.getElementById('typing-indicator');
         const scrollNewButton = document.getElementById('scroll-newest-btn');
+
+        const adminRecorderState = {
+            stream: null,
+            recorder: null,
+            chunks: [],
+            recording: false
+        };
+
+        function attachFileToAdminMessage(file) {
+            if (!file || !adminAttach) return;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            adminAttach.files = dt.files;
+            updateAttachmentPreview(file);
+        }
+
+        function setAdminVoiceButtonState(recording) {
+            if (!adminVoiceBtn) return;
+            adminVoiceBtn.dataset.recording = recording ? 'true' : 'false';
+            adminVoiceBtn.textContent = recording ? '■' : '🎙️';
+            adminVoiceBtn.title = recording ? 'Stop recording' : 'Record voice note';
+            adminVoiceBtn.style.background = recording ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+        }
+
+        function startAdminVoiceRecording() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Voice recording is not supported in this browser.');
+                return;
+            }
+            if (adminRecorderState.recording) {
+                if (adminRecorderState.recorder) adminRecorderState.recorder.stop();
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+                adminRecorderState.stream = stream;
+                adminRecorderState.chunks = [];
+                adminRecorderState.recorder = new MediaRecorder(stream);
+                adminRecorderState.recording = true;
+                setAdminVoiceButtonState(true);
+
+                adminRecorderState.recorder.ondataavailable = function(event) {
+                    if (event.data && event.data.size > 0) adminRecorderState.chunks.push(event.data);
+                };
+
+                adminRecorderState.recorder.onstop = function() {
+                    const audioBlob = new Blob(adminRecorderState.chunks, { type: adminRecorderState.recorder.mimeType || 'audio/webm' });
+                    const audioFile = new File([audioBlob], 'voice-note.' + (audioBlob.type.includes('mp4') ? 'mp4' : 'webm'), { type: audioBlob.type || 'audio/webm' });
+                    attachFileToAdminMessage(audioFile);
+                    if (adminRecorderState.stream) {
+                        adminRecorderState.stream.getTracks().forEach(function(track) { track.stop(); });
+                    }
+                    adminRecorderState.recording = false;
+                    setAdminVoiceButtonState(false);
+                    adminRecorderState.recorder = null;
+                    adminRecorderState.stream = null;
+                };
+
+                adminRecorderState.recorder.start();
+            }).catch(function() {
+                alert('Microphone access was blocked. Please allow microphone permission to record a voice note.');
+                adminRecorderState.recording = false;
+                setAdminVoiceButtonState(false);
+            });
+        }
+
+        if (adminVoiceBtn && adminVoiceInput) {
+            adminVoiceInput.setAttribute('accept', 'audio/*');
+            adminVoiceInput.setAttribute('capture', 'microphone');
+            adminVoiceBtn.addEventListener('click', function() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !adminRecorderState.recording) {
+                    startAdminVoiceRecording();
+                    return;
+                }
+                adminVoiceInput.click();
+            });
+        }
+
+        if (adminCameraBtn && adminCameraInput) {
+            adminCameraInput.setAttribute('accept', 'image/*,video/*');
+            adminCameraInput.setAttribute('capture', 'environment');
+            adminCameraBtn.addEventListener('click', function() {
+                adminCameraInput.click();
+            });
+        }
+
+        if (adminCameraInput) {
+            adminCameraInput.addEventListener('change', function() {
+                const file = this.files && this.files[0] ? this.files[0] : null;
+                if (file) attachFileToAdminMessage(file);
+                this.value = '';
+            });
+        }
+
+        if (adminVoiceInput) {
+            adminVoiceInput.addEventListener('change', function() {
+                const file = this.files && this.files[0] ? this.files[0] : null;
+                if (file) attachFileToAdminMessage(file);
+                this.value = '';
+            });
+        }
 
         function updateAttachmentPreview(file) {
             if (!adminPreview) return;
@@ -328,6 +439,20 @@
                         openAttachmentModal(msg.attachment_url, msg.attachment_name, 'image');
                     });
                     attachmentBlock.appendChild(img);
+                } else if (msg.attachment_name && msg.attachment_name.match(/\.(mp3|wav|ogg|m4a|aac|webm)$/i)) {
+                    const audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = msg.attachment_url;
+                    audio.style.width = '100%';
+                    audio.style.maxWidth = '280px';
+                    attachmentBlock.appendChild(audio);
+                } else if (msg.attachment_name && msg.attachment_name.match(/\.(mp4|mov|webm|avi)$/i)) {
+                    const video = document.createElement('video');
+                    video.controls = true;
+                    video.src = msg.attachment_url;
+                    video.style.width = '100%';
+                    video.style.maxWidth = '280px';
+                    attachmentBlock.appendChild(video);
                 } else if (msg.attachment_name && msg.attachment_name.toLowerCase().endsWith('.pdf')) {
                     const link = document.createElement('a');
                     link.href = '#';
@@ -637,13 +762,24 @@
         }
 
         function showScrollNewButton() {
-            if (scrollNewButton) scrollNewButton.style.display = 'inline-flex';
+            if (scrollNewButton) {
+                scrollNewButton.style.opacity = '1';
+                scrollNewButton.style.visibility = 'visible';
+                scrollNewButton.style.pointerEvents = 'auto';
+                scrollNewButton.style.transform = 'translateY(0)';
+            }
         }
 
         function hideScrollNewButton() {
-            if (scrollNewButton) scrollNewButton.style.display = 'none';
+            if (scrollNewButton) {
+                scrollNewButton.style.opacity = '0';
+                scrollNewButton.style.visibility = 'hidden';
+                scrollNewButton.style.pointerEvents = 'none';
+                scrollNewButton.style.transform = 'translateY(6px)';
+            }
         }
 
+        hideScrollNewButton();
         let typingTimeout = null;
 
         syncPresenceWithServer();
@@ -731,9 +867,27 @@
     .msg-status { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 11px; vertical-align: middle; background: rgba(255,255,255,0.15); color: inherit; border: 1px solid rgba(0,0,0,0.05); }
     .msg-out .msg-status { background: rgba(255,255,255,0.18); color: white; }
     .msg-in .msg-status { background: #f1f3f5; color: #333; }
-    #chat-window { scrollbar-width: thin; scrollbar-color: rgba(33,37,41,0.3) transparent; }
+    #chat-window { scrollbar-width: thin; scrollbar-color: rgba(33,37,41,0.3) transparent; overflow-x: hidden; }
+    .msg { width: 100% !important; min-width: 0; }
+    .msg > div { width: 100% !important; max-width: none !important; }
     #chat-window::-webkit-scrollbar { width: 8px; }
     #chat-window::-webkit-scrollbar-thumb { background: rgba(33,37,41,0.24); border-radius: 999px; }
     #chat-window::-webkit-scrollbar-track { background: transparent; }
+
+    @media (max-width: 767px) {
+        #chat-window {
+            padding: 14px !important;
+            overflow-x: hidden;
+        }
+        .msg,
+        .msg > div {
+            width: 100% !important;
+            max-width: none !important;
+        }
+        #scroll-newest-btn {
+            right: 14px;
+            bottom: 112px;
+        }
+    }
 </style>
 {% endblock %}

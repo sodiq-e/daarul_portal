@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, IntegerField, F
 from django.contrib.auth.models import User
 from settingsapp.models import TenantModel
 from settingsapp.tenant_utils import TenantAwareManager
@@ -18,12 +18,46 @@ class PortalThreadQuerySet(models.QuerySet):
     def class_threads(self):
         return self.filter(thread_type='class')
 
+    def openable(self):
+        """Exclude stale or orphaned threads that cannot be opened or replied to."""
+        qs = self.annotate(
+            active_participant_count=Count('participants', filter=Q(participants__is_active=True), distinct=True),
+            user_is_active=Case(
+                When(user__is_active=True, then=1),
+                default=0,
+                output_field=IntegerField(),
+            )
+        )
+        return qs.annotate(
+            active_user_count=F('active_participant_count') + F('user_is_active')
+        ).filter(
+            Q(thread_type='personal', active_user_count__gte=2)
+            | Q(thread_type__in=['group', 'class'], active_participant_count__gte=1)
+        ).distinct()
+
     def with_exact_participants(self, users, thread_type=None):
         user_ids = sorted({u.id for u in users if u is not None})
         qs = self.filter(thread_type=thread_type) if thread_type else self
         for uid in user_ids:
             qs = qs.filter(participants__id=uid)
         return qs.annotate(num_participants=Count('participants', distinct=True)).filter(num_participants=len(user_ids)).distinct()
+
+    def deduplicated(self):
+        """Keep only one personal thread per exact participant set, preferring the newest active thread."""
+        ordered = self.select_related('user').prefetch_related('participants').order_by('-updated_at')
+        seen = set()
+        keep_ids = []
+        for thread in ordered:
+            participants = {user.id for user in thread.participants.all()}
+            if thread.user_id is not None:
+                participants.add(thread.user_id)
+            key = tuple(sorted(participants))
+            if thread.thread_type == self.model.THREAD_TYPE_PERSONAL:
+                if key in seen:
+                    continue
+                seen.add(key)
+            keep_ids.append(thread.id)
+        return self.filter(pk__in=keep_ids).distinct().order_by('-updated_at')
 
 
 class PortalThreadManager(TenantAwareManager):
@@ -49,6 +83,12 @@ class PortalThreadManager(TenantAwareManager):
 
     def class_threads(self):
         return self.get_queryset().class_threads()
+
+    def openable(self):
+        return self.get_queryset().openable().deduplicated()
+
+    def deduplicated(self):
+        return self.get_queryset().deduplicated()
 
     def get_current_tenant(self):
         from settingsapp.tenant_utils import get_current_tenant
@@ -167,6 +207,19 @@ class PortalThread(TenantModel):
         if self.is_group:
             return self.name or 'Group Conversation'
         return default_label
+
+    @property
+    def is_openable(self):
+        active_participants = self.participants.filter(is_active=True)
+        active_user_count = active_participants.count()
+
+        if self.user_id is not None and self.user.is_active:
+            active_user_count += 1
+
+        if self.thread_type == self.THREAD_TYPE_PERSONAL:
+            return active_user_count >= 2
+
+        return active_user_count >= 1
 
     def __str__(self):
         return self.get_display_title()

@@ -1,4 +1,10 @@
-from .tenant_utils import bind_user_tenant_profiles, clear_current_tenant, resolve_tenant, set_current_tenant
+from .tenant_utils import (
+    bind_user_tenant_profiles,
+    clear_current_tenant,
+    get_current_tenant,
+    resolve_tenant,
+    set_current_tenant,
+)
 
 
 class TenantMiddleware:
@@ -13,12 +19,17 @@ class TenantMiddleware:
 
     def __call__(self, request):
         request.tenant = self.resolve_tenant(request)
-        set_current_tenant(request.tenant)
+        previous_tenant = get_current_tenant()
+        if request.tenant is not None:
+            set_current_tenant(request.tenant)
         bind_user_tenant_profiles(getattr(request, 'user', None), request.tenant)
         try:
             return self.get_response(request)
         finally:
-            clear_current_tenant()
+            if previous_tenant is not None:
+                set_current_tenant(previous_tenant)
+            else:
+                clear_current_tenant()
 
     def resolve_tenant(self, request):
         return resolve_tenant(request)
