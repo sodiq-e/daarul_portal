@@ -45,8 +45,8 @@
                         <div class="date-separator">{{ message.created_at|date:"D, M d, Y" }}</div>
                     {% endifchanged %}
                     {% if message.sender == request.user %}
-                        <div class="msg msg-out" data-id="{{ message.id }}" data-created-at-iso="{{ message.created_at|date:'c' }}" style="align-self: flex-end; width: 100%; background: transparent;">
-                            <div style="display: block; background: #0d6efd; color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                        <div class="msg msg-out" data-id="{{ message.id }}" data-created-at-iso="{{ message.created_at|date:'c' }}" style="align-self: flex-end; width: auto; max-width: 80%; background: transparent;">
+                            <div style="display: block; background: #0d6efd; color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 100%;">
                                 <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">You</div>
                                 <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
                                 {% if message.attachment %}
@@ -54,6 +54,15 @@
                                         {% with name=message.attachment.name|lower %}
                                             {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
                                                 <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                            {% elif name|slice:"-4:" == ".mp3" or name|slice:"-4:" == ".wav" or name|slice:"-4:" == ".ogg" or name|slice:"-4:" == ".m4a" or name|slice:"-4:" == ".aac" or name|slice:"-5:" == ".webm" or name|slice:"-4:" == ".mp4" %}
+                                                <audio controls preload="metadata" style="width: 100%; max-width: 280px; display: block;">
+                                                    <source src="{{ message.attachment.url }}" type="audio/mpeg" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/wav" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/ogg" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/mp4" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/webm" />
+                                                    Your browser does not support the audio element.
+                                                </audio>
                                             {% else %}
                                                 <a href="{{ message.attachment.url }}" target="_blank" style="color: #fff; text-decoration: underline;">{{ message.attachment.name|default:'Attachment' }}</a>
                                             {% endif %}
@@ -64,8 +73,8 @@
                             </div>
                         </div>
                     {% else %}
-                        <div class="msg msg-in" data-id="{{ message.id }}" data-created-at-iso="{{ message.created_at|date:'c' }}" style="align-self: flex-start; width: 100%; background: transparent;">
-                            <div style="display: block; background: #ffffff; color: #212529; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6;">
+                        <div class="msg msg-in" data-id="{{ message.id }}" data-created-at-iso="{{ message.created_at|date:'c' }}" style="align-self: flex-start; width: auto; max-width: 80%; background: transparent;">
+                            <div style="display: block; background: #ffffff; color: #212529; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #dee2e6; max-width: 100%;">
                                 <div style="font-size: 13px; margin-bottom: 6px; font-weight: 700;">{{ message.sender.get_full_name|default:message.sender.username }}</div>
                                 <div style="white-space: pre-wrap; line-height: 1.6;">{{ message.content }}</div>
                                 {% if message.attachment %}
@@ -73,6 +82,15 @@
                                         {% with name=message.attachment.name|lower %}
                                             {% if name|slice:"-4:" == ".jpg" or name|slice:"-4:" == ".png" or name|slice:"-5:" == ".jpeg" or name|slice:"-4:" == ".gif" %}
                                                 <img src="{{ message.attachment.url }}" alt="attachment" style="max-width: 100%; height: auto; border-radius: 8px;" />
+                                            {% elif name|slice:"-4:" == ".mp3" or name|slice:"-4:" == ".wav" or name|slice:"-4:" == ".ogg" or name|slice:"-4:" == ".m4a" or name|slice:"-4:" == ".aac" or name|slice:"-5:" == ".webm" or name|slice:"-4:" == ".mp4" %}
+                                                <audio controls preload="metadata" style="width: 100%; max-width: 280px; display: block;">
+                                                    <source src="{{ message.attachment.url }}" type="audio/mpeg" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/wav" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/ogg" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/mp4" />
+                                                    <source src="{{ message.attachment.url }}" type="audio/webm" />
+                                                    Your browser does not support the audio element.
+                                                </audio>
                                             {% else %}
                                                 <a href="{{ message.attachment.url }}" target="_blank">{{ message.attachment.name|default:'Attachment' }}</a>
                                             {% endif %}
@@ -116,8 +134,8 @@
                         </button>
                     </div>
                 </div>
-                <input type="file" id="msg-voice-input" accept="audio/*" capture="microphone" style="display:none;" />
-                <input type="file" id="msg-camera-input" accept="image/*,video/*" capture="environment" style="display:none;" />
+                <input type="file" id="msg-voice-input" accept="audio/*" style="display:none;" />
+                <input type="file" id="msg-camera-input" accept="image/*,video/*" style="display:none;" />
                 <div id="attachment-dropzone" class="attachment-dropzone" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px; border: 1px dashed #ced4da; border-radius: 14px; background: #f8f9fa;">
                     <label for="msg-attachment" class="file-btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; background: #ffffff; border-radius: 12px; border: 1px solid #dfe3e6; cursor: pointer;">
                         📎 Attach
@@ -237,8 +255,32 @@
         voiceBtn.style.background = recording ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
     }
 
+    function getVoiceNoteFileExtension(audioBlob) {
+        const mimeType = (audioBlob && audioBlob.type) || 'audio/webm';
+        const extensionMap = {
+            'audio/webm': 'webm',
+            'audio/mp4': 'm4a',
+            'audio/m4a': 'm4a',
+            'audio/ogg': 'ogg',
+            'audio/opus': 'ogg',
+            'audio/wav': 'wav',
+            'audio/x-wav': 'wav',
+            'audio/mpeg': 'mp3',
+            'audio/mp3': 'mp3'
+        };
+        if (extensionMap[mimeType]) return extensionMap[mimeType];
+        if (mimeType.includes('mp4')) return 'm4a';
+        if (mimeType.includes('ogg')) return 'ogg';
+        if (mimeType.includes('wav')) return 'wav';
+        if (mimeType.includes('mp3')) return 'mp3';
+        return 'webm';
+    }
+
     function startVoiceRecording() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (voiceInput) {
+                voiceInput.click();
+            }
             alert('Voice recording is not supported in this browser.');
             return;
         }
@@ -252,7 +294,8 @@
         navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
             recorderState.stream = stream;
             recorderState.chunks = [];
-            recorderState.recorder = new MediaRecorder(stream);
+            const preferredMimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm');
+            recorderState.recorder = new MediaRecorder(stream, preferredMimeType ? { mimeType: preferredMimeType } : undefined);
             recorderState.recording = true;
             setVoiceButtonState(true);
 
@@ -262,7 +305,7 @@
 
             recorderState.recorder.onstop = function() {
                 const audioBlob = new Blob(recorderState.chunks, { type: recorderState.recorder.mimeType || 'audio/webm' });
-                const audioFile = new File([audioBlob], 'voice-note.' + (audioBlob.type.includes('mp4') ? 'mp4' : 'webm'), { type: audioBlob.type || 'audio/webm' });
+                const audioFile = new File([audioBlob], 'voice-note.' + getVoiceNoteFileExtension(audioBlob), { type: audioBlob.type || 'audio/webm' });
                 attachFileToMessage(audioFile);
                 if (recorderState.stream) {
                     recorderState.stream.getTracks().forEach(function(track) { track.stop(); });
@@ -283,9 +326,8 @@
 
     if (voiceBtn && voiceInput) {
         voiceInput.setAttribute('accept', 'audio/*');
-        voiceInput.setAttribute('capture', 'microphone');
         voiceBtn.addEventListener('click', function() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !recorderState.recording) {
+            if (typeof MediaRecorder !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 startVoiceRecording();
                 return;
             }
@@ -295,7 +337,6 @@
 
     if (cameraBtn && cameraInput) {
         cameraInput.setAttribute('accept', 'image/*,video/*');
-        cameraInput.setAttribute('capture', 'environment');
         cameraBtn.addEventListener('click', function() {
             cameraInput.click();
         });
@@ -328,6 +369,14 @@
             img.style.borderRadius = '10px';
             img.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
             previewEl.appendChild(img);
+        } else if (file.type.startsWith('audio/')) {
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.preload = 'metadata';
+            audio.src = URL.createObjectURL(file);
+            audio.style.width = '100%';
+            audio.style.maxWidth = '280px';
+            previewEl.appendChild(audio);
         } else {
             const block = document.createElement('div');
             block.textContent = file.name;
@@ -391,11 +440,13 @@
             bubble.dataset.createdAtIso = msg.created_at_iso;
         }
         bubble.style.alignSelf = outgoing ? 'flex-end' : 'flex-start';
-        bubble.style.width = '100%';
+        bubble.style.width = 'auto';
+        bubble.style.maxWidth = '80%';
 
         const inner = document.createElement('div');
         inner.style.display = 'block';
         inner.style.padding = '16px';
+        inner.style.maxWidth = '100%';
         inner.style.borderRadius = '16px';
         inner.style.boxShadow = '0 2px 16px rgba(0,0,0,0.08)';
         inner.style.background = outgoing ? '#0d6efd' : '#ffffff';
@@ -1005,9 +1056,37 @@
         cursor: pointer;
         color: #475569;
     }
-    #chat-window { scrollbar-width: thin; scrollbar-color: rgba(33,37,41,0.3) transparent; overflow-x: hidden; }
-    .msg { width: 100% !important; min-width: 0; }
-    .msg > div { width: 100% !important; max-width: none !important; }
+    #chat-window { scrollbar-width: thin; scrollbar-color: rgba(33,37,41,0.3) transparent; overflow-x: hidden; display: flex !important; flex-direction: column !important; }
+    .msg {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: visible;
+        clear: both;
+        margin: 0 0 14px;
+        position: relative;
+        flex: 0 0 auto;
+    }
+    .msg.msg-out { text-align: right; align-items: flex-end; }
+    .msg.msg-in { text-align: left; align-items: flex-start; }
+    .msg > div {
+        display: block !important;
+        width: auto !important;
+        max-width: min(80%, 560px) !important;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        text-align: justify;
+    }
+    .msg.msg-out > div { margin-left: auto; }
+    .msg.msg-in > div { margin-right: auto; }
+    .msg > div > * {
+        max-width: 100%;
+        min-width: 0;
+        text-align: justify;
+    }
     #chat-window::-webkit-scrollbar { width: 8px; }
     #chat-window::-webkit-scrollbar-thumb { background: rgba(33,37,41,0.24); border-radius: 999px; }
     #chat-window::-webkit-scrollbar-track { background: transparent; }
@@ -1016,12 +1095,33 @@
         #chat-window {
             padding: 14px !important;
             overflow-x: hidden;
+            display: block !important;
+            flex-direction: column !important;
+            gap: 12px !important;
         }
-        .msg,
-        .msg > div {
+        #chat-window > .msg,
+        .msg {
+            display: block !important;
             width: 100% !important;
-            max-width: none !important;
+            max-width: 100% !important;
+            float: none !important;
+            clear: both !important;
+            flex: 0 0 auto !important;
+            flex-direction: column !important;
+            margin: 0 0 12px !important;
         }
+        .msg > div,
+        .msg.msg-out > div,
+        .msg.msg-in > div {
+            display: block !important;
+            width: auto !important;
+            max-width: 88% !important;
+            min-width: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        .msg.msg-out > div { margin-left: auto !important; }
+        .msg.msg-in > div { margin-right: auto !important; }
         #scroll-newest-btn {
             right: 14px;
             bottom: 112px;

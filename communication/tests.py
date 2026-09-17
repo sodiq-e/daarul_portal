@@ -187,3 +187,13 @@ class PortalMessageActionTests(TestCase):
         payload = response.json()
         self.assertTrue(payload['success'])
         self.assertFalse(self.thread.messages.filter(pk=self.message.pk).exists())
+
+    def test_chat_composer_avoids_forcing_native_capture_pickers(self):
+        self.client.force_login(self.user)
+        response = self.client.get(f"{reverse('portal_thread_detail')}?thread_id={self.thread.id}")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        self.assertNotIn('capture="microphone"', html)
+        self.assertNotIn('capture="environment"', html)
+        self.assertIn('MediaRecorder', html)
