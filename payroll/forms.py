@@ -142,16 +142,85 @@ class StudentPaymentForm(forms.ModelForm):
             primary_invoice = StudentInvoice.objects.filter(pk=selected_invoice_ids[0]).first()
 
         if selected_invoice_ids:
-            selected_invoices = list(StudentInvoice.objects.filter(pk__in=selected_invoice_ids).order_by('due_date', 'issued_date'))
-            if primary_invoice and primary_invoice.pk not in [invoice.pk for invoice in selected_invoices]:
+            invoice_map = {
+                invoice.pk: invoice for invoice in StudentInvoice.objects.filter(pk__in=selected_invoice_ids)
+                .select_related('student', 'fee')
+            }
+            selected_invoices = [invoice_map[invoice_id] for invoice_id in selected_invoice_ids if invoice_id in invoice_map]
+            if primary_invoice and primary_invoice.pk not in selected_invoice_ids:
                 selected_invoices.insert(0, primary_invoice)
             selected_invoices = list({invoice.pk: invoice for invoice in selected_invoices}.values())
+
+            grouped_invoices = {}
+            for invoice in selected_invoices:
+                grouped_invoices.setdefault(invoice.student_id, []).append(invoice)
+
+            if len(grouped_invoices) > 1:
+                unallocated_payment = Decimal(str(self.cleaned_data.get('amount')))
+                created_payments = []
+                for student_id, student_invoices in grouped_invoices.items():
+                    group_outstanding = sum(
+                        max(Decimal('0.00'), invoice.amount_due - invoice.total_paid)
+                        for invoice in student_invoices
+                    )
+                    if group_outstanding <= Decimal('0.00'):
+                        continue
+
+                    amount_for_student = min(unallocated_payment, group_outstanding)
+                    if amount_for_student <= Decimal('0.00'):
+                        continue
+
+                    payment_invoices = []
+                    payment_allocations = []
+                    student_total = Decimal('0.00')
+                    remaining_for_student = amount_for_student
+
+                    for invoice in student_invoices:
+                        outstanding = max(Decimal('0.00'), invoice.amount_due - invoice.total_paid)
+                        if outstanding <= Decimal('0.00'):
+                            continue
+
+                        amount_applied = min(remaining_for_student, outstanding)
+                        payment_invoices.append(invoice.pk)
+                        payment_allocations.append({
+                            'invoice_id': invoice.pk,
+                            'amount_applied': str(amount_applied),
+                            'remaining_balance': str(max(Decimal('0.00'), outstanding - amount_applied)),
+                        })
+                        student_total += amount_applied
+                        remaining_for_student -= amount_applied
+                        if remaining_for_student <= Decimal('0.00'):
+                            break
+
+                    if not payment_invoices:
+                        continue
+
+                    payment = StudentPayment(
+                        student_id=student_id,
+                        invoice_id=student_invoices[0].pk,
+                        amount=student_total,
+                        payment_date=self.cleaned_data.get('payment_date'),
+                        payment_method=self.cleaned_data.get('payment_method', ''),
+                        reference=self.cleaned_data.get('reference', ''),
+                        notes=self.cleaned_data.get('notes', ''),
+                        invoices=payment_invoices,
+                        allocations=payment_allocations,
+                        remaining_balance=Decimal('0.00'),
+                    )
+                    if commit:
+                        payment.save()
+                    created_payments.append(payment)
+                    unallocated_payment = max(Decimal('0.00'), unallocated_payment - amount_for_student)
+
+                if created_payments:
+                    return created_payments[0]
+
             instance.invoice = selected_invoices[0]
             instance.student = selected_invoices[0].student
             instance.invoices = [invoice.pk for invoice in selected_invoices]
             instance.allocations = []
             remaining_payment = instance.amount
-            for invoice in sorted(selected_invoices, key=lambda inv: (inv.due_date, inv.id)):
+            for invoice in selected_invoices:
                 available_balance = max(Decimal('0.00'), invoice.amount_due - invoice.total_paid)
                 amount_applied = min(remaining_payment, available_balance)
                 instance.allocations.append({

@@ -180,6 +180,58 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertEqual(invoice_2.status, 'overdue')
         self.assertEqual(invoice_2.balance, Decimal('8000.00'))
 
+    def test_payment_form_splits_amount_across_students_when_selected_invoices_span_multiple_students(self):
+        second_student = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-002',
+            surname='Smith',
+            other_names='John',
+        )
+        fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('60000.00'))
+        fee_2 = SchoolFee.objects.create(tenant=self.tenant, name='Uniform', amount=Decimal('50000.00'))
+
+        invoice_1 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee_1,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('60000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        invoice_2 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            fee=fee_2,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('50000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+
+        form = StudentPaymentForm(data={
+            'amount': '90000.00',
+            'payment_date': '2024-09-10',
+            'payment_method': 'Bank Transfer',
+            'reference': 'REF-005',
+            'notes': 'Split across two students',
+            'invoices': [str(invoice_1.id), str(invoice_2.id)],
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        payment = form.save()
+
+        self.assertIsNotNone(payment)
+        self.assertEqual(StudentPayment.objects.filter(student__in=[self.student, second_student]).count(), 2)
+        self.assertEqual(StudentPayment.objects.get(student=self.student).amount, Decimal('60000.00'))
+        self.assertEqual(StudentPayment.objects.get(student=second_student).amount, Decimal('30000.00'))
+        self.assertEqual(invoice_1.refresh_status(), 'paid')
+        self.assertEqual(invoice_2.refresh_status(), 'overdue')
+
     def test_print_receipts_page_renders_card_summary_and_table(self):
         fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
         invoice = StudentInvoice.objects.create(
@@ -222,6 +274,62 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertIn('Outstanding Balance', content)
         self.assertIn('<table class="table table-striped">', content)
         self.assertIn('School Fees', content)
+
+    def test_payment_batch_splits_across_students_and_keeps_outstanding_balance(self):
+        second_student = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-002',
+            surname='Smith',
+            other_names='Alice',
+        )
+
+        fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('60000.00'))
+        fee_2 = SchoolFee.objects.create(tenant=self.tenant, name='Uniform', amount=Decimal('70000.00'))
+
+        invoice_1 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee_1,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('60000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        invoice_2 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            fee=fee_2,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('70000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+
+        form = StudentPaymentForm(data={
+            'amount': '90000.00',
+            'payment_date': '2024-09-10',
+            'payment_method': 'Bank Transfer',
+            'reference': 'REF-BATCH-001',
+            'notes': 'Multi-student payment batch',
+            'invoices': [str(invoice_1.id), str(invoice_2.id)],
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        payment = form.save()
+
+        payments = StudentPayment.objects.filter(student__in=[self.student, second_student]).order_by('student_id')
+        self.assertEqual(payments.count(), 2)
+        self.assertEqual(sum(payment.amount for payment in payments), Decimal('90000.00'))
+        self.assertEqual(payment.student_id, self.student.id)
+
+        invoice_1.refresh_from_db()
+        invoice_2.refresh_from_db()
+        self.assertEqual(invoice_1.balance, Decimal('0.00'))
+        self.assertEqual(invoice_2.balance, Decimal('40000.00'))
 
     def test_multi_fee_invoice_creation_persists_for_active_tenant(self):
         fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
