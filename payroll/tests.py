@@ -9,6 +9,7 @@ from exams.models import Term
 from payroll.forms import StudentPaymentForm
 from payroll.models import SchoolFee, StudentInvoice, StudentPayment
 from settingsapp.models import Tenant
+from settingsapp.tenant_utils import set_current_tenant, clear_current_tenant
 from students.models import Student
 from accounts.models import Profile
 
@@ -221,3 +222,36 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertIn('Outstanding Balance', content)
         self.assertIn('<table class="table table-striped">', content)
         self.assertIn('School Fees', content)
+
+    def test_multi_fee_invoice_creation_persists_for_active_tenant(self):
+        fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        fee_2 = SchoolFee.objects.create(tenant=self.tenant, name='Uniform', amount=Decimal('10000.00'))
+
+        group, _ = Group.objects.get_or_create(name='Staff')
+        user = User.objects.create_user(username='staffuser2', password='pass1234')
+        user.profile.requested_group = 'Staff'
+        user.profile.is_approved = True
+        user.profile.save()
+        user.groups.add(group)
+
+        self.client.force_login(user)
+        set_current_tenant(self.tenant)
+        try:
+            response = self.client.post(reverse('invoice_add'), {
+                'student': self.student.pk,
+                'fees': [fee_1.pk, fee_2.pk],
+                'academic_session': '2024/2025',
+                'term': self.term.pk,
+                'issued_date': '2024-09-02',
+                'due_date': '2024-09-30',
+                'status': 'pending',
+                'notes': 'Multi-fee invoice batch',
+            })
+        finally:
+            clear_current_tenant()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            StudentInvoice.objects.filter(student=self.student, tenant=self.tenant).count(),
+            2,
+        )

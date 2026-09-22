@@ -321,6 +321,7 @@ def print_receipts(request):
     invoice_lookup = {invoice.pk: invoice for invoice in invoice_qs}
     for receipt in receipts:
         invoice_names = []
+        invoice_allocations = []
         for allocation in receipt.allocations or []:
             invoice_id = allocation.get('invoice_id')
             if invoice_id is None:
@@ -331,10 +332,26 @@ def print_receipts(request):
                 continue
             invoice = invoice_lookup.get(invoice_pk)
             if invoice and invoice.fee:
-                invoice_names.append(invoice.fee.name)
+                invoice_name = invoice.fee.name
             else:
-                invoice_names.append(f'Invoice #{invoice_pk}')
+                invoice_name = f'Invoice #{invoice_pk}'
+            invoice_names.append(invoice_name)
+            invoice_allocations.append({
+                'invoice_name': invoice_name,
+                'amount_applied': allocation.get('amount_applied', receipt.amount),
+            })
+
+        if not invoice_allocations and getattr(receipt, 'invoice', None):
+            invoice = receipt.invoice
+            invoice_name = invoice.fee.name if invoice and invoice.fee else f'Invoice #{invoice.pk}'
+            invoice_names.append(invoice_name)
+            invoice_allocations.append({
+                'invoice_name': invoice_name,
+                'amount_applied': receipt.amount,
+            })
+
         receipt.invoice_names = invoice_names
+        receipt.invoice_allocations = invoice_allocations
 
     total_due = invoice_qs.aggregate(total=Sum('amount_due'))['total'] or 0
     total_paid = sum(receipt.amount for receipt in receipts)
@@ -406,6 +423,7 @@ class StudentInvoiceCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
 
     def form_valid(self, form):
         invoice_data = form.cleaned_data
+        active_tenant = get_request_tenant(self.request)
         invoices = [StudentInvoice(
             student=invoice_data['student'],
             fee=fee,
@@ -417,7 +435,12 @@ class StudentInvoiceCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
             status=invoice_data['status'],
             notes=invoice_data['notes'],
             created_by=self.request.user,
+            tenant=active_tenant,
         ) for fee in invoice_data['fees']]
+
+        for invoice in invoices:
+            invoice.status = 'overdue' if invoice.due_date < datetime.today().date() else 'pending'
+
         StudentInvoice.objects.bulk_create(invoices)
         messages.success(self.request, f'{len(invoices)} student invoice(s) created successfully.')
         return redirect(self.success_url)

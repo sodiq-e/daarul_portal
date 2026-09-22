@@ -109,15 +109,15 @@
                     <td>{{ receipt.payment_date }}</td>
                     <td>{{ receipt.amount }}</td>
                     <td>
-                        {% for invoice_name in receipt.invoice_names %}
-                            {{ invoice_name }}{% if not forloop.last %}, {% endif %}
+                        {% for item in receipt.invoice_allocations %}
+                            {{ item.invoice_name }}{% if item.amount_applied %} — {{ item.amount_applied }}{% endif %}<br>
                         {% empty %}
                             {{ receipt.invoice.fee.name|default:receipt.invoice_id }}
                         {% endfor %}
                     </td>
                     <td>
-                        {% for allocation in receipt.allocations %}
-                            {{ allocation.amount_applied }}{% if not forloop.last %}<br>{% endif %}
+                        {% for item in receipt.invoice_allocations %}
+                            {{ item.amount_applied }}{% if not forloop.last %}<br>{% endif %}
                         {% empty %}
                             {{ receipt.amount }}
                         {% endfor %}
