@@ -1,41 +1,143 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Print Receipts</h3>
-    <button onclick="window.print()" class="button">Print</button>
-  </div>
-  <form method="get" class="row g-3 mb-4 no-print">
-    <div class="col-md-5">
-      <label class="form-label" for="receipt-session">Academic Session</label>
-      <select id="receipt-session" name="academic_session" class="form-select">
-        <option value="">All Sessions</option>
-        {% for session in academic_sessions %}<option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>{% endfor %}
-      </select>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Print Receipts</h1>
+            <p class="text-muted">Filtered payment receipts with invoice allocations and remaining balances.</p>
+        </div>
+        <div>
+            <button onclick="window.print()" class="btn btn-outline-secondary no-print">Print Receipts</button>
+        </div>
     </div>
-    <div class="col-md-5">
-      <label class="form-label" for="receipt-term">Term</label>
-      <select id="receipt-term" name="term" class="form-select">
-        <option value="">All Terms</option>
-        {% for term in terms %}<option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term }}</option>{% endfor %}
-      </select>
+
+    <form method="get" id="print-filter-form" class="row g-3 mb-4 no-print" action="{% url 'print_receipts' %}">
+        <div class="col-md-3">
+            <label class="form-label" for="document-type">Document Type</label>
+            <select id="document-type" class="form-select" onchange="updatePrintType(this.value)">
+                <option value="invoices" {% if current_type == 'invoices' %}selected{% endif %}>Invoices</option>
+                <option value="receipts" {% if current_type == 'receipts' %}selected{% endif %}>Paid Receipts</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="receipt-student">Student</label>
+            <select id="receipt-student" name="student" class="form-select">
+                <option value="">All Students</option>
+                {% for student in students %}
+                    <option value="{{ student.id }}" {% if student.id|stringformat:'s' == selected_student %}selected{% endif %}>{{ student.full_name|default:student }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="receipt-session">Academic Session</label>
+            <select id="receipt-session" name="academic_session" class="form-select">
+                <option value="">All Sessions</option>
+                {% for session in academic_sessions %}
+                    <option value="{{ session }}" {% if session == selected_academic_session %}selected{% endif %}>{{ session }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="receipt-term">Term</label>
+            <select id="receipt-term" name="term" class="form-select">
+                <option value="">All Terms</option>
+                {% for term in terms %}
+                    <option value="{{ term.id }}" {% if term.id|stringformat:'s' == selected_term %}selected{% endif %}>{{ term }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-12 d-flex align-items-end justify-content-end">
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </div>
+    </form>
+
+    <script>
+        function updatePrintType(type) {
+            const form = document.getElementById('print-filter-form');
+            if (!form) return;
+            form.action = type === 'receipts' ? '{% url "print_receipts" %}' : '{% url "print_invoices" %}';
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            const typeSelect = document.getElementById('document-type');
+            if (typeSelect) {
+                updatePrintType(typeSelect.value);
+            }
+        });
+    </script>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <strong>Total Due</strong>
+                <p class="display-6">{{ total_due }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <strong>Total Paid</strong>
+                <p class="display-6">{{ total_paid }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <strong>Outstanding Balance</strong>
+                <p class="display-6">{{ total_balance }}</p>
+            </div>
+        </div>
     </div>
-    <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary">Filter</button></div>
-  </form>
-  {% for student, receipts in receipts_by_student.items %}
-    <div class="card mb-3">
-      <div class="card-body">
-        <h5>{{ student.full_name }} ({{ student.admission_no }})</h5>
-        <ul>
-          {% for r in receipts %}
-            <li>Receipt #{{ r.id }} — {{ r.payment_date }} — ₦{{ r.amount }} — Invoice: {{ r.invoice.id }}</li>
-          {% endfor %}
-        </ul>
-      </div>
+
+    {% if receipts %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Receipt</th>
+                    <th>Student</th>
+                    <th>Payment Date</th>
+                    <th>Amount</th>
+                    <th>Invoice(s)</th>
+                    <th>Applied</th>
+                    <th>Remaining</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for receipt in receipts %}
+                <tr>
+                    <td>{{ receipt.id }}</td>
+                    <td>{{ receipt.student.full_name }}</td>
+                    <td>{{ receipt.payment_date }}</td>
+                    <td>{{ receipt.amount }}</td>
+                    <td>
+                        {% for invoice_name in receipt.invoice_names %}
+                            {{ invoice_name }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            {{ receipt.invoice.fee.name|default:receipt.invoice_id }}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for allocation in receipt.allocations %}
+                            {{ allocation.amount_applied }}{% if not forloop.last %}<br>{% endif %}
+                        {% empty %}
+                            {{ receipt.amount }}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if receipt.remaining_balance %}
+                            {{ receipt.remaining_balance }}
+                        {% else %}
+                            0.00
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-  {% empty %}
-    <div class="alert alert-info">No receipts match the selected filters.</div>
-  {% endfor %}
+    {% else %}
+    <div class="alert alert-info">
+        No receipts match the selected filters.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

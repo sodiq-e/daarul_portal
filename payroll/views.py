@@ -222,7 +222,7 @@ def print_invoices(request):
 
     qs = StudentInvoice.objects.select_related('student', 'term').all()
 
-    students_param = request.GET.get('students')
+    students_param = request.GET.get('students') or request.GET.get('student')
     academic_session = request.GET.get('academic_session')
     term_param = request.GET.get('term')
     all_flag = request.GET.get('all')
@@ -244,17 +244,23 @@ def print_invoices(request):
         except ValueError:
             pass
 
-    # Group invoices by student for printing
-    invoices_by_student = {}
-    for inv in qs.order_by('student__surname', 'issued_date'):
-        invoices_by_student.setdefault(inv.student, []).append(inv)
+    invoices = qs.order_by('student__surname', 'issued_date')
+    total_due = invoices.aggregate(total=Sum('amount_due'))['total'] or 0
+    total_paid = sum(inv.total_paid for inv in invoices)
+    total_balance = sum(inv.balance for inv in invoices)
 
     return render(request, 'payroll/print_invoices.html', {
-        'invoices_by_student': invoices_by_student,
+        'invoices': invoices,
+        'total_due': total_due,
+        'total_paid': total_paid,
+        'total_balance': total_balance,
         'academic_sessions': Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct(),
         'terms': Term.objects.order_by('academic_year', 'name'),
+        'students': Student.objects.order_by('surname', 'other_names'),
         'selected_academic_session': academic_session or '',
         'selected_term': term_param or '',
+        'selected_student': students_param or '',
+        'current_type': 'invoices',
     })
 
 
@@ -272,7 +278,7 @@ def print_receipts(request):
 
     qs = StudentPayment.objects.select_related('student', 'invoice').all()
 
-    students_param = request.GET.get('students')
+    students_param = request.GET.get('students') or request.GET.get('student')
     academic_session = request.GET.get('academic_session')
     term_param = request.GET.get('term')
     all_flag = request.GET.get('all')
@@ -294,16 +300,58 @@ def print_receipts(request):
         except ValueError:
             pass
 
-    receipts_by_student = {}
-    for r in qs.order_by('student__surname', 'payment_date'):
-        receipts_by_student.setdefault(r.student, []).append(r)
+    receipts = list(qs.order_by('student__surname', 'payment_date'))
+
+    invoice_qs = StudentInvoice.objects.select_related('student', 'fee').all()
+    if students_param and not all_flag:
+        try:
+            ids = [int(x) for x in students_param.split(',') if x.strip()]
+            invoice_qs = invoice_qs.filter(student__id__in=ids)
+        except ValueError:
+            pass
+    if academic_session:
+        invoice_qs = invoice_qs.filter(academic_session=academic_session)
+    if term_param:
+        try:
+            term_id = int(term_param)
+            invoice_qs = invoice_qs.filter(term__id=term_id)
+        except ValueError:
+            pass
+
+    invoice_lookup = {invoice.pk: invoice for invoice in invoice_qs}
+    for receipt in receipts:
+        invoice_names = []
+        for allocation in receipt.allocations or []:
+            invoice_id = allocation.get('invoice_id')
+            if invoice_id is None:
+                continue
+            try:
+                invoice_pk = int(invoice_id)
+            except (TypeError, ValueError):
+                continue
+            invoice = invoice_lookup.get(invoice_pk)
+            if invoice and invoice.fee:
+                invoice_names.append(invoice.fee.name)
+            else:
+                invoice_names.append(f'Invoice #{invoice_pk}')
+        receipt.invoice_names = invoice_names
+
+    total_due = invoice_qs.aggregate(total=Sum('amount_due'))['total'] or 0
+    total_paid = sum(receipt.amount for receipt in receipts)
+    total_balance = sum(inv.balance for inv in invoice_qs)
 
     return render(request, 'payroll/print_receipts.html', {
-        'receipts_by_student': receipts_by_student,
+        'receipts': receipts,
+        'total_due': total_due,
+        'total_paid': total_paid,
+        'total_balance': total_balance,
         'academic_sessions': Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct(),
         'terms': Term.objects.order_by('academic_year', 'name'),
+        'students': Student.objects.order_by('surname', 'other_names'),
         'selected_academic_session': academic_session or '',
         'selected_term': term_param or '',
+        'selected_student': students_param or '',
+        'current_type': 'receipts',
     })
 
 

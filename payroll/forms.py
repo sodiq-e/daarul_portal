@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 
 from .models import SchoolExpense, SchoolFee, StudentInvoice, StudentPayment
@@ -76,21 +78,104 @@ class InvoiceChoiceField(forms.ModelChoiceField):
 class StudentPaymentForm(forms.ModelForm):
     invoice = InvoiceChoiceField(
         queryset=StudentInvoice.objects.select_related('student', 'fee').order_by('-issued_date'),
-        empty_label='Select Invoice'
+        empty_label='Select Invoice (optional when paying multiple invoices)',
+        required=False,
+    )
+    invoices = forms.MultipleChoiceField(
+        choices=[],
+        required=False,
+        label='Invoices Covered',
+        widget=forms.CheckboxSelectMultiple,
     )
 
     class Meta:
         model = StudentPayment
-        fields = ['invoice', 'amount', 'payment_date', 'payment_method', 'reference', 'notes']
+        fields = ['invoice', 'invoices', 'amount', 'payment_date', 'payment_method', 'reference', 'notes']
         widgets = {
             'payment_date': forms.DateInput(attrs={'type': 'date'}),
             'notes': forms.Textarea(attrs={'rows': 3}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        invoice_queryset = StudentInvoice.objects.select_related('student', 'fee').order_by('-issued_date')
+        self.fields['invoice'].queryset = invoice_queryset
+        self.fields['invoices'].choices = [
+            (str(invoice.pk), invoice.__str__()) for invoice in invoice_queryset
+        ]
+        if self.instance and self.instance.pk:
+            self.initial['invoices'] = [str(invoice_id) for invoice_id in (self.instance.invoices or [])]
+            self.initial['invoice'] = self.instance.invoice_id
+
+    def clean(self):
+        cleaned_data = super().clean()
+        primary_invoice = cleaned_data.get('invoice')
+        selected_invoice_ids = [int(invoice_id) for invoice_id in cleaned_data.get('invoices') or [] if str(invoice_id).strip()]
+
+        if primary_invoice and primary_invoice.pk not in selected_invoice_ids and selected_invoice_ids:
+            selected_invoice_ids.insert(0, primary_invoice.pk)
+
+        if not primary_invoice and selected_invoice_ids:
+            primary_invoice = StudentInvoice.objects.filter(pk=selected_invoice_ids[0]).first()
+            cleaned_data['invoice'] = primary_invoice
+
+        cleaned_data['invoices'] = list(dict.fromkeys(selected_invoice_ids))
+
+        if not cleaned_data['invoice'] and not cleaned_data['invoices']:
+            self.add_error('invoice', 'Select at least one invoice to apply the payment to.')
+            self.add_error('invoices', 'Select at least one invoice to apply the payment to.')
+
+        if cleaned_data.get('invoice') and not cleaned_data.get('invoices'):
+            cleaned_data['invoices'] = [cleaned_data['invoice'].pk]
+
+        if cleaned_data.get('invoices') and not cleaned_data.get('invoice'):
+            cleaned_data['invoice'] = StudentInvoice.objects.filter(pk=cleaned_data['invoices'][0]).first()
+
+        return cleaned_data
+
     def save(self, commit=True):
         instance = super().save(commit=False)
-        if instance.invoice:
-            instance.student = instance.invoice.student
+        selected_invoice_ids = list(dict.fromkeys(self.cleaned_data.get('invoices') or []))
+        primary_invoice = self.cleaned_data.get('invoice')
+
+        if not primary_invoice and selected_invoice_ids:
+            primary_invoice = StudentInvoice.objects.filter(pk=selected_invoice_ids[0]).first()
+
+        if selected_invoice_ids:
+            selected_invoices = list(StudentInvoice.objects.filter(pk__in=selected_invoice_ids).order_by('due_date', 'issued_date'))
+            if primary_invoice and primary_invoice.pk not in [invoice.pk for invoice in selected_invoices]:
+                selected_invoices.insert(0, primary_invoice)
+            selected_invoices = list({invoice.pk: invoice for invoice in selected_invoices}.values())
+            instance.invoice = selected_invoices[0]
+            instance.student = selected_invoices[0].student
+            instance.invoices = [invoice.pk for invoice in selected_invoices]
+            instance.allocations = []
+            remaining_payment = instance.amount
+            for invoice in sorted(selected_invoices, key=lambda inv: (inv.due_date, inv.id)):
+                available_balance = max(Decimal('0.00'), invoice.amount_due - invoice.total_paid)
+                amount_applied = min(remaining_payment, available_balance)
+                instance.allocations.append({
+                    'invoice_id': invoice.pk,
+                    'amount_applied': str(amount_applied),
+                    'remaining_balance': str(max(Decimal('0.00'), available_balance - amount_applied)),
+                })
+                remaining_payment -= amount_applied
+            instance.remaining_balance = max(Decimal('0.00'), remaining_payment)
+        elif primary_invoice:
+            instance.invoice = primary_invoice
+            instance.student = primary_invoice.student
+            instance.invoices = [primary_invoice.pk]
+            instance.allocations = [{
+                'invoice_id': primary_invoice.pk,
+                'amount_applied': str(instance.amount),
+                'remaining_balance': '0.00',
+            }]
+            instance.remaining_balance = Decimal('0.00')
+        else:
+            instance.invoices = []
+            instance.allocations = []
+            instance.remaining_balance = Decimal('0.00')
+
         if commit:
             instance.save()
         return instance
