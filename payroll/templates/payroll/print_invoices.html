@@ -21,11 +21,10 @@
             </select>
         </div>
         <div class="col-md-3">
-            <label class="form-label" for="invoice-student">Student</label>
-            <select id="invoice-student" name="student" class="form-select">
-                <option value="">All Students</option>
+            <label class="form-label" for="invoice-student">Students</label>
+            <select id="invoice-student" name="students" class="form-select" multiple size="8">
                 {% for student in students %}
-                    <option value="{{ student.id }}" {% if student.id|stringformat:'s' == selected_student %}selected{% endif %}>{{ student.full_name|default:student }}</option>
+                    <option value="{{ student.id }}" {% if student.id in selected_students %}selected{% endif %}>{{ student.full_name|default:student }}</option>
                 {% endfor %}
             </select>
         </div>

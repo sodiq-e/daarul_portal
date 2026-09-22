@@ -222,17 +222,26 @@ def print_invoices(request):
 
     qs = StudentInvoice.objects.select_related('student', 'term').all()
 
-    students_param = request.GET.get('students') or request.GET.get('student')
+    raw_student_values = request.GET.getlist('students') + request.GET.getlist('student')
+    student_ids = []
+    for value in raw_student_values:
+        if not value:
+            continue
+        for item in value.split(','):
+            item = item.strip()
+            if not item:
+                continue
+            try:
+                student_ids.append(int(item))
+            except ValueError:
+                pass
+
     academic_session = request.GET.get('academic_session')
     term_param = request.GET.get('term')
     all_flag = request.GET.get('all')
 
-    if students_param and not all_flag:
-        try:
-            ids = [int(x) for x in students_param.split(',') if x.strip()]
-            qs = qs.filter(student__id__in=ids)
-        except ValueError:
-            pass
+    if student_ids and not all_flag:
+        qs = qs.filter(student__id__in=sorted(set(student_ids)))
 
     if academic_session:
         qs = qs.filter(academic_session=academic_session)
@@ -249,6 +258,7 @@ def print_invoices(request):
     total_paid = sum(inv.total_paid for inv in invoices)
     total_balance = sum(inv.balance for inv in invoices)
 
+    selected_student_ids = sorted(set(student_ids))
     return render(request, 'payroll/print_invoices.html', {
         'invoices': invoices,
         'total_due': total_due,
@@ -259,7 +269,8 @@ def print_invoices(request):
         'students': Student.objects.order_by('surname', 'other_names'),
         'selected_academic_session': academic_session or '',
         'selected_term': term_param or '',
-        'selected_student': students_param or '',
+        'selected_students': selected_student_ids,
+        'selected_student': ','.join(str(student_id) for student_id in selected_student_ids),
         'current_type': 'invoices',
     })
 
@@ -278,17 +289,26 @@ def print_receipts(request):
 
     qs = StudentPayment.objects.select_related('student', 'invoice').all()
 
-    students_param = request.GET.get('students') or request.GET.get('student')
+    raw_student_values = request.GET.getlist('students') + request.GET.getlist('student')
+    student_ids = []
+    for value in raw_student_values:
+        if not value:
+            continue
+        for item in value.split(','):
+            item = item.strip()
+            if not item:
+                continue
+            try:
+                student_ids.append(int(item))
+            except ValueError:
+                pass
+
     academic_session = request.GET.get('academic_session')
     term_param = request.GET.get('term')
     all_flag = request.GET.get('all')
 
-    if students_param and not all_flag:
-        try:
-            ids = [int(x) for x in students_param.split(',') if x.strip()]
-            qs = qs.filter(student__id__in=ids)
-        except ValueError:
-            pass
+    if student_ids and not all_flag:
+        qs = qs.filter(student__id__in=sorted(set(student_ids)))
 
     if academic_session:
         qs = qs.filter(invoice__academic_session=academic_session)
@@ -303,12 +323,8 @@ def print_receipts(request):
     receipts = list(qs.order_by('student__surname', 'payment_date'))
 
     invoice_qs = StudentInvoice.objects.select_related('student', 'fee').all()
-    if students_param and not all_flag:
-        try:
-            ids = [int(x) for x in students_param.split(',') if x.strip()]
-            invoice_qs = invoice_qs.filter(student__id__in=ids)
-        except ValueError:
-            pass
+    if student_ids and not all_flag:
+        invoice_qs = invoice_qs.filter(student__id__in=sorted(set(student_ids)))
     if academic_session:
         invoice_qs = invoice_qs.filter(academic_session=academic_session)
     if term_param:
@@ -356,6 +372,7 @@ def print_receipts(request):
     total_due = invoice_qs.aggregate(total=Sum('amount_due'))['total'] or 0
     total_paid = sum(receipt.amount for receipt in receipts)
     total_balance = sum(inv.balance for inv in invoice_qs)
+    selected_student_ids = sorted(set(student_ids))
 
     return render(request, 'payroll/print_receipts.html', {
         'receipts': receipts,
@@ -367,7 +384,8 @@ def print_receipts(request):
         'students': Student.objects.order_by('surname', 'other_names'),
         'selected_academic_session': academic_session or '',
         'selected_term': term_param or '',
-        'selected_student': students_param or '',
+        'selected_students': selected_student_ids,
+        'selected_student': ','.join(str(student_id) for student_id in selected_student_ids),
         'current_type': 'receipts',
     })
 

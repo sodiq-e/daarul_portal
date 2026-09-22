@@ -13,7 +13,9 @@
             <a href="{% url 'expense_add' %}" class="btn btn-primary no-print">Record Expense</a>
             <a href="{% url 'invoice_add' %}" class="btn btn-secondary no-print">Create Invoice</a>
             <a href="{% url 'payment_add' %}" class="btn btn-success no-print">Record Payment</a>
-            <a href="{% url 'payment_list' %}" class="btn btn-info no-print">View Receipts</a>
+            <a href="{% url 'print_invoices' %}" class="btn btn-warning no-print">Print Invoices</a>
+            <a href="{% url 'print_receipts' %}" class="btn btn-info no-print">Print Receipts</a>
+            <a href="{% url 'payment_list' %}" class="btn btn-outline-info no-print">View Receipts</a>
             <button onclick="window.print()" class="btn btn-outline-secondary no-print">Print Dashboard</button>
         </div>
     </div>
