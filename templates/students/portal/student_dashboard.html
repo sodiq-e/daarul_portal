@@ -87,6 +87,27 @@
         </div>
     </div>
 
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-success h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-success">Wallet Balance</h5>
+                    <p class="display-6 mb-0 text-success">₦ {{ wallet_balance }}</p>
+                    <small class="text-muted">Available credit for this student.</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-warning h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">School Holds for You</h5>
+                    <p class="display-6 mb-0 text-warning">₦ {{ wallet_owed_by_school }}</p>
+                    <small class="text-muted">This is the amount the school is holding on your behalf.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-12">
             <h4 class="mb-3">Portal Menu</h4>

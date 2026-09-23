@@ -67,7 +67,13 @@ class PayrollDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView
         payments = StudentPayment.objects.select_related('student', 'invoice').all()
         context['total_expenses'] = expenses.aggregate(total=Sum('amount'))['total'] or 0
         context['total_invoiced'] = invoices.aggregate(total=Sum('amount_due'))['total'] or 0
-        context['total_collected'] = payments.aggregate(total=Sum('amount'))['total'] or 0
+        context['total_collected'] = sum(payment.school_income_amount for payment in payments)
+        context['wallet_credit_total'] = sum(student.wallet_balance for student in Student.objects.all())
+        context['wallet_credit_students'] = [
+            {'student': student, 'wallet_balance': student.wallet_balance}
+            for student in Student.objects.order_by('surname', 'other_names')
+            if student.wallet_balance > 0
+        ]
         context['outstanding_balance'] = sum(inv.balance for inv in invoices)
         context['owing_invoices'] = invoices.filter(amount_due__gt=0)
         context['recent_expenses'] = expenses.order_by('-date')[:10]
@@ -194,6 +200,12 @@ class StudentInvoiceListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context['total_due'] = invoices.aggregate(total=Sum('amount_due'))['total'] or 0
         context['total_paid'] = sum(inv.total_paid for inv in invoices)
         context['total_balance'] = sum(inv.balance for inv in invoices)
+        context['wallet_credit_total'] = sum(student.wallet_balance for student in Student.objects.all())
+        context['wallet_credit_students'] = [
+            {'student': student, 'wallet_balance': student.wallet_balance}
+            for student in Student.objects.order_by('surname', 'other_names')
+            if student.wallet_balance > 0
+        ]
         context['owing_count'] = sum(1 for inv in invoices if inv.is_owing)
         context['academic_sessions'] = Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct()
         context['terms'] = Term.objects.order_by('academic_year', 'name')
@@ -525,6 +537,12 @@ class StudentPaymentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context = super().get_context_data(**kwargs)
         payments = self.get_queryset()
         context['total_payments'] = payments.aggregate(total=Sum('amount'))['total'] or 0
+        context['wallet_credit_total'] = sum(student.wallet_balance for student in Student.objects.all())
+        context['wallet_credit_students'] = [
+            {'student': student, 'wallet_balance': student.wallet_balance}
+            for student in Student.objects.order_by('surname', 'other_names')
+            if student.wallet_balance > 0
+        ]
         context['academic_sessions'] = Term.objects.order_by('academic_year').values_list('academic_year', flat=True).distinct()
         context['terms'] = Term.objects.order_by('academic_year', 'name').all()
         context['students'] = Student.objects.order_by('surname', 'other_names').all()

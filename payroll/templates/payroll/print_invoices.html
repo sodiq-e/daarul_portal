@@ -2,12 +2,14 @@
 {% load static %}
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4" style="flex-wrap: wrap; gap: 12px;">
         <div>
             <h1>Print Invoices</h1>
             <p class="text-muted">Filtered invoice list with balances and payment status.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2" style="flex-wrap: wrap; gap: 10px;">
+            <a href="{% url 'payroll_dashboard' %}" class="btn btn-outline-primary no-print">Finance Dashboard</a>
+            <a href="{% url 'invoice_list' %}" class="btn btn-secondary no-print">Back to Invoices</a>
             <button onclick="window.print()" class="btn btn-outline-secondary no-print">Print Invoice List</button>
         </div>
     </div>

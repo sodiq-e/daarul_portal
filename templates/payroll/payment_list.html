@@ -4,14 +4,16 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4" style="flex-wrap: wrap; gap: 12px;">
         <div>
             <h1>Student Payment Receipts</h1>
             <p class="text-muted">List of all student payment receipts.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2" style="flex-wrap: wrap; gap: 10px;">
+            <a href="{% url 'payroll_dashboard' %}" class="btn btn-outline-primary no-print">Finance Dashboard</a>
             <a href="{% url 'payment_add' %}" class="btn btn-primary no-print">Record Payment</a>
-            <a href="{% url 'print_receipts' %}" class="btn btn-secondary no-print">Print Receipts</a>
+            <a href="{% url 'invoice_list' %}" class="btn btn-outline-secondary no-print">Invoices</a>
+            <a href="{% url 'print_receipts' %}" class="btn btn-info no-print">Print Receipts</a>
             <button onclick="window.print()" class="btn btn-outline-secondary no-print">Print Receipt List</button>
         </div>
     </div>
@@ -50,9 +52,22 @@
         </div>
     </form>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <strong>Total Payments:</strong> {{ total_payments }}
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-success h-100">
+                <div class="card-body">
+                    <strong>Total Payments</strong>
+                    <p class="display-6 text-success mb-0">{{ total_payments }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm border-info h-100">
+                <div class="card-body">
+                    <strong>Wallet Credits</strong>
+                    <p class="display-6 text-info mb-0">{{ wallet_credit_total }}</p>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -4,14 +4,16 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4" style="flex-wrap: wrap; gap: 12px;">
         <div>
             <h1>Student Invoices</h1>
             <p class="text-muted">Track invoices, outstanding balances, and payment status.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2" style="flex-wrap: wrap; gap: 10px;">
+            <a href="{% url 'payroll_dashboard' %}" class="btn btn-outline-primary no-print">Finance Dashboard</a>
             <a href="{% url 'invoice_add' %}" class="btn btn-primary no-print">Create Invoice</a>
-            <a href="{% url 'print_invoices' %}" class="btn btn-secondary no-print">Print Invoices</a>
+            <a href="{% url 'payment_add' %}" class="btn btn-success no-print">Record Payment</a>
+            <a href="{% url 'print_invoices' %}" class="btn btn-warning no-print">Print Invoices</a>
             <button onclick="window.print()" class="btn btn-outline-secondary no-print">Print Invoice List</button>
         </div>
     </div>
@@ -52,24 +54,42 @@
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
-            <div class="card p-3">
+            <div class="card p-3 border-primary">
                 <strong>Total Due</strong>
-                <p class="display-6">{{ total_due }}</p>
+                <p class="display-6 text-primary">{{ total_due }}</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3">
+            <div class="card p-3 border-success">
                 <strong>Total Paid</strong>
-                <p class="display-6">{{ total_paid }}</p>
+                <p class="display-6 text-success">{{ total_paid }}</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card p-3">
+            <div class="card p-3 border-warning">
                 <strong>Outstanding Balance</strong>
-                <p class="display-6">{{ total_balance }}</p>
+                <p class="display-6 text-warning">{{ total_balance }}</p>
             </div>
         </div>
     </div>
+
+    {% if wallet_credit_students %}
+    <div class="card border-info mb-4">
+        <div class="card-header bg-info-subtle">
+            <strong>Wallet Credits Available</strong>
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush">
+                {% for item in wallet_credit_students %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    <span>{{ item.student.full_name }}</span>
+                    <strong>₦ {{ item.wallet_balance }}</strong>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
 
     {% if invoices %}
     <div class="table-responsive">

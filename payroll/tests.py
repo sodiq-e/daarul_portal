@@ -180,6 +180,257 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertEqual(invoice_2.status, 'overdue')
         self.assertEqual(invoice_2.balance, Decimal('8000.00'))
 
+    def test_payment_form_shows_student_wallet_balance_separately_from_invoice_list(self):
+        fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        fee_2 = SchoolFee.objects.create(tenant=self.tenant, name='Uniform', amount=Decimal('15000.00'))
+        invoice_1 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee_1,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        invoice_2 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee_2,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('15000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=invoice_1,
+            amount=Decimal('50000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Cash',
+            reference='REF-WALLET',
+            invoices=[invoice_1.id],
+            allocations=[{'invoice_id': invoice_1.id, 'amount_applied': '50000.00'}],
+            remaining_balance=Decimal('10000.00'),
+        )
+
+    def test_payment_form_restricts_invoice_choices_to_unpaid_invoices_when_wallet_is_selected(self):
+        fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        fee_2 = SchoolFee.objects.create(tenant=self.tenant, name='Uniform', amount=Decimal('15000.00'))
+        invoice_1 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee_1,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        invoice_2 = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee_2,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('15000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=invoice_2,
+            amount=Decimal('50000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Cash',
+            reference='REF-PAID-INVOICE',
+            invoices=[invoice_2.id],
+            allocations=[{'invoice_id': invoice_2.id, 'amount_applied': '50000.00'}],
+            remaining_balance=Decimal('10000.00'),
+        )
+
+        form = StudentPaymentForm(data={
+            'amount': '6000.00',
+            'payment_date': '2024-09-12',
+            'payment_method': 'Wallet',
+            'reference': 'REF-WALLET-USE',
+            'notes': 'Use wallet for invoice',
+            'invoices': [str(invoice_1.id)],
+            'apply_remaining_to': str(self.student.pk),
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            [choice[0] for choice in form.fields['invoices'].choices],
+            [str(invoice_1.id)],
+        )
+        self.assertNotIn(invoice_2.pk, [invoice.pk for invoice in form.fields['invoice'].queryset])
+        self.assertNotIn(str(invoice_2.id), [choice[0] for choice in form.fields['invoices'].choices])
+
+        form = StudentPaymentForm()
+        wallet_choice = next(iter(form.fields['apply_remaining_to'].queryset), None)
+        self.assertIsNotNone(wallet_choice)
+        self.assertEqual(wallet_choice.pk, self.student.pk)
+        self.assertTrue(form.fields['invoice'].queryset.exists())
+        self.assertTrue(form.fields['invoices'].choices)
+        self.assertNotIn(invoice_2.pk, [invoice.pk for invoice in form.fields['invoice'].queryset])
+
+    def test_payment_form_allows_wallet_balance_to_cover_another_students_unpaid_invoice(self):
+        second_student = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-002',
+            surname='Smith',
+            other_names='Alice',
+        )
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('15000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=StudentInvoice.objects.create(
+                tenant=self.tenant,
+                student=self.student,
+                fee=fee,
+                issued_date=date(2024, 9, 2),
+                due_date=date(2024, 9, 30),
+                amount_due=Decimal('40000.00'),
+                academic_session='2024/2025',
+                term=self.term,
+                status='pending',
+            ),
+            amount=Decimal('50000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Bank Transfer',
+            reference='REF-WALLET-SOURCE',
+            invoices=[StudentInvoice.objects.filter(student=self.student).first().id],
+            allocations=[{'invoice_id': StudentInvoice.objects.filter(student=self.student).first().id, 'amount_applied': '40000.00'}],
+            remaining_balance=Decimal('10000.00'),
+        )
+
+        form = StudentPaymentForm(data={
+            'amount': '6000.00',
+            'payment_date': '2024-09-12',
+            'payment_method': 'Wallet',
+            'reference': 'REF-WALLET-USE-OTHER-STUDENT',
+            'notes': 'Use wallet for another student invoice',
+            'invoice': str(invoice.id),
+            'invoices': [str(invoice.id)],
+            'apply_remaining_to': str(self.student.pk),
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIn(str(invoice.id), [choice[0] for choice in form.fields['invoices'].choices])
+
+    def test_wallet_source_student_stays_in_available_wallets_when_covering_another_students_invoice(self):
+        second_student = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-002',
+            surname='Smith',
+            other_names='Alice',
+        )
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('15000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        source_payment = StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=StudentInvoice.objects.create(
+                tenant=self.tenant,
+                student=self.student,
+                fee=fee,
+                issued_date=date(2024, 9, 2),
+                due_date=date(2024, 9, 30),
+                amount_due=Decimal('40000.00'),
+                academic_session='2024/2025',
+                term=self.term,
+                status='pending',
+            ),
+            amount=Decimal('15000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Bank Transfer',
+            reference='REF-WALLET-SOURCE-KEEP',
+            invoices=[StudentInvoice.objects.filter(student=self.student).first().id],
+            allocations=[{'invoice_id': StudentInvoice.objects.filter(student=self.student).first().id, 'amount_applied': '15000.00'}],
+            remaining_balance=Decimal('15000.00'),
+        )
+
+        form = StudentPaymentForm(data={
+            'amount': '6000.00',
+            'payment_date': '2024-09-12',
+            'payment_method': 'Wallet',
+            'reference': 'REF-WALLET-TRANSFER-KEEP',
+            'notes': 'Use wallet for another student invoice',
+            'invoice': str(invoice.id),
+            'invoices': [str(invoice.id)],
+            'apply_remaining_to': str(self.student.pk),
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        payment = form.save()
+
+        self.student.refresh_from_db()
+        self.assertEqual(payment.student_id, self.student.pk)
+        self.assertEqual(self.student.wallet_balance, Decimal('9000.00'))
+        self.assertIn(self.student.pk, [student.pk for student in StudentPaymentForm().fields['apply_remaining_to'].queryset])
+        source_payment.refresh_from_db()
+        self.assertEqual(source_payment.remaining_balance, Decimal('9000.00'))
+
+    def test_payment_form_hides_paid_invoices_and_shows_only_unpaid_balances(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        paid_invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=paid_invoice,
+            amount=Decimal('40000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Cash',
+            reference='REF-PAID',
+            invoices=[paid_invoice.id],
+            allocations=[{'invoice_id': paid_invoice.id, 'amount_applied': '40000.00'}],
+        )
+
+        form = StudentPaymentForm()
+        self.assertNotIn(paid_invoice.id, [invoice.pk for invoice in form.fields['invoice'].queryset])
+        self.assertNotIn(paid_invoice.id, [int(value) for value, label in form.fields['invoices'].choices if value])
+        self.assertNotIn(paid_invoice.id, [invoice.pk for invoice in form.fields['apply_remaining_to'].queryset])
+
     def test_payment_form_splits_amount_across_students_when_selected_invoices_span_multiple_students(self):
         second_student = Student.objects.create(
             tenant=self.tenant,
@@ -231,6 +482,193 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertEqual(StudentPayment.objects.get(student=second_student).amount, Decimal('30000.00'))
         self.assertEqual(invoice_1.refresh_status(), 'paid')
         self.assertEqual(invoice_2.refresh_status(), 'overdue')
+
+    def test_wallet_usage_does_not_count_as_school_collected_and_rejects_insufficient_wallet(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        wallet_payment = StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=invoice,
+            amount=Decimal('20000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Wallet',
+            reference='REF-WALLET-EXISTING',
+            invoices=[invoice.id],
+            allocations=[{'invoice_id': invoice.id, 'amount_applied': '20000.00'}],
+            remaining_balance=Decimal('20000.00'),
+            wallet_used=True,
+            wallet_applied=Decimal('20000.00'),
+        )
+
+        self.assertEqual(wallet_payment.cash_received, Decimal('0.00'))
+        self.assertEqual(wallet_payment.school_income_amount, Decimal('0.00'))
+
+        form = StudentPaymentForm(data={
+            'amount': '50000.00',
+            'payment_date': '2024-09-11',
+            'payment_method': 'Wallet',
+            'reference': 'REF-INSUFFICIENT',
+            'notes': 'Wallet should not be sufficient',
+            'invoices': [str(invoice.id)],
+            'apply_remaining_to': str(self.student.pk),
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('apply_remaining_to', form.errors)
+
+    def test_invoice_total_paid_counts_wallet_payment_from_another_student(self):
+        wallet_source = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-003',
+            surname='Johnson',
+            other_names='Mary',
+        )
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('60000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+
+        wallet_payment = StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=wallet_source,
+            invoice=invoice,
+            amount=Decimal('20000.00'),
+            payment_date=date(2024, 9, 12),
+            payment_method='Wallet',
+            reference='REF-WALLET-CROSS-STUDENT',
+            invoices=[invoice.id],
+            allocations=[{'invoice_id': invoice.id, 'amount_applied': '20000.00'}],
+            remaining_balance=Decimal('0.00'),
+            wallet_used=True,
+            wallet_applied=Decimal('20000.00'),
+        )
+
+        self.assertEqual(invoice.total_paid, Decimal('20000.00'))
+        self.assertEqual(invoice.balance, Decimal('40000.00'))
+        self.assertEqual(wallet_payment.school_income_amount, Decimal('0.00'))
+
+    def test_student_net_amount_owing_excludes_wallet_credit(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('50000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=invoice,
+            amount=Decimal('25000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Bank Transfer',
+            reference='REF-WALLET-CREDIT',
+            invoices=[invoice.id],
+            allocations=[{'invoice_id': invoice.id, 'amount_applied': '25000.00'}],
+            remaining_balance=Decimal('25000.00'),
+        )
+
+        self.assertEqual(self.student.wallet_balance, Decimal('25000.00'))
+        self.assertEqual(self.student.net_amount_owing, Decimal('25000.00'))
+
+    def test_wallet_balance_is_deducted_when_used_and_returned_cash_reduces_wallet(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        wallet_invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 3),
+            due_date=date(2024, 10, 5),
+            amount_due=Decimal('25000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        original = StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=wallet_invoice,
+            amount=Decimal('50000.00'),
+            payment_date=date(2024, 9, 1),
+            payment_method='Bank Transfer',
+            reference='REF-ORIG',
+            invoices=[wallet_invoice.id],
+            allocations=[{'invoice_id': wallet_invoice.id, 'amount_applied': '40000.00'}],
+            remaining_balance=Decimal('10000.00'),
+        )
+
+        self.assertEqual(self.student.wallet_balance, Decimal('10000.00'))
+
+        form = StudentPaymentForm(data={
+            'amount': '6000.00',
+            'payment_date': '2024-09-12',
+            'payment_method': 'Wallet',
+            'reference': 'REF-WALLET-USE',
+            'notes': 'Use wallet for invoice',
+            'invoices': [str(invoice.id)],
+            'apply_remaining_to': str(self.student.pk),
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        payment = form.save()
+        original.refresh_from_db()
+        self.student.refresh_from_db()
+
+        self.assertEqual(original.remaining_balance, Decimal('4000.00'))
+        self.assertEqual(self.student.wallet_balance, Decimal('4000.00'))
+        self.assertEqual(payment.wallet_applied, Decimal('6000.00'))
+
+        refund_form = StudentPaymentForm(data={
+            'amount': '2000.00',
+            'payment_date': '2024-09-13',
+            'payment_method': 'Wallet Refund',
+            'reference': 'REF-WALLET-REFUND',
+            'notes': 'Return cash to student',
+            'invoices': [str(invoice.id)],
+            'apply_remaining_to': str(self.student.pk),
+        })
+
+        self.assertTrue(refund_form.is_valid(), refund_form.errors)
+        refund = refund_form.save()
+        self.student.refresh_from_db()
+
+        self.assertEqual(refund.wallet_refund_amount, Decimal('2000.00'))
+        self.assertEqual(self.student.wallet_balance, Decimal('2000.00'))
 
     def test_print_receipts_page_renders_card_summary_and_table(self):
         fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -287,7 +289,9 @@ class StudentDashboardView(LoginRequiredMixin, TemplateView):
             context['student'] = student
             context['invoices'] = student.invoices.all().order_by('-issued_date')
             context['pending_invoices'] = student.invoices.filter(status='pending').count()
-            context['total_owing'] = sum(inv.balance for inv in student.invoices.filter(status__in=['pending', 'overdue']))
+            context['total_owing'] = student.net_amount_owing
+            context['wallet_balance'] = student.wallet_balance
+            context['wallet_owed_by_school'] = student.wallet_owed_by_school
             try:
                 from cbt.models import CBTExam, CBTStudentAttempt
                 now = timezone.now()
@@ -478,17 +482,19 @@ class StudentFeesView(LoginRequiredMixin, TemplateView):
             context['student'] = student
             context['invoices'] = invoices
             context['payments'] = payments
+            context['wallet_balance'] = student.wallet_balance
+            context['wallet_owed_by_school'] = student.wallet_owed_by_school
             context['academic_sessions'] = student.invoices.order_by('academic_session').values_list('academic_session', flat=True).distinct()
             context['terms'] = Term.objects.filter(invoices__student=student).distinct().order_by('academic_year', 'name')
             context['selected_academic_session'] = academic_session
             context['selected_term'] = term_id
 
             # Summary calculations
-            total_due = sum(inv.amount_due for inv in invoices)
-            total_paid = sum(p.amount for p in payments)
+            total_due = sum(Decimal(str(inv.amount_due or 0)) for inv in invoices)
+            total_paid = sum(Decimal(str(p.amount or 0)) for p in payments)
             context['total_due'] = total_due
             context['total_paid'] = total_paid
-            context['total_owing'] = total_due - total_paid
+            context['total_owing'] = max(Decimal('0.00'), student.net_amount_owing)
         except Student.DoesNotExist:
             context['student'] = None
         except Exception as e:

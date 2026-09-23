@@ -57,6 +57,29 @@ class Student(TenantModel):
     def full_name(self):
         return f"{self.surname} {self.other_names}".strip()
 
+    @property
+    def wallet_balance(self):
+        from payroll.models import StudentPayment
+        total = Decimal('0.00')
+        for payment in StudentPayment.objects.filter(student=self).only('remaining_balance'):
+            total += Decimal(str(payment.remaining_balance or 0))
+        return max(Decimal('0.00'), total)
+
+    @property
+    def wallet_owed_by_school(self):
+        return max(Decimal('0.00'), self.wallet_balance)
+
+    @property
+    def invoice_balance_owing(self):
+        outstanding = Decimal('0.00')
+        for invoice in self.invoices.filter(status__in=['pending', 'overdue']):
+            outstanding += max(Decimal('0.00'), Decimal(str(invoice.balance or 0)))
+        return outstanding
+
+    @property
+    def net_amount_owing(self):
+        return self.invoice_balance_owing
+
     def __str__(self):
         return f"{self.admission_no} - {self.full_name()}"
 

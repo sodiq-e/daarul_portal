@@ -231,24 +231,21 @@ class StudentInvoice(TenantModel):
     @property
     def total_paid(self):
         total = Decimal('0.00')
-        payment_ids = list(StudentPayment.objects.filter(student_id=self.student_id).values_list('id', flat=True))
 
-        for payment in StudentPayment.objects.filter(id__in=payment_ids).select_related('invoice'):
+        for payment in StudentPayment.objects.select_related('invoice').all():
             if payment.allocations:
                 for allocation in payment.allocations:
-                    if int(allocation.get('invoice_id')) == self.id:
+                    try:
+                        invoice_id = int(allocation.get('invoice_id'))
+                    except (TypeError, ValueError):
+                        continue
+                    if invoice_id == self.id:
                         total += Decimal(str(allocation.get('amount_applied', 0)))
-            elif payment.invoice_id == self.id:
+                continue
+
+            if payment.invoice_id == self.id:
                 total += payment.amount
 
-        if total == Decimal('0.00'):
-            for payment in self.payments.all():
-                if payment.invoice_id == self.id:
-                    total += payment.amount
-                elif payment.allocations:
-                    for allocation in payment.allocations:
-                        if int(allocation.get('invoice_id')) == self.id:
-                            total += Decimal(str(allocation.get('amount_applied', 0)))
         return total
 
     @property
@@ -279,6 +276,9 @@ class StudentPayment(TenantModel):
     invoices = models.JSONField(default=list, blank=True, help_text='List of invoice IDs this payment covered.')
     allocations = models.JSONField(default=list, blank=True, help_text='Allocation details for each invoice covered by the payment.')
     remaining_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    wallet_used = models.BooleanField(default=False, help_text='Whether any prior student wallet balance was consumed for this payment.')
+    wallet_applied = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Amount taken from the student wallet for this payment.')
+    wallet_refund_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Cash returned to the student from their wallet balance.')
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -291,8 +291,34 @@ class StudentPayment(TenantModel):
     class Meta:
         ordering = ['-payment_date']
 
+    @property
+    def cash_received(self):
+        method = (self.payment_method or '').lower()
+        if 'refund' in method or self.wallet_refund_amount > Decimal('0.00'):
+            return Decimal('0.00')
+        if self.wallet_used:
+            return max(Decimal('0.00'), self.amount - self.wallet_applied)
+        return self.amount
+
+    @property
+    def school_income_amount(self):
+        method = (self.payment_method or '').lower()
+        if 'refund' in method or self.wallet_refund_amount > Decimal('0.00'):
+            return Decimal('0.00')
+        return self.cash_received
+
     def __str__(self):
         return f"Payment {self.amount} for {self.student}"
+
+    @staticmethod
+    def get_wallet_balance_for_student(student):
+        if student is None:
+            return Decimal('0.00')
+        wallet_total = Decimal('0.00')
+        for payment in student.payments.all():
+            if payment.remaining_balance and payment.remaining_balance > Decimal('0.00'):
+                wallet_total += Decimal(str(payment.remaining_balance))
+        return wallet_total
 
     def _normalize_invoice_ids(self, invoice_ids):
         values = []
@@ -329,7 +355,58 @@ class StudentPayment(TenantModel):
         self.remaining_balance = max(Decimal('0.00'), remaining_payment)
         return allocations
 
+    @staticmethod
+    def consume_student_wallet(student, amount):
+        if student is None or amount <= Decimal('0.00'):
+            return Decimal('0.00')
+
+        remaining_to_use = Decimal(str(amount))
+        wallet_payments = list(
+            StudentPayment.objects.filter(student=student, remaining_balance__gt=0)
+            .order_by('payment_date', 'id')
+        )
+
+        for wallet_payment in wallet_payments:
+            if remaining_to_use <= Decimal('0.00'):
+                break
+            available = Decimal(str(wallet_payment.remaining_balance or 0))
+            if available <= Decimal('0.00'):
+                continue
+            consumed = min(available, remaining_to_use)
+            wallet_payment.remaining_balance = max(Decimal('0.00'), available - consumed)
+            wallet_payment.wallet_used = True
+            wallet_payment.wallet_applied += consumed
+            wallet_payment.save(update_fields=['remaining_balance', 'wallet_used', 'wallet_applied'])
+            remaining_to_use -= consumed
+
+        return amount - remaining_to_use
+
+    @staticmethod
+    def refund_student_wallet(student, amount):
+        if student is None or amount <= Decimal('0.00'):
+            return Decimal('0.00')
+
+        remaining_to_refund = Decimal(str(amount))
+        wallet_payments = list(
+            StudentPayment.objects.filter(student=student, remaining_balance__gt=0)
+            .order_by('payment_date', 'id')
+        )
+
+        for wallet_payment in wallet_payments:
+            if remaining_to_refund <= Decimal('0.00'):
+                break
+            available = Decimal(str(wallet_payment.remaining_balance or 0))
+            if available <= Decimal('0.00'):
+                continue
+            refunded = min(available, remaining_to_refund)
+            wallet_payment.remaining_balance = max(Decimal('0.00'), available - refunded)
+            wallet_payment.save(update_fields=['remaining_balance'])
+            remaining_to_refund -= refunded
+
+        return amount - remaining_to_refund
+
     def save(self, *args, **kwargs):
+        explicit_remaining_balance = self.remaining_balance
         if self.invoice_id and not self.invoices:
             self.invoices = [self.invoice_id]
         if self.invoice_id and self.invoice_id not in self._normalize_invoice_ids(self.invoices):
@@ -343,6 +420,15 @@ class StudentPayment(TenantModel):
             self.allocations = self.build_allocations(self.invoices)
         else:
             self.allocations = []
+            self.remaining_balance = Decimal('0.00')
+
+        if explicit_remaining_balance > Decimal('0.00'):
+            self.remaining_balance = explicit_remaining_balance
+        elif self.pk and self.wallet_refund_amount > Decimal('0.00'):
+            self.remaining_balance = Decimal('0.00')
+
+        method = (self.payment_method or '').lower()
+        if self.pk is None and ('wallet' in method or (self.wallet_used and self.wallet_applied > Decimal('0.00'))):
             self.remaining_balance = Decimal('0.00')
 
         super().save(*args, **kwargs)

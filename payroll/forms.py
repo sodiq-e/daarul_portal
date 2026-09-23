@@ -75,9 +75,17 @@ class InvoiceChoiceField(forms.ModelChoiceField):
         return f"Invoice {obj.id} - {student_label}{fee_label} - {amount_label}"
 
 
+class WalletBalanceChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        remaining = Decimal('0.00')
+        for payment in obj.payments.all():
+            remaining += Decimal(str(payment.remaining_balance or 0))
+        return f"{obj.full_name} — Wallet balance: ₦{remaining}"
+
+
 class StudentPaymentForm(forms.ModelForm):
     invoice = InvoiceChoiceField(
-        queryset=StudentInvoice.objects.select_related('student', 'fee').order_by('-issued_date'),
+        queryset=StudentInvoice.objects.none(),
         empty_label='Select Invoice (optional when paying multiple invoices)',
         required=False,
     )
@@ -87,10 +95,17 @@ class StudentPaymentForm(forms.ModelForm):
         label='Invoices Covered',
         widget=forms.CheckboxSelectMultiple,
     )
+    apply_remaining_to = WalletBalanceChoiceField(
+        queryset=Student.objects.none(),
+        required=False,
+        empty_label='No leftover balance available',
+        label='Student wallet balance to apply (optional)',
+        help_text='Choose a student with a leftover balance. This is separate from the invoice list below and is not another invoice option.',
+    )
 
     class Meta:
         model = StudentPayment
-        fields = ['invoice', 'invoices', 'amount', 'payment_date', 'payment_method', 'reference', 'notes']
+        fields = ['invoice', 'invoices', 'amount', 'payment_date', 'payment_method', 'reference', 'notes', 'apply_remaining_to']
         widgets = {
             'payment_date': forms.DateInput(attrs={'type': 'date'}),
             'notes': forms.Textarea(attrs={'rows': 3}),
@@ -98,19 +113,64 @@ class StudentPaymentForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        invoice_queryset = StudentInvoice.objects.select_related('student', 'fee').order_by('-issued_date')
-        self.fields['invoice'].queryset = invoice_queryset
+        self.fields['amount'].required = False
+        all_invoices = StudentInvoice.objects.select_related('student', 'fee').order_by('-issued_date')
+        unpaid_invoices = [invoice for invoice in all_invoices if invoice.balance > Decimal('0.00')]
+        unpaid_invoice_queryset = StudentInvoice.objects.filter(pk__in=[invoice.pk for invoice in unpaid_invoices]).select_related('student', 'fee').order_by('-issued_date')
+
+        wallet_students = []
+        for student in Student.objects.order_by('surname', 'other_names').prefetch_related('payments'):
+            wallet_total = sum(
+                Decimal(str(payment.remaining_balance or 0))
+                for payment in student.payments.all()
+                if Decimal(str(payment.remaining_balance or 0)) > Decimal('0.00')
+            )
+            if wallet_total > Decimal('0.00'):
+                wallet_students.append((student.pk, wallet_total))
+
+        wallet_queryset = Student.objects.filter(pk__in=[student_id for student_id, _ in wallet_students]).order_by('surname', 'other_names')
+
+        wallet_student_id = None
+        if self.data:
+            wallet_student_id = self.data.get('apply_remaining_to')
+        elif self.initial.get('apply_remaining_to'):
+            wallet_student_id = self.initial.get('apply_remaining_to')
+
+        if wallet_student_id:
+            try:
+                wallet_student_id = int(wallet_student_id)
+            except (TypeError, ValueError):
+                wallet_student_id = None
+
+        self.fields['invoice'].queryset = unpaid_invoice_queryset
         self.fields['invoices'].choices = [
-            (str(invoice.pk), invoice.__str__()) for invoice in invoice_queryset
+            (str(invoice.pk), f"{invoice} — Remaining balance: ₦{invoice.balance}") for invoice in unpaid_invoices
         ]
+
+        self.fields['apply_remaining_to'].queryset = wallet_queryset
+        self.fields['invoice'].empty_label = 'No unpaid invoice available' if not unpaid_invoice_queryset.exists() else 'Select Invoice (optional when paying multiple invoices)'
+        self.fields['apply_remaining_to'].empty_label = 'No leftover balance available' if not wallet_queryset.exists() else 'Select the student wallet to apply'
         if self.instance and self.instance.pk:
             self.initial['invoices'] = [str(invoice_id) for invoice_id in (self.instance.invoices or [])]
             self.initial['invoice'] = self.instance.invoice_id
+
+    @staticmethod
+    def _get_student_wallet_balance(student):
+        if student is None:
+            return Decimal('0.00')
+        return sum(
+            Decimal(str(payment.remaining_balance or 0))
+            for payment in student.payments.all()
+            if Decimal(str(payment.remaining_balance or 0)) > Decimal('0.00')
+        )
 
     def clean(self):
         cleaned_data = super().clean()
         primary_invoice = cleaned_data.get('invoice')
         selected_invoice_ids = [int(invoice_id) for invoice_id in cleaned_data.get('invoices') or [] if str(invoice_id).strip()]
+        wallet_student = cleaned_data.get('apply_remaining_to')
+        amount = cleaned_data.get('amount')
+        payment_method = str(cleaned_data.get('payment_method') or '').strip().lower()
 
         if primary_invoice and primary_invoice.pk not in selected_invoice_ids and selected_invoice_ids:
             selected_invoice_ids.insert(0, primary_invoice.pk)
@@ -131,17 +191,74 @@ class StudentPaymentForm(forms.ModelForm):
         if cleaned_data.get('invoices') and not cleaned_data.get('invoice'):
             cleaned_data['invoice'] = StudentInvoice.objects.filter(pk=cleaned_data['invoices'][0]).first()
 
+        invoice_total = Decimal('0.00')
+        for invoice_id in cleaned_data.get('invoices') or []:
+            invoice = StudentInvoice.objects.filter(pk=invoice_id).first()
+            if invoice:
+                invoice_total += max(Decimal('0.00'), invoice.amount_due - invoice.total_paid)
+
+        if wallet_student:
+            wallet_balance = self._get_student_wallet_balance(wallet_student)
+            if amount in (None, ''):
+                amount = '0.00' if 'refund' in payment_method else str(invoice_total)
+                cleaned_data['amount'] = amount
+            try:
+                amount_value = Decimal(str(amount))
+            except Exception:
+                amount_value = Decimal('0.00')
+
+            if 'refund' in payment_method:
+                if amount_value <= Decimal('0.00'):
+                    self.add_error('amount', 'Enter the amount to return to the student.')
+                if amount_value > wallet_balance:
+                    self.add_error('apply_remaining_to', f"The selected wallet balance for {wallet_student.full_name} is insufficient for a refund. Available: ₦{wallet_balance:.2f}")
+                cleaned_data['wallet_used'] = False
+                cleaned_data['wallet_applied'] = Decimal('0.00')
+                cleaned_data['wallet_refund_amount'] = amount_value
+            else:
+                if amount_value > wallet_balance:
+                    self.add_error('apply_remaining_to', f"The selected wallet balance for {wallet_student.full_name} is insufficient. Available: ₦{wallet_balance:.2f}")
+                cleaned_data['wallet_used'] = True
+                cleaned_data['wallet_applied'] = min(wallet_balance, amount_value)
+                cleaned_data['wallet_refund_amount'] = Decimal('0.00')
+        else:
+            if amount in (None, ''):
+                self.add_error('amount', 'Enter the payment amount.')
+            cleaned_data['wallet_used'] = False
+            cleaned_data['wallet_applied'] = Decimal('0.00')
+            cleaned_data['wallet_refund_amount'] = Decimal('0.00')
+
         return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         selected_invoice_ids = list(dict.fromkeys(self.cleaned_data.get('invoices') or []))
+        wallet_student = self.cleaned_data.get('apply_remaining_to')
         primary_invoice = self.cleaned_data.get('invoice')
+        payment_method = str(self.cleaned_data.get('payment_method') or '').lower()
+        instance.wallet_used = bool(wallet_student and 'refund' not in payment_method)
+        instance.wallet_applied = Decimal(str(self.cleaned_data.get('wallet_applied') or 0))
+        instance.wallet_refund_amount = Decimal(str(self.cleaned_data.get('wallet_refund_amount') or 0))
+
+        if wallet_student and 'refund' not in payment_method:
+            instance.student = wallet_student
 
         if not primary_invoice and selected_invoice_ids:
             primary_invoice = StudentInvoice.objects.filter(pk=selected_invoice_ids[0]).first()
 
-        if selected_invoice_ids:
+        if 'refund' in payment_method and wallet_student:
+            if instance.amount <= Decimal('0.00'):
+                instance.amount = instance.wallet_refund_amount
+            instance.student = wallet_student
+            instance.invoice = primary_invoice or selected_invoice_ids and StudentInvoice.objects.filter(pk=selected_invoice_ids[0]).first()
+            instance.invoices = [invoice.pk for invoice in ([instance.invoice] if instance.invoice else [])]
+            instance.allocations = []
+            instance.remaining_balance = Decimal('0.00')
+            instance.wallet_used = False
+            instance.wallet_applied = Decimal('0.00')
+
+        elif selected_invoice_ids:
+            instance.remaining_balance = Decimal('0.00')
             invoice_map = {
                 invoice.pk: invoice for invoice in StudentInvoice.objects.filter(pk__in=selected_invoice_ids)
                 .select_related('student', 'fee')
@@ -216,7 +333,8 @@ class StudentPaymentForm(forms.ModelForm):
                     return created_payments[0]
 
             instance.invoice = selected_invoices[0]
-            instance.student = selected_invoices[0].student
+            if not wallet_student or 'refund' in payment_method:
+                instance.student = selected_invoices[0].student
             instance.invoices = [invoice.pk for invoice in selected_invoices]
             instance.allocations = []
             remaining_payment = instance.amount
@@ -232,7 +350,8 @@ class StudentPaymentForm(forms.ModelForm):
             instance.remaining_balance = max(Decimal('0.00'), remaining_payment)
         elif primary_invoice:
             instance.invoice = primary_invoice
-            instance.student = primary_invoice.student
+            if not wallet_student or 'refund' in payment_method:
+                instance.student = primary_invoice.student
             instance.invoices = [primary_invoice.pk]
             instance.allocations = [{
                 'invoice_id': primary_invoice.pk,
@@ -247,4 +366,14 @@ class StudentPaymentForm(forms.ModelForm):
 
         if commit:
             instance.save()
+
+        if wallet_student and 'refund' not in payment_method and instance.wallet_applied > Decimal('0.00'):
+            instance.remaining_balance = Decimal('0.00')
+            StudentPayment.consume_student_wallet(wallet_student, instance.wallet_applied)
+        elif wallet_student and 'refund' in payment_method and instance.wallet_refund_amount > Decimal('0.00'):
+            instance.remaining_balance = Decimal('0.00')
+            StudentPayment.refund_student_wallet(wallet_student, instance.wallet_refund_amount)
+
+        if commit:
+            instance.refresh_from_db()
         return instance
