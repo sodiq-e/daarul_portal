@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     GradeScale, ResultTemplate, StudentResult,
-    TermResult, Promotion, ReportCardComment, StudentConduct
+    TermResult, Promotion, ReportCardComment, StudentConduct,
+    WeeklyAssessmentRecord
 )
 
 
@@ -91,4 +92,12 @@ class StudentConductAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(WeeklyAssessmentRecord)
+class WeeklyAssessmentRecordAdmin(admin.ModelAdmin):
+    list_display = ('student', 'subject_name', 'term', 'academic_year', 'week_number', 'assessment_date', 'score', 'out_of', 'percentage')
+    list_filter = ('term', 'academic_year', 'assessment_type', 'week_number')
+    search_fields = ('student__admission_no', 'student__surname', 'class_subject__subject__name')
+    readonly_fields = ('total_score', 'percentage', 'average_score', 'created_at', 'updated_at')
 

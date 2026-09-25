@@ -65,6 +65,75 @@ class ResultTemplate(TenantModel):
         return f"{self.school_class} - {self.term} Template"
 
 
+class WeeklyAssessmentRecord(TenantModel):
+    """Weekly assessment score for one subject and one student."""
+    ASSESSMENT_TYPES = [
+        ('classwork', 'Classwork'),
+        ('quiz', 'Quiz'),
+        ('test', 'Test'),
+        ('assignment', 'Assignment'),
+        ('project', 'Project'),
+        ('oral', 'Oral'),
+    ]
+
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name='weekly_assessments'
+    )
+    class_subject = models.ForeignKey(
+        ClassSubject,
+        on_delete=models.CASCADE,
+        related_name='weekly_assessments'
+    )
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='weekly_assessments')
+    academic_year = models.CharField(max_length=20, default='')
+    week_number = models.PositiveIntegerField(default=1)
+    assessment_date = models.DateField()
+    assessment_type = models.CharField(
+        max_length=20,
+        choices=ASSESSMENT_TYPES,
+        default='classwork',
+        help_text='Type of assessment recorded for the week'
+    )
+    score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    out_of = models.DecimalField(max_digits=5, decimal_places=2, default=100)
+    total_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    remarks = models.CharField(max_length=150, blank=True)
+    created_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='weekly_assessment_records'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('tenant', 'student', 'class_subject', 'term', 'academic_year', 'week_number')
+        ordering = ['assessment_date', 'class_subject__subject__name']
+
+    def save(self, *args, **kwargs):
+        if self.out_of and self.out_of > 0:
+            self.total_score = self.score
+            self.percentage = (self.score / self.out_of) * 100
+        else:
+            self.total_score = self.score
+            self.percentage = 0
+        self.average_score = self.score
+        super().save(*args, **kwargs)
+
+    @property
+    def subject_name(self):
+        return self.class_subject.subject.name
+
+    def __str__(self):
+        return f"{self.student} - {self.subject_name} - Week {self.week_number}"
+
+
 class StudentResult(TenantModel):
     """Comprehensive student result record"""
     student = models.ForeignKey(

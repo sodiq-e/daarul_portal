@@ -9,6 +9,14 @@ urlpatterns = [
     path('student/<int:student_id>/<int:term_id>/', views.student_report_card, name='student_report_card'),
     path('broadsheet/<int:class_id>/<int:term_id>/', views.broadsheet, name='broadsheet'),
     path('lookup/', views.student_results_by_admission, name='student_results_lookup'),
+
+    # Weekly assessment views
+    path('weekly-assessment/', views.weekly_assessment_dashboard, name='weekly_assessment_dashboard'),
+    path('weekly-assessment/student/', views.student_weekly_assessment_view, name='student_weekly_assessment_view'),
+    path('weekly-assessment/teacher/', views.teacher_weekly_assessment_view, name='teacher_weekly_assessment_view'),
+    path('weekly-assessment/bulk-entry/<int:class_id>/<int:term_id>/', views.bulk_weekly_assessment_entry, name='bulk_weekly_assessment_entry'),
+    path('weekly-assessment/record/<int:pk>/edit/', views.edit_weekly_assessment_record, name='edit_weekly_assessment_record'),
+    path('weekly-assessment/record/<int:pk>/delete/', views.delete_weekly_assessment_record, name='delete_weekly_assessment_record'),
     
     # Teacher results views
     path('teacher/results/', views.teacher_results_list, name='teacher_results_list'),

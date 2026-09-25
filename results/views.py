@@ -1,4 +1,6 @@
 import math
+from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -15,7 +17,8 @@ from school_classes.models import SchoolClasses, ClassTeacher, Teacher
 from attendance.models import AttendanceRecord
 from .models import (
     StudentResult, TermResult, ResultTemplate,
-    GradeScale, Promotion, ReportCardComment, StudentConduct
+    GradeScale, Promotion, ReportCardComment, StudentConduct,
+    WeeklyAssessmentRecord
 )
 from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
@@ -56,6 +59,61 @@ def generate_distinct_chart_colors(label_count):
         hue = (index * 360 / label_count) % 360
         colors.append(f"hsl({hue}, 70%, 45%)")
     return colors
+
+
+def build_weekly_assessment_chart_data(
+    queryset,
+    academic_year='',
+    term_id='',
+    subject_id='',
+    week_from='',
+    week_to='',
+    week_number='',
+):
+    """Build chart labels/data that respond to the active weekly assessment filter context.
+
+    When a subject filter is selected, the chart compares the selected subject across weeks.
+    When a week filter is selected without a subject, it compares subjects for that week range.
+    Otherwise, the chart falls back to the default subject comparison view.
+    """
+    if subject_id:
+        grouped = list(
+            queryset.filter(class_subject__subject_id=subject_id)
+            .values('week_number')
+            .annotate(avg_percentage=Avg('percentage'))
+            .order_by('week_number')
+        )
+        labels = [f"Week {item['week_number']}" for item in grouped]
+        data = [round(float(item['avg_percentage'] or 0), 2) for item in grouped]
+        return labels, data
+
+    if week_from or week_to or week_number:
+        if week_number:
+            grouped = list(
+                queryset.filter(week_number=int(week_number))
+                .values('class_subject__subject__name')
+                .annotate(avg_percentage=Avg('percentage'))
+                .order_by('-avg_percentage')
+            )
+        else:
+            grouped = list(
+                queryset.values('class_subject__subject__name')
+                .annotate(avg_percentage=Avg('percentage'))
+                .order_by('-avg_percentage')
+            )
+
+        labels = [item['class_subject__subject__name'] for item in grouped]
+        data = [round(float(item['avg_percentage'] or 0), 2) for item in grouped]
+        return labels, data
+
+    grouped = list(
+        queryset.values('class_subject__subject__name')
+        .annotate(avg_percentage=Avg('percentage'))
+        .order_by('-avg_percentage')
+    )
+    labels = [item['class_subject__subject__name'] for item in grouped]
+    data = [round(float(item['avg_percentage'] or 0), 2) for item in grouped]
+    return labels, data
 
 
 @login_required
@@ -980,7 +1038,365 @@ def promote_student(request, student_id, exam_id):
 
 
 
-# ==================== TEACHER RESULTS VIEWS ====================
+# ==================== WEEKLY ASSESSMENT VIEWS ====================
+
+@login_required
+def weekly_assessment_dashboard(request):
+    """Route student vs teacher to the correct weekly assessment dashboard."""
+    if hasattr(request.user, 'student_profile'):
+        return redirect('student_weekly_assessment_view')
+    if request.user.is_superuser or user_is_tenant_admin(request.user) or hasattr(request.user, 'teacher_profile'):
+        return redirect('teacher_weekly_assessment_view')
+    messages.error(request, 'You do not have access to weekly assessments.')
+    return redirect('home')
+
+
+@login_required
+def student_weekly_assessment_view(request):
+    """Students can view subject-by-subject weekly assessment trends with filters."""
+    student = getattr(request.user, 'student_profile', None)
+    if not student:
+        messages.error(request, 'You must be logged in as a student to access this page.')
+        return redirect('home')
+
+    academic_year = request.GET.get('academic_year', '').strip()
+    term_id = request.GET.get('term', '').strip()
+    subject_id = request.GET.get('subject', '').strip()
+    week_from = request.GET.get('week_from', '').strip()
+    week_to = request.GET.get('week_to', '').strip()
+
+    qs = WeeklyAssessmentRecord.objects.filter(student=student)
+    if academic_year:
+        qs = qs.filter(academic_year=academic_year)
+    if term_id:
+        qs = qs.filter(term_id=term_id)
+    if subject_id:
+        qs = qs.filter(class_subject__subject_id=subject_id)
+    if week_from:
+        qs = qs.filter(week_number__gte=int(week_from))
+    if week_to:
+        qs = qs.filter(week_number__lte=int(week_to))
+
+    qs = qs.select_related('class_subject__subject', 'term').order_by('assessment_date')
+
+    total_score = qs.aggregate(total=Sum('total_score'))['total'] or 0
+    average_percentage = qs.aggregate(avg=Avg('percentage'))['avg'] or 0
+    highest = qs.aggregate(highest=Max('percentage'))['highest'] or 0
+    lowest = qs.aggregate(lowest=Min('percentage'))['lowest'] or 100
+
+    subject_breakdown = list(
+        qs.values('class_subject__subject__name')
+        .annotate(
+            avg_percentage=Avg('percentage'),
+            total_score=Sum('total_score'),
+            occurrences=Count('id')
+        )
+        .order_by('-avg_percentage')
+    )
+
+    chart_labels, chart_data = build_weekly_assessment_chart_data(
+        qs,
+        academic_year=academic_year,
+        term_id=term_id,
+        subject_id=subject_id,
+        week_from=week_from,
+        week_to=week_to,
+    )
+
+    context = {
+        'student': student,
+        'records': qs,
+        'academic_years': WeeklyAssessmentRecord.objects.filter(student=student).values_list('academic_year', flat=True).distinct(),
+        'terms': Term.objects.filter(weekly_assessments__student=student).distinct().order_by('academic_year', 'name'),
+        'subjects': student.student_class.assigned_subjects.select_related('subject').order_by('subject__name') if student.student_class else [],
+        'selected_academic_year': academic_year,
+        'selected_term': term_id,
+        'selected_subject': subject_id,
+        'selected_week_from': week_from,
+        'selected_week_to': week_to,
+        'total_score': total_score,
+        'average_percentage': float(average_percentage),
+        'highest_percentage': float(highest),
+        'lowest_percentage': float(lowest),
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+        'subject_breakdown': subject_breakdown,
+    }
+    return render(request, 'results/weekly_assessment_dashboard.html', context)
+
+
+@login_required
+def teacher_weekly_assessment_view(request):
+    """Teachers and admins record and monitor weekly assessment scores for their classes."""
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        teacher = None
+
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or teacher):
+        messages.error(request, 'You do not have access to weekly assessment records.')
+        return redirect('home')
+
+    if request.user.is_superuser or user_is_tenant_admin(request.user):
+        class_qs = SchoolClasses.objects.all().order_by('class_name')
+    else:
+        from school_classes.models import ClassTeacher
+        class_qs = SchoolClasses.objects.filter(
+            teachers__teacher=teacher,
+            teachers__is_active=True
+        ).distinct().order_by('class_name')
+
+    class_id = request.GET.get('class_id') or request.POST.get('class_id')
+    term_id = request.GET.get('term') or request.POST.get('term')
+    subject_id = request.GET.get('subject') or request.POST.get('subject')
+    student_id = request.GET.get('student') or request.POST.get('student')
+    week_number = request.GET.get('week_number') or request.POST.get('week_number') or '1'
+    assessment_date = request.GET.get('assessment_date') or request.POST.get('assessment_date') or str(date.today())
+
+    if class_id:
+        school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    elif class_qs.exists():
+        school_class = class_qs.first()
+        class_id = str(school_class.id)
+    else:
+        school_class = None
+
+    if school_class:
+        students = Student.objects.filter(student_class=school_class, status='active').order_by('surname', 'other_names')
+        class_subjects = ClassSubject.objects.filter(school_class=school_class).select_related('subject').order_by('order', 'subject__name')
+    else:
+        students = Student.objects.none()
+        class_subjects = ClassSubject.objects.none()
+
+    selected_term = get_object_or_404(Term, pk=term_id) if term_id else (Term.objects.filter(is_active=True).first() if Term.objects.filter(is_active=True).exists() else None)
+    if selected_term and not term_id:
+        term_id = str(selected_term.id)
+
+    if request.method == 'POST' and school_class and selected_term:
+        saved_records = 0
+        for student in students:
+            for class_subject in class_subjects:
+                field_name = f'score_{student.pk}_{class_subject.pk}'
+                if field_name not in request.POST:
+                    continue
+                score_value = (request.POST.get(field_name) or '').strip()
+                if score_value == '':
+                    continue
+                try:
+                    score = Decimal(score_value)
+                except InvalidOperation:
+                    messages.error(request, f'Invalid score entered for {student.full_name()} in {class_subject.subject.name}.')
+                    continue
+                out_of_value = request.POST.get(f'out_of_{student.pk}_{class_subject.pk}', str(class_subject.subject.max_score if hasattr(class_subject.subject, 'max_score') else 100)).strip() or '100'
+                try:
+                    out_of = Decimal(out_of_value)
+                except InvalidOperation:
+                    out_of = Decimal('100')
+                if out_of <= 0:
+                    out_of = Decimal('100')
+                record, _ = WeeklyAssessmentRecord.objects.get_or_create(
+                    student=student,
+                    class_subject=class_subject,
+                    term=selected_term,
+                    academic_year=selected_term.academic_year,
+                    week_number=int(request.POST.get('week_number') or week_number),
+                    defaults={'assessment_date': request.POST.get('assessment_date') or date.today(), 'score': 0, 'out_of': out_of, 'created_by': request.user}
+                )
+                record.score = score
+                record.out_of = out_of
+                record.assessment_date = request.POST.get('assessment_date') or record.assessment_date or date.today()
+                record.assessment_type = request.POST.get(f'type_{student.pk}_{class_subject.pk}', record.assessment_type)
+                record.remarks = request.POST.get(f'remarks_{student.pk}_{class_subject.pk}', record.remarks or '')
+                record.created_by = request.user
+                record.save()
+                saved_records += 1
+        if saved_records:
+            messages.success(request, f'Saved {saved_records} weekly assessment record(s).')
+        return redirect(f"{request.path}?class_id={class_id}&term={term_id}&week_number={week_number}&assessment_date={assessment_date}")
+
+    assessment_qs = WeeklyAssessmentRecord.objects.filter(class_subject__school_class=school_class) if school_class else WeeklyAssessmentRecord.objects.none()
+    if selected_term:
+        assessment_qs = assessment_qs.filter(term=selected_term)
+    if student_id:
+        assessment_qs = assessment_qs.filter(student_id=student_id)
+    if subject_id:
+        assessment_qs = assessment_qs.filter(class_subject__subject_id=subject_id)
+    if week_number:
+        assessment_qs = assessment_qs.filter(week_number=int(week_number))
+
+    assessment_qs = assessment_qs.select_related('student', 'class_subject__subject', 'term').order_by('assessment_date', 'student__surname')
+
+    chart_labels, chart_data = build_weekly_assessment_chart_data(
+        assessment_qs,
+        academic_year='',
+        term_id=term_id,
+        subject_id=subject_id,
+        week_from='',
+        week_to='',
+        week_number=week_number,
+    )
+
+    context = {
+        'teacher': teacher,
+        'classes': class_qs,
+        'school_class': school_class,
+        'selected_class': class_id,
+        'terms': Term.objects.filter(is_active=True).order_by('academic_year', 'name'),
+        'selected_term': term_id,
+        'students': students,
+        'class_subjects': class_subjects,
+        'selected_student': student_id,
+        'selected_subject': subject_id,
+        'current_week': week_number,
+        'assessment_date': assessment_date,
+        'records': assessment_qs,
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+        'chart_title': f'Weekly Assessment Summary for {school_class}' if school_class else 'Weekly Assessment Summary',
+        'chart_series_label': 'Average %',
+    }
+    return render(request, 'results/weekly_assessment_dashboard.html', context)
+
+
+@login_required
+def bulk_weekly_assessment_entry(request, class_id, term_id):
+    """Bulk entry form for weekly assessments for a class and term."""
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        teacher = None
+
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or teacher):
+        messages.error(request, 'You do not have access to weekly assessment bulk entry.')
+        return redirect('home')
+
+    school_class = get_object_or_404(SchoolClasses, pk=class_id)
+    term = get_object_or_404(Term, pk=term_id)
+
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user)):
+        from school_classes.models import ClassTeacher
+        if not ClassTeacher.objects.filter(teacher=teacher, school_class=school_class, is_active=True).exists():
+            messages.error(request, 'You are not assigned to this class.')
+            return redirect('home')
+
+    students = Student.objects.filter(student_class=school_class, status='active').order_by('surname', 'other_names')
+    class_subjects = ClassSubject.objects.filter(school_class=school_class).select_related('subject').order_by('order', 'subject__name')
+    week_number = request.POST.get('week_number') or request.GET.get('week_number') or '1'
+    assessment_date = request.POST.get('assessment_date') or request.GET.get('assessment_date') or str(date.today())
+
+    records_by_student_subject = {}
+    for record in WeeklyAssessmentRecord.objects.filter(
+        class_subject__school_class=school_class,
+        term=term,
+        week_number=int(week_number),
+    ).select_related('class_subject__subject', 'student'):
+        records_by_student_subject.setdefault(record.student_id, {})[record.class_subject_id] = record
+
+    if request.method == 'POST':
+        saved_records = 0
+        for student in students:
+            for class_subject in class_subjects:
+                score_key = f'score_{student.pk}_{class_subject.pk}'
+                out_of_key = f'out_of_{student.pk}_{class_subject.pk}'
+                assessment_type_key = f'assessment_type_{student.pk}_{class_subject.pk}'
+                remarks_key = f'remarks_{student.pk}_{class_subject.pk}'
+                score_present = score_key in request.POST and (request.POST.get(score_key) or '').strip() != ''
+                out_of_present = out_of_key in request.POST and (request.POST.get(out_of_key) or '').strip() != ''
+                assessment_type_present = assessment_type_key in request.POST
+                remarks_present = remarks_key in request.POST
+
+                if not (score_present or out_of_present or assessment_type_present or remarks_present):
+                    continue
+
+                record, _ = WeeklyAssessmentRecord.objects.get_or_create(
+                    student=student,
+                    class_subject=class_subject,
+                    term=term,
+                    academic_year=term.academic_year,
+                    week_number=int(request.POST.get('week_number') or week_number),
+                    defaults={'assessment_date': request.POST.get('assessment_date') or assessment_date, 'score': 0, 'out_of': 100, 'created_by': request.user}
+                )
+
+                if score_present:
+                    score_value = (request.POST.get(score_key) or '').strip()
+                    try:
+                        record.score = Decimal(score_value)
+                    except InvalidOperation:
+                        messages.error(request, f'Invalid score entered for {student.full_name()} in {class_subject.subject.name}.')
+                        continue
+                else:
+                    record.score = record.score or Decimal('0')
+
+                out_of_value = (request.POST.get(out_of_key, str(record.out_of or class_subject.subject.max_score if hasattr(class_subject.subject, 'max_score') else 100)) or str(record.out_of or 100)).strip()
+                try:
+                    record.out_of = Decimal(out_of_value)
+                except InvalidOperation:
+                    record.out_of = Decimal(str(record.out_of or 100))
+                if record.out_of <= 0:
+                    record.out_of = Decimal('100')
+
+                record.assessment_date = request.POST.get('assessment_date') or record.assessment_date or date.today()
+                if assessment_type_present:
+                    record.assessment_type = request.POST.get(assessment_type_key, record.assessment_type)
+                if remarks_present:
+                    record.remarks = request.POST.get(remarks_key, record.remarks or '')
+                record.created_by = request.user
+                record.save()
+                saved_records += 1
+
+        if saved_records:
+            messages.success(request, f'Saved {saved_records} weekly assessment record(s).')
+        return redirect('teacher_weekly_assessment_view')
+
+    context = {
+        'school_class': school_class,
+        'term': term,
+        'students': students,
+        'class_subjects': class_subjects,
+        'records_by_student_subject': records_by_student_subject,
+        'week_number': week_number,
+        'assessment_date': assessment_date,
+    }
+    return render(request, 'results/bulk_weekly_assessment_entry.html', context)
+
+
+@login_required
+def edit_weekly_assessment_record(request, pk):
+    """Edit an individual weekly assessment record."""
+    record = get_object_or_404(WeeklyAssessmentRecord, pk=pk)
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or (hasattr(request.user, 'teacher_profile') and record.class_subject.school_class.teachers.filter(teacher=request.user.teacher_profile).exists())):
+        messages.error(request, 'You do not have permission to edit this record.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        try:
+            record.score = Decimal(str(request.POST.get('score', record.score)))
+            record.out_of = Decimal(str(request.POST.get('out_of', record.out_of)))
+        except InvalidOperation:
+            messages.error(request, 'Please enter valid score values.')
+            return render(request, 'results/weekly_assessment_record_form.html', {'record': record})
+        record.assessment_date = request.POST.get('assessment_date', record.assessment_date)
+        record.remarks = request.POST.get('remarks', record.remarks)
+        record.assessment_type = request.POST.get('assessment_type', record.assessment_type)
+        record.save()
+        messages.success(request, 'Weekly assessment updated successfully.')
+        return redirect('teacher_weekly_assessment_view')
+
+    context = {'record': record}
+    return render(request, 'results/weekly_assessment_record_form.html', context)
+
+
+@login_required
+def delete_weekly_assessment_record(request, pk):
+    """Delete a weekly assessment record."""
+    record = get_object_or_404(WeeklyAssessmentRecord, pk=pk)
+    if not (request.user.is_superuser or user_is_tenant_admin(request.user) or (hasattr(request.user, 'teacher_profile') and record.class_subject.school_class.teachers.filter(teacher=request.user.teacher_profile).exists())):
+        messages.error(request, 'You do not have permission to delete this record.')
+        return redirect('home')
+    record.delete()
+    messages.success(request, 'Weekly assessment record deleted.')
+    return redirect('teacher_weekly_assessment_view')
+
 
 def teacher_has_permission(teacher, permission_code):
     """Check if teacher has specific permission"""

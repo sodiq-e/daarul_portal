@@ -1,6 +1,7 @@
 from django import forms
 from .models import (
-    GradeScale, ResultTemplate, StudentResult, ReportCardComment, StudentConduct
+    GradeScale, ResultTemplate, StudentResult, ReportCardComment, StudentConduct,
+    WeeklyAssessmentRecord
 )
 from exams.models import Term
 from school_classes.models import SchoolClasses
@@ -159,6 +160,33 @@ class AdmissionLookupForm(forms.Form):
         label="Admission Number",
         widget=forms.TextInput(attrs={'placeholder': 'Enter your admission number'})
     )
+
+
+class WeeklyAssessmentForm(forms.ModelForm):
+    class Meta:
+        model = WeeklyAssessmentRecord
+        fields = [
+            'class_subject', 'term', 'academic_year', 'week_number',
+            'assessment_date', 'assessment_type', 'score', 'out_of', 'remarks'
+        ]
+        widgets = {
+            'assessment_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'class_subject': forms.Select(attrs={'class': 'form-select'}),
+            'term': forms.Select(attrs={'class': 'form-select'}),
+            'academic_year': forms.TextInput(attrs={'class': 'form-control'}),
+            'week_number': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'assessment_type': forms.Select(attrs={'class': 'form-select'}),
+            'score': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'out_of': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '1'}),
+            'remarks': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.student = kwargs.pop('student', None)
+        super().__init__(*args, **kwargs)
+        if self.student:
+            class_ids = self.student.student_class.assigned_subjects.values_list('id', flat=True) if self.student.student_class else []
+            self.fields['class_subject'].queryset = self.fields['class_subject'].queryset.filter(pk__in=class_ids)
 
 
 class ReportCardCommentForm(forms.ModelForm):
