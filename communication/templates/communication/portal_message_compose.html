@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="new-message-page">
+    <header class="new-message-header">
+        <div>
+            <p class="eyebrow">MESSAGES</p>
+            <h1>New message</h1>
+            <p class="subtitle">Choose a portal member to start or continue a private conversation.</p>
+        </div>
+        <a class="back-link" href="{% url 'portal_messages_list' %}">Back to conversations</a>
+    </header>
+
+    <form class="member-search" method="get" action="{% url 'portal_message_compose' %}">
+        <label for="member-search-input">Find a member</label>
+        <div class="search-row">
+            <input id="member-search-input" type="search" name="q" value="{{ search_term }}" placeholder="Search name, username, or email" autocomplete="off">
+            <button type="submit" aria-label="Search members"><i class="fas fa-search"></i></button>
+        </div>
+    </form>
+
+    {% if members %}
+        <div class="member-list" aria-label="Available members">
+            {% for member in members %}
+                <article class="member-row">
+                    <div class="member-avatar" aria-hidden="true">{{ member.get_full_name|default:member.username|first|upper }}</div>
+                    <div class="member-info">
+                        <h2>{{ member.get_full_name|default:member.username }}</h2>
+                        <p>@{{ member.username }}{% if member.email %}<span>{{ member.email }}</span>{% endif %}</p>
+                    </div>
+                    <a class="message-action" href="{% url 'portal_message_compose' %}?user_id={{ member.pk }}" aria-label="Message {{ member.get_full_name|default:member.username }}" title="Message {{ member.get_full_name|default:member.username }}">
+                        <i class="fas fa-comment-dots" aria-hidden="true"></i>
+                    </a>
+                </article>
+            {% endfor %}
+        </div>
+
+        {% if members.has_other_pages %}
+            <nav class="pagination" aria-label="Member pages">
+                {% if members.has_previous %}<a href="?q={{ search_term|urlencode }}&page={{ members.previous_page_number }}">Previous</a>{% endif %}
+                <span>Page {{ members.number }} of {{ members.paginator.num_pages }}</span>
+                {% if members.has_next %}<a href="?q={{ search_term|urlencode }}&page={{ members.next_page_number }}">Next</a>{% endif %}
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">No eligible members found{% if search_term %} for “{{ search_term }}”{% endif %}.</div>
+    {% endif %}
+</section>
+
+<style>
+    .new-message-page { max-width: 900px; margin: 0 auto; padding: 28px 20px 48px; color: var(--text-color, #24313a); }
+    .new-message-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+    .new-message-header h1 { margin: 4px 0 6px; font-size: 30px; color: var(--heading-text-color, #17252d); }
+    .eyebrow { margin: 0; color: var(--primary-color, #0f766e); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+    .subtitle { margin: 0; color: #65727a; }
+    .back-link { color: var(--primary-color, #0f766e); text-decoration: none; font-weight: 600; }
+    .member-search { margin-bottom: 18px; }
+    .member-search label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 700; }
+    .search-row { display: flex; gap: 8px; }
+    .search-row input { width: 100%; min-width: 0; padding: 12px 14px; border: 1px solid #cbd5d9; border-radius: 6px; font: inherit; }
+    .search-row button { width: 46px; flex: 0 0 46px; border: 0; border-radius: 6px; color: #fff; background: var(--primary-color, #0f766e); cursor: pointer; }
+    .member-list { border-top: 1px solid #e1e7e9; }
+    .member-row { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid #e1e7e9; }
+    .member-avatar { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 50%; color: #fff; background: #2f7e78; font-weight: 700; }
+    .member-info { min-width: 0; flex: 1; }
+    .member-info h2 { overflow: hidden; margin: 0 0 4px; color: #1e2b31; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+    .member-info p { display: flex; gap: 10px; flex-wrap: wrap; margin: 0; color: #718087; font-size: 13px; overflow-wrap: anywhere; }
+    .message-action { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; color: #fff; background: var(--primary-color, #0f766e); text-decoration: none; }
+    .message-action:hover, .message-action:focus-visible { background: var(--secondary-color, #115e59); outline: 2px solid #9bd5cf; outline-offset: 2px; }
+    .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 18px 0; color: #65727a; }
+    .pagination a { color: var(--primary-color, #0f766e); text-decoration: none; font-weight: 600; }
+    .empty-state { padding: 32px 16px; color: #65727a; text-align: center; background: #f4f7f7; }
+    @media (max-width: 560px) { .new-message-page { padding: 20px 14px 36px; } .new-message-header h1 { font-size: 25px; } .member-row { gap: 10px; } .member-info p { display: block; } .member-info p span { display: block; margin-top: 2px; } }
+</style>
+{% endblock %}

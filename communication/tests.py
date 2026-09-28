@@ -10,7 +10,7 @@ from .views import (
     get_or_create_personal_thread_for_users as legacy_get_or_create_personal_thread_for_users,
     get_user_threads,
 )
-from settingsapp.models import Tenant
+from settingsapp.models import Tenant, TenantMembership
 from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
 
 
@@ -105,6 +105,74 @@ class AdminPortalThreadAccessTests(TestCase):
         self.assertFalse(broken_thread.is_openable)
         self.assertIn(valid_thread, PortalThread.objects.openable().all())
         self.assertNotIn(broken_thread, PortalThread.objects.openable().all())
+
+
+class PortalMessageComposeTests(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            name='Compose School',
+            slug='compose-school',
+            hostname='compose-school.localhost',
+        )
+        set_current_tenant(self.tenant)
+        self.user = User.objects.create_user(username='member-one', password='pw')
+        self.allowed_member = User.objects.create_user(
+            username='member-two',
+            password='pw',
+            first_name='Allowed',
+            last_name='Member',
+        )
+        self.outside_member = User.objects.create_user(username='outside-member', password='pw')
+        Profile.objects.update_or_create(user=self.user, defaults={'is_approved': True})
+        Profile.objects.update_or_create(user=self.allowed_member, defaults={'is_approved': True})
+        TenantMembership.objects.create(user=self.user, tenant=self.tenant, role='teacher')
+        TenantMembership.objects.create(user=self.allowed_member, tenant=self.tenant, role='student')
+        self.client.defaults['HTTP_HOST'] = self.tenant.hostname
+        self.client.force_login(self.user)
+
+    def tearDown(self):
+        clear_current_tenant()
+
+    def test_new_message_directory_lists_only_eligible_tenant_members(self):
+        response = self.client.get(reverse('portal_message_compose'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Allowed Member')
+        self.assertNotContains(response, 'outside-member')
+        self.assertContains(response, 'fa-comment-dots')
+
+    def test_selecting_existing_member_reuses_and_opens_the_existing_chat(self):
+        existing_thread = get_or_create_personal_thread_for_users([self.user, self.allowed_member])
+
+        response = self.client.get(
+            reverse('portal_message_compose'),
+            {'user_id': self.allowed_member.pk},
+        )
+
+        self.assertRedirects(
+            response,
+            f"{reverse('portal_thread_detail')}?thread_id={existing_thread.pk}",
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(
+            PortalThread.objects.personal().filter(participants=self.user).filter(
+                participants=self.allowed_member
+            ).count(),
+            1,
+        )
+
+    def test_compose_endpoint_rejects_member_outside_active_tenant(self):
+        response = self.client.get(
+            reverse('portal_message_compose'),
+            {'user_id': self.outside_member.pk},
+        )
+
+        self.assertRedirects(response, reverse('portal_messages_list'), fetch_redirect_response=False)
+        self.assertFalse(
+            PortalThread.objects.personal().filter(participants=self.user).filter(
+                participants=self.outside_member
+            ).exists()
+        )
 
 
 @override_settings(ALLOWED_HOSTS=['presence-school.localhost', 'testserver'])

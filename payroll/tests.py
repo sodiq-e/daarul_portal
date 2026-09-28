@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
@@ -65,6 +65,42 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertEqual(invoice.total_paid, Decimal('40000.00'))
         self.assertEqual(invoice.balance, Decimal('0.00'))
         self.assertEqual(invoice.status, 'paid')
+
+    def test_invoice_status_resets_to_pending_when_payment_is_deleted(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date.today(),
+            due_date=date.today() + timedelta(days=30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+
+        payment = StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=invoice,
+            amount=Decimal('40000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Cash',
+            reference='REF-DELETE-001',
+            invoices=[invoice.id],
+            allocations=[{'invoice_id': invoice.id, 'amount_applied': '40000.00'}],
+        )
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.status, 'paid')
+
+        payment.delete()
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.total_paid, Decimal('0.00'))
+        self.assertEqual(invoice.balance, Decimal('40000.00'))
+        self.assertEqual(invoice.status, 'pending')
 
     def test_payment_can_cover_multiple_invoices(self):
         fee_1 = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
@@ -799,5 +835,67 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             StudentInvoice.objects.filter(student=self.student, tenant=self.tenant).count(),
+            2,
+        )
+
+    def test_student_fee_options_returns_existing_invoices_for_student(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='Notebook', amount=Decimal('3500.00'))
+        existing_invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('3500.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+
+        group, _ = Group.objects.get_or_create(name='Staff')
+        user = User.objects.create_user(username='staffuser3', password='pass1234')
+        user.profile.requested_group = 'Staff'
+        user.profile.is_approved = True
+        user.profile.save()
+        user.groups.add(group)
+
+        self.client.force_login(user)
+        response = self.client.get(reverse('student_fee_options'), {'student': self.student.pk})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('existing_invoices', payload)
+        self.assertTrue(any(item['id'] == existing_invoice.id for item in payload['existing_invoices']))
+
+    def test_invoice_quantity_allows_creating_multiple_same_fee_invoices(self):
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='Notebook', amount=Decimal('3500.00'))
+
+        group, _ = Group.objects.get_or_create(name='Staff')
+        user = User.objects.create_user(username='staffuser4', password='pass1234')
+        user.profile.requested_group = 'Staff'
+        user.profile.is_approved = True
+        user.profile.save()
+        user.groups.add(group)
+
+        self.client.force_login(user)
+        set_current_tenant(self.tenant)
+        try:
+            response = self.client.post(reverse('invoice_add'), {
+                'student': self.student.pk,
+                'fees': [fee.pk],
+                'quantity': '2',
+                'academic_session': '2024/2025',
+                'term': self.term.pk,
+                'issued_date': '2024-09-02',
+                'due_date': '2024-09-30',
+                'status': 'pending',
+                'notes': 'Repeated notebook invoice',
+            })
+        finally:
+            clear_current_tenant()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            StudentInvoice.objects.filter(student=self.student, fee=fee, tenant=self.tenant).count(),
             2,
         )

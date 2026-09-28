@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.http import JsonResponse, Http404
 from django.urls import reverse
@@ -826,7 +827,22 @@ def fetch_portal_messages(request):
 def portal_message_compose(request):
     target_user_id = request.GET.get('user_id') or request.GET.get('teacher_id') or request.GET.get('student_id')
     if not target_user_id:
-        return redirect('portal_messages_list')
+        search_term = request.GET.get('q', '').strip()
+        members = get_active_accounts(request).exclude(pk=request.user.pk)
+        if search_term:
+            members = members.filter(
+                Q(username__icontains=search_term)
+                | Q(first_name__icontains=search_term)
+                | Q(last_name__icontains=search_term)
+                | Q(email__icontains=search_term)
+            )
+
+        paginator = Paginator(members, 30)
+        member_page = paginator.get_page(request.GET.get('page'))
+        return render(request, 'communication/portal_message_compose.html', {
+            'members': member_page,
+            'search_term': search_term,
+        })
 
     try:
         target_user = get_active_accounts(request).get(pk=target_user_id)

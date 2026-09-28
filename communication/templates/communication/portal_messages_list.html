@@ -10,6 +10,7 @@
             <p style="margin: 8px 0 0 0; color: #666;">Open any group or one-on-one thread you are part of.</p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{% url 'portal_message_compose' %}" aria-label="New message" title="New message" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;"><i class="fas fa-pen-to-square" aria-hidden="true"></i><span>New message</span></a>
             <a href="{% url 'portal_thread_detail' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Open Most Recent</a>
         </div>
     </div>
@@ -40,8 +41,8 @@
     {% else %}
         <div style="background: #f8f9fa; padding: 40px; border-radius: 16px; text-align: center; color: #666;">
             <p style="margin: 0 0 16px 0; font-size: 18px;">You are not in any portal conversations yet.</p>
-            <p style="margin: 0 0 20px 0;">Ask your administrator to create a group chat or start a direct thread.</p>
-            <a href="{% url 'portal_thread_detail' %}" style="padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;">Open Most Recent</a>
+            <p style="margin: 0 0 20px 0;">Choose an eligible portal member to start a direct conversation.</p>
+            <a href="{% url 'portal_message_compose' %}" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; background: #0d6efd; color: white; text-decoration: none; border-radius: 8px;"><i class="fas fa-pen-to-square" aria-hidden="true"></i>New message</a>
         </div>
     {% endif %}
 </div>

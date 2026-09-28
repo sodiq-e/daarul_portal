@@ -27,6 +27,16 @@
                             {% endif %}
                         </div>
                         {% endfor %}
+
+                        <div class="card border-light bg-light mt-3 mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">Existing invoices for this student</h5>
+                                <div id="existing-invoices" class="small text-muted">
+                                    Select a student to review their previous invoices.
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between">
                             <a href="{% url 'invoice_list' %}" class="btn btn-secondary">Cancel</a>
                             <button type="submit" class="btn btn-primary">Create Invoice</button>
@@ -41,21 +51,52 @@
 document.addEventListener('DOMContentLoaded', function () {
     const studentField = document.getElementById('id_student');
     const feesField = document.getElementById('id_fees');
+    const existingInvoicesContainer = document.getElementById('existing-invoices');
     if (!studentField || !feesField) return;
 
-    studentField.addEventListener('change', function () {
+    const renderExistingInvoices = (invoices) => {
+        if (!existingInvoicesContainer) return;
+
+        if (!invoices || !invoices.length) {
+            existingInvoicesContainer.innerHTML = '<div class="alert alert-light m-0 border">No existing invoice found for this student.</div>';
+            return;
+        }
+
+        existingInvoicesContainer.innerHTML = '<ul class="list-group list-group-flush">' + invoices.map(invoice => {
+            const statusLabel = invoice.status ? invoice.status.toUpperCase() : 'UNKNOWN';
+            return '<li class="list-group-item px-0"><strong>' + invoice.fee_name + '</strong> — ₦' + invoice.amount_due + ' — ' + statusLabel + ' — due ' + invoice.due_date + '</li>';
+        }).join('') + '</ul>';
+    };
+
+    const loadStudentData = () => {
         feesField.replaceChildren();
-        if (!studentField.value) return;
+        if (!studentField.value) {
+            renderExistingInvoices([]);
+            return;
+        }
 
         fetch('{% url "student_fee_options" %}?student=' + encodeURIComponent(studentField.value), {
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         })
             .then(response => response.json())
-            .then(data => data.fees.forEach(fee => {
-                const option = new Option(fee.name + ' - ₦' + fee.amount, fee.id, fee.selected, fee.selected);
-                feesField.add(option);
-            }));
-    });
+            .then(data => {
+                data.fees.forEach(fee => {
+                    const label = fee.existing_count > 0
+                        ? fee.name + ' - ₦' + fee.amount + ' (already exists: ' + fee.existing_count + ')'
+                        : fee.name + ' - ₦' + fee.amount;
+                    const option = new Option(label, fee.id, fee.selected, fee.selected);
+                    if (fee.existing_count > 0) {
+                        option.style.color = '#8a4b00';
+                        option.style.fontWeight = '600';
+                    }
+                    feesField.add(option);
+                });
+                renderExistingInvoices(data.existing_invoices || []);
+            });
+    };
+
+    studentField.addEventListener('change', loadStudentData);
+    loadStudentData();
 });
 </script>
 {% endblock %}

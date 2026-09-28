@@ -33,6 +33,13 @@ class StudentInvoiceForm(forms.ModelForm):
         label='Fees',
         help_text='Class fees are selected automatically. Remove any fee that should not apply to this student.'
     )
+    quantity = forms.IntegerField(
+        min_value=1,
+        initial=1,
+        required=False,
+        label='Quantity per selected fee',
+        help_text='Use this to create multiple invoices for the same fee, such as a second notebook order.'
+    )
     academic_session = forms.CharField(max_length=20, required=True, label='Academic Session')
     term = forms.ModelChoiceField(queryset=Term.objects.none(), required=True)
 
@@ -43,6 +50,7 @@ class StudentInvoiceForm(forms.ModelForm):
         )
         self.fields['term'].queryset = Term.objects.order_by('-is_active', '-academic_year', 'name')
         self.fields['fees'].widget.attrs.update({'class': 'form-select', 'size': 8})
+        self.fields['quantity'].widget.attrs.update({'min': 1, 'class': 'form-control'})
         student_id = self.data.get('student') if self.is_bound else self.initial.get('student')
         if student_id:
             try:
@@ -53,7 +61,7 @@ class StudentInvoiceForm(forms.ModelForm):
 
     class Meta:
         model = StudentInvoice
-        fields = ['student', 'fees', 'academic_session', 'term', 'issued_date', 'due_date', 'status', 'notes']
+        fields = ['student', 'fees', 'quantity', 'academic_session', 'term', 'issued_date', 'due_date', 'status', 'notes']
         widgets = {
             'issued_date': forms.DateInput(attrs={'type': 'date'}),
             'due_date': forms.DateInput(attrs={'type': 'date'}),
@@ -64,6 +72,13 @@ class StudentInvoiceForm(forms.ModelForm):
         cleaned_data = super().clean()
         if cleaned_data.get('student') and not cleaned_data.get('fees'):
             self.add_error('fees', 'Select at least one fee.')
+
+        quantity = cleaned_data.get('quantity')
+        if quantity is None:
+            cleaned_data['quantity'] = 1
+        elif quantity < 1:
+            self.add_error('quantity', 'Quantity must be at least 1.')
+
         return cleaned_data
 
 

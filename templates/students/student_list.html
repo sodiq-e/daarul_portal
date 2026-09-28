@@ -31,7 +31,9 @@
                     <td>{{ student.get_gender_display }}</td>
                     <td>
                         <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-sm btn-info">View</a>
-                        {% if user.is_staff or student.user == user or (student.student_class and student.student_class.id in teacher_class_ids) %}
+                        {% if user.is_staff or student.user == user %}
+                        <a href="{% url 'student_message_teacher' student.pk %}" class="btn btn-sm btn-primary">Message Teacher(s)</a>
+                        {% elif student.student_class and student.student_class.id in teacher_class_ids %}
                         <a href="{% url 'student_message_teacher' student.pk %}" class="btn btn-sm btn-primary">Message Teacher(s)</a>
                         {% endif %}
                         {% if can_modify %}

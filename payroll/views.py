@@ -405,21 +405,31 @@ def print_receipts(request):
 @login_required
 def student_fee_options(request):
     if not staff_can_manage(request.user):
-        return JsonResponse({'fees': []}, status=403)
+        return JsonResponse({'fees': [], 'existing_invoices': []}, status=403)
 
     student_id = request.GET.get('student')
     if not student_id:
-        return JsonResponse({'fees': []})
+        return JsonResponse({'fees': [], 'existing_invoices': []})
 
     try:
         student = Student.objects.select_related('student_class').get(pk=student_id)
     except (Student.DoesNotExist, ValueError):
-        return JsonResponse({'fees': []})
+        return JsonResponse({'fees': [], 'existing_invoices': []})
 
     inherited_fee_ids = set(
         SchoolFee.objects.filter(school_classes=student.student_class).values_list('id', flat=True)
     )
     fees = SchoolFee.objects.order_by('name')
+    existing_invoices = list(
+        StudentInvoice.objects.filter(student=student)
+        .select_related('fee')
+        .order_by('-issued_date', '-id')
+    )
+    fee_invoice_counts = {}
+    for invoice in existing_invoices:
+        if invoice.fee_id is not None:
+            fee_invoice_counts[invoice.fee_id] = fee_invoice_counts.get(invoice.fee_id, 0) + 1
+
     return JsonResponse({
         'fees': [
             {
@@ -427,9 +437,21 @@ def student_fee_options(request):
                 'name': fee.name,
                 'amount': str(fee.amount),
                 'selected': fee.id in inherited_fee_ids,
+                'existing_count': fee_invoice_counts.get(fee.id, 0),
             }
             for fee in fees
-        ]
+        ],
+        'existing_invoices': [
+            {
+                'id': invoice.id,
+                'fee_name': invoice.fee.name if invoice.fee else 'General Invoice',
+                'amount_due': str(invoice.amount_due),
+                'status': invoice.status,
+                'due_date': invoice.due_date.isoformat() if invoice.due_date else '',
+                'issued_date': invoice.issued_date.isoformat() if invoice.issued_date else '',
+            }
+            for invoice in existing_invoices
+        ],
     })
 
 
@@ -454,25 +476,30 @@ class StudentInvoiceCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateVi
     def form_valid(self, form):
         invoice_data = form.cleaned_data
         active_tenant = get_request_tenant(self.request)
-        invoices = [StudentInvoice(
-            student=invoice_data['student'],
-            fee=fee,
-            issued_date=invoice_data['issued_date'],
-            due_date=invoice_data['due_date'],
-            amount_due=fee.amount,
-            academic_session=invoice_data['academic_session'],
-            term=invoice_data['term'],
-            status=invoice_data['status'],
-            notes=invoice_data['notes'],
-            created_by=self.request.user,
-            tenant=active_tenant,
-        ) for fee in invoice_data['fees']]
+        quantity = max(1, int(invoice_data.get('quantity') or 1))
+        invoices = []
 
-        for invoice in invoices:
-            invoice.status = 'overdue' if invoice.due_date < datetime.today().date() else 'pending'
+        for fee in invoice_data['fees']:
+            for _ in range(quantity):
+                invoice = StudentInvoice(
+                    student=invoice_data['student'],
+                    fee=fee,
+                    issued_date=invoice_data['issued_date'],
+                    due_date=invoice_data['due_date'],
+                    amount_due=fee.amount,
+                    academic_session=invoice_data['academic_session'],
+                    term=invoice_data['term'],
+                    status=invoice_data['status'],
+                    notes=invoice_data['notes'],
+                    created_by=self.request.user,
+                    tenant=active_tenant,
+                )
+                invoice.status = 'overdue' if invoice.due_date < datetime.today().date() else 'pending'
+                invoices.append(invoice)
 
         StudentInvoice.objects.bulk_create(invoices)
-        messages.success(self.request, f'{len(invoices)} student invoice(s) created successfully.')
+        message_count = len(invoices)
+        messages.success(self.request, f'{message_count} student invoice(s) created successfully.')
         return redirect(self.success_url)
 
 

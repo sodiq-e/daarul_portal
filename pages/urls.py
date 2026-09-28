@@ -5,4 +5,5 @@ app_name = 'pages'
 
 urlpatterns = [
     path('page/<slug:slug>/', views.page_view, name='page_detail'),
+    path('search/', views.global_search, name='global_search'),
 ]

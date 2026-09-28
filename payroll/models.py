@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from settingsapp.models import TenantModel
 
 
@@ -266,6 +268,34 @@ class StudentInvoice(TenantModel):
             super().save(update_fields=['status'])
 
 
+def refresh_invoices_for_payment(payment):
+    invoice_ids = []
+
+    for invoice_id in list(getattr(payment, 'invoices', []) or []):
+        try:
+            invoice_pk = int(invoice_id)
+        except (TypeError, ValueError):
+            continue
+        if invoice_pk not in invoice_ids:
+            invoice_ids.append(invoice_pk)
+
+    if getattr(payment, 'invoice_id', None):
+        invoice_pk = int(payment.invoice_id)
+        if invoice_pk not in invoice_ids:
+            invoice_ids.append(invoice_pk)
+
+    for invoice_id in invoice_ids:
+        invoice = StudentInvoice.objects.filter(pk=invoice_id).first()
+        if invoice:
+            invoice.refresh_status()
+            invoice.save(update_fields=['status'])
+
+
+@receiver(post_delete, sender='payroll.StudentPayment')
+def update_invoices_after_payment_delete(sender, instance, **kwargs):
+    refresh_invoices_for_payment(instance)
+
+
 class StudentPayment(TenantModel):
     student = models.ForeignKey('students.Student', on_delete=models.CASCADE, related_name='payments')
     invoice = models.ForeignKey(StudentInvoice, on_delete=models.CASCADE, related_name='payments')
@@ -433,8 +463,4 @@ class StudentPayment(TenantModel):
 
         super().save(*args, **kwargs)
 
-        for invoice_id in self.invoices:
-            invoice = StudentInvoice.objects.filter(pk=invoice_id).first()
-            if invoice:
-                invoice.refresh_status()
-                invoice.save(update_fields=['status'])
+        refresh_invoices_for_payment(self)

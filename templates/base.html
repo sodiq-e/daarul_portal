@@ -5280,7 +5280,7 @@ document.addEventListener('keydown', (e) => {
   // Ctrl+K for quick search (command palette ready)
   if (e.ctrlKey && e.key === 'k') {
     e.preventDefault();
-    showToast('Quick Search', 'Search feature coming soon!', 'info', 2000);
+    window.openCommandPalette();
   }
 
   // Ctrl+/ for shortcuts help
@@ -5344,6 +5344,67 @@ class CommandPalette {
     this.setupListeners();
   }
 
+  async fetchResults(query) {
+    if (!query || !query.trim()) {
+      this.renderCommandResults(this.commands);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/search/?q=${encodeURIComponent(query.trim())}`);
+      if (!response.ok) {
+        throw new Error('Search request failed');
+      }
+
+      const payload = await response.json();
+      this.renderCommandResults(payload.results || [], true);
+    } catch (error) {
+      console.warn('Global search failed:', error);
+      this.renderCommandResults([], true, 'No matches found.');
+    }
+  }
+
+  renderCommandResults(items, isSearchResults = false, emptyMessage = '') {
+    this.resultsContainer.innerHTML = '';
+
+    if (!items.length) {
+      const emptyState = document.createElement('div');
+      emptyState.className = 'command-item empty';
+      emptyState.textContent = emptyMessage || 'No matching results found.';
+      this.resultsContainer.appendChild(emptyState);
+      return;
+    }
+
+    items.forEach((item) => {
+      const result = document.createElement('div');
+      result.className = 'command-item';
+      const keyText = isSearchResults ? 'Open' : (item.key || 'Open');
+      const title = (item.title || 'Untitled result').replace(/</g, '&lt;');
+      const description = (item.description || 'Open this result').replace(/</g, '&lt;');
+
+      result.innerHTML = `
+        <div class="command-item-label">
+          <div class="command-item-title">${title}</div>
+          <div class="command-item-description">${description}</div>
+        </div>
+        <span class="command-item-key">${keyText}</span>
+      `;
+
+      if (item.url) {
+        result.dataset.url = item.url;
+      }
+
+      result.addEventListener('click', () => {
+        if (item.url) {
+          this.close();
+          window.location.href = item.url;
+        }
+      });
+
+      this.resultsContainer.appendChild(result);
+    });
+  }
+
   registerDefaultCommands() {
     this.commands = [
       { title: 'Go to Home', description: 'Navigate to home page', key: 'Shift+H', action: () => window.location.href = '/' },
@@ -5404,30 +5465,13 @@ class CommandPalette {
 
   filter() {
     const query = this.input.value.toLowerCase();
-    const filtered = this.commands.filter(cmd =>
-      cmd.title.toLowerCase().includes(query) ||
-      cmd.description.toLowerCase().includes(query)
-    );
 
-    this.selectedIndex = -1;
-    this.resultsContainer.innerHTML = '';
+    if (!query.trim()) {
+      this.renderCommandResults(this.commands);
+      return;
+    }
 
-    filtered.forEach((cmd, idx) => {
-      const item = document.createElement('div');
-      item.className = 'command-item';
-      item.innerHTML = `
-        <div class="command-item-label">
-          <div class="command-item-title">${cmd.title}</div>
-          <div class="command-item-description">${cmd.description}</div>
-        </div>
-        <span class="command-item-key">${cmd.key}</span>
-      `;
-      item.addEventListener('click', () => {
-        this.selectedIndex = idx;
-        this.executeSelected();
-      });
-      this.resultsContainer.appendChild(item);
-    });
+    this.fetchResults(query);
   }
 
   updateSelection() {
@@ -5446,6 +5490,13 @@ class CommandPalette {
   executeSelected() {
     const items = this.resultsContainer.querySelectorAll('.command-item');
     if (this.selectedIndex >= 0 && items[this.selectedIndex]) {
+      const dataUrl = items[this.selectedIndex].dataset.url;
+      if (dataUrl) {
+        this.close();
+        window.location.href = dataUrl;
+        return;
+      }
+
       const text = items[this.selectedIndex].querySelector('.command-item-title').textContent;
       const cmd = this.commands.find(c => c.title === text);
       if (cmd) {
