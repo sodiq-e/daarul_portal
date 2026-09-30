@@ -7,7 +7,8 @@ from django.urls import reverse
 
 from exams.models import Term
 from payroll.forms import StudentPaymentForm
-from payroll.models import SchoolFee, StudentInvoice, StudentPayment
+from payroll.models import Payslip, SchoolFee, Staff, StudentInvoice, StudentPayment
+from school_classes.models import Teacher, TeacherPermission
 from settingsapp.models import Tenant
 from settingsapp.tenant_utils import set_current_tenant, clear_current_tenant
 from students.models import Student
@@ -899,3 +900,58 @@ class StudentPaymentAllocationTests(TestCase):
             StudentInvoice.objects.filter(student=self.student, fee=fee, tenant=self.tenant).count(),
             2,
         )
+
+
+class TeacherPayrollDashboardTests(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            name='Teacher Payroll School',
+            slug='teacher-payroll-school',
+            hostname='teacher-payroll-school.localhost',
+        )
+        set_current_tenant(self.tenant)
+        self.addCleanup(clear_current_tenant)
+        self.client.defaults['HTTP_HOST'] = self.tenant.hostname
+
+        self.user = User.objects.create_user(username='payroll-teacher', password='password')
+        self.teacher = Teacher.objects.create(tenant=self.tenant, user=self.user)
+        self.staff = Staff.objects.create(
+            tenant=self.tenant,
+            teacher=self.teacher,
+            name='Payroll Teacher',
+            basic=Decimal('1000.00'),
+        )
+        TeacherPermission.objects.create(
+            teacher=self.teacher,
+            permission='view_payroll_dashboard',
+            is_granted=True,
+        )
+        self.payslip = Payslip.objects.create(
+            tenant=self.tenant,
+            staff=self.staff,
+            month=date.today().replace(day=1),
+            basic_salary=Decimal('1000.00'),
+            total_allowances=Decimal('100.00'),
+            total_deductions=Decimal('50.00'),
+            is_processed=True,
+        )
+
+    def test_dashboard_renders_teacher_specific_totals_and_permission_gated_detail(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('teacher_payroll_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'My Payroll Dashboard')
+        self.assertContains(response, '1100.00')
+        self.assertContains(response, '50.00')
+        self.assertContains(response, '1050.00')
+        self.assertNotContains(response, reverse('teacher_payslip_detail', args=[self.payslip.pk]))
+
+        TeacherPermission.objects.create(
+            teacher=self.teacher,
+            permission='view_payroll',
+            is_granted=True,
+        )
+        response = self.client.get(reverse('teacher_payroll_dashboard'))
+        self.assertContains(response, reverse('teacher_payslip_detail', args=[self.payslip.pk]))

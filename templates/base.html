@@ -3636,6 +3636,11 @@
           <i class="fas fa-users"></i><span> Teachers Management</span>
         </a>
 
+        <a href="{% url 'students:student_application_list' %}" data-tooltip="Student Applications"
+           class="{% if request.resolver_match.url_name == 'student_application_list' %}active{% endif %}">
+          <i class="fas fa-file-circle-check"></i><span> Student Applications</span>
+        </a>
+
         <a href="{% url 'teachers:class_teacher_list' %}" data-tooltip="Classes"
            class="{% if request.resolver_match.url_name == 'class_teacher_list' %}active{% endif %}">
           <i class="fas fa-chalkboard-teacher"></i><span> Class-Teacher Assign</span>
@@ -3888,6 +3893,11 @@
         <i class="fas fa-poll"></i><span> Results</span>
       </a>
 
+      <a href="{% url 'student_results_lookup' %}" data-tooltip="Results Lookup"
+         class="{% if request.resolver_match.url_name == 'student_results_lookup' %}active{% endif %}">
+        <i class="fas fa-magnifying-glass-chart"></i><span> Results Lookup</span>
+      </a>
+
       <a href="{% url 'profile' %}" data-tooltip="Settings"
          class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
         <i class="fas fa-cog"></i><span> Account Settings</span>
@@ -3961,6 +3971,7 @@
       <a href="{% url 'announcement_list' %}" data-tooltip="News">
         <i class="fas fa-bullhorn"></i><span> Announcements</span>
       </a>
+
     </div>
   </div>
 

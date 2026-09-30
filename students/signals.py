@@ -16,6 +16,7 @@ def create_student_on_approval(sender, instance, created, **kwargs):
                 other_names=f"{instance.first_name} {instance.other_names}".strip(),
                 dob=instance.dob,
                 gender=instance.gender,
+                photo=instance.photo,
                 student_class=instance.desired_class,
                 status='active',
                 # Guardian information

@@ -10,7 +10,10 @@
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h3 class="mb-0">My Attendance Records</h3>
-                        <a href="{% url 'students:student_portal_dashboard' %}" class="btn btn-sm btn-light">Back to Dashboard</a>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'student_attendance_history' %}" class="btn btn-sm btn-light">Detailed History</a>
+                            <a href="{% url 'students:student_portal_dashboard' %}" class="btn btn-sm btn-light">Back to Dashboard</a>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">

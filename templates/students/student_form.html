@@ -11,12 +11,17 @@
                     <h1>{% if form.instance.pk %}Edit{% else %}Add{% endif %} Student</h1>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         {% for field in form %}
                         <div class="mb-3">
                             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.name == 'photo' and form.instance.photo %}
+                            <div class="mt-2">
+                                <img src="{{ form.instance.photo_display_url }}" alt="Current passport photo" style="width: 96px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 4px;">
+                            </div>
+                            {% endif %}
                             {% if field.errors %}
                             <div class="text-danger">
                                 {% for error in field.errors %}

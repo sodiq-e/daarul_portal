@@ -29,7 +29,7 @@
                             {% endfor %}
                         {% endif %}
 
-                        <form method="post" id="admissionForm" novalidate>
+                        <form method="post" enctype="multipart/form-data" id="admissionForm" novalidate>
                             {% csrf_token %}
 
                             <!-- Student Information Section -->
@@ -90,6 +90,17 @@
                                         {{ form.desired_class }}
                                         {% if form.desired_class.errors %}
                                         <div class="invalid-feedback d-block">{{ form.desired_class.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.photo.id_for_label }}" class="form-label">{{ form.photo.label }}</label>
+                                        {{ form.photo }}
+                                        <small class="form-text text-muted">Upload a clear passport-size image (JPG or PNG).</small>
+                                        {% if form.photo.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.photo.errors.0 }}</div>
                                         {% endif %}
                                     </div>
                                 </div>

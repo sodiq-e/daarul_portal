@@ -1,107 +1,86 @@
 {% extends 'base.html' %}
 
-{% block title %}Payroll Dashboard{% endblock %}
+{% block title %}My Payroll Dashboard{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Total Teachers</h6>
-                    <h3>{{ total_teachers }}</h3>
-                </div>
-            </div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">My Payroll Dashboard</h1>
+            {% if staff %}<p class="text-muted mb-0">{{ staff.name }} · Last 12 months</p>{% endif %}
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Total Payroll</h6>
-                    <h3>{{ total_payroll|floatformat:0 }}</h3>
-                </div>
-            </div>
+        {% if can_view_payslips %}
+        <a href="{% url 'teacher_payroll' %}" class="btn btn-outline-secondary">Salary details</a>
+        {% endif %}
+    </div>
+
+    {% if staff %}
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <p class="text-muted mb-1">Payslips</p>
+                <p class="h3 mb-0">{{ summary.payslip_count }}</p>
+            </div></div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Processed Payslips</h6>
-                    <h3>{{ processed_count }}</h3>
-                </div>
-            </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <p class="text-muted mb-1">Processed</p>
+                <p class="h3 mb-0 text-success">{{ summary.processed_count }}</p>
+            </div></div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Pending Payslips</h6>
-                    <h3>{{ pending_count }}</h3>
-                </div>
-            </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <p class="text-muted mb-1">Pending</p>
+                <p class="h3 mb-0 text-warning">{{ summary.pending_count }}</p>
+            </div></div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <p class="text-muted mb-1">Average Monthly Net</p>
+                <p class="h3 mb-0">{{ summary.avg_monthly_net|floatformat:2 }}</p>
+            </div></div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Recent Payslips</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Teacher</th>
-                                    <th>Month</th>
-                                    <th>Net Pay</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payslip in recent_payslips %}
-                                <tr>
-                                    <td>{{ payslip.teacher.user.get_full_name|truncatewords:2 }}</td>
-                                    <td>{{ payslip.month|date:"M Y" }}</td>
-                                    <td>{{ payslip.net_pay|floatformat:2 }}</td>
-                                    <td>
-                                        {% if payslip.is_processed %}
-                                            <span class="badge bg-success">Processed</span>
-                                        {% else %}
-                                            <span class="badge bg-warning">Pending</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+    <section class="mb-4">
+        <h2 class="h5 mb-3">Payslips</h2>
+        {% if payslips %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead><tr><th>Month</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    {% for payslip in payslips %}
+                    <tr>
+                        <td>{{ payslip.month|date:"F Y" }}</td>
+                        <td>{{ payslip.gross|floatformat:2 }}</td>
+                        <td>{{ payslip.total_deductions|floatformat:2 }}</td>
+                        <td>{{ payslip.net|floatformat:2 }}</td>
+                        <td>{% if payslip.is_processed %}<span class="badge bg-success">Processed</span>{% else %}<span class="badge bg-warning text-dark">Pending</span>{% endif %}</td>
+                        <td>{% if can_view_payslips %}<a href="{% url 'teacher_payslip_detail' payslip.pk %}" class="btn btn-sm btn-outline-primary">View</a>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        {% else %}
+        <p class="text-muted">No payslips are available for the last 12 months.</p>
+        {% endif %}
+    </section>
 
-        <div class="col-lg-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Salary Summary</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Total Gross Salary:</span>
-                            <strong>{{ total_gross|floatformat:2 }}</strong>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Total Deductions:</span>
-                            <strong class="text-danger">{{ total_deductions|floatformat:2 }}</strong>
-                        </div>
-                        <hr>
-                        <div class="d-flex justify-content-between">
-                            <span><strong>Total Net Pay:</strong></span>
-                            <strong class="text-success">{{ total_net|floatformat:2 }}</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <section>
+        <h2 class="h5 mb-3">12-month totals</h2>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <tbody>
+                    <tr><th scope="row">Gross pay</th><td>{{ summary.total_gross|floatformat:2 }}</td></tr>
+                    <tr><th scope="row">Deductions</th><td>{{ summary.total_deductions|floatformat:2 }}</td></tr>
+                    <tr><th scope="row">Net pay</th><td>{{ summary.total_net|floatformat:2 }}</td></tr>
+                </tbody>
+            </table>
         </div>
-    </div>
+    </section>
+    {% else %}
+    <div class="alert alert-info">Your payroll profile has not been set up yet. Please contact administration.</div>
+    {% endif %}
 </div>
 {% endblock %}

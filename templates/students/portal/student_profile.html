@@ -14,6 +14,11 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    {% if student.photo %}
+                    <div class="mb-4 text-center">
+                        <img src="{{ student.photo_display_url }}" alt="Passport photo of {{ student.full_name }}" class="img-thumbnail" style="width: 150px; aspect-ratio: 3 / 4; object-fit: cover;">
+                    </div>
+                    {% endif %}
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <p><strong>Admission Number:</strong></p>

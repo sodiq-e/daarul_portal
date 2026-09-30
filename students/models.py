@@ -30,7 +30,7 @@ class Student(TenantModel):
         blank=True,
         related_name="students"
     )
-    photo = models.CharField(max_length=255, blank=True)
+    photo = models.ImageField(upload_to='students/passports/', blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     date_left = models.DateField(null=True, blank=True)
     
@@ -56,6 +56,15 @@ class Student(TenantModel):
 
     def full_name(self):
         return f"{self.surname} {self.other_names}".strip()
+
+    @property
+    def photo_display_url(self):
+        if not self.photo:
+            return ''
+        photo_name = str(self.photo.name)
+        if photo_name.startswith(('http://', 'https://')):
+            return photo_name
+        return self.photo.url
 
     @property
     def wallet_balance(self):
@@ -104,6 +113,7 @@ class StudentApplication(TenantModel):
         choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')],
         blank=True
     )
+    photo = models.ImageField(upload_to='students/passports/', blank=True)
     desired_class = models.ForeignKey(
         SchoolClasses,
         on_delete=models.SET_NULL,
@@ -152,6 +162,12 @@ class StudentApplication(TenantModel):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} — {self.guardian_name} ({self.status})"
+
+    @property
+    def photo_display_url(self):
+        if not self.photo:
+            return ''
+        return self.photo.url
 
     @property
     def full_name(self):

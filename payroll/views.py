@@ -596,12 +596,22 @@ class TeacherPayrollView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         teacher = self.request.user.teacher_profile
+        context['teacher'] = teacher
+        context['can_view_payroll_dashboard'] = teacher_has_permission(
+            teacher,
+            'view_payroll_dashboard',
+        )
 
         # Get staff record linked to this teacher
         try:
             staff = Staff.objects.get(teacher=teacher)
             context['staff'] = staff
             context['basic_salary'] = staff.basic
+            start_date = datetime.now().date() - relativedelta(months=12)
+            context['recent_payslips'] = list(
+                Payslip.objects.filter(staff=staff, month__gte=start_date)
+                .order_by('-month')[:12]
+            )
 
             # Get salary components
             salary_components = SalaryComponent.objects.filter(
@@ -658,27 +668,26 @@ class TeacherPayrollDashboardView(LoginRequiredMixin, UserPassesTestMixin, Templ
             today = datetime.now().date()
             start_date = today - relativedelta(months=12)
 
-            payslips = Payslip.objects.filter(
-                staff=staff,
-                month__gte=start_date
-            ).order_by('-month')
+            payslips = list(
+                Payslip.objects.filter(staff=staff, month__gte=start_date)
+                .order_by('-month')
+            )
 
             context['payslips'] = payslips
+            context['can_view_payslips'] = teacher_has_permission(teacher, 'view_payroll')
 
-            # Calculate summary stats
-            if payslips.exists():
-                total_gross = payslips.aggregate(total=Sum('gross'))['total'] or 0
-                total_deductions = payslips.aggregate(total=Sum('total_deductions'))['total'] or 0
-                total_net = payslips.aggregate(total=Sum('net'))['total'] or 0
-                avg_monthly_net = total_net / payslips.count() if payslips.count() > 0 else 0
-
-                context['summary'] = {
-                    'total_gross': total_gross,
-                    'total_deductions': total_deductions,
-                    'total_net': total_net,
-                    'avg_monthly_net': avg_monthly_net,
-                    'payslip_count': payslips.count()
-                }
+            total_gross = sum((payslip.gross for payslip in payslips), 0)
+            total_deductions = sum((payslip.total_deductions for payslip in payslips), 0)
+            total_net = sum((payslip.net for payslip in payslips), 0)
+            context['summary'] = {
+                'total_gross': total_gross,
+                'total_deductions': total_deductions,
+                'total_net': total_net,
+                'avg_monthly_net': total_net / len(payslips) if payslips else 0,
+                'payslip_count': len(payslips),
+                'processed_count': sum(1 for payslip in payslips if payslip.is_processed),
+                'pending_count': sum(1 for payslip in payslips if not payslip.is_processed),
+            }
 
         except Staff.DoesNotExist:
             context['staff'] = None

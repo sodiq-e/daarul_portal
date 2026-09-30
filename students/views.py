@@ -19,7 +19,12 @@ except ImportError:
     WEASYPRINT_AVAILABLE = False
 
 from .models import Student, StudentApplication, AdmissionFormField, AdmissionFormResponse
-from .forms import StudentForm, StudentApplicationForm, StudentApplicationReviewForm, DynamicAdmissionForm
+from .forms import (
+    StudentForm,
+    StudentApplicationForm,
+    StudentApplicationReviewForm,
+    DynamicAdmissionForm,
+)
 from school_classes.models import ClassTeacher
 from django.http import JsonResponse
 from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
@@ -137,6 +142,13 @@ class StudentCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     def test_func(self):
         return staff_can_edit(self.request.user)
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['allow_photo_upload'] = (
+            self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
+        )
+        return kwargs
+
     def form_valid(self, form):
         messages.success(self.request, 'Student created successfully.')
         return super().form_valid(form)
@@ -150,6 +162,13 @@ class StudentUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def test_func(self):
         return staff_can_edit(self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['allow_photo_upload'] = (
+            self.request.user.is_superuser or user_is_tenant_admin(self.request.user)
+        )
+        return kwargs
 
     def form_valid(self, form):
         messages.success(self.request, 'Student updated successfully.')

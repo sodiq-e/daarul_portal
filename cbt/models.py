@@ -188,6 +188,11 @@ class CBTQuestion(TenantModel):
     class Meta:
         ordering = ['order', 'id']
 
+    def save(self, *args, **kwargs):
+        if self.question_type:
+            self.question_type = str(self.question_type).strip().lower()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.exam.name} - Question {self.order + 1}"
 

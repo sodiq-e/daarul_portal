@@ -43,11 +43,15 @@
                     {% if student.date_left %}
                     <p><strong>Date Left:</strong> {{ student.date_left|date:"F j, Y" }}</p>
                     {% endif %}
-                    {% if student.photo %}
-                    <p><strong>Photo:</strong> <img src="{{ student.photo }}" alt="Student Photo" class="img-thumbnail" style="max-width: 150px;"></p>
-                    {% endif %}
                 </div>
             </div>
+            {% if student.photo %}
+            <hr>
+            <div>
+                <h5 class="card-title">Passport Photo</h5>
+                <img src="{{ student.photo_display_url }}" alt="Passport photo of {{ student.full_name }}" class="img-thumbnail" style="width: 150px; aspect-ratio: 3 / 4; object-fit: cover;">
+            </div>
+            {% endif %}
             
             {% if is_class_teacher %}
             <hr>

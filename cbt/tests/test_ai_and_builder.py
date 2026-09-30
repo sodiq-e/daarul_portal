@@ -8,6 +8,8 @@ import io
 
 from cbt.models import QuestionBank, CBTExam, AIRequestMetric, CBTQuestion, CBTChoice, CBTStudentAttempt
 from exams.models import Subject
+from school_classes.models import SchoolClasses
+from students.models import Student
 
 
 User = get_user_model()
@@ -123,6 +125,66 @@ class BuilderAutosaveTests(TestCase):
         self.assertEqual(data.get('created'), 1)
         self.assertEqual(CBTQuestion.objects.filter(exam=self.exam).count(), 1)
         self.assertEqual(CBTChoice.objects.filter(question__exam=self.exam).count(), 2)
+
+    def test_attempt_detail_normalizes_uppercase_question_types(self):
+        question = CBTQuestion.objects.create(
+            exam=self.exam,
+            prompt="What's 2+2?",
+            question_type='MCQ',
+            mark_value=1,
+            difficulty=CBTQuestion.DIFFICULTY_MEDIUM,
+            topic='math',
+            explanation='Basic addition',
+            order=0,
+            is_active=True,
+        )
+        CBTChoice.objects.create(question=question, text='4', is_correct=True, order=0)
+        CBTChoice.objects.create(question=question, text='5', is_correct=False, order=1)
+
+        session = self.client.session
+        session.create()
+        session_key = session.session_key
+        attempt = CBTStudentAttempt.objects.create(
+            exam=self.exam,
+            session_key=session_key,
+            started_at=self.exam.created_at,
+        )
+        attempt.attempt_questions.create(question=question, randomized_position=1)
+
+        response = self.client.get(reverse('student_cbt:attempt_detail', kwargs={'uuid': attempt.uuid}))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('What\'s 2+2?', response.content.decode('utf-8'))
+        self.assertIn('"question_type": "mcq"', response.content.decode('utf-8'))
+
+    def test_student_attempt_template_has_no_broken_script_markers(self):
+        question = CBTQuestion.objects.create(
+            exam=self.exam,
+            prompt="What's 2+2?",
+            question_type='MCQ',
+            mark_value=1,
+            difficulty=CBTQuestion.DIFFICULTY_MEDIUM,
+            topic='math',
+            explanation='Basic addition',
+            order=0,
+            is_active=True,
+        )
+        CBTChoice.objects.create(question=question, text='4', is_correct=True, order=0)
+        CBTChoice.objects.create(question=question, text='5', is_correct=False, order=1)
+
+        session = self.client.session
+        session.create()
+        session_key = session.session_key
+        attempt = CBTStudentAttempt.objects.create(
+            exam=self.exam,
+            session_key=session_key,
+            started_at=self.exam.created_at,
+        )
+        attempt.attempt_questions.create(question=question, randomized_position=1)
+
+        response = self.client.get(reverse('student_cbt:attempt_detail', kwargs={'uuid': attempt.uuid}))
+        html = response.content.decode('utf-8')
+        self.assertNotIn('`        async function openSubmitModal()', html)
+        self.assertIn('displayQuestion(1);', html)
 
     def test_import_questions_txt_creates_new_questions(self):
         url = reverse('teacher_cbt:import_questions', kwargs={'exam_pk': self.exam.pk})
@@ -284,6 +346,26 @@ class PracticeAttemptSaveTests(TestCase):
         self.client = Client()
 
     def test_practice_attempt_save_persists_multiple_answers(self):
+
+    def test_student_can_see_practice_exam_assigned_to_another_class(self):
+        student_user = User.objects.create_user(username='practice_student', password='pass')
+        student_class = SchoolClasses.objects.create(class_name='JSS 1')
+        other_class = SchoolClasses.objects.create(class_name='SS 3')
+        Student.objects.create(
+            admission_no='PRACTICE-001',
+            surname='Student',
+            user=student_user,
+            student_class=student_class,
+        )
+        self.exam.school_class = other_class
+        self.exam.save(update_fields=['school_class'])
+        self.client.force_login(student_user)
+
+        with patch('cbt.views.is_cbt_student', return_value=True):
+            response = self.client.get(reverse('student_cbt:practice_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.exam.name)
         start_url = reverse('cbt:practice_exam_start', kwargs={'pk': self.exam.pk})
         resp = self.client.get(start_url)
         self.assertEqual(resp.status_code, 302)

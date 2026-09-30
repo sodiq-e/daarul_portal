@@ -3,6 +3,11 @@ from .models import Student, StudentApplication, AdmissionFormField, AdmissionFo
 
 
 class StudentForm(forms.ModelForm):
+    def __init__(self, *args, allow_photo_upload=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not allow_photo_upload:
+            self.fields.pop('photo', None)
+
     class Meta:
         model = Student
         fields = [
@@ -18,7 +23,10 @@ class StudentForm(forms.ModelForm):
             'other_names': forms.TextInput(attrs={'class': 'form-control'}),
             'gender': forms.Select(attrs={'class': 'form-select'}),
             'student_class': forms.Select(attrs={'class': 'form-select'}),
-            'photo': forms.FileInput(attrs={'class': 'form-control'}),
+            'photo': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*',
+            }),
             'guardian_name': forms.TextInput(attrs={'class': 'form-control'}),
             'guardian_relationship': forms.TextInput(attrs={'class': 'form-control'}),
             'guardian_phone': forms.TextInput(attrs={'class': 'form-control'}),
@@ -41,6 +49,7 @@ class StudentApplicationForm(forms.ModelForm):
             'other_names',
             'dob',
             'gender',
+            'photo',
             'desired_class',
             'current_school',
             'student_address',
@@ -70,6 +79,10 @@ class StudentApplicationForm(forms.ModelForm):
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'other_names': forms.TextInput(attrs={'class': 'form-control'}),
             'gender': forms.Select(attrs={'class': 'form-select'}),
+            'photo': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*',
+            }),
             'desired_class': forms.Select(attrs={'class': 'form-select'}),
             'current_school': forms.TextInput(attrs={'class': 'form-control'}),
             'student_phone': forms.TextInput(attrs={'class': 'form-control'}),
@@ -85,6 +98,7 @@ class StudentApplicationForm(forms.ModelForm):
             'emergency_contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
         }
         labels = {
+            'photo': 'Passport Size Photo',
             'admission_number_requested': 'Requested Admission Number',
             'desired_class': 'Class Applying For',
             'current_school': 'Current/Previous School',
@@ -166,3 +180,5 @@ class StudentApplicationReviewForm(forms.ModelForm):
         labels = {
             'reviewer_notes': 'Review Notes',
         }
+
+

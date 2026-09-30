@@ -28,6 +28,9 @@
                     <p><strong>Full Name:</strong> {{ application.full_name }}</p>
                     <p><strong>Date of Birth:</strong> {{ application.dob|date:'d/m/Y' }}</p>
                     <p><strong>Gender:</strong> {{ application.get_gender_display }}</p>
+                    {% if application.photo %}
+                    <p><strong>Passport Photo:</strong><br><img src="{{ application.photo_display_url }}" alt="Passport photo of {{ application.full_name }}" class="img-thumbnail mt-2" style="width: 120px; aspect-ratio: 3 / 4; object-fit: cover;"></p>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
                     <p><strong>Class Applying For:</strong> {{ application.desired_class }}</p>

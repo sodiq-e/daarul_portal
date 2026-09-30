@@ -362,7 +362,7 @@ def attempt_detail(request, uuid):
         questions_list.append({
             'id': q.id,
             'prompt': q.prompt,
-            'question_type': q.question_type,
+            'question_type': (q.question_type or '').lower(),
             'mark_value': float(q.mark_value),
             'topic': getattr(q, 'topic', ''),
             'difficulty': getattr(q, 'difficulty', ''),
@@ -370,7 +370,6 @@ def attempt_detail(request, uuid):
         })
 
     # inject JSON into context for template
-    context['questions_json'] = json.dumps(questions_list)
     # build answers array aligned by position
     answers_arr = []
     for aq in attempt_questions:
@@ -390,13 +389,29 @@ def attempt_detail(request, uuid):
         else:
             answers_arr.append(None)
 
-    context['answers_json'] = json.dumps(answers_arr)
-    context['flagged_questions_json'] = json.dumps(list(attempt_questions.filter(is_flagged=True).values_list('randomized_position', flat=True)))
+    flagged_questions = list(attempt_questions.filter(is_flagged=True).values_list('randomized_position', flat=True))
     context['total_questions'] = attempt.attempt_questions.count() or attempt.exam.questions.filter(is_active=True).count()
     # Determine remaining time for the current attempt
     elapsed_seconds = max(0, int((timezone.now() - attempt.started_at).total_seconds()))
     total_seconds = int(attempt.exam.duration_minutes * 60)
     context['time_left_seconds'] = max(0, total_seconds - elapsed_seconds)
+
+    attempt_payload = {
+        'uuid': str(attempt.uuid),
+        'examId': attempt.exam.id,
+        'totalQuestions': context['total_questions'],
+        'allowNavigation': bool(attempt.exam.allow_navigation),
+        'oneAtATime': bool(attempt.exam.one_at_a_time),
+        'showInstantResults': bool(attempt.exam.show_instant_results),
+        'showCorrections': bool(attempt.exam.show_corrections),
+        'durationMinutes': int(attempt.exam.duration_minutes),
+        'timeLeftSeconds': context['time_left_seconds'],
+        'attemptSubmitted': bool(attempt.is_submitted),
+        'questions': questions_list,
+        'answers': answers_arr,
+        'flaggedQuestions': flagged_questions,
+    }
+    context['attempt_data_json'] = json.dumps(attempt_payload)
     return render(request, 'cbt/student_attempt_view.html', context)
 
 
@@ -1421,13 +1436,6 @@ class StudentCBTPracticeListView(LoginRequiredMixin, UserPassesTestMixin, Practi
 
     def test_func(self):
         return is_cbt_student(self.request.user)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        student_class = getattr(getattr(self.request.user, 'student_profile', None), 'student_class', None)
-        if student_class:
-            context['practice_exams'] = context['practice_exams'].filter(school_class=student_class)
-        return context
 
 
 @method_decorator(login_required, name='dispatch')
