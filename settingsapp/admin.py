@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SchoolSettings, PageTheme, GalleryImage
+from .models import DidYouKnowTip, SchoolSettings, PageTheme, GalleryImage
 from .models import HeroText, HeroButton
 
 
@@ -160,3 +160,11 @@ class GalleryImageAdmin(admin.ModelAdmin):
         return 'No image'
     image_preview.short_description = 'Preview'
     image_preview.allow_tags = True
+
+
+@admin.register(DidYouKnowTip)
+class DidYouKnowTipAdmin(admin.ModelAdmin):
+    list_display = ('message', 'tenant', 'order', 'is_active')
+    list_filter = ('tenant', 'is_active')
+    list_editable = ('order', 'is_active')
+    search_fields = ('message',)

@@ -2,13 +2,14 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=0.7">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{{ SCHOOL_NAME }}</title>
   {% load static %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Global Animation System -->
   <link rel="stylesheet" href="{% static 'css/animations.css' %}">
   <link rel="stylesheet" href="{% static 'css/animation-utilities.css' %}">
+  <link rel="stylesheet" href="{% static 'css/portal-lists.css' %}">
   {% block extra_css %}{% endblock %}
    <style>
     :root {
@@ -36,6 +37,25 @@
       background: var(--background-color);
       color: var(--text-color);
       animation: fadeIn 0.4s ease-in;
+    }
+
+    .skip-link {
+      position: fixed;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 100000;
+      padding: 0.75rem 1rem;
+      transform: translateY(calc(-100% - 1rem));
+      border-radius: 0.375rem;
+      background: #101828;
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .skip-link:focus {
+      transform: translateY(0);
+      color: #fff;
     }
 
     .btn-primary,
@@ -113,26 +133,93 @@
       position: fixed;
       top: 0;
       left: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-      width: 0;
-      z-index: 9999;
-      animation: loadingBar 0.6s ease-in-out;
+      width: 100%;
+      height: 4px;
+      z-index: 100001;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 160ms ease, visibility 160ms ease;
     }
 
-    .page-loader.complete {
-      animation: completeBar 0.4s ease-out forwards;
+    .page-loader.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .page-loader-fill {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: 0 999px 999px 0;
+      background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+      box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color) 52%, transparent);
+    }
+
+    .page-loader.is-loading .page-loader-fill {
+      animation: loadingBar 1.1s cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+    }
+
+    .page-loader.is-complete .page-loader-fill {
+      width: 100%;
+      transition: width 180ms ease-out;
+    }
+
+    .page-load-status {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      max-width: calc(100vw - 24px);
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: var(--surface-color);
+      color: var(--text-color);
+      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.16);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.2;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translate(-50%, -6px);
+      transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+    }
+
+    .page-load-status.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+    }
+
+    .page-load-spinner {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 15px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--action-color);
+      border-radius: 50%;
+      animation: pageLoadSpin 700ms linear infinite;
     }
 
     @keyframes loadingBar {
-      0% { width: 0; }
-      50% { width: 80%; }
-      100% { width: 95%; }
+      from { width: 8%; }
+      to { width: 88%; }
     }
 
-    @keyframes completeBar {
-      0% { width: 95%; opacity: 1; }
-      100% { width: 100%; opacity: 0; }
+    @keyframes pageLoadSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .page-load-spinner {
+        animation-duration: 1.8s;
+      }
     }
 
     /* ===== TOAST NOTIFICATIONS ===== */
@@ -523,6 +610,7 @@
       display: none;
       justify-content: space-around;
       align-items: center;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
       z-index: 9999;
       box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
     }
@@ -533,7 +621,7 @@
       }
 
       .content {
-        padding-bottom: 70px !important;
+        padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
       }
 
       footer {
@@ -543,6 +631,7 @@
 
     .nav-item {
       flex: 1;
+      min-height: 56px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -2833,15 +2922,6 @@
 }
 
 /* BUTTON */
-.menu-btn {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: none;
-  color: white;
-  font-size: 18px;
-}
 
 @media print {
   /* Page setup */
@@ -3321,13 +3401,34 @@
   }
 
   </style>
+  <link rel="stylesheet" href="{% static 'css/navigation.css' %}">
 
 </head>
 
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
   <!-- ✅ PAGE LOADER -->
-  <div class="page-loader" id="pageLoader"></div>
+  <div class="page-loader" id="pageLoader" aria-hidden="true">
+    <span class="page-loader-fill"></span>
+  </div>
+  <div class="page-load-status" id="pageLoadStatus" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">
+    <span class="page-load-spinner" aria-hidden="true"></span>
+    <span id="pageLoadMessage"></span>
+  </div>
+  <aside class="offline-notice" id="offlineNotice" role="alert" aria-live="assertive" aria-atomic="true" hidden>
+    <div class="offline-notice-heading">
+      <span class="offline-notice-icon" aria-hidden="true"><i class="fas fa-wifi"></i></span>
+      <strong id="offlineNoticeTitle">You're offline</strong>
+      <button type="button" class="offline-notice-dismiss" id="offlineNoticeDismiss" aria-label="Dismiss offline message">&times;</button>
+    </div>
+    <p class="offline-notice-message" id="offlineNoticeMessage">The request was stopped before it was sent. This page is still open.</p>
+    <div class="offline-tip" id="offlineTip" hidden>
+      <span class="offline-tip-label">Did you know?</span>
+      <span id="offlineTipMessage"></span>
+    </div>
+  </aside>
+  {{ offline_tip_messages|json_script:"offlineTipMessages" }}
 
   <!-- ✅ TOAST CONTAINER -->
   <div class="toast-container" id="toastContainer"></div>
@@ -3492,7 +3593,9 @@
 
     <!-- RIGHT: Menu -->
     <div class="header-right">
-      <button id="menuBtn" class="menu-btn">☰</button>
+      <button id="menuBtn" class="menu-btn" type="button" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">
+        <i id="menuBtnIcon" class="fas fa-bars" aria-hidden="true"></i>
+      </button>
     </div>
 
   </div>
@@ -3546,56 +3649,6 @@
 <div class="layout">
 
 <aside class="sidebar" id="sidebar">
-<script>
-(function() {
-  try {
-    const saved = localStorage.getItem('sidebarState');
-    if (!saved) return;
-    const state = JSON.parse(saved);
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    if (!sidebar) return;
-
-    // Apply saved desktopCollapsed only on desktop viewports
-    try {
-      const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
-      if (state.desktopCollapsed && isDesktop) {
-        sidebar.classList.add('collapsed');
-      } else {
-        sidebar.classList.remove('collapsed');
-      }
-    } catch (e) {
-      // fallback: apply as before
-      if (state.desktopCollapsed) {
-        sidebar.classList.add('collapsed');
-      } else {
-        sidebar.classList.remove('collapsed');
-      }
-    }
-
-    if (state.mobileActive) {
-      // Mobile open state: ensure labels and sections are visible
-      sidebar.classList.add('active');
-      sidebar.classList.remove('collapsed');
-      document.querySelectorAll('.sidebar .menu-content').forEach((content) => content.classList.remove('collapsed'));
-      document.querySelectorAll('.sidebar .menu-header').forEach((header) => header.classList.add('active'));
-      if (overlay) {
-        overlay.classList.add('show');
-      }
-      document.body.classList.add('no-scroll');
-    } else {
-      sidebar.classList.remove('active');
-      if (overlay) {
-        overlay.classList.remove('show');
-      }
-      document.body.classList.remove('no-scroll');
-    }
-  } catch (error) {
-    console.warn('Unable to restore sidebar state:', error);
-  }
-})();
-</script>
-
 {% if user.is_authenticated %}
 
   <div style="padding:16px; font-weight:bold; color: white;">
@@ -3623,57 +3676,48 @@
           </a>
         </div>
       </div>
-
     {% elif is_tenant_admin or user.is_staff %}
-    <div class="menu-section">
-      <div class="menu-header active" data-menu-key="admin" onclick="toggleMenu(this)">
-        <span>👨‍💼 ADMIN</span>
-        <span class="arrow">›</span>
-      </div>
-      <div class="menu-content">
-        <a href="{% url 'teachers:teacher_list' %}" data-tooltip="Teachers"
-           class="{% if request.resolver_match.url_name == 'teacher_list' %}active{% endif %}">
-          <i class="fas fa-users"></i><span> Teachers Management</span>
-        </a>
-
-        <a href="{% url 'students:student_application_list' %}" data-tooltip="Student Applications"
-           class="{% if request.resolver_match.url_name == 'student_application_list' %}active{% endif %}">
-          <i class="fas fa-file-circle-check"></i><span> Student Applications</span>
-        </a>
-
-        <a href="{% url 'teachers:class_teacher_list' %}" data-tooltip="Classes"
-           class="{% if request.resolver_match.url_name == 'class_teacher_list' %}active{% endif %}">
-          <i class="fas fa-chalkboard-teacher"></i><span> Class-Teacher Assign</span>
-        </a>
-
-        <a href="{% url 'teachers:teacher_permissions' %}" data-tooltip="Permissions"
-           class="{% if request.resolver_match.url_name == 'teacher_permissions' %}active{% endif %}">
-          <i class="fas fa-user-shield"></i><span> Teacher Permissions</span>
-        </a>
-
-        <a href="{% url 'admin_exam_paper_list' %}" data-tooltip="Exam Review"
-           class="{% if request.resolver_match.url_name in 'admin_exam_paper_list admin_exam_paper_detail admin_exam_paper_action' %}active{% endif %}">
-          <i class="fas fa-file-signature"></i><span> Exam Paper Review</span>
-        </a>
-
-        <a href="{% url 'teachers:admin_scheme_list' %}" data-tooltip="Scheme"
-           class="{% if request.resolver_match.url_name == 'admin_scheme_list' %}active{% endif %}">
-          <i class="fas fa-tasks"></i><span> Scheme Approval</span>
-        </a>
-
-        <a href="{% url 'admin_messages_list' %}" data-tooltip="Messages"
-           class="{% if request.resolver_match.url_name == 'admin_messages_list' %}active{% endif %}">
-          <i class="fas fa-envelope"></i><span> Contact Messages</span>
-        </a>
-
-        <a href="{% url 'admin_portal_users_list' %}" data-tooltip="Portal"
-           class="{% if request.resolver_match.url_name == 'admin_portal_users_list' %}active{% endif %}">
-          <i class="fas fa-comments"></i><span> Portal Conversations</span>
-          {% if portal_unread_count > 0 %}
-            <span style="background: #dc3545; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; margin-left: 8px;">{{ portal_unread_count }}</span>
-          {% endif %}
-        </a>
-
+      <div class="menu-section">
+        <div class="menu-header active" data-menu-key="admin" onclick="toggleMenu(this)">
+          <span>ADMIN</span>
+          <span class="arrow">›</span>
+        </div>
+        <div class="menu-content">
+          <a href="{% url 'teachers:teacher_list' %}" data-tooltip="Teachers"
+             class="{% if request.resolver_match.url_name == 'teacher_list' %}active{% endif %}">
+            <i class="fas fa-users"></i><span> Teachers Management</span>
+          </a>
+          <a href="{% url 'students:student_application_list' %}" data-tooltip="Student Applications"
+             class="{% if request.resolver_match.url_name == 'student_application_list' %}active{% endif %}">
+            <i class="fas fa-file-circle-check"></i><span> Student Applications</span>
+          </a>
+          <a href="{% url 'teachers:class_teacher_list' %}" data-tooltip="Classes"
+             class="{% if request.resolver_match.url_name == 'class_teacher_list' %}active{% endif %}">
+            <i class="fas fa-chalkboard-teacher"></i><span> Class-Teacher Assign</span>
+          </a>
+          <a href="{% url 'teachers:teacher_permissions' %}" data-tooltip="Permissions"
+             class="{% if request.resolver_match.url_name == 'teacher_permissions' %}active{% endif %}">
+            <i class="fas fa-user-shield"></i><span> Teacher Permissions</span>
+          </a>
+          <a href="{% url 'admin_exam_paper_list' %}" data-tooltip="Exam Review"
+             class="{% if request.resolver_match.url_name in 'admin_exam_paper_list admin_exam_paper_detail admin_exam_paper_action' %}active{% endif %}">
+            <i class="fas fa-file-signature"></i><span> Exam Paper Review</span>
+          </a>
+          <a href="{% url 'teachers:admin_scheme_list' %}" data-tooltip="Scheme"
+             class="{% if request.resolver_match.url_name == 'admin_scheme_list' %}active{% endif %}">
+            <i class="fas fa-tasks"></i><span> Scheme Approval</span>
+          </a>
+          <a href="{% url 'admin_messages_list' %}" data-tooltip="Messages"
+             class="{% if request.resolver_match.url_name == 'admin_messages_list' %}active{% endif %}">
+            <i class="fas fa-envelope"></i><span> Contact Messages</span>
+          </a>
+          <a href="{% url 'admin_portal_users_list' %}" data-tooltip="Portal"
+             class="{% if request.resolver_match.url_name == 'admin_portal_users_list' %}active{% endif %}">
+            <i class="fas fa-comments"></i><span> Portal Conversations</span>
+            {% if portal_unread_count > 0 %}
+              <span class="notification-badge">{{ portal_unread_count }}</span>
+            {% endif %}
+          </a>
         <a href="{% url 'results_admin:dashboard' %}" data-tooltip="Results"
            class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
           <i class="fas fa-chart-bar"></i><span> Results Settings</span>
@@ -3978,115 +4022,26 @@
 {% endif %}
 
 </aside>
-<script>
-(function() {
-  try {
-    const raw = localStorage.getItem('sidebarMenuState');
-    if (!raw) return;
-    const state = JSON.parse(raw);
-    const normalizeKey = (text) => text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w-]/g, '');
+<main class="content" id="main-content" tabindex="-1">
+  {% block content %}{% endblock %}
 
-    document.querySelectorAll('.menu-header').forEach((header) => {
-      const key = header.dataset.menuKey || normalizeKey(header.textContent || '');
-      const content = header.nextElementSibling;
-      if (!content || !content.classList.contains('menu-content') || key === '') return;
-
-      const collapsed = state[key];
-      if (collapsed === undefined) return;
-
-      if (collapsed) {
-        content.classList.add('collapsed');
-        header.classList.remove('active');
-      } else {
-        content.classList.remove('collapsed');
-        header.classList.add('active');
-      }
-    });
-  } catch (error) {
-    console.warn('Unable to restore sidebar menu state:', error);
-  }
-})();
-// If the sidebar is collapsed, ensure no menu-content is left collapsed so
-// icon-only buttons remain visible. This prevents saved-per-section collapsed
-// state from hiding icons when the sidebar is in icon-only mode.
-(function() {
-  try {
-    const sidebarEl = document.getElementById('sidebar');
-    if (sidebarEl && sidebarEl.classList.contains('collapsed')) {
-      document.querySelectorAll('.menu-content').forEach(c => c.classList.remove('collapsed'));
-    }
-  } catch (e) {
-    // non-fatal
-  }
-})();
-</script>
-
-<script>
-(function() {
-  // Ensure every actionable item in the sidebar has an icon. Non-destructive: only adds icons when missing.
-  try {
-    const mapping = new Map([
-      ['logout','fas fa-sign-out-alt'],
-      ['sign in','fas fa-sign-in-alt'],
-      ['sign up','fas fa-user-plus'],
-      ['profile','fas fa-user'],
-      ['teacher','fas fa-chalkboard-teacher'],
-      ['teachers','fas fa-users'],
-      ['messages','fas fa-envelope'],
-      ['message','fas fa-envelope'],
-      ['search','fas fa-search'],
-      ['settings','fas fa-cog'],
-      ['result','fas fa-chart-bar'],
-      ['results','fas fa-chart-bar'],
-      ['announcement','fas fa-bullhorn'],
-      ['gallery','fas fa-image'],
-      ['classes','fas fa-chalkboard'],
-      ['home','fas fa-home'],
-      ['fees','fas fa-wallet'],
-      ['attendance','fas fa-calendar-check'],
-      ['cbt','fas fa-laptop-code'],
-      ['portal','fas fa-comments'],
-    ]);
-
-    const items = document.querySelectorAll('#sidebar a, #sidebar form button');
-    items.forEach(el => {
-      if (el.querySelector('i')) return; // already has an icon
-      const txt = (el.getAttribute('data-tooltip') || el.textContent || '').toLowerCase();
-      let cls = 'fas fa-link';
-      for (const [k, v] of mapping.entries()) {
-        if (txt.indexOf(k) !== -1) { cls = v; break; }
-      }
-      const i = document.createElement('i');
-      i.className = cls;
-      el.insertBefore(i, el.firstChild);
-    });
-  } catch (e) {
-    // non-fatal
-    console.warn('sidebar: icon injection failed', e);
-  }
-})();
-</script>
-
-  <main class="content">
-        {% block content %}{% endblock %}
-
-        {% if print_verification %}
-        <div class="print-verification-footer" style="margin-top: 24px; padding: 12px 0 0 0; border-top: 1px solid #ccc; font-size: 11px; color: #444; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden;">
-          <div style="display: block; width: 100%; box-sizing: border-box;">
-            <div style="margin-bottom: 8px;">
-              <div style="font-weight: 700; margin-bottom: 4px;">Document Verification</div>
-              <div>{{ print_verification.verification_text }}</div>
-              <div style="margin-top: 4px;"><strong>Reference:</strong> {{ print_verification.reference }}</div>
-            </div>
-            <div style="width: 100%; display: flex; justify-content: center; align-items: center; margin-top: 8px; padding: 0 12px 0 12px; box-sizing: border-box;">
-              <div style="width: 84px; max-width: 100%; padding: 3px; border: 1px solid #ddd; background: white; box-sizing: border-box; margin: 0 auto;">
-                <div style="width: 100%; height: auto;">{{ print_verification.qr_svg|safe }}</div>
-              </div>
-            </div>
-          </div>
+  {% if print_verification %}
+  <div class="print-verification-footer" style="margin-top: 24px; padding: 12px 0 0 0; border-top: 1px solid #ccc; font-size: 11px; color: #444; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden;">
+    <div style="display: block; width: 100%; box-sizing: border-box;">
+      <div style="margin-bottom: 8px;">
+        <div style="font-weight: 700; margin-bottom: 4px;">Document Verification</div>
+        <div>{{ print_verification.verification_text }}</div>
+        <div style="margin-top: 4px;"><strong>Reference:</strong> {{ print_verification.reference }}</div>
+      </div>
+      <div style="width: 100%; display: flex; justify-content: center; align-items: center; margin-top: 8px; padding: 0 12px; box-sizing: border-box;">
+        <div style="width: 84px; max-width: 100%; padding: 3px; border: 1px solid #ddd; background: white; box-sizing: border-box; margin: 0 auto;">
+          <div style="width: 100%; height: auto;">{{ print_verification.qr_svg|safe }}</div>
         </div>
-        {% endif %}
-      </main>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</main>
 
 
     </div>
@@ -4114,7 +4069,7 @@ class Toast {
   constructor(title, message, type = 'info', duration = 5000, onClick = null) {
     this.title = title;
     this.message = message;
-    this.type = type; // success, error, warning, info
+    this.type = type;
     this.duration = duration;
     this.onClick = onClick;
     this.element = null;
@@ -4123,14 +4078,7 @@ class Toast {
 
   show() {
     const container = document.getElementById('toastContainer');
-
-    const icons = {
-      success: '✓',
-      error: '✕',
-      warning: '⚠',
-      info: 'ⓘ'
-    };
-
+    const icons = { success: '✓', error: '✕', warning: '⚠', info: 'ⓘ' };
     this.element = document.createElement('div');
     this.element.className = `toast ${this.type}`;
     this.element.innerHTML = `
@@ -4141,41 +4089,28 @@ class Toast {
       </div>
       <button class="toast-close">&times;</button>
     `;
-
     if (typeof this.onClick === 'function') {
       this.element.style.cursor = 'pointer';
       this.element.addEventListener('click', (event) => {
-        const target = event.target;
-        if (target && target.classList.contains('toast-close')) {
-          return;
-        }
-        this.onClick();
+        if (!event.target.classList.contains('toast-close')) this.onClick();
       });
     }
-
     container.appendChild(this.element);
-
-    const closeBtn = this.element.querySelector('.toast-close');
-    closeBtn.addEventListener('click', () => this.remove());
-
-    if (this.duration) {
-      setTimeout(() => this.remove(), this.duration);
-    }
+    this.element.querySelector('.toast-close').addEventListener('click', () => this.remove());
+    if (this.duration) setTimeout(() => this.remove(), this.duration);
   }
 
   remove() {
-    if (this.element) {
-      this.element.classList.add('removing');
-      setTimeout(() => this.element.remove(), 300);
-    }
+    if (!this.element) return;
+    this.element.classList.add('removing');
+    setTimeout(() => this.element.remove(), 300);
   }
 }
 
-// Global toast functions
 window.showToast = (titleOrOptions, message = '', type = 'info', duration = 5000, onClick = null) => {
   if (typeof titleOrOptions === 'object' && titleOrOptions !== null) {
-    const opts = titleOrOptions;
-    return new Toast(opts.title || 'Notification', opts.message || '', opts.type || 'info', opts.duration || 5000, opts.onClick);
+    const options = titleOrOptions;
+    return new Toast(options.title || 'Notification', options.message || '', options.type || 'info', options.duration || 5000, options.onClick);
   }
   return new Toast(titleOrOptions, message, type, duration, onClick);
 };
@@ -4184,11 +4119,7 @@ window.NotificationManager = {
   toastIds: new Set(),
   unreadCounts: {},
   totalUnread: 0,
-  sounds: {
-    default: 'default',
-    message: 'message',
-    announcement: 'announcement'
-  },
+  sounds: { default: 'default', message: 'message', announcement: 'announcement' },
   audioContext: null,
   soundEnabled: true,
 
@@ -4459,24 +4390,51 @@ window.openCommandPalette = () => {
 class PageLoader {
   constructor() {
     this.element = document.getElementById('pageLoader');
+    this.status = document.getElementById('pageLoadStatus');
+    this.message = document.getElementById('pageLoadMessage');
+    this.fill = this.element ? this.element.querySelector('.page-loader-fill') : null;
+    this.statusTimer = null;
+    this.slowTimer = null;
+    this.finishTimer = null;
+    this.isActive = false;
+  }
+
+  showMessage(message) {
+    if (!this.status || !this.message) return;
+    this.message.textContent = message;
+    this.status.classList.add('is-visible');
+    this.status.setAttribute('aria-hidden', 'false');
   }
 
   start() {
-    if (this.element) {
-      this.element.style.width = '0';
-      this.element.classList.remove('complete');
-      this.element.style.opacity = '1';
-    }
+    if (!this.element || !this.fill) return;
+    clearTimeout(this.statusTimer);
+    clearTimeout(this.slowTimer);
+    clearTimeout(this.finishTimer);
+    this.isActive = true;
+    this.element.classList.remove('is-complete', 'is-loading');
+    this.element.classList.add('is-visible');
+    void this.fill.offsetWidth;
+    this.element.classList.add('is-loading');
+    this.statusTimer = setTimeout(() => this.showMessage('Loading page…'), 180);
+    this.slowTimer = setTimeout(() => {
+      this.showMessage('Still loading. You can keep using the page.');
+    }, 8000);
   }
 
   complete() {
-    if (this.element) {
-      this.element.classList.add('complete');
-      setTimeout(() => {
-        this.element.style.opacity = '0';
-        this.element.style.transition = 'opacity 0.3s ease';
-      }, 400);
-    }
+    if (!this.isActive || !this.element) return;
+    this.isActive = false;
+    clearTimeout(this.statusTimer);
+    clearTimeout(this.slowTimer);
+    this.status.classList.remove('is-visible');
+    this.status.setAttribute('aria-hidden', 'true');
+    this.message.textContent = '';
+    this.element.classList.remove('is-loading');
+    this.element.classList.add('is-complete');
+    this.finishTimer = setTimeout(() => {
+      this.element.classList.remove('is-visible', 'is-complete');
+    }, 220);
   }
 }
 
@@ -4485,26 +4443,32 @@ const pageLoader = new PageLoader();
 // Auto show/hide loader on navigation
 document.addEventListener('click', (e) => {
   const link = e.target.closest('a[href]');
-  if (link && link.hostname === window.location.hostname && !link.hasAttribute('download')) {
-    pageLoader.start();
+  if (!link || e.defaultPrevented || link.hasAttribute('download')) return;
+  const url = new URL(link.href, window.location.href);
+  if (url.origin !== window.location.origin || !['http:', 'https:'].includes(url.protocol)) return;
+  if (navigator.onLine === false) {
+    e.preventDefault();
+    window.showOfflineNotice?.();
+    return;
   }
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (link.target && link.target !== '_self') return;
+  if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
+  pageLoader.start();
+});
+
+document.addEventListener('submit', (e) => {
+  const form = e.target;
+  if (e.defaultPrevented || (form.target && form.target !== '_self')) return;
+  const url = new URL(form.action || window.location.href, window.location.href);
+  if (url.origin === window.location.origin) pageLoader.start();
 });
 
 window.addEventListener('load', () => pageLoader.complete());
+window.addEventListener('pageshow', () => pageLoader.complete());
 
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener('keydown', (e) => {
-  // Escape to close sidebar on mobile
-  if (e.key === 'Escape') {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    if (sidebar && sidebar.classList.contains('active')) {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('show');
-      document.body.classList.remove('no-scroll');
-    }
-  }
-
   // Ctrl+K for command palette (ready for future implementation)
   if (e.ctrlKey && e.key === 'k') {
     e.preventDefault();
@@ -4535,191 +4499,6 @@ if (scrollTopBtn) {
   });
 }
 
-const menuBtn = document.getElementById('menuBtn');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
-
-function getSidebarState() {
-  const sidebar = document.getElementById('sidebar');
-  return {
-    desktopCollapsed: sidebar ? sidebar.classList.contains('collapsed') : false,
-    mobileActive: sidebar ? sidebar.classList.contains('active') : false
-  };
-}
-
-function saveSidebarState() {
-  try {
-    localStorage.setItem('sidebarState', JSON.stringify(getSidebarState()));
-  } catch (error) {
-    console.warn('Unable to save sidebar state:', error);
-  }
-}
-
-function saveSidebarMenuState() {
-  try {
-    const state = {};
-    const normalizeKey = (text) => text.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^\w-]/g, '');
-
-    document.querySelectorAll('.menu-header').forEach((header) => {
-      const key = header.dataset.menuKey || normalizeKey(header.textContent || '');
-      const content = header.nextElementSibling;
-      if (!content || !content.classList.contains('menu-content') || key === '') return;
-      state[key] = content.classList.contains('collapsed');
-    });
-
-    localStorage.setItem('sidebarMenuState', JSON.stringify(state));
-  } catch (error) {
-    console.warn('Unable to save sidebar menu state:', error);
-  }
-}
-
-// Handle menu button click
-menuBtn.addEventListener('click', function(e) {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const screenWidth = window.innerWidth;
-
-  if (screenWidth < 1024) {
-    // Mobile: toggle drawer only; preserve per-section collapsed state
-    sidebar.classList.toggle('active');
-    sidebar.classList.remove('collapsed');
-    overlay.classList.toggle('show');
-    document.body.classList.toggle('no-scroll');
-  } else {
-    // Desktop: toggle collapse
-    sidebar.classList.toggle('collapsed');
-  }
-  saveSidebarState();
-});
-
-// Close drawer when overlay clicked
-overlay.addEventListener('click', function() {
-  sidebar.classList.remove('active');
-  overlay.classList.remove('show');
-  document.body.classList.remove('no-scroll');
-  saveSidebarState();
-});
-
-// Close drawer when any link is clicked on mobile
-document.querySelectorAll('.sidebar a').forEach(link => {
-  link.addEventListener('click', function() {
-    if (window.innerWidth < 1024) {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('show');
-      document.body.classList.remove('no-scroll');
-      saveSidebarState();
-    }
-  });
-});
-
-// Handle form button (logout)
-const logoutBtn = document.querySelector('.sidebar form button');
-if (logoutBtn) {
-  logoutBtn.addEventListener('click', function() {
-    if (window.innerWidth < 1024) {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('show');
-      document.body.classList.remove('no-scroll');
-      saveSidebarState();
-    }
-  });
-}
-
-// ===== COLLAPSIBLE MENU SECTIONS =====
-function toggleMenu(header) {
-  const content = header.nextElementSibling;
-
-  if (!content || !content.classList.contains('menu-content')) {
-    return;
-  }
-
-  // If the whole sidebar is in collapsed (icon-only) mode, do not hide
-  // the menu-content; keep icons visible. Instead, mark the header active
-  // visually but avoid toggling the collapsed class which would hide icons.
-  const sidebarEl = document.getElementById('sidebar');
-  if (sidebarEl && sidebarEl.classList.contains('collapsed')) {
-    header.classList.add('active');
-    content.classList.remove('collapsed');
-    // Persist the preference but ensure icons remain visible in collapsed mode
-    saveSidebarMenuState();
-    return;
-  }
-
-  // Normal behaviour when sidebar is expanded: toggle active/collapsed state
-  header.classList.toggle('active');
-  content.classList.toggle('collapsed');
-  saveSidebarMenuState();
-}
-
-// ===== AUTO-EXPAND CURRENT SECTION ON LOAD =====
-document.addEventListener('DOMContentLoaded', function() {
-  // Find any active link and expand its parent section
-  const activeLink = document.querySelector('.sidebar a.active');
-
-  if (activeLink) {
-    let parent = activeLink.closest('.menu-content');
-    if (parent) {
-      // Expand the parent content
-      parent.classList.remove('collapsed');
-
-      // Mark the header as active
-      const header = parent.previousElementSibling;
-      if (header && header.classList.contains('menu-header')) {
-        header.classList.add('active');
-      }
-    }
-  }
-});
-
-// ===== SWIPE DETECTION FOR MOBILE SIDEBAR =====
-let touchStartX = 0;
-let touchEndX = 0;
-
-document.addEventListener('touchstart', (e) => {
-  touchStartX = e.changedTouches[0].screenX;
-}, false);
-
-document.addEventListener('touchend', (e) => {
-  touchEndX = e.changedTouches[0].screenX;
-  handleSwipe();
-}, false);
-
-function handleSwipe() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('overlay');
-  const threshold = 50;
-
-  // Swipe left (close sidebar)
-  if (touchStartX - touchEndX > threshold) {
-    if (sidebar.classList.contains('active')) {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('show');
-      document.body.classList.remove('no-scroll');
-    }
-  }
-}
-
-// ===== MOBILE BOTTOM NAVIGATION ACTIVE STATE =====
-function updateActiveNavItem() {
-  const currentPath = window.location.pathname;
-  document.querySelectorAll('.nav-item').forEach(item => {
-    const href = item.getAttribute('href');
-    if (href && currentPath.startsWith(href) && href !== '#') {
-      item.classList.add('active');
-    } else {
-      item.classList.remove('active');
-    }
-  });
-}
-
-updateActiveNavItem();
-
-// Update on navigation
-window.addEventListener('load', updateActiveNavItem);
-document.addEventListener('click', (e) => {
-  setTimeout(updateActiveNavItem, 100);
-});
 
 // ===== BREADCRUMB GENERATION =====
 function generateBreadcrumbs() {
@@ -4801,14 +4580,12 @@ class AnnouncementTicker {
 window.announcementTicker = new AnnouncementTicker();
 
 // Example usage (will be populated from Django context):
-// announcementTicker.addMessage('📢 Important: Exam results will be released on May 15');
 
 // ===== ENHANCED TABLE SYSTEM =====
 class DataTable {
   constructor(tableSelector) {
     this.table = document.querySelector(tableSelector);
     if (!this.table) return;
-
     this.tbody = this.table.querySelector('tbody');
     this.rows = Array.from(this.tbody.querySelectorAll('tr'));
     this.filteredRows = [...this.rows];
@@ -4818,7 +4595,6 @@ class DataTable {
     this.sortColumn = null;
     this.sortDirection = 'asc';
     this.selectedRows = new Set();
-
     this.init();
   }
 
@@ -4830,8 +4606,7 @@ class DataTable {
   }
 
   setupSortableHeaders() {
-    const headers = this.table.querySelectorAll('thead th[data-sortable]');
-    headers.forEach(header => {
+    this.table.querySelectorAll('thead th[data-sortable]').forEach((header) => {
       header.addEventListener('click', () => this.sortTable(header));
     });
   }
@@ -4839,47 +4614,29 @@ class DataTable {
   sortTable(header) {
     const column = header.dataset.sortable;
     const columnIndex = Array.from(header.parentNode.children).indexOf(header);
-
-    // Reset all headers
-    this.table.querySelectorAll('thead th').forEach(h => {
-      h.classList.remove('sort-asc', 'sort-desc');
-    });
-
-    // Toggle sort direction
-    if (this.sortColumn === column) {
-      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.sortColumn = column;
-      this.sortDirection = 'asc';
-    }
-
+    this.table.querySelectorAll('thead th').forEach((item) => item.classList.remove('sort-asc', 'sort-desc'));
+    this.sortDirection = this.sortColumn === column && this.sortDirection === 'asc' ? 'desc' : 'asc';
+    this.sortColumn = column;
     header.classList.add(this.sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
-
-    // Sort rows
-    this.filteredRows.sort((a, b) => {
-      const aVal = a.children[columnIndex].textContent.trim();
-      const bVal = b.children[columnIndex].textContent.trim();
-
-      // Try numeric sort first
-      const aNum = parseFloat(aVal);
-      const bNum = parseFloat(bVal);
-
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        return this.sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+    this.filteredRows.sort((left, right) => {
+      const leftValue = left.children[columnIndex].textContent.trim();
+      const rightValue = right.children[columnIndex].textContent.trim();
+      const leftNumber = parseFloat(leftValue);
+      const rightNumber = parseFloat(rightValue);
+      if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
+        return this.sortDirection === 'asc' ? leftNumber - rightNumber : rightNumber - leftNumber;
       }
-
-      // Fall back to string sort
       return this.sortDirection === 'asc'
-        ? aVal.localeCompare(bVal)
-        : bVal.localeCompare(aVal);
+        ? leftValue.localeCompare(rightValue)
+        : rightValue.localeCompare(leftValue);
     });
-
     this.currentPage = 1;
     this.render();
   }
 
   setupSearchFilter() {
-    const searchInput = document.querySelector(`[data-table-search="${this.table.id}"]`);
+// announcementTicker.addMessage('📢 Important: Exam results will be released on May 15');
+
     if (!searchInput) return;
 
     searchInput.addEventListener('input', (e) => {
@@ -5114,26 +4871,21 @@ class ThemeManager {
       document.documentElement.style.setProperty('--accent-color', theme.accentColor);
     }
 
-    // Update toggle button text
     const toggle = document.getElementById('themeToggle');
-    if (toggle) {
-      toggle.textContent = theme.mode === 'dark' ? '☀️' : '🌙';
-    }
-
+    if (toggle) toggle.textContent = theme.mode === 'dark' ? '🌙' : '☀️';
     localStorage.setItem(this.storageKey, JSON.stringify(theme));
   }
 
   setupToggle() {
     const toggle = document.getElementById('themeToggle');
     if (!toggle) return;
-
     toggle.addEventListener('click', () => {
       const isDark = document.body.hasAttribute('data-theme');
       const theme = {
         mode: isDark ? 'light' : 'dark',
         primaryColor: document.documentElement.style.getPropertyValue('--primary-color').trim(),
         secondaryColor: document.documentElement.style.getPropertyValue('--secondary-color').trim(),
-        accentColor: document.documentElement.style.getPropertyValue('--accent-color').trim()
+        accentColor: document.documentElement.style.getPropertyValue('--accent-color').trim(),
       };
       this.applyTheme(theme);
       showToast(theme.mode === 'dark' ? 'Dark Mode' : 'Light Mode', 'Theme updated!', 'success', 2000);
@@ -5143,75 +4895,61 @@ class ThemeManager {
   setupCustomizer() {
     const customizer = document.getElementById('themeCustomizer');
     if (!customizer) return;
-
-    // Build preset buttons
     const presetsContainer = document.getElementById('themePresets');
     Object.entries(this.presets).forEach(([key, preset]) => {
-      const btn = document.createElement('button');
-      btn.className = 'theme-preset';
-      btn.textContent = preset.name;
-      btn.addEventListener('click', () => {
+      const button = document.createElement('button');
+      button.className = 'theme-preset';
+      button.textContent = preset.name;
+      button.addEventListener('click', () => {
         const theme = {
           mode: document.body.hasAttribute('data-theme') ? 'dark' : 'light',
           primaryColor: preset.primary,
           secondaryColor: preset.secondary,
-          accentColor: preset.accent
+          accentColor: preset.accent,
         };
         this.applyTheme(theme);
         this.updatePresetsUI();
         showToast('Theme', `${preset.name} theme applied!`, 'success', 2000);
       });
-      presetsContainer.appendChild(btn);
+      presetsContainer.appendChild(button);
     });
 
-    // Build color palette
     const colorPalette = document.getElementById('colorPalette');
-    this.colors.forEach(color => {
-      const btn = document.createElement('button');
-      btn.className = 'color-option';
-      btn.style.background = color;
-      btn.setAttribute('data-color', color);
-      btn.addEventListener('click', () => {
+    this.colors.forEach((color) => {
+      const button = document.createElement('button');
+      button.className = 'color-option';
+      button.style.background = color;
+      button.setAttribute('data-color', color);
+      button.addEventListener('click', () => {
         const current = localStorage.getItem(this.storageKey);
         const theme = current ? JSON.parse(current) : {
-          mode: 'light',
-          primaryColor: '#4CAF50',
-          secondaryColor: '#45a049',
-          accentColor: '#FFC107'
+          mode: 'light', primaryColor: '#4CAF50', secondaryColor: '#45a049', accentColor: '#FFC107',
         };
         theme.primaryColor = color;
         this.applyTheme(theme);
         this.updateColorUI();
         showToast('Color', 'Primary color updated!', 'success', 2000);
       });
-      colorPalette.appendChild(btn);
+      colorPalette.appendChild(button);
     });
 
     this.updateColorUI();
-
-    // Accessibility toggles
     const highContrastToggle = document.getElementById('highContrastToggle');
     const reducedMotionToggle = document.getElementById('reducedMotionToggle');
     const largerTextToggle = document.getElementById('largerTextToggle');
-
-    const accessibilityKey = 'portal_accessibility';
-    const saved = localStorage.getItem(accessibilityKey);
+    const saved = localStorage.getItem('portal_accessibility');
     const accessibility = saved ? JSON.parse(saved) : {};
-
     highContrastToggle.checked = accessibility.highContrast || false;
     reducedMotionToggle.checked = accessibility.reducedMotion || false;
     largerTextToggle.checked = accessibility.largerText || false;
-
     highContrastToggle.addEventListener('change', () => {
       accessibility.highContrast = highContrastToggle.checked;
       this.applyAccessibility(accessibility);
     });
-
     reducedMotionToggle.addEventListener('change', () => {
       accessibility.reducedMotion = reducedMotionToggle.checked;
       this.applyAccessibility(accessibility);
     });
-
     largerTextToggle.addEventListener('change', () => {
       accessibility.largerText = largerTextToggle.checked;
       this.applyAccessibility(accessibility);
@@ -5220,108 +4958,63 @@ class ThemeManager {
 
   updateColorUI() {
     const currentColor = document.documentElement.style.getPropertyValue('--primary-color').trim();
-    document.querySelectorAll('.color-option').forEach(btn => {
-      btn.classList.remove('active');
-      if (btn.getAttribute('data-color') === currentColor) {
-        btn.classList.add('active');
-      }
+    document.querySelectorAll('.color-option').forEach((button) => {
+      button.classList.toggle('active', button.getAttribute('data-color') === currentColor);
     });
   }
 
-  updatePresetsUI() {
-    // Could add active state to matching preset
-  }
+  updatePresetsUI() {}
 
   setupAccessibility() {
     const toggle = document.getElementById('accessibilityToggle');
-    if (!toggle) return;
-
-    toggle.addEventListener('click', () => {
-      const customizer = document.getElementById('themeCustomizer');
-      customizer.classList.toggle('show');
+    if (toggle) toggle.addEventListener('click', () => {
+      document.getElementById('themeCustomizer').classList.toggle('show');
     });
   }
 
   applyAccessibility(settings) {
     const body = document.body;
-
-    if (settings.highContrast) {
-      body.setAttribute('data-accessibility', 'high-contrast');
-    } else {
-      body.removeAttribute('data-accessibility');
-    }
-
-    if (settings.reducedMotion) {
-      body.setAttribute('data-accessibility', 'reduced-motion');
-    }
-
-    if (settings.largerText) {
-      document.documentElement.style.fontSize = '18px';
-    } else {
-      document.documentElement.style.fontSize = '16px';
-    }
-
+    if (settings.highContrast) body.setAttribute('data-accessibility', 'high-contrast');
+    else body.removeAttribute('data-accessibility');
+    if (settings.reducedMotion) body.setAttribute('data-accessibility', 'reduced-motion');
+    if (settings.largerText) document.documentElement.style.fontSize = '18px';
+    else document.documentElement.style.fontSize = '16px';
     localStorage.setItem('portal_accessibility', JSON.stringify(settings));
   }
 }
 
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener('keydown', (e) => {
-  // Escape to close menus
   if (e.key === 'Escape') {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
     const customizer = document.getElementById('themeCustomizer');
     const shortcutsPanel = document.getElementById('shortcutsPanel');
-
-    if (sidebar && sidebar.classList.contains('active')) {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('show');
-      document.body.classList.remove('no-scroll');
-    }
-    if (customizer && customizer.classList.contains('show')) {
-      customizer.classList.remove('show');
-    }
+    if (customizer && customizer.classList.contains('show')) customizer.classList.remove('show');
     if (shortcutsPanel && shortcutsPanel.classList.contains('show')) {
       shortcutsPanel.classList.remove('show');
       document.getElementById('shortcutsOverlay').classList.remove('show');
     }
   }
-
-  // Ctrl+K for quick search (command palette ready)
   if (e.ctrlKey && e.key === 'k') {
     e.preventDefault();
     window.openCommandPalette();
   }
-
-  // Ctrl+/ for shortcuts help
   if (e.ctrlKey && e.key === '/') {
     e.preventDefault();
-    const panel = document.getElementById('shortcutsPanel');
-    const overlay = document.getElementById('shortcutsOverlay');
-    panel.classList.toggle('show');
-    overlay.classList.toggle('show');
+    document.getElementById('shortcutsPanel').classList.toggle('show');
+    document.getElementById('shortcutsOverlay').classList.toggle('show');
   }
-
-  // Ctrl+Shift+D for dark mode toggle
   if (e.ctrlKey && e.shiftKey && e.key === 'D') {
     e.preventDefault();
     document.getElementById('themeToggle').click();
   }
-
-  // Ctrl+Shift+A for accessibility menu
   if (e.ctrlKey && e.shiftKey && e.key === 'A') {
     e.preventDefault();
     document.getElementById('accessibilityToggle').click();
   }
-
-  // Shift+H for home
   if (e.shiftKey && e.key === 'H') {
     e.preventDefault();
     window.location.href = '/';
   }
-
-  // Shift+T for back to top
   if (e.shiftKey && e.key === 'T') {
     e.preventDefault();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5813,5 +5506,6 @@ window.showNotification = (title, message, type = 'info', duration = 5000) => {
 
 
 
+<script src="{% static 'js/navigation.js' %}"></script>
 </body>
 </html>

@@ -901,6 +901,19 @@ class HeroButton(models.Model):
         return self.label
 
 
+class DidYouKnowTip(TenantModel):
+    message = models.CharField(max_length=280)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return self.message[:80]
+
+
 # Additional hero configuration fields on SchoolSettings
 SchoolSettings.add_to_class('hero_height', models.CharField(max_length=20, default='80vh', blank=True, help_text='CSS height value for the hero (e.g., 80vh, 600px)'))
 SchoolSettings.add_to_class('hero_overlay_opacity', models.PositiveSmallIntegerField(default=50, blank=True, help_text='Overlay opacity percentage (0-100)'))

@@ -1,7 +1,8 @@
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.contrib.auth import get_user_model
 
 from .forms import SchoolSettingsForm
-from .models import GalleryImage, SchoolSettings, Tenant, TenantMembership
+from .models import DidYouKnowTip, GalleryImage, SchoolSettings, Tenant, TenantMembership
 from .print_utils import build_document_verification, generate_document_reference
 from .tenant_utils import clear_current_tenant, resolve_tenant, set_current_tenant, user_has_tenant_access
 from .middleware import TenantMiddleware
@@ -219,6 +220,106 @@ class TenantResolutionTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['hostname'], 'schoolb.localhost')
+
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'portal-settings.localhost'])
+class PortalSettingsAccessTests(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            name='Portal Settings School',
+            slug='portal-settings-school',
+            hostname='portal-settings.localhost',
+        )
+        self.admin = get_user_model().objects.create_user(
+            username='portal-settings-admin',
+            password='testpass123',
+        )
+        TenantMembership.objects.create(
+            user=self.admin,
+            tenant=self.tenant,
+            role='school_admin',
+            is_active=True,
+        )
+
+    def test_anonymous_user_cannot_open_portal_settings(self):
+        response = self.client.get('/settings/', HTTP_HOST=self.tenant.hostname)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login/', response.url)
+
+    def test_non_admin_user_cannot_open_tenant_portal_settings(self):
+        user = get_user_model().objects.create_user(
+            username='portal-settings-user',
+            password='testpass123',
+        )
+        self.client.force_login(user)
+
+        response = self.client.get('/settings/', HTTP_HOST=self.tenant.hostname)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_tenant_admin_can_manage_only_their_portal_settings(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get('/settings/', HTTP_HOST=self.tenant.hostname)
+
+        self.assertEqual(response.status_code, 200)
+        settings_obj = SchoolSettings.objects.get(tenant=self.tenant)
+        self.assertEqual(response.context['form'].instance, settings_obj)
+
+    def test_tenant_admin_can_add_tips_and_tenant_context_is_isolated(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            '/settings/did-you-know/',
+            {'message': 'Read announcements in the portal.', 'order': 2, 'is_active': 'on'},
+            HTTP_HOST=self.tenant.hostname,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(DidYouKnowTip.objects.filter(
+            tenant=self.tenant,
+            message='Read announcements in the portal.',
+            is_active=True,
+        ).exists())
+        management_response = self.client.get(
+            '/settings/did-you-know/',
+            HTTP_HOST=self.tenant.hostname,
+        )
+        self.assertEqual(management_response.status_code, 200)
+        self.assertContains(management_response, 'Read announcements in the portal.')
+
+        other_tenant = Tenant.objects.create(
+            name='Another School',
+            slug='another-school-tips',
+            hostname='another-school-tips.localhost',
+        )
+        DidYouKnowTip.objects.create(
+            tenant=other_tenant,
+            message='Private tip for another school.',
+        )
+        response = self.client.get('/', HTTP_HOST=self.tenant.hostname)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Read announcements in the portal.')
+        self.assertNotContains(response, 'Private tip for another school.')
+
+    def test_non_admin_cannot_manage_tips(self):
+        user = get_user_model().objects.create_user(username='tips-non-admin', password='testpass123')
+        self.client.force_login(user)
+
+        response = self.client.get('/settings/did-you-know/', HTTP_HOST=self.tenant.hostname)
+
+        self.assertEqual(response.status_code, 404)
+
+
+class DefaultOfflineTipTests(TestCase):
+    def test_ten_default_tips_are_seeded_only_for_daarulbayaan(self):
+        tenant = Tenant.objects.get(slug='daarulbayaan')
+        tips = DidYouKnowTip.objects.filter(tenant=tenant, is_active=True)
+
+        self.assertEqual(tips.count(), 10)
+        self.assertTrue(tips.filter(message__startswith='Offline? Changes were not submitted.').exists())
+        self.assertFalse(DidYouKnowTip.objects.exclude(tenant=tenant).exists())
 
 
 class DocumentVerificationUtilsTests(SimpleTestCase):

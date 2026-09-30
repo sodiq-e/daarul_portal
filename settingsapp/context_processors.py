@@ -1,5 +1,6 @@
 from django.db.models import Q
-from .models import SchoolSettings, PageTheme, GalleryImage, HeroText, HeroButton
+from django.urls import reverse
+from .models import DidYouKnowTip, SchoolSettings, PageTheme, GalleryImage, HeroText, HeroButton
 from .print_utils import build_document_verification
 from announcements.models import Announcement
 from .tenant_utils import resolve_tenant, user_is_tenant_admin
@@ -74,9 +75,9 @@ def school_settings(request):
                 )
 
             if not HeroButton.objects.filter(school_settings=settings).exists():
-                HeroButton.objects.create(school_settings=settings, label='Apply for Admission', url='/apply/', order=1, active=True, open_in_new_tab=False)
-                HeroButton.objects.create(school_settings=settings, label='Contact Us', url='/contact/', order=2, active=True, open_in_new_tab=False)
-                HeroButton.objects.create(school_settings=settings, label='View Gallery', url='/gallery/', order=3, active=True, open_in_new_tab=False)
+                HeroButton.objects.create(school_settings=settings, label='Apply for Admission', url=reverse('students:student_application'), order=1, active=True, open_in_new_tab=False)
+                HeroButton.objects.create(school_settings=settings, label='Contact Us', url=reverse('contact'), order=2, active=True, open_in_new_tab=False)
+                HeroButton.objects.create(school_settings=settings, label='View Gallery', url=reverse('gallery'), order=3, active=True, open_in_new_tab=False)
         except Exception:
             # If seeding fails, continue with defaults rather than crashing the request
             pass
@@ -152,6 +153,11 @@ def school_settings(request):
                 btn for btn in HeroButton.objects.filter(school_settings=settings, active=True).order_by('order')
                 if (btn.label or '').strip() and (btn.url or '').strip()
             ] if settings else [],
+            'offline_tip_messages': list(
+                DidYouKnowTip.objects.filter(tenant=tenant, is_active=True)
+                .order_by('order', 'id')
+                .values_list('message', flat=True)
+            ),
             # Hero settings
             "hero_height": settings.hero_height if settings else '80vh',
             "hero_overlay_opacity": settings.hero_overlay_opacity if settings else 50,
@@ -189,6 +195,7 @@ def school_settings(request):
             "current_page": "home",
             "gallery_images": [],
             "hero_images": [],
+            "offline_tip_messages": [],
         }
 
 

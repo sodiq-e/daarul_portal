@@ -1,7 +1,7 @@
 from django import forms
 from urllib.parse import urlsplit
 from django.contrib.auth import get_user_model
-from .models import SchoolSettings, PageTheme, GalleryImage, Tenant, TenantMembership
+from .models import DidYouKnowTip, SchoolSettings, PageTheme, GalleryImage, Tenant, TenantMembership
 from .tenant_utils import get_tenant_base_domain
 
 
@@ -49,6 +49,20 @@ class TenantMembershipForm(forms.ModelForm):
         if self.tenant is not None and user is not None:
             self.instance.tenant = self.tenant
         return cleaned_data
+
+
+class DidYouKnowTipForm(forms.ModelForm):
+    class Meta:
+        model = DidYouKnowTip
+        fields = ['message', 'order', 'is_active']
+        widgets = {
+            'message': forms.Textarea(attrs={
+                'rows': 3,
+                'maxlength': 280,
+                'placeholder': 'A short helpful fact or tip shown when someone is offline.',
+            }),
+            'order': forms.NumberInput(attrs={'min': 0}),
+        }
 
 
 class SchoolSettingsForm(forms.ModelForm):

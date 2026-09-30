@@ -1,15 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.db.models import Avg
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
+from unittest.mock import patch
 
-from exams.models import Subject, Term
+from exams.models import ClassSubject, Subject, Term
 from school_classes.models import ClassTeacher, SchoolClasses, Teacher
 from settingsapp.models import Tenant
 from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
 from students.models import Student
 
-from .models import Promotion, WeeklyAssessmentRecord
+from .models import GradeScale, Promotion, ResultTemplate, StudentResult, WeeklyAssessmentRecord
 from .views import build_weekly_assessment_chart_data, promotions_list
 
 
@@ -366,6 +367,7 @@ class WeeklyAssessmentChartFilterTests(TestCase):
     def tearDown(self):
         clear_current_tenant()
 
+
     def test_chart_uses_week_labels_when_subject_filter_is_applied(self):
         queryset = WeeklyAssessmentRecord.objects.filter(student=self.student)
         labels, data = build_weekly_assessment_chart_data(
@@ -396,3 +398,115 @@ class WeeklyAssessmentChartFilterTests(TestCase):
 
     def tearDown(self):
         clear_current_tenant()
+
+
+class StudentResultsLookupTests(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.create(
+            name='Student Results Lookup School',
+            slug='student-results-lookup-school',
+            hostname='student-results-lookup.example.com',
+        )
+        set_current_tenant(self.tenant)
+        self.school_class = SchoolClasses.objects.create(class_name='Basic 6')
+        self.subject = Subject.objects.create(name='Science', code='SCI', tenant=self.tenant)
+        self.class_subject = ClassSubject.objects.create(
+            school_class=self.school_class,
+            subject=self.subject,
+            tenant=self.tenant,
+        )
+        self.grade_scale = GradeScale.objects.create(
+            name='Standard',
+            min_score=0,
+            max_score=100,
+            grade='A',
+            remark='Excellent',
+            grade_point=5,
+            tenant=self.tenant,
+        )
+        self.user = get_user_model().objects.create_user(username='result-student', password='secret123')
+        self.user.profile.is_approved = True
+        self.user.profile.requested_group = 'Student'
+        self.user.profile.save()
+        self.student = Student.objects.create(
+            admission_no='RESULT001',
+            surname='Own',
+            other_names='Student',
+            student_class=self.school_class,
+            user=self.user,
+            tenant=self.tenant,
+        )
+        self.other_student = Student.objects.create(
+            admission_no='RESULT002',
+            surname='Other',
+            other_names='Student',
+            student_class=self.school_class,
+            tenant=self.tenant,
+        )
+        self.own_term = Term.objects.create(
+            name='first', display_name='First Term', academic_year='2025/2026', tenant=self.tenant,
+        )
+        self.other_term = Term.objects.create(
+            name='second', display_name='Second Term', academic_year='2024/2025', tenant=self.tenant,
+        )
+        self.own_template = ResultTemplate.objects.create(
+            name='Own Results', school_class=self.school_class, term=self.own_term,
+            grade_scale=self.grade_scale, tenant=self.tenant,
+        )
+        self.other_template = ResultTemplate.objects.create(
+            name='Other Results', school_class=self.school_class, term=self.other_term,
+            grade_scale=self.grade_scale, tenant=self.tenant,
+        )
+        StudentResult.objects.create(
+            student=self.student, class_subject=self.class_subject, term=self.own_term,
+            result_template=self.own_template, is_published=True, tenant=self.tenant,
+        )
+        StudentResult.objects.create(
+            student=self.other_student, class_subject=self.class_subject, term=self.other_term,
+            result_template=self.other_template, is_published=True, tenant=self.tenant,
+        )
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def tearDown(self):
+        clear_current_tenant()
+
+    def test_student_lookup_ignores_another_admission_number_and_labels_session(self):
+        response = self.client.post(
+            '/results/lookup/',
+            {'admission_no': self.other_student.admission_no},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="#main-content"')
+        self.assertContains(response, 'Skip to main content')
+        self.assertContains(response, 'First Term (2025/2026)')
+        self.assertNotContains(response, '2024/2025')
+        self.assertContains(response, self.student.full_name())
+        self.assertNotContains(response, self.other_student.full_name())
+        self.assertNotContains(response, 'name="admission_no"')
+
+        report_card_url = f'/results/student/{self.student.pk}/{self.own_term.pk}/'
+        self.assertContains(response, report_card_url)
+        report_card_response = self.client.get(report_card_url)
+        self.assertEqual(report_card_response.status_code, 200)
+        self.assertTemplateUsed(report_card_response, 'results/student_report_card.html')
+
+    def test_student_can_open_own_report_card_from_results_list(self):
+        self.user.profile.is_approved = False
+        self.user.profile.save()
+
+        with patch('results.views.user_is_staff', return_value=True):
+            response = self.client.get(
+                f'/results/student/{self.student.pk}/{self.own_term.pk}/'
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'results/student_report_card.html')
+
+        other_response = self.client.get(
+            f'/results/student/{self.other_student.pk}/{self.own_term.pk}/'
+        )
+        self.assertEqual(other_response.status_code, 403)
+        self.assertTemplateUsed(other_response, 'errors/403.html')
+        self.assertContains(other_response, 'Your account is not approved yet.', status_code=403)

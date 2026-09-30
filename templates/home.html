@@ -1,28 +1,4 @@
 {% extends "base.html" %}
-<!-- 🔥 Dynamic Pages Section -->
-<section class="dynamic-pages reveal">
-  <h2>{{ school_settings.homepage_updates_title|default:"Latest Updates" }}</h2>
-
-  {% for page in pages %}
-    <div class="dynamic-page-block card-hover reveal">
-      <h3>{{ page.title }}</h3>
-
-      {% for item in page.contents.all %}
-        <div class="dynamic-content">
-          <h4>{{ item.title }}</h4>
-
-          {% if item.image %}
-            <img src="{{ item.image.url }}" style="max-width:100%; border-radius:10px; margin-bottom:10px;" class="image-hover">
-          {% endif %}
-
-          <p>{{ item.body }}</p>
-        </div>
-      {% endfor %}
-    </div>
-  {% empty %}
-    <p>{{ school_settings.homepage_updates_empty_text|default:"No updates available yet." }}</p>
-  {% endfor %}
-</section>
 {% block content %}
 
 {% if not user.is_authenticated %}
@@ -1430,5 +1406,28 @@
   });
 </script>
 
+<section class="dynamic-pages reveal" id="homepage-updates">
+  <h2>{{ school_settings.homepage_updates_title|default:"Latest Updates" }}</h2>
+
+  {% for page in pages %}
+    <article class="dynamic-page-block card-hover reveal">
+      <h3>{{ page.title }}</h3>
+
+      {% for item in page.contents.all %}
+        <div class="dynamic-content">
+          <h4>{{ item.title }}</h4>
+
+          {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.title|default:page.title }}" loading="lazy" style="max-width:100%; border-radius:10px; margin-bottom:10px;" class="image-hover">
+          {% endif %}
+
+          <p>{{ item.body }}</p>
+        </div>
+      {% endfor %}
+    </article>
+  {% empty %}
+    <p>{{ school_settings.homepage_updates_empty_text|default:"No updates available yet." }}</p>
+  {% endfor %}
+</section>
 
 {% endblock %}

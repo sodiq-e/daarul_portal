@@ -42,6 +42,16 @@ def user_is_staff(user):
         return False
 
 
+def _report_card_access_denied(request, message):
+    student_profile = getattr(request.user, 'student_profile', None)
+    return_url = reverse('student_results_lookup') if student_profile else reverse('home')
+    return render(request, 'errors/403.html', {
+        'message': message,
+        'return_url': return_url,
+        'return_label': 'Return to results' if student_profile else 'Return home',
+    }, status=403)
+
+
 def get_next_school_class(source_class):
     """Find the next class in ordering for bulk promotion."""
     ordered_classes = list(SchoolClasses.objects.order_by('level', 'class_name'))
@@ -489,9 +499,10 @@ def class_results(request, class_id, term_id):
 @login_required
 def student_report_card(request, student_id, term_id):
     """Generate individual student report card"""
-    if not user_profile_approved(request.user):
-        messages.error(request, 'Your account is not approved yet.')
-        return redirect('home')
+    linked_student = getattr(request.user, 'student_profile', None)
+    is_own_student = linked_student and linked_student.pk == student_id
+    if not user_profile_approved(request.user) and not is_own_student:
+        return _report_card_access_denied(request, 'Your account is not approved yet.')
 
     student = get_object_or_404(Student, pk=student_id)
     term = get_object_or_404(Term, pk=term_id)
@@ -499,21 +510,18 @@ def student_report_card(request, student_id, term_id):
     # Check if user can view this student's results
     if request.user.is_superuser or user_is_tenant_admin(request.user):
         pass
+    elif is_own_student:
+        pass
     elif user_is_staff(request.user):
         try:
             teacher = request.user.teacher_profile
             from school_classes.models import ClassTeacher
             if not ClassTeacher.objects.filter(teacher=teacher, school_class=student.student_class).exists():
-                messages.error(request, 'You do not have permission to view this report card.')
-                return redirect('home')
+                return _report_card_access_denied(request, 'You do not have permission to view this report card.')
         except Exception:
-            messages.error(request, 'You do not have permission to view this report card.')
-            return redirect('home')
-    elif hasattr(request.user, 'student_profile') and request.user.student_profile == student:
-        pass
+            return _report_card_access_denied(request, 'You do not have permission to view this report card.')
     else:
-        messages.error(request, 'You do not have permission to view this report card.')
-        return redirect('home')
+        return _report_card_access_denied(request, 'You do not have permission to view this report card.')
 
     # Get student results for the selected term, preserving historical class/template context.
     results = StudentResult.objects.filter(
@@ -777,7 +785,19 @@ def broadsheet(request, class_id, term_id):
 
 @login_required
 def student_results_by_admission(request):
-    """Allow students to view their results by admission number"""
+    """Show students their own results; retain admission lookup for staff."""
+    student = getattr(request.user, 'student_profile', None)
+    if student:
+        active_terms = Term.objects.filter(
+            studentresult__student=student,
+            studentresult__is_published=True,
+        ).distinct().order_by('-academic_year', 'name')
+        return render(request, 'results/student_results_lookup.html', {
+            'student': student,
+            'active_terms': active_terms,
+            'is_student_lookup': True,
+        })
+
     if request.method == 'POST':
         admission_no = request.POST.get('admission_no', '').strip()
 

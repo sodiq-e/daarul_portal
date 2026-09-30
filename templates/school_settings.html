@@ -4,7 +4,10 @@
 {% block content %}
 <div style="max-width:800px; margin:auto; background:white; padding:20px; border-radius:10px;">
 
-    <h2 style="text-align:center; margin-bottom:20px;">School Settings</h2>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <h2 style="margin:0;">School Settings</h2>
+        <a href="{% url 'did_you_know_tips' %}" class="btn btn-outline-primary">Manage offline tips</a>
+    </div>
 
     {% if messages %}
         <div style="margin-bottom:20px;">
@@ -164,6 +167,23 @@
             <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Hero Animated Text</legend>
             <p style="color:#555; margin-bottom:10px;">Add the words you want to rotate in the hero. You can choose how each one appears and how long it stays on screen.</p>
 
+            {% if hero_text_formset.non_form_errors or hero_text_formset.errors %}
+                <div class="alert alert-danger" role="alert">
+                    <strong>Hero text errors:</strong>
+                    {{ hero_text_formset.non_form_errors }}
+                    {% for form in hero_text_formset %}
+                        {% if form.errors %}
+                            <ul class="mb-2">
+                                {% for field, errors in form.errors.items %}
+                                    <li>{{ field|capfirst }}: {{ errors|join:", " }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="table-responsive">
             <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                 <thead style="background:#f9f9f9;"><tr>
                     <th style="padding:8px; border:1px solid #ddd;">Title</th>
@@ -196,12 +216,29 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </fieldset>
 
         <!-- Hero Buttons -->
         <fieldset style="border:1px solid #ddd; padding:20px; border-radius:10px; margin-bottom:30px;">
             <legend style="padding:0 10px; font-size:16px; font-weight:bold;">Hero CTA Buttons</legend>
             <p style="color:#555; margin-bottom:10px;">Create the buttons you want visitors to click in the hero. You can change their order and whether they open in a new tab.</p>
+            {% if hero_button_formset.non_form_errors or hero_button_formset.errors %}
+                <div class="alert alert-danger" role="alert">
+                    <strong>Hero button errors:</strong>
+                    {{ hero_button_formset.non_form_errors }}
+                    {% for form in hero_button_formset %}
+                        {% if form.errors %}
+                            <ul class="mb-2">
+                                {% for field, errors in form.errors.items %}
+                                    <li>{{ field|capfirst }}: {{ errors|join:", " }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="table-responsive">
             <table style="width:100%; border-collapse:collapse;">
                 <thead style="background:#f9f9f9;"><tr>
                     <th style="padding:8px; border:1px solid #ddd;">Label</th>
@@ -226,6 +263,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </fieldset>
         
         <!-- Homepage Hero Settings -->
@@ -320,9 +358,10 @@
             <small style="color:#666; display:block; margin-top:5px;">Link for copyright text (e.g., privacy policy URL)</small>
         </fieldset>
 
-{% if gallery_formset.errors %}
+{% if gallery_formset.non_form_errors or gallery_formset.errors %}
 <div style="background:#ffdddd; padding:10px; margin-bottom:15px; border-radius:5px;">
     <strong>Gallery Form Errors:</strong>
+    {{ gallery_formset.non_form_errors }}
 
     {% for form in gallery_formset %}
         {% for field in form %}
@@ -369,6 +408,7 @@
 
             <p style="color:#555; margin-bottom:10px;">Usage: choose <strong>Hero (Homepage)</strong> for images to appear in the homepage hero, <strong>Portal Video</strong> for videos shown in the portal header, or <strong>Gallery</strong> for general gallery items.</p>
 
+            <div class="table-responsive">
             <table style="width:100%; border-collapse:collapse;">
                 <thead style="background:#f0f0f0;">
                     <tr>
@@ -398,6 +438,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </fieldset>
 
         <button type="submit"

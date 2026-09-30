@@ -78,6 +78,27 @@ class GlobalSearchTests(TestCase):
             for item in results
         ))
 
+
+class HomepageTests(TestCase):
+    def test_published_homepage_updates_render_inside_the_content_block(self):
+        Page.objects.create(
+            title='Term Dates',
+            slug='term-dates',
+            content='The new term begins soon.',
+            is_published=True,
+            show_on_homepage=True,
+        )
+
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="homepage-updates"')
+        self.assertContains(response, 'Term Dates')
+        self.assertContains(response, 'href="/students/apply/"')
+        self.assertNotContains(response, 'href="/apply/"')
+        self.assertContains(response, 'id="pageLoadStatus"')
+        self.assertContains(response, 'role="status"')
+
     def test_named_routes_are_searchable_without_handwritten_keywords(self):
         from pages.views import _named_route_results
 

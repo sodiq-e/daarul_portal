@@ -4,9 +4,9 @@
 {% block content %}
 <div class="container mt-4">
     <div class="row mb-3">
-        <div class="col-12 d-flex justify-content-between align-items-center">
+                <div class="col-12 portal-list-header">
             <div>
-                <h2>Practice CBT Exams</h2>
+                        <h2 class="portal-list-title">Practice CBT Exams</h2>
                 <p class="text-muted">Browse practice exams for any class.</p>
             </div>
             <a href="{% url 'student_cbt:dashboard' %}" class="btn btn-outline-secondary">Back to CBT Dashboard</a>
@@ -14,13 +14,36 @@
     </div>
 
     <div class="row">
+        <form method="get" class="col-12 row g-2 align-items-end portal-filter-bar mb-4">
+            <div class="col-md-4">
+                <label for="class-filter" class="form-label">Class</label>
+                <select id="class-filter" name="class_id" class="form-select">
+                    <option value="">All classes</option>
+                    {% for class_id, class_name in school_classes %}
+                        <option value="{{ class_id }}" {% if selected_class == class_id|stringformat:'s' %}selected{% endif %}>{{ class_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="subject-filter" class="form-label">Subject</label>
+                <select id="subject-filter" name="subject_id" class="form-select">
+                    <option value="">All subjects</option>
+                    {% for subject_id, subject_name in subjects %}
+                        <option value="{{ subject_id }}" {% if selected_subject == subject_id|stringformat:'s' %}selected{% endif %}>{{ subject_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto portal-filter-actions">
+                <button type="submit" class="btn btn-primary">Filter tests</button>
+                <a href="{% url 'student_cbt:practice_list' %}" class="btn btn-outline-secondary">Clear</a>
+            </div>
         {% if practice_exams %}
             {% for exam in practice_exams %}
             <div class="col-md-6 mb-3">
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <h5 class="card-title">{{ exam.name }}</h5>
-                        <p class="card-text text-muted">{{ exam.subject.name }} &bull; {{ exam.duration_minutes }} minutes</p>
+                        <p class="card-text text-muted">{{ exam.school_class.class_name|default:'Class not specified' }} &bull; {{ exam.subject.name }} &bull; {{ exam.duration_minutes }} minutes</p>
                         <p class="card-text">
                             {% if exam.start_datetime %}
                                 Starts: {{ exam.start_datetime|date:'M d, Y H:i' }}<br>

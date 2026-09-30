@@ -231,11 +231,33 @@ class PracticeExamListView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['practice_exams'] = CBTExam.objects.filter(
+        practice_exams = CBTExam.objects.filter(
             exam_mode=CBTExam.PRACTICE,
             is_active=True,
             is_published=True,
-        ).order_by('name')
+        ).select_related('school_class', 'subject').order_by('name')
+        class_filter = self.request.GET.get('class_id', '')
+        subject_filter = self.request.GET.get('subject_id', '')
+        if not class_filter.isdigit():
+            class_filter = ''
+        if not subject_filter.isdigit():
+            subject_filter = ''
+
+        context['school_classes'] = practice_exams.exclude(
+            school_class__isnull=True
+        ).values_list('school_class_id', 'school_class__class_name').distinct().order_by('school_class__class_name')
+        context['subjects'] = practice_exams.values_list(
+            'subject_id', 'subject__name'
+        ).distinct().order_by('subject__name')
+
+        if class_filter:
+            practice_exams = practice_exams.filter(school_class_id=class_filter)
+        if subject_filter:
+            practice_exams = practice_exams.filter(subject_id=subject_filter)
+
+        context['selected_class'] = class_filter
+        context['selected_subject'] = subject_filter
+        context['practice_exams'] = practice_exams
         return context
 
 

@@ -1,10 +1,13 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.db import transaction
-from .models import SchoolSettings, GalleryImage, HeroText, HeroButton, Tenant
-from .forms import SchoolSettingsForm, TenantForm, TenantMembershipForm, GalleryImageFormSet, GalleryImageForm, HeroTextFormSet, HeroButtonFormSet
+from .models import DidYouKnowTip, SchoolSettings, GalleryImage, HeroText, HeroButton, Tenant
+from .forms import DidYouKnowTipForm, SchoolSettingsForm, TenantForm, TenantMembershipForm, GalleryImageFormSet, GalleryImageForm, HeroTextFormSet, HeroButtonFormSet
+from .tenant_utils import user_is_tenant_admin
 
 
 def _ensure_demo_homepage_content(settings_obj):
@@ -33,9 +36,9 @@ def _ensure_demo_homepage_content(settings_obj):
         )
 
     if not HeroButton.objects.filter(school_settings=settings_obj).exists():
-        HeroButton.objects.create(school_settings=settings_obj, label='Apply for Admission', url='/apply/', order=1, active=True, open_in_new_tab=False)
-        HeroButton.objects.create(school_settings=settings_obj, label='Contact Us', url='/contact/', order=2, active=True, open_in_new_tab=False)
-        HeroButton.objects.create(school_settings=settings_obj, label='View Gallery', url='/gallery/', order=3, active=True, open_in_new_tab=False)
+        HeroButton.objects.create(school_settings=settings_obj, label='Apply for Admission', url=reverse('students:student_application'), order=1, active=True, open_in_new_tab=False)
+        HeroButton.objects.create(school_settings=settings_obj, label='Contact Us', url=reverse('contact'), order=2, active=True, open_in_new_tab=False)
+        HeroButton.objects.create(school_settings=settings_obj, label='View Gallery', url=reverse('gallery'), order=3, active=True, open_in_new_tab=False)
 
 
 def _get_request_settings_obj(request):
@@ -190,10 +193,15 @@ def tenant_portal_settings(request, tenant_id):
     return render(request, 'school_settings.html', context)
 
 
+@login_required
 def school_settings(request):
     tenant = getattr(request, 'tenant', None)
 
-    if request.user.is_authenticated and not request.user.is_superuser and tenant is not None:
+    if tenant is None:
+        allowed = request.user.is_staff or request.user.is_superuser
+    else:
+        allowed = user_is_tenant_admin(request.user, tenant=tenant)
+    if not allowed:
         raise Http404
 
     settings_obj = _get_request_settings_obj(request)
@@ -275,6 +283,38 @@ def school_settings(request):
         'is_main_admin': request.user.is_authenticated and request.user.is_superuser,
     }
     return render(request, 'school_settings.html', context)
+
+
+@login_required
+def did_you_know_tips(request):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        allowed = request.user.is_staff or request.user.is_superuser
+    else:
+        allowed = user_is_tenant_admin(request.user, tenant=tenant)
+    if not allowed:
+        raise Http404
+
+    tips = DidYouKnowTip.objects.filter(tenant=tenant).order_by('order', 'id')
+    if request.method == 'POST' and request.POST.get('delete_tip'):
+        tip = get_object_or_404(tips, pk=request.POST['delete_tip'])
+        tip.delete()
+        messages.success(request, 'Offline tip removed.')
+        return redirect('did_you_know_tips')
+
+    form = DidYouKnowTipForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        tip = form.save(commit=False)
+        tip.tenant = tenant
+        tip.save()
+        messages.success(request, 'Offline tip saved.')
+        return redirect('did_you_know_tips')
+
+    return render(request, 'settingsapp/did_you_know_tips.html', {
+        'form': form,
+        'tips': tips,
+        'tenant': tenant,
+    })
 
 
 def gallery(request):

@@ -10,6 +10,7 @@
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h4>Search Student Results</h4>
+                                    <h4>{% if is_student_lookup %}My Results{% else %}Search Student Results{% endif %}</h4>
                 </div>
                 <div class="card-body">
                     {% if student %}
@@ -22,7 +23,7 @@
                                 {% for term in active_terms %}
                                 <li class="list-group-item">
                                     <a href="{% url 'student_report_card' student.id term.id %}">
-                                        {{ term.name }} - View Report Card
+                                        {{ term.display_name }} ({{ term.academic_year }}) - View Report Card
                                     </a>
                                 </li>
                                 {% endfor %}
@@ -31,6 +32,7 @@
                             <div class="alert alert-info">No terms available.</div>
                         {% endif %}
                         
+                        {% if not is_student_lookup %}
                         <div class="mt-3">
                             <form method="POST">
                                 {% csrf_token %}
@@ -38,6 +40,7 @@
                                 <button type="submit" class="btn btn-secondary" name="search_again">Search Another Student</button>
                             </form>
                         </div>
+                        {% endif %}
                     {% else %}
                         <form method="POST">
                             {% csrf_token %}

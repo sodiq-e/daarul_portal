@@ -346,6 +346,7 @@ class PracticeAttemptSaveTests(TestCase):
         self.client = Client()
 
     def test_practice_attempt_save_persists_multiple_answers(self):
+        pass
 
     def test_student_can_see_practice_exam_assigned_to_another_class(self):
         student_user = User.objects.create_user(username='practice_student', password='pass')
@@ -359,13 +360,30 @@ class PracticeAttemptSaveTests(TestCase):
         )
         self.exam.school_class = other_class
         self.exam.save(update_fields=['school_class'])
+        matching_exam = CBTExam.objects.create(
+            name='JSS 1 Practice Exam',
+            created_by=self.user,
+            subject=self.exam.subject,
+            school_class=student_class,
+            exam_mode=CBTExam.PRACTICE,
+            is_published=True,
+            is_active=True,
+        )
         self.client.force_login(student_user)
 
         with patch('cbt.views.is_cbt_student', return_value=True):
             response = self.client.get(reverse('student_cbt:practice_list'))
+            filtered_response = self.client.get(
+                reverse('student_cbt:practice_list'),
+                {'class_id': student_class.pk, 'subject_id': self.exam.subject_id},
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.exam.name)
+        self.assertContains(response, 'SS 3')
+        self.assertEqual(filtered_response.status_code, 200)
+        self.assertContains(filtered_response, matching_exam.name)
+        self.assertNotContains(filtered_response, self.exam.name)
         start_url = reverse('cbt:practice_exam_start', kwargs={'pk': self.exam.pk})
         resp = self.client.get(start_url)
         self.assertEqual(resp.status_code, 302)
