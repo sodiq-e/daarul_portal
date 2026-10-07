@@ -5,7 +5,7 @@
   {% if school_settings.homepage_hero_enabled|default:True %}
   {% with content_style=school_settings.hero_content_animation_style|default:'fade' eyebrow_style=school_settings.hero_eyebrow_animation_style|default:'slide-up' %}
   <!-- Unified Fullscreen Hero -->
-  <section class="home-hero unified-hero reveal hero-style-{{ content_style }} hero-eyebrow-style-{{ eyebrow_style }}" style="height: {{ school_settings.hero_height|default:'85vh' }}; --hero-button-fill: {{ school_settings.hero_button_background_color|default:'var(--action-color)' }}; --hero-button-text: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; --hero-button-border: {{ school_settings.hero_button_border_color|default:'#ffffff' }}; --hero-button-hover-background-color: {{ school_settings.hero_button_hover_background_color|default:'#ffffff' }}; --hero-button-hover-text-color: {{ school_settings.hero_button_hover_text_color|default:'#0f766e' }};" data-hero-duration="{{ school_settings.homepage_hero_slide_duration|default:6500 }}" data-auto-slide="{{ school_settings.enable_auto_slide|yesno:'true,false' }}" data-overlay-opacity="{{ school_settings.hero_overlay_opacity|default:55 }}" data-hero-animation-style="{{ content_style }}" data-hero-eyebrow-animation-style="{{ eyebrow_style }}">
+  <section class="home-hero unified-hero reveal hero-style-{{ content_style }} hero-eyebrow-style-{{ eyebrow_style }}" style="--configured-hero-height: {{ school_settings.hero_height|default:'85vh' }}; --hero-rotator-heading-size: {{ school_settings.hero_rotator_title_font_size|default:'3.5rem' }}; --hero-button-fill: {{ school_settings.hero_button_background_color|default:'var(--action-color)' }}; --hero-button-text: {{ school_settings.hero_button_text_color|default:'#ffffff' }}; --hero-button-border: {{ school_settings.hero_button_border_color|default:'#ffffff' }}; --hero-button-hover-background-color: {{ school_settings.hero_button_hover_background_color|default:'#ffffff' }}; --hero-button-hover-text-color: {{ school_settings.hero_button_hover_text_color|default:'#0f766e' }};" data-hero-duration="{{ school_settings.homepage_hero_slide_duration|default:6500 }}" data-auto-slide="{{ school_settings.enable_auto_slide|yesno:'true,false' }}" data-overlay-opacity="{{ school_settings.hero_overlay_opacity|default:55 }}" data-hero-animation-style="{{ content_style }}" data-hero-eyebrow-animation-style="{{ eyebrow_style }}">
     <div class="hero-bg">
       <div class="hero-slides">
         {% if hero_images and hero_images|length > 0 %}
@@ -30,44 +30,43 @@
       <div class="hero-panel">
         <div class="hero-left hero-text-position-{{ school_settings.hero_text_position|default:'left' }}">
           <p class="hero-eyebrow {{ eyebrow_style }}" style="font-size: {{ school_settings.hero_eyebrow_font_size|default:'clamp(0.8rem, 1.1vw, 0.95rem)' }}; animation-name: {% if eyebrow_style == 'slide-up' %}heroEyebrowSlideUp{% elif eyebrow_style == 'bounce' %}heroEyebrowBounce{% elif eyebrow_style == 'pulse' %}heroEyebrowPulse{% else %}heroEyebrowFade{% endif %}; animation-duration: {% if eyebrow_style == 'bounce' %}900ms{% elif eyebrow_style == 'pulse' %}1.2s{% else %}650ms{% endif %}; animation-iteration-count: {% if eyebrow_style == 'pulse' %}infinite{% else %}1{% endif %}; animation-fill-mode: forwards;">{{ school_settings.homepage_hero_eyebrow|default:"Welcome to" }}</p>
-          <h1 class="hero-title hero-content-anim" style="font-size: {{ school_settings.hero_title_font_size|default:'clamp(2.5rem, 4.8vw, 4.3rem)' }}; color: {{ school_settings.hero_title_color|default:'#ffffff' }}; animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 700ms; animation-fill-mode: both;">{{ school_settings.homepage_hero_title|default:school_settings.school_name|default:school_name }}</h1>
-
           <div class="hero-dynamic">
             {% if hero_texts and hero_texts|length > 0 and school_settings.enable_hero_text_animation|default:True %}
               <div class="hero-rotator hero-content-anim" data-anim-speed="{{ school_settings.hero_animation_speed|default:900 }}" style="animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 700ms; animation-fill-mode: both;">
                 {% for item in hero_texts %}
                   {% if item.title|default:'' or item.subtitle|default:'' %}
                     <div class="rotator-item {% if forloop.first %}active{% endif %}" data-display-seconds="{{ item.display_seconds }}" data-anim="{{ item.animation_type }}" data-animation-styles="{{ item.animation_styles|default:item.animation_type }}">
-                      <div class="rotator-title" style="font-size: {{ school_settings.hero_rotator_title_font_size|default:'clamp(1.25rem, 2.2vw, 1.75rem)' }};">{{ item.title }}</div>
-                      <div class="rotator-subtitle" style="font-size: {{ school_settings.hero_rotator_subtitle_font_size|default:'clamp(0.95rem, 1.4vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ item.subtitle }}</div>
+                      {% if item.title %}<h1 class="hero-title rotator-title" style="color: {{ school_settings.hero_title_color|default:'#ffffff' }};">{{ item.title }}</h1>{% endif %}
+                      {% if item.subtitle %}<p class="rotator-subtitle" style="color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ item.subtitle }}</p>{% endif %}
                     </div>
                   {% endif %}
                 {% endfor %}
               </div>
             {% else %}
               <div class="hero-static">
-                <div class="rotator-title" style="font-size: {{ school_settings.hero_rotator_title_font_size|default:'clamp(1.25rem, 2.2vw, 1.75rem)' }};">{{ school_settings.homepage_hero_intro|default:school_settings.homepage_welcome_text|truncatechars:120 }}</div>
-                <div class="rotator-subtitle" style="font-size: {{ school_settings.hero_rotator_subtitle_font_size|default:'clamp(0.95rem, 1.4vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ school_settings.motto|default:motto }}</div>
+                <h1 class="hero-title rotator-title" style="color: {{ school_settings.hero_title_color|default:'#ffffff' }};">{{ school_settings.homepage_hero_title|default:school_settings.school_name|default:school_name }}</h1>
+                <p class="rotator-subtitle" style="color: {{ school_settings.hero_text_color|default:'#f5f7ff' }};">{{ school_settings.homepage_hero_intro|default:school_settings.homepage_welcome_text|default:school_settings.motto|default:motto }}</p>
               </div>
             {% endif %}
           </div>
 
-          <div class="hero-motto hero-content-anim" style="font-size: {{ school_settings.hero_intro_font_size|default:'clamp(0.95rem, 1.35vw, 1.05rem)' }}; color: {{ school_settings.hero_text_color|default:'#f5f7ff' }}; animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 800ms; animation-fill-mode: both;">{{ school_settings.homepage_hero_intro|default:school_settings.motto|default:motto }}</div>
-
           <div class="hero-actions hero-content-anim" style="animation-name: {% if content_style == 'slide-up' %}heroContentSlideUp{% elif content_style == 'slide-left' %}heroContentSlideLeft{% elif content_style == 'slide-right' %}heroContentSlideRight{% elif content_style == 'zoom' %}heroContentZoom{% elif content_style == 'flip' %}heroContentFlip{% elif content_style == 'glow' %}heroContentGlow{% elif content_style == 'float' %}heroContentFloat{% else %}heroContentFade{% endif %}; animation-duration: 800ms; animation-fill-mode: both;">
             {% if hero_buttons and hero_buttons|length > 0 %}
               {% for btn in hero_buttons %}
-                <a href="{{ btn.url|default:'#' }}" class="button{% if forloop.counter == 2 %} secondary{% elif forloop.counter == 3 %} tertiary{% endif %}" {% if btn.open_in_new_tab %}target="_blank" rel="noopener"{% endif %} style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }};">{{ btn.label }}</a>
+                <a href="{{ btn.url|default:'#' }}" class="button{% if forloop.counter == 2 %} secondary{% elif forloop.counter == 3 %} tertiary{% endif %}" {% if btn.open_in_new_tab %}target="_blank" rel="noopener"{% endif %} style="font-size: {{ school_settings.hero_button_font_size|default:'1rem' }};">{{ btn.label }}</a>
               {% endfor %}
             {% else %}
-              <a href="{% url 'students:student_application' %}" class="button" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }};">{{ school_settings.homepage_hero_primary_cta_label|default:"Apply for Admission" }}</a>
-              <a href="{% url 'contact' %}" class="button secondary" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }};">{{ school_settings.homepage_hero_secondary_cta_label|default:"Contact Us" }}</a>
-              <a href="{% url 'gallery' %}" class="button tertiary" style="font-size: {{ school_settings.hero_button_font_size|default:'0.82rem' }};">{{ school_settings.homepage_hero_tertiary_cta_label|default:"View Gallery" }}</a>
+              <a href="{% url 'students:student_application' %}" class="button" style="font-size: {{ school_settings.hero_button_font_size|default:'1rem' }};">{{ school_settings.homepage_hero_primary_cta_label|default:"Apply for Admission" }}</a>
+              <a href="{% url 'contact' %}" class="button secondary" style="font-size: {{ school_settings.hero_button_font_size|default:'1rem' }};">{{ school_settings.homepage_hero_secondary_cta_label|default:"Contact Us" }}</a>
+              <a href="{% url 'gallery' %}" class="button tertiary" style="font-size: {{ school_settings.hero_button_font_size|default:'1rem' }};">{{ school_settings.homepage_hero_tertiary_cta_label|default:"View Gallery" }}</a>
             {% endif %}
           </div>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <aside class="hero-right">
+  <aside class="hero-right hero-support">
           {% if recent_announcements and school_settings.homepage_hero_show_announcements|default:True %}
             <article class="announcement-card" aria-live="polite">
               <div class="announcement-meta">
@@ -108,26 +107,21 @@
               {% endif %}
             </div>
           {% endif %}
-        </aside>
-      </div>
-    </div>
-  </section>
+  </aside>
   {% endwith %}
   <style>
   .unified-hero {
     position: relative;
     overflow: hidden;
-    min-height: 78vh;
-    margin-top: 0;
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    margin-bottom: 28px;
+    height: auto;
+    min-height: max(640px, var(--configured-hero-height, 78vh));
+    margin: 24px auto 32px;
+    width: min(1440px, calc(100% - 48px));
     padding: 0;
     border: 0;
-    border-radius: 0;
+    border-radius: 8px;
     background: transparent;
-    box-shadow: none;
+    box-shadow: 0 24px 64px rgba(16, 36, 47, 0.16);
     isolation: isolate;
   }
   .unified-hero .hero-bg {
@@ -135,6 +129,8 @@
     inset: 0;
     z-index: 0;
     margin: 0;
+    border-radius: inherit;
+    overflow: hidden;
   }
   .unified-hero .hero-slides {
     position: relative;
@@ -172,7 +168,7 @@
   .unified-hero .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(105deg, rgba(2, 6, 23, 0.64) 0%, rgba(2, 6, 23, 0.38) 48%, rgba(2, 6, 23, 0.18) 100%);
+    background: linear-gradient(90deg, rgba(12, 24, 48, 0.78) 0%, rgba(12, 24, 48, 0.58) 46%, rgba(12, 24, 48, 0.16) 100%);
     backdrop-filter: saturate(1.12);
     z-index: 1;
   }
@@ -180,35 +176,41 @@
     position: relative;
     z-index: 2;
     width: 100%;
-    height: 100%;
+    min-height: inherit;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: clamp(30px, 4vw, 54px) clamp(24px, 4vw, 56px);
+    padding: 72px clamp(32px, 8vw, 112px);
     box-sizing: border-box;
   }
   .hero-panel {
-    width: min(1280px, 100%);
+    width: min(1200px, 100%);
     display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.8fr);
-    gap: clamp(24px, 3.4vw, 40px);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
     align-items: center;
     padding: 0;
-    margin: 0;
+    margin: 0 auto;
   }
   .hero-left {
     color: #ffffff;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 14px;
-    padding-right: clamp(8px, 2vw, 20px);
+    gap: 20px;
+    width: 100%;
+    max-width: 720px;
+    margin: 0;
+    padding: 0;
+    text-align: left;
   }
   .hero-eyebrow {
     margin: 0;
-    letter-spacing: 0.24em;
-    color: rgba(255,255,255,0.86);
-    text-transform: uppercase;
+    letter-spacing: 0;
+    font-size: 1rem !important;
+    color: var(--accent-color, #f59e0b);
+    font-weight: 700;
+    text-transform: none;
     opacity: 0;
     transform: translateY(10px);
     will-change: transform, opacity;
@@ -226,11 +228,16 @@
   @keyframes heroEyebrowPulse { 0%,100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.03); } }
   .hero-title {
     margin: 0;
-    font-size: clamp(2.5rem, 4.8vw, 4.3rem);
-    line-height: 0.98;
-    letter-spacing: -0.04em;
+    max-width: 16ch;
+    font-family: "Poppins", "Segoe UI", sans-serif;
+    font-size: max(3.5rem, var(--hero-rotator-heading-size, 3.5rem)) !important;
+    line-height: 1.08;
+    letter-spacing: 0;
     font-weight: 800;
     text-transform: none;
+    text-align: left;
+    text-wrap: balance;
+    text-shadow: 0 3px 18px rgba(0, 0, 0, 0.34);
     animation-name: heroContentFade;
     animation-duration: 700ms;
     animation-timing-function: cubic-bezier(.2,.8,.2,1);
@@ -322,12 +329,14 @@
   @keyframes heroContentFloat { 0% { opacity: 0; transform: translateY(10px); } 50% { opacity: 0.9; transform: translateY(-4px); } 100% { opacity: 1; transform: translateY(0); } }
   .hero-dynamic,
   .hero-static {
-    max-width: 680px;
+    width: min(100%, 720px);
     margin: 0;
+    text-align: left;
   }
   .hero-rotator {
     position: relative;
-    min-height: 112px;
+    min-height: 0;
+    width: 100%;
   }
   .hero-rotator .rotator-item {
     display: none;
@@ -353,25 +362,28 @@
   @keyframes rotatorFloat { 0% { opacity: 0; transform: translateY(10px); } 50% { opacity: 0.96; transform: translateY(-6px); } 100% { opacity: 1; transform: translateY(0); } }
   @keyframes rotatorSlideUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
   .rotator-title {
-    font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+    font-size: inherit;
     font-weight: 700;
-    line-height: 1.16;
+    line-height: inherit;
     color: #ffffff;
+    letter-spacing: 0;
+    text-wrap: balance;
   }
   .rotator-subtitle {
-    margin-top: 8px;
+    max-width: 58ch;
+    margin: 14px 0 0;
     opacity: 0.9;
     color: rgba(255,255,255,0.9);
-    font-size: clamp(0.95rem, 1.4vw, 1.05rem);
-    line-height: 1.7;
+    font-size: 1.05rem;
+    line-height: 1.65;
   }
   .hero-title {
     font-family: "Poppins", "Segoe UI", Arial, sans-serif;
     text-shadow: 0 10px 30px rgba(0,0,0,0.26);
   }
   .rotator-title {
-    font-family: "Poppins", "Segoe UI", Arial, sans-serif;
-    letter-spacing: -0.02em;
+    font-family: Georgia, "Times New Roman", serif;
+    letter-spacing: 0;
   }
   .hero-actions .button {
     font-weight: 700;
@@ -381,7 +393,8 @@
   }
   .hero-motto {
     margin: 0;
-    max-width: 680px;
+    max-width: 58ch;
+    text-align: center;
     opacity: 0.84;
     color: rgba(255,255,255,0.84);
     font-size: clamp(0.95rem, 1.35vw, 1.05rem);
@@ -391,14 +404,16 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-start;
     gap: 12px;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   .hero-actions .button {
     flex: 0 0 auto;
     min-width: 0;
     max-width: 220px;
-    padding: 13px 18px;
+    min-height: 50px;
+    padding: 13px 24px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
@@ -408,9 +423,9 @@
     transform: translateZ(0);
   }
   .hero-actions .button:not(.secondary):not(.tertiary) {
-    background: color-mix(in srgb, var(--hero-button-fill, var(--action-color)) 76%, #101828);
+    background: var(--hero-button-fill, var(--action-color));
     color: var(--hero-button-text, #ffffff);
-    border: 1px solid color-mix(in srgb, var(--hero-button-border, #ffffff) 72%, #101828);
+    border: 1px solid var(--hero-button-border, #ffffff);
   }
 
   main.content {
@@ -447,16 +462,20 @@
   }
   .hero-right {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 14px;
+    width: min(1200px, calc(100% - 48px));
+    margin: 0 auto 40px;
   }
   .announcement-card {
-    padding: 20px 20px 18px;
-    border-radius: 24px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.08));
-    border: 1px solid rgba(255,255,255,0.42);
-    backdrop-filter: blur(22px) saturate(1.3);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 24px 54px rgba(0,0,0,0.18);
+    flex: 1 1 320px;
+    padding: 16px 18px;
+    border-radius: 8px;
+    background: var(--surface-color, #ffffff);
+    border: 1px solid var(--border-color, #d8dee5);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
   }
   .announcement-meta {
     display: flex;
@@ -467,24 +486,24 @@
   }
   .announcement-label {
     font-size: 0.8rem;
-    color: rgba(255,255,255,0.74);
+    color: var(--primary-color, #0f766e);
     text-transform: uppercase;
     letter-spacing: 0.16em;
   }
   .announcement-date {
     font-size: 0.9rem;
-    color: rgba(255,255,255,0.74);
+    color: var(--text-color, #475467);
   }
   .announcement-heading {
     margin: 0 0 10px;
     font-size: clamp(1.1rem, 1.8vw, 1.35rem);
     line-height: 1.25;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--heading-text-color, #17252d);
   }
   .announcement-copy {
     margin: 0 0 14px;
-    color: rgba(255,255,255,0.86);
+    color: var(--text-color, #475467);
     line-height: 1.6;
     font-size: 0.95rem;
   }
@@ -494,9 +513,9 @@
     justify-content: center;
     width: 100%;
     padding: 11px 16px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.24);
+    border-radius: 6px;
+    background: var(--primary-color, #0f766e);
+    border: 1px solid var(--primary-color, #0f766e);
     color: #ffffff;
     text-align: center;
   }
@@ -505,20 +524,20 @@
   }
   .hero-stats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    flex: 1 1 420px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
   }
   .stat-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.07));
-    border: 1px solid rgba(255,255,255,0.34);
-    border-radius: 22px;
-    padding: 18px 16px;
+    background: var(--surface-color, #ffffff);
+    border: 1px solid var(--border-color, #d8dee5);
+    border-radius: 8px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    backdrop-filter: blur(20px) saturate(1.25);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 18px 40px rgba(0,0,0,0.14);
-    min-height: 108px;
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
+    min-height: 78px;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
   }
   .stat-card:hover {
@@ -533,13 +552,13 @@
     display: block;
     font-size: clamp(1.2rem, 2vw, 1.65rem);
     font-weight: 800;
-    color: #ffffff;
+    color: var(--primary-color, #0f766e);
     line-height: 1;
   }
   .stat-label {
     margin-top: 8px;
     font-size: 0.9rem;
-    color: rgba(255,255,255,0.82);
+    color: var(--text-color, #475467);
   }
   @media (max-width: 1100px) {
     .hero-panel {
@@ -547,39 +566,42 @@
       gap: 24px;
     }
     .hero-left {
-      align-items: center;
-      text-align: center;
+      align-items: flex-start;
+      text-align: left;
     }
     .hero-right {
+      flex-wrap: wrap;
       align-items: stretch;
     }
   }
   @media (max-width: 760px) {
     .unified-hero {
-      min-height: 78vh;
-      padding-bottom: 28px;
+      min-height: 680px;
+      width: calc(100% - 24px);
+      margin: 12px auto 28px;
+      border-radius: 6px;
     }
-    .hero-shell { padding: 0 16px; }
-    .hero-title { font-size: clamp(2.25rem, 8.5vw, 3rem); }
+    .unified-hero .hero-overlay {
+      background: linear-gradient(90deg, rgba(12, 24, 48, 0.78), rgba(12, 24, 48, 0.4));
+    }
+    .hero-shell { padding: 48px 24px; }
+    .hero-title { font-size: max(2.6rem, min(3.2rem, var(--hero-rotator-heading-size, 3rem))) !important; }
     .hero-actions {
       flex-direction: column;
       align-items: stretch;
-      width: 100%;
+      width: min(100%, 420px);
       gap: 10px;
     }
     .hero-actions .button {
       width: 100%;
       max-width: none;
     }
-    .announcement-card, .stat-card { min-height: auto; }
-    .hero-stats { grid-template-columns: 1fr; }
-    .announcement-card { padding: 18px; }
-    .hero-left { align-items: center; text-align: center; }
-    .hero-right { align-items: stretch; text-align: center; }
-    .announcement-meta { justify-content: center; }
-    .hero-left.hero-text-position-left { align-items: flex-start; text-align: left; }
-    .hero-left.hero-text-position-center { align-items: center; text-align: center; }
-    .hero-left.hero-text-position-right { align-items: flex-end; text-align: right; }
+    .announcement-card, .stat-card { min-height: 0; }
+    .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .announcement-card { padding: 14px; }
+    .hero-left { align-items: flex-start; text-align: left; }
+    .hero-right { align-items: stretch; text-align: left; }
+    .announcement-meta { justify-content: space-between; }
   }
   </style>
 
@@ -604,7 +626,6 @@
   </section>
   {% endif %}
 {% else %}
-<!-- LOGGED-IN USER SECTION -->
 <section class="welcome-authenticated">
   <div class="authenticated-header">
     {% if is_platform_admin or is_tenant_admin %}
@@ -616,74 +637,223 @@
     {% endif %}
   </div>
 
+  <div class="task-launcher-header">
+    <div class="authenticated-header">
+      {% if is_platform_admin or is_tenant_admin %}
+        <h1>Welcome back, {{ user.first_name|default:user.username }}.</h1>
+        <p>Choose a task to get started.</p>
+      {% elif user.student_profile %}
+        <h1>Welcome back, {{ user.first_name|default:user.username }}.</h1>
+        <p>Here are the student tasks you may need today.</p>
+      {% elif user.teacher_profile %}
+        <h1>Welcome back, {{ user.first_name|default:user.username }}.</h1>
+        <p>Here are the teaching tasks you may need today.</p>
+      {% elif user.staff_profile %}
+        <h1>Welcome back, {{ user.first_name|default:user.username }}.</h1>
+        <p>Here are your staff tasks.</p>
+      {% else %}
+        <h1>Welcome back, {{ user.first_name|default:user.username }}.</h1>
+        <p>Choose a task or search the portal.</p>
+      {% endif %}
+    </div>
+    <button type="button" class="task-search-button" onclick="openCommandPalette()" aria-label="Find a page or task">
+      <i class="fas fa-search" aria-hidden="true"></i>
+      <span>Find a page or task</span>
+      <kbd>Ctrl K</kbd>
+    </button>
+  </div>
+
+  <div class="task-launcher">
+    <h2>Start with a task</h2>
+    <div class="task-action-list">
+      {% if is_platform_admin or is_tenant_admin %}
+        <a href="/admin/" class="task-action">
+          <i class="fas fa-user-shield" aria-hidden="true"></i>
+          <span><strong>Admin Panel</strong><small>Access school management dashboard.</small></span>
+        </a>
+        <a href="{% url 'school_settings' %}" class="task-action">
+          <i class="fas fa-sliders" aria-hidden="true"></i>
+          <span><strong>Portal Settings</strong><small>Configure school details and branding.</small></span>
+        </a>
+        <a href="{% url 'school_classes:class_list' %}" class="task-action">
+          <i class="fas fa-chalkboard" aria-hidden="true"></i>
+          <span><strong>Manage Classes</strong><small>Review classes and assignments.</small></span>
+        </a>
+        <a href="{% url 'results_admin:dashboard' %}" class="task-action">
+          <i class="fas fa-chart-column" aria-hidden="true"></i>
+          <span><strong>Manage Results</strong><small>Review results and publication settings.</small></span>
+        </a>
+        <a href="{% url 'payroll_dashboard' %}" class="task-action">
+          <i class="fas fa-wallet" aria-hidden="true"></i>
+          <span><strong>Finance Dashboard</strong><small>Review expenses, invoices, payments, and balances.</small></span>
+        </a>
+        <a href="{% url 'students:student_application_list' %}" class="task-action">
+          <i class="fas fa-user-plus" aria-hidden="true"></i>
+          <span><strong>Review Applications</strong><small>Process new student applications.</small></span>
+        </a>
+        <a href="{% url 'students:student_add' %}" class="task-action">
+          <i class="fas fa-user-graduate" aria-hidden="true"></i>
+          <span><strong>Add Student</strong><small>Create a student record.</small></span>
+        </a>
+      {% elif user.student_profile %}
+        <a href="{% url 'students:student_portal_results' %}" class="task-action">
+          <i class="fas fa-chart-column" aria-hidden="true"></i>
+          <span><strong>View my results</strong><small>Check grades and academic progress.</small></span>
+        </a>
+        <a href="{% url 'students:student_portal_attendance' %}" class="task-action">
+          <i class="fas fa-calendar-check" aria-hidden="true"></i>
+          <span><strong>Check my attendance</strong><small>See recorded attendance and absences.</small></span>
+        </a>
+        <a href="{% url 'students:student_portal_fees' %}" class="task-action">
+          <i class="fas fa-wallet" aria-hidden="true"></i>
+          <span><strong>Check school fees</strong><small>View invoices and payment history.</small></span>
+        </a>
+        <a href="{% url 'student_cbt:practice_list' %}" class="task-action">
+          <i class="fas fa-laptop-code" aria-hidden="true"></i>
+          <span><strong>Take a practice test</strong><small>Choose a class and subject to practise.</small></span>
+        </a>
+        <a href="{% url 'students:student_portal_timetable' %}" class="task-action">
+          <i class="fas fa-calendar-days" aria-hidden="true"></i>
+          <span><strong>View my timetable</strong><small>Check your class schedule.</small></span>
+        </a>
+        <a href="{% url 'profile' %}" class="task-action">
+          <i class="fas fa-user" aria-hidden="true"></i>
+          <span><strong>Manage my account</strong><small>Review your profile and settings.</small></span>
+        </a>
+      {% elif user.teacher_profile %}
+        <a href="{% url 'teacher_mark_attendance' %}" class="task-action">
+          <i class="fas fa-calendar-check" aria-hidden="true"></i>
+          <span><strong>Mark attendance</strong><small>Record attendance for a class.</small></span>
+        </a>
+        <a href="{% url 'teacher_results_list' %}" class="task-action">
+          <i class="fas fa-pen-to-square" aria-hidden="true"></i>
+          <span><strong>Enter student results</strong><small>Open your assigned results workflow.</small></span>
+        </a>
+        <a href="{% url 'teacher_weekly_assessment_view' %}" class="task-action">
+          <i class="fas fa-list-check" aria-hidden="true"></i>
+          <span><strong>Record weekly assessment</strong><small>Enter class assessment scores.</small></span>
+        </a>
+        <a href="{% url 'teachers:teacher_scheme_list' %}" class="task-action">
+          <i class="fas fa-book-open" aria-hidden="true"></i>
+          <span><strong>Open scheme of work</strong><small>View and update your teaching plan.</small></span>
+        </a>
+      {% elif user.staff_profile %}
+        <a href="{% url 'staff_attendance:dashboard' %}" class="task-action">
+          <i class="fas fa-clock" aria-hidden="true"></i>
+          <span><strong>Clock in or out</strong><small>Record today's staff attendance.</small></span>
+        </a>
+        <a href="{% url 'staff_attendance:history' %}" class="task-action">
+          <i class="fas fa-calendar-days" aria-hidden="true"></i>
+          <span><strong>View my attendance history</strong><small>Review previous records.</small></span>
+        </a>
+      {% else %}
+        <a href="{% url 'profile' %}" class="task-action">
+          <i class="fas fa-user" aria-hidden="true"></i>
+          <span><strong>Manage my account</strong><small>Review profile and account details.</small></span>
+        </a>
+        <a href="{% url 'contact' %}" class="task-action">
+          <i class="fas fa-life-ring" aria-hidden="true"></i>
+          <span><strong>Get help</strong><small>Contact the school for assistance.</small></span>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
   <div class="navigation-grid stagger-parent">
     {% if is_platform_admin or is_tenant_admin %}
-      <!-- ADMIN NAVIGATION -->
-      <a href="/admin/" class="nav-card admin-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">🔐</div>
-        <h3>Admin Panel</h3>
-        <p>Access school management dashboard</p>
-      </a>
       <a href="{% url 'school_settings' %}" class="nav-card admin-card card-hover stagger-item">
         <div class="nav-icon icon-hover">⚙️</div>
         <h3>Portal Settings</h3>
-        <p>Configure school branding and themes</p>
+        <p>Configure school branding and portal preferences.</p>
       </a>
-      <a href="{% url 'school_classes:class_list' %}" class="nav-card admin-card card-hover stagger-item">
+      <a href="{% url 'students:student_list' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">👨‍🎓</div>
+        <h3>Students</h3>
+        <p>Review records and manage student information.</p>
+      </a>
+      <a href="{% url 'school_classes:class_list' %}" class="nav-card card-hover stagger-item">
         <div class="nav-icon icon-hover">📚</div>
         <h3>Classes</h3>
-        <p>Manage school classes</p>
+        <p>Manage classes, subjects, and assignments.</p>
       </a>
-      <a href="/results/" class="nav-card admin-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📊</div>
-        <h3>Results</h3>
-        <p>View student results and grades</p>
-      </a>
-      <a href="{% url 'promotions_list' %}" class="nav-card admin-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">⬆️</div>
-        <h3>Promotions</h3>
-        <p>Manage student promotions</p>
-      </a>
-      <a href="{% url 'payroll_dashboard' %}" class="nav-card admin-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">💼</div>
+      <a href="{% url 'payroll_dashboard' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">💰</div>
         <h3>Finance</h3>
-        <p>Manage invoices, payments, and school expenses</p>
+        <p>Manage school expenses, invoices, payments, and balances.</p>
       </a>
-    {% else %}
-      <!-- STUDENT PORTAL -->
-      {% if user.student_profile %}
-      <a href="{% url 'students:student_portal_dashboard' %}" class="nav-card card-hover stagger-item" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-        <div class="nav-icon icon-hover">🎓</div>
-        <h3>Student Portal</h3>
-        <p>Access your academic information</p>
+      <a href="{% url 'contact' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">💬</div>
+        <h3>Contact</h3>
+        <p>Get in touch with the school.</p>
       </a>
-      <a href="{% url 'students:student_portal_profile' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">👤</div>
-        <h3>My Profile</h3>
-        <p>View your personal information</p>
+    {% elif user.student_profile %}
+      <a href="{% url 'students:student_portal_timetable' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">🗓️</div>
+        <h3>My Timetable</h3>
+        <p>Check your class schedule and lesson times.</p>
       </a>
-      <a href="{% url 'students:student_portal_results' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📊</div>
-        <h3>My Results</h3>
-        <p>Check your grades and academic performance</p>
+      <a href="{% url 'announcement_list' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📢</div>
+        <h3>School Updates</h3>
+        <p>Read announcements, news, and important school notices.</p>
       </a>
       <a href="{% url 'students:student_portal_fees' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">💰</div>
-        <h3>School Fees</h3>
-        <p>View invoices and payment history</p>
+        <div class="nav-icon icon-hover">💳</div>
+        <h3>{{ school_settings.homepage_overview_card_4_title|default:"School fees" }}</h3>
+        <p>{{ school_settings.homepage_overview_card_4_description|default:"View invoices, balances, and payment records." }}</p>
       </a>
-      {% endif %}
-
-      <a href="{% url 'subject_list' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📝</div>
-        <h3>Subjects</h3>
-        <p>View the school's subject list</p>
-      </a>
-
       <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">⚙️</div>
-        <h3>Account Settings</h3>
-        <p>Manage your account and preferences</p>
+        <div class="nav-icon icon-hover">👤</div>
+        <h3>{{ school_settings.homepage_overview_card_5_title|default:"Manage your profile" }}</h3>
+        <p>{{ school_settings.homepage_overview_card_5_description|default:"Update your account information and keep your profile current." }}</p>
+      </a>
+    {% elif user.teacher_profile %}
+      <a href="{% url 'teacher_results_list' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📝</div>
+        <h3>Results</h3>
+        <p>Enter and review student results.</p>
+      </a>
+      <a href="{% url 'teacher_mark_attendance' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📅</div>
+        <h3>Attendance</h3>
+        <p>Record classroom attendance quickly.</p>
+      </a>
+      <a href="{% url 'teachers:teacher_scheme_list' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📘</div>
+        <h3>Scheme of Work</h3>
+        <p>View and update your teaching plan.</p>
+      </a>
+      <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">👤</div>
+        <h3>Profile</h3>
+        <p>Manage personal account information.</p>
+      </a>
+    {% elif user.staff_profile %}
+      <a href="{% url 'staff_attendance:dashboard' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">🕒</div>
+        <h3>Staff Attendance</h3>
+        <p>Clock in, clock out and review attendance.</p>
+      </a>
+      <a href="{% url 'staff_attendance:history' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">📆</div>
+        <h3>Attendance History</h3>
+        <p>View previous attendance records.</p>
+      </a>
+      <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">👤</div>
+        <h3>Profile</h3>
+        <p>Review your staff profile and details.</p>
+      </a>
+    {% else %}
+      <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">👤</div>
+        <h3>Profile</h3>
+        <p>Manage your account and preferences.</p>
+      </a>
+      <a href="{% url 'contact' %}" class="nav-card card-hover stagger-item">
+        <div class="nav-icon icon-hover">💬</div>
+        <h3>Get Help</h3>
+        <p>Contact the school for assistance.</p>
       </a>
     {% endif %}
   </div>
@@ -691,41 +861,35 @@
 
 {% endif %}
 
+{% if not user.is_authenticated %}
 <section class="portal-overview reveal">
   <h2>{{ school_settings.homepage_overview_title|default:"What You Can Do on This Portal" }}</h2>
   <p class="overview-intro">{{ school_settings.homepage_overview_intro|default:"Explore a secure digital experience designed to keep students, families, and staff connected." }}</p>
 
   <div class="overview-grid stagger-parent">
-
     <a href="/results/" class="overview-card card-hover stagger-item">
       <h3>{{ school_settings.homepage_overview_card_1_title|default:"Access academic records" }}</h3>
       <p>{{ school_settings.homepage_overview_card_1_description|default:"View your results, grades, and progress reports from one secure location." }}</p>
     </a>
-
-    <a href="{% url 'school_classes:class_list' %}" class="overview-card card-hover stagger-item">
+    <a href="{% url 'students:student_portal_timetable' %}" class="overview-card card-hover stagger-item">
       <h3>{{ school_settings.homepage_overview_card_2_title|default:"View class schedules" }}</h3>
       <p>{{ school_settings.homepage_overview_card_2_description|default:"Check timetables, subject details, and classroom assignments at a glance." }}</p>
     </a>
-
-    <a href="{% url 'students:student_list' %}" class="overview-card card-hover stagger-item">
+    <a href="{% url 'announcement_list' %}" class="overview-card card-hover stagger-item">
       <h3>{{ school_settings.homepage_overview_card_3_title|default:"Receive school updates" }}</h3>
       <p>{{ school_settings.homepage_overview_card_3_description|default:"Stay informed with announcements, news, and important school events." }}</p>
     </a>
-
-   <a href="{% url 'contact' %}" class="overview-card card-hover stagger-item">
-        <h3>{{ school_settings.homepage_overview_card_4_title|default:"Communicate easily" }}</h3>
-        <p>{{ school_settings.homepage_overview_card_4_description|default:"Message teachers and school management through the portal's secure channels." }}</p>
+    <a href="{% url 'contact' %}" class="overview-card card-hover stagger-item">
+      <h3>{{ school_settings.homepage_overview_card_4_title|default:"Communicate easily" }}</h3>
+      <p>{{ school_settings.homepage_overview_card_4_description|default:"Message teachers and school management through the portal's secure channels." }}</p>
     </a>
-
     <a href="{% url 'profile' %}" class="overview-card card-hover stagger-item">
       <h3>{{ school_settings.homepage_overview_card_5_title|default:"Manage your profile" }}</h3>
       <p>{{ school_settings.homepage_overview_card_5_description|default:"Update your account information and keep your profile current." }}</p>
     </a>
-
   </div>
 </section>
-
-<!-- Getting Started section removed; login/signup now in dropdown menu -->
+{% endif %}
 
 <section class="important-notice reveal">
   <h2>{{ school_settings.homepage_important_notice_title|default:"Important Notice" }}</h2>
@@ -1131,16 +1295,110 @@
   margin-bottom: 40px;
   box-shadow: 0 20px 50px rgba(35,31,89,.18);
 }
+.welcome-authenticated {
+  background: transparent;
+  color: var(--text-color);
+  padding: 28px 0;
+  border-radius: 0;
+  margin-bottom: 24px;
+  box-shadow: none;
+}
+.task-launcher-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border-color);
+}
 .authenticated-header h1 {
-  font-size: 2.8rem;
-  margin: 0 0 16px;
-  line-height: 1.05;
+  color: var(--heading-text-color);
+  font-size: 1.8rem;
+  margin: 0 0 6px;
+  line-height: 1.2;
 }
 .authenticated-header p {
-  font-size: 1.05rem;
+  color: var(--text-color);
+  font-size: 1rem;
   max-width: 680px;
-  opacity: 0.95;
-  margin: 0 0 28px;
+  opacity: 0.86;
+  margin: 0;
+}
+.task-search-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  color: var(--text-color);
+  font-weight: 600;
+}
+.task-search-button:hover {
+  border-color: var(--primary-color);
+  background: var(--action-soft-color);
+}
+.task-search-button kbd {
+  padding: 2px 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-strong-color);
+  color: inherit;
+  font-size: 0.72rem;
+}
+.task-launcher {
+  padding-top: 20px;
+}
+.task-launcher > h2 {
+  margin: 0 0 8px;
+  color: var(--heading-text-color);
+  font-size: 1.2rem;
+}
+.task-action-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
+}
+.task-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+  text-decoration: none;
+}
+.task-action:hover,
+.task-action:focus-visible {
+  background: var(--action-soft-color);
+  color: var(--heading-text-color);
+}
+.task-action > i {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 8px;
+  background: var(--icon-plate-color);
+  color: var(--icon-color);
+  font-size: 16px;
+}
+.task-action span {
+  display: grid;
+  gap: 4px;
+}
+.task-action strong {
+  color: var(--heading-text-color);
+  font-size: 0.98rem;
+}
+.task-action small {
+  color: var(--text-color);
+  font-size: 0.86rem;
 }
 .navigation-grid {
   display: grid;
@@ -1201,7 +1459,14 @@
     grid-template-columns: 1fr;
   }
   .authenticated-header h1 {
-    font-size: 2rem;
+    font-size: 1.6rem;
+  }
+  .task-action-list {
+    grid-template-columns: 1fr;
+  }
+  .task-search-button {
+    width: 100%;
+    justify-content: flex-start;
   }
   .dynamic-pages {
   margin-top: 40px;

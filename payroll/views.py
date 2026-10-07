@@ -14,7 +14,7 @@ from .models import SchoolExpense, SchoolFee, StudentInvoice, StudentPayment, St
 from exams.models import Term
 from students.models import Student
 from .forms import SchoolExpenseForm, SchoolFeeForm, StudentInvoiceForm, StudentPaymentForm
-from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_staff
+from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
 
 
 def staff_can_manage(user, request=None):
@@ -58,7 +58,13 @@ class PayrollDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView
     template_name = 'payroll/dashboard.html'
 
     def test_func(self):
-        return staff_can_manage(self.request.user)
+        user = self.request.user
+        tenant = get_request_tenant(self.request)
+        return (
+            user.is_superuser
+            or user_is_tenant_admin(user, tenant=tenant)
+            or staff_can_manage(user, self.request)
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

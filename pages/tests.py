@@ -1,7 +1,10 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 
 from pages.models import Page
+from school_classes.models import Teacher
+from students.models import Student
 
 
 class GlobalSearchTests(TestCase):
@@ -98,6 +101,33 @@ class HomepageTests(TestCase):
         self.assertNotContains(response, 'href="/apply/"')
         self.assertContains(response, 'id="pageLoadStatus"')
         self.assertContains(response, 'role="status"')
+
+    def test_teacher_home_shows_common_teaching_tasks_and_global_search(self):
+        user = get_user_model().objects.create_user(username='home-teacher', password='testpass123')
+        Teacher.objects.create(user=user, employee_id='HOME-TEACHER-1')
+        self.client.force_login(user)
+
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Mark attendance')
+        self.assertContains(response, 'Enter student results')
+        self.assertContains(response, f'href="{reverse("teacher_mark_attendance")}"')
+        self.assertContains(response, 'aria-label="Find a page or task"')
+        self.assertNotContains(response, 'Check my attendance')
+
+    def test_student_home_shows_personal_academic_tasks(self):
+        user = get_user_model().objects.create_user(username='home-student', password='testpass123')
+        Student.objects.create(admission_no='HOME-STUDENT-1', surname='Home', user=user)
+        self.client.force_login(user)
+
+        response = self.client.get('/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'View my results')
+        self.assertContains(response, 'Check my attendance')
+        self.assertContains(response, 'Take a practice test')
+        self.assertNotContains(response, 'Mark attendance')
 
     def test_named_routes_are_searchable_without_handwritten_keywords(self):
         from pages.views import _named_route_results

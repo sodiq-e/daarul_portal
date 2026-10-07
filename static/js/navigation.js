@@ -1,6 +1,7 @@
 (() => {
   const menuButton = document.getElementById('menuBtn');
   const menuButtonIcon = document.getElementById('menuBtnIcon');
+  const globalSearchButton = document.getElementById('globalSearchButton');
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('overlay');
   const offlineNotice = document.getElementById('offlineNotice');
@@ -10,6 +11,8 @@
   const offlineTipMessage = document.getElementById('offlineTipMessage');
   const offlineTipsData = document.getElementById('offlineTipMessages');
   const mobileBreakpoint = 1024;
+
+  globalSearchButton?.addEventListener('click', () => window.openCommandPalette?.());
 
   if (!menuButton || !menuButtonIcon || !sidebar || !overlay) return;
 
@@ -63,9 +66,12 @@
   }
 
   function syncMenuButton() {
-    const isOpen = window.innerWidth < mobileBreakpoint
-      ? sidebar.classList.contains('active')
+    const isMobile = window.innerWidth < mobileBreakpoint;
+    const isMobileOpen = isMobile && sidebar.classList.contains('active');
+    const isOpen = isMobile
+      ? isMobileOpen
       : !sidebar.classList.contains('collapsed');
+    document.body.classList.toggle('sidebar-open', isMobileOpen);
     menuButtonIcon.classList.toggle('fa-bars', !isOpen);
     menuButtonIcon.classList.toggle('fa-xmark', isOpen);
     menuButton.setAttribute('aria-expanded', String(isOpen));

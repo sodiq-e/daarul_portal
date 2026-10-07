@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=0.7, viewport-fit=cover">
   <title>{{ SCHOOL_NAME }}</title>
   {% load static %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -2284,10 +2284,11 @@
 
   .sidebar {
     position: sticky;
-    top: 0;
+    top: 12px;
     left: auto;
     transform: translateX(0);
-    height: calc(100vh - 48px);
+    height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px);
     width: 300px;
     min-width: 300px;
     flex-shrink: 0;
@@ -2302,7 +2303,8 @@
     width: 70px;
     min-width: 70px;
     padding: 16px 0;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .content {
@@ -2460,7 +2462,8 @@
 .sidebar.collapsed {
   width: 70px;
   padding: 16px 0;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Hide user profile when collapsed */
@@ -2681,7 +2684,7 @@
     height: 100dvh;
     max-height: 100dvh;
     transform: translateX(-100%);
-    z-index: 2000;
+    z-index: 10001;
     box-shadow: 6px 0 25px rgba(0,0,0,0.25);
     overflow-y: auto;
     overflow-x: hidden;
@@ -2887,7 +2890,7 @@
 /* ===== FINAL HEADER (STABLE) ===== */
 .header-container {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
   align-items: center;
   gap: 10px;
 }
@@ -2901,6 +2904,8 @@
 .header-center {
   text-align: center;
   min-width: 0;
+  width: 100%;
+  grid-column: 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2918,7 +2923,12 @@
 /* RIGHT */
 .header-right {
   display: flex;
+  min-width: 0;
+  align-items: center;
   justify-content: flex-end;
+  gap: 8px;
+  grid-column: 3;
+  justify-self: end;
 }
 
 /* BUTTON */
@@ -2985,13 +2995,11 @@
     box-shadow: none !important;
     filter: none !important;
     text-shadow: none !important;
-    color: black !important;
     opacity: 1 !important;
   }
 
   body,
   body * {
-    color: black !important;
     opacity: 1 !important;
   }
 
@@ -3141,7 +3149,7 @@
 
   .header-center a,
   .header-center div {
-    color: black !important;
+    color: var(--header-heading-color, #111111) !important;
   }
 
   .header-center a {
@@ -3167,7 +3175,7 @@
 
   .header-center div[style*="font-size:11px"] {
     font-size: 10px !important;
-    color: #333 !important;
+    color: var(--header-heading-color, #111111) !important;
     white-space: normal !important;
     text-overflow: clip !important;
     overflow: visible !important;
@@ -3239,10 +3247,17 @@
   }
 
   .table-responsive tbody,
-  .table-responsive tr,
-  tbody,
-  tr {
+  tbody {
     display: table-row-group !important;
+    width: auto !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .table-responsive tr,
+  tr {
+    display: table-row !important;
     width: auto !important;
     margin: 0 !important;
     border: none !important;
@@ -3255,6 +3270,10 @@
     border: 1px solid #333 !important;
     padding: 8px !important;
     text-align: left !important;
+    vertical-align: top !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
   }
 
   table {
@@ -3263,6 +3282,7 @@
     margin-bottom: 15px !important;
     page-break-inside: auto !important;
     display: table !important;
+    table-layout: auto !important;
   }
 
   tr {
@@ -3593,6 +3613,11 @@
 
     <!-- RIGHT: Menu -->
     <div class="header-right">
+      <button id="globalSearchButton" class="global-search-button" type="button" aria-label="Find a page or task">
+        <i class="fas fa-search" aria-hidden="true"></i>
+        <span>Find a page or task</span>
+        <kbd>Ctrl K</kbd>
+      </button>
       <button id="menuBtn" class="menu-btn" type="button" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">
         <i id="menuBtnIcon" class="fas fa-bars" aria-hidden="true"></i>
       </button>

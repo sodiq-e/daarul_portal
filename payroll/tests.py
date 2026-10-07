@@ -9,7 +9,7 @@ from exams.models import Term
 from payroll.forms import StudentPaymentForm
 from payroll.models import Payslip, SchoolFee, Staff, StudentInvoice, StudentPayment
 from school_classes.models import Teacher, TeacherPermission
-from settingsapp.models import Tenant
+from settingsapp.models import Tenant, TenantMembership
 from settingsapp.tenant_utils import set_current_tenant, clear_current_tenant
 from students.models import Student
 from accounts.models import Profile
@@ -955,3 +955,21 @@ class TeacherPayrollDashboardTests(TestCase):
         )
         response = self.client.get(reverse('teacher_payroll_dashboard'))
         self.assertContains(response, reverse('teacher_payslip_detail', args=[self.payslip.pk]))
+
+    def test_tenant_admin_can_open_finance_dashboard_from_homepage(self):
+        admin_user = User.objects.create_user(username='payroll-school-admin', password='password')
+        TenantMembership.objects.create(
+            user=admin_user,
+            tenant=self.tenant,
+            role='school_admin',
+        )
+        self.client.force_login(admin_user)
+
+        homepage = self.client.get(reverse('home'))
+        self.assertEqual(homepage.status_code, 200)
+        self.assertContains(homepage, reverse('payroll_dashboard'))
+        self.assertContains(homepage, 'Finance Dashboard')
+
+        dashboard = self.client.get(reverse('payroll_dashboard'))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, 'Finance Dashboard')
