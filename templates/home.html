@@ -626,6 +626,63 @@
   </section>
   {% endif %}
 {% else %}
+{% if is_platform_admin or is_tenant_admin or user.is_staff or user.teacher_profile %}
+<section class="role-workspace">
+  <header class="workspace-header">
+    <div>
+      <p class="workspace-eyebrow">{% if is_platform_admin or is_tenant_admin or user.is_staff %}School operations{% else %}Teaching workspace{% endif %}</p>
+      <h1>{% if is_platform_admin or is_tenant_admin or user.is_staff %}Administration{% else %}Teaching dashboard{% endif %}</h1>
+      <p>Welcome back, {{ user.first_name|default:user.username }}. Choose where to continue.</p>
+    </div>
+    <button type="button" class="task-search-button" onclick="openCommandPalette()" aria-label="Find a page or task">
+      <i class="fas fa-search" aria-hidden="true"></i>
+      <span>Find a page or task</span>
+      <kbd>Ctrl K</kbd>
+    </button>
+  </header>
+
+  <div class="workspace-groups">
+    {% if is_platform_admin or is_tenant_admin or user.is_staff %}
+      <section class="workspace-group">
+        <div class="workspace-group-heading"><h2>School management</h2><span>Core setup and reporting</span></div>
+        <div class="workspace-links">
+          <a href="{% url 'school_classes:class_list' %}" class="workspace-link"><i class="fas fa-book-open" aria-hidden="true"></i><span><strong>Classes &amp; subjects</strong><small>Manage classes and subject assignments</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'results_admin:dashboard' %}" class="workspace-link"><i class="fas fa-chart-column" aria-hidden="true"></i><span><strong>Results</strong><small>Review results and publication settings</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'payroll_dashboard' %}" class="workspace-link"><i class="fas fa-wallet" aria-hidden="true"></i><span><strong>Finance</strong><small>Invoices, payments, expenses, and balances</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'school_settings' %}" class="workspace-link"><i class="fas fa-sliders" aria-hidden="true"></i><span><strong>Portal settings</strong><small>School details and portal preferences</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+        </div>
+      </section>
+      <section class="workspace-group">
+        <div class="workspace-group-heading"><h2>People</h2><span>Applications and records</span></div>
+        <div class="workspace-links">
+          <a href="{% url 'students:student_application_list' %}" class="workspace-link"><i class="fas fa-file-circle-check" aria-hidden="true"></i><span><strong>Student applications</strong><small>Review and process new applications</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'students:student_list' %}" class="workspace-link"><i class="fas fa-user-graduate" aria-hidden="true"></i><span><strong>Students</strong><small>Find and manage student records</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'teachers:teacher_list' %}" class="workspace-link"><i class="fas fa-users" aria-hidden="true"></i><span><strong>Teachers</strong><small>Manage teacher profiles and approvals</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'students:student_add' %}" class="workspace-link"><i class="fas fa-user-plus" aria-hidden="true"></i><span><strong>Add a student</strong><small>Create a student record</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+        </div>
+      </section>
+    {% else %}
+      <section class="workspace-group">
+        <div class="workspace-group-heading"><h2>Classroom</h2><span>Daily teaching workflows</span></div>
+        <div class="workspace-links">
+          <a href="{% url 'subject_list' %}" class="workspace-link"><i class="fas fa-book-open" aria-hidden="true"></i><span><strong>Subjects</strong><small>Browse the subject list and view subject details</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'teacher_mark_attendance' %}" class="workspace-link"><i class="fas fa-calendar-check" aria-hidden="true"></i><span><strong>Mark attendance</strong><small>Record attendance for a class</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'teacher_results_list' %}" class="workspace-link"><i class="fas fa-pen-to-square" aria-hidden="true"></i><span><strong>Student results</strong><small>Enter or review assigned results</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'teacher_weekly_assessment_view' %}" class="workspace-link"><i class="fas fa-list-check" aria-hidden="true"></i><span><strong>Weekly assessment</strong><small>Record class assessment scores</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+        </div>
+      </section>
+      <section class="workspace-group">
+        <div class="workspace-group-heading"><h2>Teaching resources</h2><span>Planning and assessment</span></div>
+        <div class="workspace-links">
+          <a href="{% url 'teachers:teacher_scheme_list' %}" class="workspace-link"><i class="fas fa-book" aria-hidden="true"></i><span><strong>Scheme of work</strong><small>View and update your teaching plan</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'exam_paper_list' %}" class="workspace-link"><i class="fas fa-file-alt" aria-hidden="true"></i><span><strong>Exam papers</strong><small>Create and manage exam papers</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+          <a href="{% url 'teacher_cbt:dashboard' %}" class="workspace-link"><i class="fas fa-laptop-code" aria-hidden="true"></i><span><strong>CBT exams</strong><small>Manage computer-based tests</small></span><i class="fas fa-arrow-right workspace-link-arrow" aria-hidden="true"></i></a>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+</section>
+{% else %}
 <section class="welcome-authenticated">
   <div class="authenticated-header">
     {% if is_platform_admin or is_tenant_admin %}
@@ -721,6 +778,10 @@
           <span><strong>Manage my account</strong><small>Review your profile and settings.</small></span>
         </a>
       {% elif user.teacher_profile %}
+          <a href="{% url 'school_classes:class_list' %}" class="task-action">
+            <i class="fas fa-book-open" aria-hidden="true"></i>
+            <span><strong>Review classes & subjects</strong><small>Open your class and subject assignments.</small></span>
+          </a>
         <a href="{% url 'teacher_mark_attendance' %}" class="task-action">
           <i class="fas fa-calendar-check" aria-hidden="true"></i>
           <span><strong>Mark attendance</strong><small>Record attendance for a class.</small></span>
@@ -759,34 +820,9 @@
     </div>
   </div>
 
+  {% if user.student_profile or user.staff_profile %}
   <div class="navigation-grid stagger-parent">
-    {% if is_platform_admin or is_tenant_admin %}
-      <a href="{% url 'school_settings' %}" class="nav-card admin-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">⚙️</div>
-        <h3>Portal Settings</h3>
-        <p>Configure school branding and portal preferences.</p>
-      </a>
-      <a href="{% url 'students:student_list' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">👨‍🎓</div>
-        <h3>Students</h3>
-        <p>Review records and manage student information.</p>
-      </a>
-      <a href="{% url 'school_classes:class_list' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📚</div>
-        <h3>Classes</h3>
-        <p>Manage classes, subjects, and assignments.</p>
-      </a>
-      <a href="{% url 'payroll_dashboard' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">💰</div>
-        <h3>Finance</h3>
-        <p>Manage school expenses, invoices, payments, and balances.</p>
-      </a>
-      <a href="{% url 'contact' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">💬</div>
-        <h3>Contact</h3>
-        <p>Get in touch with the school.</p>
-      </a>
-    {% elif user.student_profile %}
+    {% if user.student_profile %}
       <a href="{% url 'students:student_portal_timetable' %}" class="nav-card card-hover stagger-item">
         <div class="nav-icon icon-hover">🗓️</div>
         <h3>My Timetable</h3>
@@ -806,27 +842,6 @@
         <div class="nav-icon icon-hover">👤</div>
         <h3>{{ school_settings.homepage_overview_card_5_title|default:"Manage your profile" }}</h3>
         <p>{{ school_settings.homepage_overview_card_5_description|default:"Update your account information and keep your profile current." }}</p>
-      </a>
-    {% elif user.teacher_profile %}
-      <a href="{% url 'teacher_results_list' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📝</div>
-        <h3>Results</h3>
-        <p>Enter and review student results.</p>
-      </a>
-      <a href="{% url 'teacher_mark_attendance' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📅</div>
-        <h3>Attendance</h3>
-        <p>Record classroom attendance quickly.</p>
-      </a>
-      <a href="{% url 'teachers:teacher_scheme_list' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">📘</div>
-        <h3>Scheme of Work</h3>
-        <p>View and update your teaching plan.</p>
-      </a>
-      <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">👤</div>
-        <h3>Profile</h3>
-        <p>Manage personal account information.</p>
       </a>
     {% elif user.staff_profile %}
       <a href="{% url 'staff_attendance:dashboard' %}" class="nav-card card-hover stagger-item">
@@ -857,7 +872,9 @@
       </a>
     {% endif %}
   </div>
+  {% endif %}
 </section>
+{% endif %}
 
 {% endif %}
 
@@ -891,6 +908,7 @@
 </section>
 {% endif %}
 
+{% if not is_platform_admin and not is_tenant_admin and not user.is_staff and not user.teacher_profile %}
 <section class="important-notice reveal">
   <h2>{{ school_settings.homepage_important_notice_title|default:"Important Notice" }}</h2>
   <p>{{ school_settings.homepage_important_notice_text|default:"Your login details are personal and should not be shared with anyone. Keep your credentials safe to protect your academic information." }}</p>
@@ -932,6 +950,7 @@
     <button id="nextSlide" type="button" class="btn-premium">Next →</button>
   </div>
 </section>
+{% endif %}
 
 <style>
 .home-hero {
@@ -1303,6 +1322,108 @@
   margin-bottom: 24px;
   box-shadow: none;
 }
+.role-workspace {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+.workspace-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 8px 0 26px;
+  border-bottom: 1px solid var(--border-color);
+}
+.workspace-eyebrow {
+  margin: 0 0 8px;
+  color: var(--primary-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.workspace-header h1 {
+  margin: 0 0 8px;
+  color: var(--heading-text-color);
+  font-size: 2rem;
+  line-height: 1.2;
+}
+.workspace-header p:last-child {
+  margin: 0;
+  color: var(--text-color);
+  opacity: 0.84;
+}
+.workspace-group {
+  padding: 24px 0 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+.workspace-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.workspace-group-heading h2 {
+  margin: 0;
+  color: var(--heading-text-color);
+  font-size: 1.15rem;
+}
+.workspace-group-heading span {
+  color: var(--text-color);
+  font-size: 0.86rem;
+  opacity: 0.78;
+}
+.workspace-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
+}
+.workspace-link {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-color);
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.workspace-link:hover,
+.workspace-link:focus-visible {
+  background: var(--action-soft-color);
+  color: var(--heading-text-color);
+}
+.workspace-link > i:first-child {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--icon-plate-color);
+  color: var(--icon-color);
+}
+.workspace-link span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.workspace-link strong {
+  color: var(--heading-text-color);
+  font-size: 0.96rem;
+}
+.workspace-link small {
+  color: var(--text-color);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+.workspace-link .workspace-link-arrow {
+  color: var(--accent-color);
+  font-size: 0.8rem;
+}
 .task-launcher-header {
   display: flex;
   align-items: flex-start;
@@ -1455,6 +1576,10 @@
   background: linear-gradient(135deg, rgba(75,46,131,0.15), rgba(127,90,240,0.15)) !important;
 }
 @media (max-width: 900px) {
+  .workspace-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .welcome-hero {
     grid-template-columns: 1fr;
   }
@@ -1464,12 +1589,28 @@
   .task-action-list {
     grid-template-columns: 1fr;
   }
+  .workspace-links {
+    grid-template-columns: 1fr;
+  }
   .task-search-button {
     width: 100%;
     justify-content: flex-start;
   }
   .dynamic-pages {
   margin-top: 40px;
+}
+@media (max-width: 560px) {
+  .role-workspace {
+    padding-top: 10px;
+  }
+  .workspace-header h1 {
+    font-size: 1.65rem;
+  }
+  .workspace-group-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 .dynamic-page-block {
@@ -1671,28 +1812,99 @@
   });
 </script>
 
+<style>
+.homepage-announcement-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  column-gap: 28px;
+}
+.homepage-announcement-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 88px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-color, #d8dee5);
+  color: var(--text-color, #475467);
+  text-decoration: none;
+}
+.homepage-announcement-item:hover,
+.homepage-announcement-item:focus-visible {
+  background: var(--action-soft-color, #f2f7f6);
+}
+.homepage-announcement-image {
+  display: block;
+  width: 104px;
+  height: 72px;
+  flex: 0 0 104px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface-strong-color, #eef2f4);
+}
+.homepage-announcement-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
+}
+.homepage-announcement-copy strong {
+  min-width: 0;
+  color: var(--heading-text-color, #17252d);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.homepage-announcement-copy small {
+  color: var(--text-color, #475467);
+  font-size: 0.8rem;
+}
+.homepage-announcement-item > i {
+  flex: 0 0 auto;
+  color: var(--accent-color, #d97706);
+  font-size: 0.82rem;
+}
+@media (max-width: 560px) {
+  .homepage-announcement-list {
+    grid-template-columns: 1fr;
+  }
+  .homepage-announcement-image {
+    width: 84px;
+    height: 64px;
+    flex-basis: 84px;
+  }
+}
+</style>
+
 <section class="dynamic-pages reveal" id="homepage-updates">
   <h2>{{ school_settings.homepage_updates_title|default:"Latest Updates" }}</h2>
-
-  {% for page in pages %}
-    <article class="dynamic-page-block card-hover reveal">
-      <h3>{{ page.title }}</h3>
-
-      {% for item in page.contents.all %}
-        <div class="dynamic-content">
-          <h4>{{ item.title }}</h4>
-
-          {% if item.image %}
-            <img src="{{ item.image.url }}" alt="{{ item.title|default:page.title }}" loading="lazy" style="max-width:100%; border-radius:10px; margin-bottom:10px;" class="image-hover">
-          {% endif %}
-
-          <p>{{ item.body }}</p>
-        </div>
-      {% endfor %}
-    </article>
-  {% empty %}
-    <p>{{ school_settings.homepage_updates_empty_text|default:"No updates available yet." }}</p>
-  {% endfor %}
+  <div class="homepage-announcement-list">
+    {% for announcement in recent_announcements %}
+      <a href="{% url 'announcement_detail' announcement.id %}" class="homepage-announcement-item">
+        {% if announcement.featured_image %}
+          <img class="homepage-announcement-image" src="{{ announcement.featured_image.url }}" alt="" loading="lazy" decoding="async">
+        {% else %}
+          {% with announcement.gallery_cover as gallery_image %}
+            {% if gallery_image %}
+              <img class="homepage-announcement-image" src="{{ gallery_image }}" alt="" loading="lazy" decoding="async">
+            {% elif announcement.video_thumbnail %}
+              <img class="homepage-announcement-image" src="{{ announcement.video_thumbnail.url }}" alt="" loading="lazy" decoding="async">
+            {% endif %}
+          {% endwith %}
+        {% endif %}
+        <span class="homepage-announcement-copy">
+          <strong>{{ announcement.title|striptags }}</strong>
+          <small>{{ announcement.created_at|date:'F d, Y' }}</small>
+        </span>
+        <i class="fas fa-arrow-right" aria-hidden="true"></i>
+      </a>
+    {% empty %}
+      <p>{{ school_settings.homepage_updates_empty_text|default:"No announcements available yet." }}</p>
+    {% endfor %}
+  </div>
 </section>
 
 {% endblock %}

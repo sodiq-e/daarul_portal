@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{% static 'css/animations.css' %}">
   <link rel="stylesheet" href="{% static 'css/animation-utilities.css' %}">
   <link rel="stylesheet" href="{% static 'css/portal-lists.css' %}">
+  <link rel="stylesheet" href="{% static 'css/calculator.css' %}">
   {% block extra_css %}{% endblock %}
    <style>
     :root {
@@ -3553,6 +3554,55 @@
     </div>
   </div>
 
+  {% if not attempt or not attempt.is_submitted and attempt.exam.calculator_mode != 'off' %}
+  <section class="site-calculator" id="siteCalculator" role="dialog" aria-modal="false" aria-labelledby="siteCalculatorTitle" data-calculator-mode="{% if attempt %}{{ attempt.exam.calculator_mode }}{% else %}full{% endif %}" hidden>
+    <div class="site-calculator-header">
+      <div class="site-calculator-heading">
+        <h2 id="siteCalculatorTitle">Calculator</h2>
+        <span class="site-calculator-mode" id="siteCalculatorMode"></span>
+      </div>
+      <button class="site-calculator-close" id="siteCalculatorClose" type="button" aria-label="Close calculator">&times;</button>
+    </div>
+    <div class="site-calculator-display" id="siteCalculatorDisplay" tabindex="0" aria-label="Calculator display">
+      <div class="site-calculator-expression" id="siteCalculatorExpression">&nbsp;</div>
+      <output class="site-calculator-value" id="siteCalculatorValue" aria-live="polite">0</output>
+    </div>
+    <div class="site-calculator-keys" id="siteCalculatorKeys" role="group" aria-label="Calculator keys">
+      <button class="site-calculator-key utility" type="button" data-calculator-action="clear" data-simple-position="1-1">AC</button>
+      <button class="site-calculator-key utility" type="button" data-calculator-action="backspace" data-simple-position="1-2" aria-label="Backspace">⌫</button>
+      <button class="site-calculator-key utility" type="button" data-calculator-full-only data-calculator-value="%">%</button>
+      <button class="site-calculator-key utility" type="button" data-calculator-full-only data-calculator-value="(">(</button>
+      <button class="site-calculator-key utility" type="button" data-calculator-full-only data-calculator-value=")">)</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="sin(">sin</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="cos(">cos</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="tan(">tan</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="log(">log</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="ln(">ln</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="7">7</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="8">8</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="9">9</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="sqrt(">√</button>
+      <button class="site-calculator-key operator" type="button" data-calculator-value="/" data-simple-position="1-3">÷</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="4" data-simple-position="3-1">4</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="5" data-simple-position="3-2">5</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="6" data-simple-position="3-3">6</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="^">xʸ</button>
+      <button class="site-calculator-key operator" type="button" data-calculator-value="*" data-simple-position="1-4">×</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="1" data-simple-position="4-1">1</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="2" data-simple-position="4-2">2</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="3" data-simple-position="4-3">3</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="pi">π</button>
+      <button class="site-calculator-key operator" type="button" data-calculator-value="-" data-simple-position="2-4">−</button>
+      <button class="site-calculator-key" type="button" data-calculator-value="0" data-simple-position="5-1">0</button>
+      <button class="site-calculator-key" type="button" data-calculator-value=".">.</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="e">e</button>
+      <button class="site-calculator-key equals" type="button" data-calculator-action="equals" data-simple-position="4-4">=</button>
+      <button class="site-calculator-key operator" type="button" data-calculator-value="+" data-simple-position="3-4">+</button>
+      <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="abs(">abs</button>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- ✅ NOTIFICATIONS CONTAINER -->
   <div id="notificationsContainer"></div>
 
@@ -3613,11 +3663,16 @@
 
     <!-- RIGHT: Menu -->
     <div class="header-right">
-      <button id="globalSearchButton" class="global-search-button" type="button" aria-label="Find a page or task">
+      <button id="globalSearchButton" class="global-search-button" type="button" aria-label="Find a page or task" onclick="openCommandPalette()">
         <i class="fas fa-search" aria-hidden="true"></i>
         <span>Find a page or task</span>
         <kbd>Ctrl K</kbd>
       </button>
+      {% if not attempt or not attempt.is_submitted and attempt.exam.calculator_mode != 'off' %}
+      <button id="globalCalculatorToggle" class="global-calculator-toggle" type="button" aria-label="Open calculator" aria-controls="siteCalculator" aria-expanded="false" data-calculator-mode="{% if attempt %}{{ attempt.exam.calculator_mode }}{% else %}full{% endif %}" title="Calculator">
+        <i class="fas fa-calculator" aria-hidden="true"></i>
+      </button>
+      {% endif %}
       <button id="menuBtn" class="menu-btn" type="button" aria-label="Open sidebar" aria-controls="sidebar" aria-expanded="false">
         <i id="menuBtnIcon" class="fas fa-bars" aria-hidden="true"></i>
       </button>
@@ -3724,6 +3779,10 @@
              class="{% if request.resolver_match.url_name == 'teacher_permissions' %}active{% endif %}">
             <i class="fas fa-user-shield"></i><span> Teacher Permissions</span>
           </a>
+          <a href="{% url 'school_classes:class_list' %}" data-tooltip="Classes & Subjects"
+             class="{% if request.resolver_match.url_name == 'class_list' or request.resolver_match.url_name == 'class_detail' or request.resolver_match.url_name == 'class_subjects_list' %}active{% endif %}">
+            <i class="fas fa-book-open"></i><span> Classes & Subjects</span>
+          </a>
           <a href="{% url 'admin_exam_paper_list' %}" data-tooltip="Exam Review"
              class="{% if request.resolver_match.url_name in 'admin_exam_paper_list admin_exam_paper_detail admin_exam_paper_action' %}active{% endif %}">
             <i class="fas fa-file-signature"></i><span> Exam Paper Review</span>
@@ -3814,6 +3873,11 @@
         <a href="{% url 'teachers:teacher_scheme_list' %}" data-tooltip="Schemes"
            class="{% if request.resolver_match.url_name == 'teacher_scheme_list' %}active{% endif %}">
           <i class="fas fa-book"></i><span> Scheme of Work</span>
+        </a>
+
+        <a href="{% url 'school_classes:class_list' %}" data-tooltip="Classes & Subjects"
+           class="{% if request.resolver_match.url_name == 'class_list' or request.resolver_match.url_name == 'class_detail' or request.resolver_match.url_name == 'class_subjects_list' %}active{% endif %}">
+          <i class="fas fa-book-open"></i><span> Classes & Subjects</span>
         </a>
 
         <a href="{% url 'exam_paper_list' %}" data-tooltip="Exam Papers"
@@ -5532,5 +5596,6 @@ window.showNotification = (title, message, type = 'info', duration = 5000) => {
 
 
 <script src="{% static 'js/navigation.js' %}"></script>
+<script src="{% static 'js/calculator.js' %}"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from exams.models import Term
 from payroll.forms import StudentPaymentForm
-from payroll.models import Payslip, SchoolFee, Staff, StudentInvoice, StudentPayment
+from payroll.models import Payslip, SchoolExpense, SchoolFee, Staff, StudentInvoice, StudentPayment
 from school_classes.models import Teacher, TeacherPermission
 from settingsapp.models import Tenant, TenantMembership
 from settingsapp.tenant_utils import set_current_tenant, clear_current_tenant
@@ -749,6 +749,162 @@ class StudentPaymentAllocationTests(TestCase):
         self.assertIn('Outstanding Balance', content)
         self.assertIn('<table class="table table-striped">', content)
         self.assertIn('School Fees', content)
+        self.assertIn('₦20000.00', content)
+
+    def test_print_invoice_filters_limit_students_status_and_duplicate_ids(self):
+        second_student = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-002',
+            surname='Roe',
+            other_names='Alex',
+        )
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        paid_invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=paid_invoice,
+            amount=Decimal('40000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Cash',
+            reference='REF-PAID-PRINT',
+            invoices=[paid_invoice.pk],
+        )
+        unpaid_invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+
+        group, _ = Group.objects.get_or_create(name='Staff')
+        user = User.objects.create_user(username='invoice-print-staff', password='pass1234')
+        user.profile.requested_group = 'Staff'
+        user.profile.is_approved = True
+        user.profile.save()
+        user.groups.add(group)
+        self.client.force_login(user)
+
+        paid_response = self.client.get(reverse('print_invoices'), {
+            'students': [str(self.student.pk), str(self.student.pk)],
+            'invoice_status': 'paid',
+        })
+        self.assertEqual(paid_response.status_code, 200)
+        self.assertEqual(paid_response.context['invoices'].count(), 1)
+        self.assertEqual(
+            list(paid_response.context['students'].values_list('pk', flat=True)),
+            [self.student.pk],
+        )
+        self.assertContains(paid_response, '₦40000.00')
+        self.assertEqual(paid_response.content.decode().count(f'<td>{paid_invoice.pk}</td>'), 1)
+        self.assertNotContains(paid_response, 'Roe Alex')
+
+        unpaid_response = self.client.get(reverse('print_invoices'), {'invoice_status': 'unpaid'})
+        self.assertEqual(unpaid_response.context['invoices'].count(), 1)
+        self.assertEqual(
+            list(unpaid_response.context['students'].values_list('pk', flat=True)),
+            [second_student.pk],
+        )
+        self.assertContains(unpaid_response, 'Roe Alex')
+        self.assertNotContains(unpaid_response, 'Doe Jane')
+
+        all_response = self.client.get(reverse('print_invoices'), {'invoice_status': 'all'})
+        self.assertEqual(all_response.context['invoices'].count(), 2)
+        self.assertEqual(
+            set(all_response.context['students'].values_list('pk', flat=True)),
+            {self.student.pk, second_student.pk},
+        )
+
+    def test_print_receipt_student_filter_limits_options_and_deduplicates_allocations(self):
+        second_student = Student.objects.create(
+            tenant=self.tenant,
+            admission_no='STD-002',
+            surname='Roe',
+            other_names='Alex',
+        )
+        fee = SchoolFee.objects.create(tenant=self.tenant, name='School Fees', amount=Decimal('40000.00'))
+        invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        other_invoice = StudentInvoice.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            fee=fee,
+            issued_date=date(2024, 9, 2),
+            due_date=date(2024, 9, 30),
+            amount_due=Decimal('40000.00'),
+            academic_session='2024/2025',
+            term=self.term,
+            status='pending',
+        )
+        receipt = StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=self.student,
+            invoice=invoice,
+            amount=Decimal('20000.00'),
+            payment_date=date(2024, 9, 10),
+            payment_method='Cash',
+            reference='REF-DUPLICATE-ALLOCATION',
+            invoices=[invoice.pk],
+        )
+        StudentPayment.objects.filter(pk=receipt.pk).update(allocations=[
+            {'invoice_id': invoice.pk, 'amount_applied': '12000.00'},
+            {'invoice_id': invoice.pk, 'amount_applied': '8000.00'},
+        ])
+        StudentPayment.objects.create(
+            tenant=self.tenant,
+            student=second_student,
+            invoice=other_invoice,
+            amount=Decimal('5000.00'),
+            payment_date=date(2024, 9, 11),
+            payment_method='Cash',
+            reference='REF-OTHER-STUDENT',
+            invoices=[other_invoice.pk],
+        )
+
+        group, _ = Group.objects.get_or_create(name='Staff')
+        user = User.objects.create_user(username='receipt-print-staff', password='pass1234')
+        user.profile.requested_group = 'Staff'
+        user.profile.is_approved = True
+        user.profile.save()
+        user.groups.add(group)
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('print_receipts'), {'students': str(self.student.pk)})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['receipts']), 1)
+        self.assertEqual(
+            list(response.context['students'].values_list('pk', flat=True)),
+            [self.student.pk],
+        )
+        self.assertEqual(len(response.context['receipts'][0].invoice_allocations), 1)
+        self.assertEqual(response.context['receipts'][0].invoice_allocations[0]['amount_applied'], Decimal('20000.00'))
+        self.assertContains(response, '₦20000.00')
+        self.assertNotContains(response, 'Roe Alex')
 
     def test_payment_batch_splits_across_students_and_keeps_outstanding_balance(self):
         second_student = Student.objects.create(
@@ -963,6 +1119,12 @@ class TeacherPayrollDashboardTests(TestCase):
             tenant=self.tenant,
             role='school_admin',
         )
+        SchoolExpense.objects.create(
+            tenant=self.tenant,
+            date=date.today(),
+            description='Office supplies',
+            amount=Decimal('1234.50'),
+        )
         self.client.force_login(admin_user)
 
         homepage = self.client.get(reverse('home'))
@@ -973,3 +1135,4 @@ class TeacherPayrollDashboardTests(TestCase):
         dashboard = self.client.get(reverse('payroll_dashboard'))
         self.assertEqual(dashboard.status_code, 200)
         self.assertContains(dashboard, 'Finance Dashboard')
+        self.assertContains(dashboard, '₦1234.50')

@@ -267,7 +267,14 @@ if not DEBUG:
         "default-src": ("'self'",),
     }
 
-AI_GENERATION_ENABLED = os.environ.get('AI_GENERATION_ENABLED', 'True').strip().lower() not in ('0', 'false', 'no')
+AI_KEYS_CONFIGURED = bool(
+    os.environ.get('GEMINI_API_KEY', '').strip() or
+    os.environ.get('GROQ_API_KEY', '').strip()
+)
+AI_GENERATION_ENABLED = (
+    AI_KEYS_CONFIGURED and
+    os.environ.get('AI_GENERATION_ENABLED', 'True').strip().lower() not in ('0', 'false', 'no')
+)
 
 # Exam resource upload settings
 EXAM_UPLOAD_MAX_SIZE = int(os.environ.get('EXAM_UPLOAD_MAX_SIZE', 5 * 1024 * 1024))  # bytes

@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const feesField = document.getElementById('id_fees');
     const existingInvoicesContainer = document.getElementById('existing-invoices');
     if (!studentField || !feesField) return;
+    const formatNaira = amount => '₦' + Number(amount || 0).toFixed(2);
 
     const renderExistingInvoices = (invoices) => {
         if (!existingInvoicesContainer) return;
@@ -64,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         existingInvoicesContainer.innerHTML = '<ul class="list-group list-group-flush">' + invoices.map(invoice => {
             const statusLabel = invoice.status ? invoice.status.toUpperCase() : 'UNKNOWN';
-            return '<li class="list-group-item px-0"><strong>' + invoice.fee_name + '</strong> — ₦' + invoice.amount_due + ' — ' + statusLabel + ' — due ' + invoice.due_date + '</li>';
+            return '<li class="list-group-item px-0"><strong>' + invoice.fee_name + '</strong> — ' + formatNaira(invoice.amount_due) + ' — ' + statusLabel + ' — due ' + invoice.due_date + '</li>';
         }).join('') + '</ul>';
     };
 
@@ -82,8 +83,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 data.fees.forEach(fee => {
                     const label = fee.existing_count > 0
-                        ? fee.name + ' - ₦' + fee.amount + ' (already exists: ' + fee.existing_count + ')'
-                        : fee.name + ' - ₦' + fee.amount;
+                        ? fee.name + ' - ' + formatNaira(fee.amount) + ' (already exists: ' + fee.existing_count + ')'
+                        : fee.name + ' - ' + formatNaira(fee.amount);
                     const option = new Option(label, fee.id, fee.selected, fee.selected);
                     if (fee.existing_count > 0) {
                         option.style.color = '#8a4b00';

@@ -37,7 +37,7 @@
         <div class="col-sm-6 col-lg-3">
             <div class="card h-100"><div class="card-body">
                 <p class="text-muted mb-1">Average Monthly Net</p>
-                <p class="h3 mb-0">{{ summary.avg_monthly_net|floatformat:2 }}</p>
+                <p class="h3 mb-0">₦{{ summary.avg_monthly_net|floatformat:2 }}</p>
             </div></div>
         </div>
     </div>
@@ -52,9 +52,9 @@
                     {% for payslip in payslips %}
                     <tr>
                         <td>{{ payslip.month|date:"F Y" }}</td>
-                        <td>{{ payslip.gross|floatformat:2 }}</td>
-                        <td>{{ payslip.total_deductions|floatformat:2 }}</td>
-                        <td>{{ payslip.net|floatformat:2 }}</td>
+                        <td>₦{{ payslip.gross|floatformat:2 }}</td>
+                        <td>₦{{ payslip.total_deductions|floatformat:2 }}</td>
+                        <td>₦{{ payslip.net|floatformat:2 }}</td>
                         <td>{% if payslip.is_processed %}<span class="badge bg-success">Processed</span>{% else %}<span class="badge bg-warning text-dark">Pending</span>{% endif %}</td>
                         <td>{% if can_view_payslips %}<a href="{% url 'teacher_payslip_detail' payslip.pk %}" class="btn btn-sm btn-outline-primary">View</a>{% endif %}</td>
                     </tr>
@@ -72,9 +72,9 @@
         <div class="table-responsive">
             <table class="table table-sm">
                 <tbody>
-                    <tr><th scope="row">Gross pay</th><td>{{ summary.total_gross|floatformat:2 }}</td></tr>
-                    <tr><th scope="row">Deductions</th><td>{{ summary.total_deductions|floatformat:2 }}</td></tr>
-                    <tr><th scope="row">Net pay</th><td>{{ summary.total_net|floatformat:2 }}</td></tr>
+                    <tr><th scope="row">Gross pay</th><td>₦{{ summary.total_gross|floatformat:2 }}</td></tr>
+                    <tr><th scope="row">Deductions</th><td>₦{{ summary.total_deductions|floatformat:2 }}</td></tr>
+                    <tr><th scope="row">Net pay</th><td>₦{{ summary.total_net|floatformat:2 }}</td></tr>
                 </tbody>
             </table>
         </div>

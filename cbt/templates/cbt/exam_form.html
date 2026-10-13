@@ -224,6 +224,15 @@
                     </div>
                     <small class="form-text text-muted d-block mt-1">Allow students to return to previous answers</small>
                 </div>
+
+                <div class="form-group">
+                    <label for="{{ form.calculator_mode.id_for_label }}">Calculator</label>
+                    {{ form.calculator_mode }}
+                    <small class="form-text text-muted d-block mt-1">Choose whether students may use no calculator, a simple calculator, or the full calculator during this exam.</small>
+                    {% if form.calculator_mode.errors %}
+                        <div class="alert alert-danger mt-2">{{ form.calculator_mode.errors }}</div>
+                    {% endif %}
+                </div>
             </div>
         </div>
 

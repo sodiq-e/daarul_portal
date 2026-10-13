@@ -17,7 +17,7 @@
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <strong>Total Expenses:</strong> {{ total_expenses }}
+            <strong>Total Expenses:</strong> ₦{{ total_expenses|floatformat:2 }}
         </div>
     </div>
 
@@ -39,7 +39,7 @@
                     <td>{{ expense.date }}</td>
                     <td>{{ expense.description }}</td>
                     <td>{{ expense.category|default:'General' }}</td>
-                    <td>{{ expense.amount }}</td>
+                    <td>₦{{ expense.amount|floatformat:2 }}</td>
                     <td>{% if expense.created_by %}{{ expense.created_by.get_full_name|default:expense.created_by.username }}{% else %}System{% endif %}</td>
                 </tr>
                 {% endfor %}

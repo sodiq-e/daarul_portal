@@ -24,9 +24,9 @@
                 <p><strong>Fee:</strong> {{ invoice.fee }}</p>
                 <p><strong>Issued:</strong> {{ invoice.issued_date }}</p>
                 <p><strong>Due:</strong> {{ invoice.due_date }}</p>
-                <p><strong>Amount Due:</strong> {{ invoice.amount_due }}</p>
+                <p><strong>Amount Due:</strong> ₦{{ invoice.amount_due|floatformat:2 }}</p>
                 <p><strong>Status:</strong> {{ invoice.get_status_display }}</p>
-                <p><strong>Balance:</strong> {{ invoice.balance }}</p>
+                <p><strong>Balance:</strong> ₦{{ invoice.balance|floatformat:2 }}</p>
             </div>
         </div>
         <div class="col-md-6">
@@ -66,7 +66,7 @@
                         {% for payment in invoice.payments.all %}
                         <tr>
                             <td>{{ payment.payment_date }}</td>
-                            <td>{{ payment.amount }}</td>
+                            <td>₦{{ payment.amount|floatformat:2 }}</td>
                             <td>{{ payment.payment_method }}</td>
                             <td>{{ payment.reference }}</td>
                             <td>

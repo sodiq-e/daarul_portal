@@ -15,14 +15,22 @@
     </div>
 
     <form method="get" id="print-filter-form" class="row g-3 mb-4 no-print" action="{% url 'print_invoices' %}">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label" for="document-type">Document Type</label>
             <select id="document-type" class="form-select" onchange="updatePrintType(this.value)">
                 <option value="invoices" {% if current_type == 'invoices' %}selected{% endif %}>Invoices</option>
                 <option value="receipts" {% if current_type == 'receipts' %}selected{% endif %}>Paid Receipts</option>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <label class="form-label" for="invoice-status">Invoice Status</label>
+            <select id="invoice-status" name="invoice_status" class="form-select">
+                <option value="all" {% if invoice_status == 'all' %}selected{% endif %}>All Invoices</option>
+                <option value="paid" {% if invoice_status == 'paid' %}selected{% endif %}>Paid Invoices</option>
+                <option value="unpaid" {% if invoice_status == 'unpaid' %}selected{% endif %}>Unpaid Invoices</option>
+            </select>
+        </div>
+        <div class="col-md-4">
             <label class="form-label" for="invoice-student">Students</label>
             <select id="invoice-student" name="students" class="form-select" multiple size="8">
                 {% for student in students %}
@@ -30,7 +38,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label" for="invoice-session">Academic Session</label>
             <select id="invoice-session" name="academic_session" class="form-select">
                 <option value="">All Sessions</option>
@@ -39,7 +47,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label" for="invoice-term">Term</label>
             <select id="invoice-term" name="term" class="form-select">
                 <option value="">All Terms</option>
@@ -71,19 +79,19 @@
         <div class="col-md-4">
             <div class="card p-3">
                 <strong>Total Due</strong>
-                <p class="display-6">{{ total_due }}</p>
+                <p class="display-6">₦{{ total_due|floatformat:2 }}</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card p-3">
                 <strong>Total Paid</strong>
-                <p class="display-6">{{ total_paid }}</p>
+                <p class="display-6">₦{{ total_paid|floatformat:2 }}</p>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card p-3">
                 <strong>Outstanding Balance</strong>
-                <p class="display-6">{{ total_balance }}</p>
+                <p class="display-6">₦{{ total_balance|floatformat:2 }}</p>
             </div>
         </div>
     </div>
@@ -109,9 +117,9 @@
                     <td>{{ invoice.id }}</td>
                     <td>{{ invoice.student.full_name }}</td>
                     <td>{{ invoice.fee }}</td>
-                    <td>{{ invoice.amount_due }}</td>
-                    <td>{{ invoice.total_paid }}</td>
-                    <td>{{ invoice.balance }}</td>
+                    <td>₦{{ invoice.amount_due|floatformat:2 }}</td>
+                    <td>₦{{ invoice.total_paid|floatformat:2 }}</td>
+                    <td>₦{{ invoice.balance|floatformat:2 }}</td>
                     <td>{{ invoice.get_status_display }}</td>
                     <td>{{ invoice.due_date }}</td>
                 </tr>
@@ -121,7 +129,7 @@
     </div>
     {% else %}
     <div class="alert alert-info">
-        No invoices have been created yet.
+        No invoices match the selected filters.
     </div>
     {% endif %}
 </div>

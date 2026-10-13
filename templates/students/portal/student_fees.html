@@ -42,7 +42,7 @@
                             <div class="card text-center bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title">Total Due</h6>
-                                    <h4 class="text-primary">₦ {{ total_due }}</h4>
+                                    <h4 class="text-primary">₦{{ total_due|floatformat:2 }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -50,7 +50,7 @@
                             <div class="card text-center bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title">Total Paid</h6>
-                                    <h4 class="text-success">₦ {{ total_paid }}</h4>
+                                    <h4 class="text-success">₦{{ total_paid|floatformat:2 }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -58,7 +58,7 @@
                             <div class="card text-center bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title">Balance Owing</h6>
-                                    <h4 class="text-danger">₦ {{ total_owing }}</h4>
+                                    <h4 class="text-danger">₦{{ total_owing|floatformat:2 }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -66,7 +66,7 @@
                             <div class="card text-center bg-light border-success">
                                 <div class="card-body">
                                     <h6 class="card-title">Wallet Balance</h6>
-                                    <h4 class="text-success">₦ {{ wallet_balance }}</h4>
+                                    <h4 class="text-success">₦{{ wallet_balance|floatformat:2 }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -74,7 +74,7 @@
                             <div class="card text-center bg-light border-warning">
                                 <div class="card-body">
                                     <h6 class="card-title">School Holds for You</h6>
-                                    <h4 class="text-warning">₦ {{ wallet_owed_by_school }}</h4>
+                                    <h4 class="text-warning">₦{{ wallet_owed_by_school|floatformat:2 }}</h4>
                                 </div>
                             </div>
                         </div>
@@ -106,9 +106,9 @@
                                 <tr>
                                     <td>#{{ invoice.id }}</td>
                                     <td>{{ invoice.fee.name|default:"General Fee" }}</td>
-                                    <td>₦ {{ invoice.amount_due }}</td>
-                                    <td>₦ {{ invoice.total_paid }}</td>
-                                    <td>₦ {{ invoice.balance }}</td>
+                                    <td>₦{{ invoice.amount_due|floatformat:2 }}</td>
+                                    <td>₦{{ invoice.total_paid|floatformat:2 }}</td>
+                                    <td>₦{{ invoice.balance|floatformat:2 }}</td>
                                     <td>
                                         {% if invoice.status == 'paid' %}
                                             <span class="badge bg-success">Paid</span>
@@ -152,7 +152,7 @@
                                 {% for payment in payments %}
                                 <tr>
                                     <td>{{ payment.payment_date|date:"d/m/Y" }}</td>
-                                    <td>₦ {{ payment.amount }}</td>
+                                    <td>₦{{ payment.amount|floatformat:2 }}</td>
                                     <td>{{ payment.payment_method|default:"Not specified" }}</td>
                                     <td>{{ payment.reference|default:"-" }}</td>
                                 </tr>

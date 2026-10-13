@@ -28,7 +28,7 @@
         <div class="header">
             <h1>Report Card</h1>
             <p>{{ student.full_name|upper }} | Admission No: {{ student.admission_no }}</p>
-            <p>Term: {{ selected_term_obj.name if selected_term_obj else 'N/A' }} | Session: {{ selected_term_obj.academic_year if selected_term_obj else '' }}</p>
+            <p>Term: {{ selected_term_obj.name|default:'N/A' }} | Session: {{ selected_term_obj.academic_year|default:'' }}</p>
         </div>
 
         <div class="section">
@@ -41,8 +41,8 @@
                 </div>
                 <div>
                     <strong>Class:</strong> {{ student.student_class }}<br>
-                    <strong>Term:</strong> {{ selected_term_obj.name if selected_term_obj else 'N/A' }}<br>
-                    <strong>Session:</strong> {{ selected_term_obj.academic_year if selected_term_obj else 'N/A' }}<br>
+                    <strong>Term:</strong> {{ selected_term_obj.name|default:'N/A' }}<br>
+                    <strong>Session:</strong> {{ selected_term_obj.academic_year|default:'N/A' }}<br>
                 </div>
             </div>
         </div>
@@ -148,9 +148,9 @@
                     <tr>
                         <td>#{{ invoice.id }}</td>
                         <td>{{ invoice.fee.name|default:'General Fee' }}</td>
-                        <td>₦ {{ invoice.amount_due }}</td>
-                        <td>₦ {{ invoice.total_paid }}</td>
-                        <td>₦ {{ invoice.balance }}</td>
+                        <td>₦{{ invoice.amount_due|floatformat:2 }}</td>
+                        <td>₦{{ invoice.total_paid|floatformat:2 }}</td>
+                        <td>₦{{ invoice.balance|floatformat:2 }}</td>
                         <td>{{ invoice.status|capfirst }}</td>
                     </tr>
                     {% endfor %}
@@ -177,7 +177,7 @@
                     {% for payment in payments %}
                     <tr>
                         <td>{{ payment.payment_date|date:'d/m/Y' }}</td>
-                        <td>₦ {{ payment.amount }}</td>
+                        <td>₦{{ payment.amount|floatformat:2 }}</td>
                         <td>{{ payment.payment_method|default:'Not specified' }}</td>
                         <td>{{ payment.reference|default:'-' }}</td>
                     </tr>
@@ -185,6 +185,7 @@
                 </tbody>
             </table>
         </div>
+        {% endif %}
         {% endif %}
 
         <div class="footer">

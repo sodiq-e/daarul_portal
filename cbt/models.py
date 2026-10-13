@@ -51,6 +51,15 @@ class CBTExam(TenantModel):
         (QUESTION_MODE_RANDOM, 'Random Selection'),
     ]
 
+    CALCULATOR_OFF = 'off'
+    CALCULATOR_SIMPLE = 'simple'
+    CALCULATOR_FULL = 'full'
+    CALCULATOR_MODE_CHOICES = [
+        (CALCULATOR_OFF, 'No calculator'),
+        (CALCULATOR_SIMPLE, 'Simple calculator'),
+        (CALCULATOR_FULL, 'Full calculator'),
+    ]
+
     name = models.CharField(max_length=180)
     exam_mode = models.CharField(max_length=16, choices=EXAM_MODE_CHOICES, default=PRACTICE)
     question_mode = models.CharField(max_length=16, choices=QUESTION_MODE_CHOICES, default=QUESTION_MODE_MANUAL)
@@ -61,6 +70,11 @@ class CBTExam(TenantModel):
     show_instant_results = models.BooleanField(default=False)
     show_corrections = models.BooleanField(default=False)
     allow_review = models.BooleanField(default=True)
+    calculator_mode = models.CharField(
+        max_length=8,
+        choices=CALCULATOR_MODE_CHOICES,
+        default=CALCULATOR_OFF,
+    )
     total_questions_to_display = models.PositiveIntegerField(null=True, blank=True)
     balance_by_difficulty = models.BooleanField(default=False)
     balance_by_topic = models.BooleanField(default=False)

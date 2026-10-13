@@ -20,7 +20,7 @@
             <h4>Payment Details</h4>
             <p><strong>Student:</strong> {{ payment.student.full_name }}</p>
             <p><strong>Invoice:</strong> #{{ payment.invoice.id }}</p>
-            <p><strong>Amount Paid:</strong> {{ payment.amount }}</p>
+            <p><strong>Amount Paid:</strong> ₦{{ payment.amount|floatformat:2 }}</p>
             <p><strong>Payment Date:</strong> {{ payment.payment_date }}</p>
             <p><strong>Payment Method:</strong> {{ payment.get_payment_method_display }}</p>
             <p><strong>Reference:</strong> {{ payment.reference|default:'N/A' }}</p>

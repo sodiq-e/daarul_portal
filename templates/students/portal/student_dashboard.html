@@ -80,7 +80,7 @@
                 <div class="card-body">
                     <h5 class="card-title">Amount Owing</h5>
                     <p class="card-text">
-                        <strong class="text-danger">₦ {{ total_owing }}</strong>
+                        <strong class="text-danger">₦{{ total_owing|floatformat:2 }}</strong>
                     </p>
                 </div>
             </div>
@@ -92,7 +92,7 @@
             <div class="card border-success h-100">
                 <div class="card-body">
                     <h5 class="card-title text-success">Wallet Balance</h5>
-                    <p class="display-6 mb-0 text-success">₦ {{ wallet_balance }}</p>
+                    <p class="display-6 mb-0 text-success">₦{{ wallet_balance|floatformat:2 }}</p>
                     <small class="text-muted">Available credit for this student.</small>
                 </div>
             </div>
@@ -101,7 +101,7 @@
             <div class="card border-warning h-100">
                 <div class="card-body">
                     <h5 class="card-title text-warning">School Holds for You</h5>
-                    <p class="display-6 mb-0 text-warning">₦ {{ wallet_owed_by_school }}</p>
+                    <p class="display-6 mb-0 text-warning">₦{{ wallet_owed_by_school|floatformat:2 }}</p>
                     <small class="text-muted">This is the amount the school is holding on your behalf.</small>
                 </div>
             </div>

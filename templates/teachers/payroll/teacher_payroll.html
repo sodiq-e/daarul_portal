@@ -39,7 +39,7 @@
                         {% for component in salary_components %}
                         <tr>
                             <td>{{ component.name }}</td>
-                            <td>{{ component.amount|floatformat:2 }}</td>
+                            <td>₦{{ component.amount|floatformat:2 }}</td>
                             <td>
                                 {% if component.is_deduction %}
                                     <span class="badge bg-danger">Deduction</span>
@@ -63,7 +63,7 @@
                 <a href="{% url 'teacher_payslip_detail' payslip.pk %}" class="list-group-item list-group-item-action">
                     <div class="d-flex w-100 justify-content-between">
                         <h5 class="mb-1">{{ payslip.month|date:"F Y" }}</h5>
-                        <span class="badge bg-primary">{{ payslip.net|floatformat:2 }}</span>
+                        <span class="badge bg-primary">₦{{ payslip.net|floatformat:2 }}</span>
                     </div>
                     <p class="mb-1 text-muted">Status: 
                         {% if payslip.is_processed %}
