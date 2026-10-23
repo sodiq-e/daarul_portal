@@ -72,6 +72,8 @@ function setupAttendanceControls() {
   const clockOutBtns = getAttendanceButtons('clockOutBtn');
   const completedBadges = getAttendanceElements('[id="attendanceCompletedBadge"]');
   const noClockInMessages = getAttendanceElements('[id="noClockInMessage"]');
+  const attendanceDetails = document.getElementById('attendanceDetails');
+  const statusBadges = getAttendanceElements('[id="statusBadge"]');
   const liveTimerRows = getAttendanceElements('[id="liveTimerRow"]');
   const syncStatusElements = getAttendanceElements('[id="syncStatus"]');
   const messageBoxes = getAttendanceElements('[id="attendanceMessage"]');
@@ -81,6 +83,8 @@ function setupAttendanceControls() {
   const hasClockIn = !!attendanceState.currentAttendance.clockIn;
   const hasClockOut = !!attendanceState.currentAttendance.clockOut;
   const completed = hasClockIn && hasClockOut;
+  if (attendanceDetails) attendanceDetails.classList.toggle('d-none', !hasClockIn);
+  statusBadges.forEach((badge) => badge.classList.toggle('d-none', !hasClockIn));
 
   if (!attendanceState.locationConfigured) {
     showMessage('Attendance location not configured. Contact administrator.', 'error');
@@ -125,6 +129,7 @@ function setupAttendanceControls() {
   syncStatusElements.forEach((syncStatus) => {
     syncStatus.textContent = attendanceState.currentAttendance.synced ? 'Synced' : 'Pending';
     syncStatus.className = `badge ${attendanceState.currentAttendance.synced ? 'bg-info' : 'bg-warning text-dark'}`;
+    syncStatus.classList.toggle('d-none', !hasClockIn);
   });
 
   renderAttendanceTimes();
@@ -134,6 +139,7 @@ function setupAttendanceControls() {
 function updateStatusBadge(state) {
   const statusBadge = document.getElementById('statusBadge');
   if (!statusBadge) return;
+  statusBadge.classList.remove('d-none');
   if (state === 'completed') {
     statusBadge.textContent = 'Completed';
     statusBadge.className = 'badge bg-primary';
@@ -150,6 +156,14 @@ function updateStatusBadge(state) {
     statusBadge.textContent = 'Absent';
     statusBadge.className = 'badge bg-danger';
   }
+}
+
+function updateSyncStatus(status) {
+  getAttendanceElements('[id="syncStatus"]').forEach((element) => {
+    const synced = status === 'synced';
+    element.textContent = synced ? 'Synced' : 'Pending sync';
+    element.className = `badge ${synced ? 'bg-info' : 'bg-warning text-dark'}`;
+  });
 }
 
 function updateConnectionStatus() {
@@ -488,8 +502,6 @@ async function sendClockEvent(action, coords) {
       return;
     }
     showMessage(result.message || 'Attendance saved successfully.', 'success');
-    document.getElementById('syncStatus').textContent = 'Synced';
-    updatePendingCount();
     if (action === 'clock_in') {
       attendanceState.currentAttendance.clockIn = new Date();
       attendanceState.currentAttendance.status = result.status || 'present';
@@ -501,6 +513,8 @@ async function sendClockEvent(action, coords) {
       stopLiveTimer();
       renderWorkDuration();
     }
+    updateSyncStatus(result.synced ? 'synced' : 'pending');
+    updatePendingCount();
     setupAttendanceControls();
   } catch (error) {
     await handleOfflineFallback(action, error.message, payload);
@@ -533,7 +547,7 @@ async function handleOfflineFallback(action, errorMessage, payload = null) {
     }
     await saveOfflineRecord(record);
     showMessage('Stored attendance offline. It will sync automatically when you are online.', 'success');
-    document.getElementById('syncStatus').textContent = 'Pending sync';
+    updateSyncStatus('pending');
     updatePendingCount();
   } catch (error) {
     showMessage('Unable to save attendance offline: ' + error.message, 'error');
@@ -648,7 +662,7 @@ async function syncAttendance() {
       await deleteOfflineRecord(record.id);
     }
     showMessage('Offline attendance synced successfully.', 'success');
-    document.getElementById('syncStatus').textContent = 'Synced';
+    updateSyncStatus('synced');
     updatePendingCount(0);
   } catch (error) {
     console.warn('Sync failed:', error);

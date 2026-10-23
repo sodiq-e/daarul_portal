@@ -27,18 +27,17 @@
           </div>
 
           <div id="todayStatusCard" class="mb-3">
-            {% if current_attendance %}
-              <div class="d-flex flex-wrap gap-2 mb-2">
-                <span class="badge" id="statusBadge">{{ current_attendance.clock_in_status|capfirst }}</span>
-                <span class="badge bg-primary" id="syncStatus">{{ current_attendance.synced|yesno:'Synced,Pending' }}</span>
-              </div>
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <span class="badge {% if not current_attendance %}d-none{% endif %}" id="statusBadge">{{ current_attendance.clock_in_status|capfirst|default:'' }}</span>
+              <span class="badge bg-primary {% if not current_attendance %}d-none{% endif %}" id="syncStatus">{{ current_attendance.synced|yesno:'Synced,Pending'|default:'' }}</span>
+            </div>
+            <p id="noClockInMessage" class="mb-3 text-muted {% if current_attendance %}d-none{% endif %}">You have not clocked in today.</p>
+            <div id="attendanceDetails" {% if not current_attendance %}class="d-none"{% endif %}>
               <div class="mb-2"><strong>Clock In:</strong> <span id="clockInTime">{{ current_attendance.clock_in|date:'g:i A'|default:'--' }}</span></div>
               <div class="mb-2"><strong>Clock Out:</strong> <span id="clockOutTime">{{ current_attendance.clock_out|date:'g:i A'|default:'--' }}</span></div>
               <div class="mb-2"><strong>Work Duration:</strong> <span id="workDuration">{{ current_attendance.formatted_work_duration|default:'--' }}</span></div>
               <div class="mb-2" id="liveTimerRow"><strong>Working Time:</strong> <span id="liveTimer">--</span></div>
-            {% else %}
-              <p id="noClockInMessage" class="mb-3 text-muted">You have not clocked in today.</p>
-            {% endif %}
+            </div>
           </div>
 
           <div class="mb-3">
