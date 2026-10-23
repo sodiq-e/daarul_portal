@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
 from django.contrib import messages
@@ -19,6 +19,8 @@ from .forms import AttendanceSettingsForm, StudentAttendanceSettingsForm
 from .models import AttendanceSettings, StudentAttendanceSettings, StaffAttendance, calculate_distance_meters
 from school_classes.models import Teacher
 from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin
+
+MAX_GPS_ACCURACY_ALLOWANCE_METERS = Decimal('250')
 
 
 def get_user_queryset_for_tenant(model, request=None):
@@ -283,13 +285,14 @@ class StaffAttendanceBaseAPI(LoginRequiredMixin, APIView):
     def get_teacher(self):
         return get_or_create_attendance_teacher_for_user(self.request.user, tenant=getattr(self.request, 'tenant', None))
 
-    def validate_gps(self, settings, latitude, longitude):
+    def validate_gps(self, settings, latitude, longitude, accuracy=None):
         if not settings.enable_gps_verification:
             return None
         if settings.school_latitude is None or settings.school_longitude is None:
             return 'Attendance configuration does not include school coordinates.'
         if latitude is None or longitude is None:
             return 'Location is required when GPS verification is enabled.'
+        accuracy = self.get_decimal_coordinate(accuracy)
         distance = calculate_distance_meters(
             latitude,
             longitude,
@@ -298,14 +301,18 @@ class StaffAttendanceBaseAPI(LoginRequiredMixin, APIView):
         )
         if distance is None:
             return 'Unable to parse GPS coordinates.'
-        if distance > Decimal(settings.allowed_radius_meters):
+        accuracy_allowance = Decimal('0')
+        if accuracy is not None and accuracy.is_finite():
+            accuracy_allowance = min(max(accuracy, Decimal('0')), MAX_GPS_ACCURACY_ALLOWANCE_METERS)
+        effective_radius = Decimal(settings.allowed_radius_meters) + accuracy_allowance
+        if distance > effective_radius:
             return f'You are too far from school to record attendance ({int(distance)}m outside allowed radius).'
         return None
 
     def get_decimal_coordinate(self, value):
         try:
             return Decimal(str(value))
-        except (TypeError, ValueError):
+        except (InvalidOperation, TypeError, ValueError):
             return None
 
     def validate_school_coordinates(self, settings):
@@ -360,6 +367,7 @@ class StaffAttendanceClockInAPI(StaffAttendanceBaseAPI):
 
         latitude = self.get_decimal_coordinate(request.data.get('latitude'))
         longitude = self.get_decimal_coordinate(request.data.get('longitude'))
+        accuracy = self.get_decimal_coordinate(request.data.get('accuracy'))
         offline_record = bool(request.data.get('offline_record', False))
         device_info = request.data.get('device_info', '').strip()
         offline_sync_id = self.parse_uuid(request.data.get('offline_sync_id'))
@@ -371,7 +379,7 @@ class StaffAttendanceClockInAPI(StaffAttendanceBaseAPI):
         if offline_sync_id and StaffAttendance.objects.filter(offline_sync_id=offline_sync_id).exists():
             return Response({'detail': 'This offline attendance record has already been synced.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        gps_error = self.validate_gps(attendance_settings, latitude, longitude)
+        gps_error = self.validate_gps(attendance_settings, latitude, longitude, accuracy)
         if gps_error:
             return Response({'detail': gps_error}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -425,6 +433,7 @@ class StaffAttendanceClockOutAPI(StaffAttendanceBaseAPI):
 
         latitude = self.get_decimal_coordinate(request.data.get('latitude'))
         longitude = self.get_decimal_coordinate(request.data.get('longitude'))
+        accuracy = self.get_decimal_coordinate(request.data.get('accuracy'))
         offline_record = bool(request.data.get('offline_record', False))
         device_info = request.data.get('device_info', '').strip()
         offline_sync_id = self.parse_uuid(request.data.get('offline_sync_id'))
@@ -436,7 +445,7 @@ class StaffAttendanceClockOutAPI(StaffAttendanceBaseAPI):
         if offline_sync_id and StaffAttendance.objects.filter(offline_sync_id=offline_sync_id).exists():
             return Response({'detail': 'This offline attendance record has already been synced.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        gps_error = self.validate_gps(attendance_settings, latitude, longitude)
+        gps_error = self.validate_gps(attendance_settings, latitude, longitude, accuracy)
         if gps_error:
             return Response({'detail': gps_error}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -492,6 +501,7 @@ class StaffAttendanceSyncAPI(StaffAttendanceBaseAPI):
             timestamp_value = item.get('timestamp')
             latitude = self.get_decimal_coordinate(item.get('latitude'))
             longitude = self.get_decimal_coordinate(item.get('longitude'))
+            accuracy = self.get_decimal_coordinate(item.get('accuracy'))
             device_info = item.get('device_info', '').strip()
             offline_sync_id = self.parse_uuid(item.get('offline_sync_id'))
             client_timestamp = self.parse_client_timestamp(timestamp_value)
@@ -511,7 +521,7 @@ class StaffAttendanceSyncAPI(StaffAttendanceBaseAPI):
                 continue
 
             if attendance_settings.enable_gps_verification:
-                gps_error = self.validate_gps(attendance_settings, latitude, longitude)
+                gps_error = self.validate_gps(attendance_settings, latitude, longitude, accuracy)
                 if gps_error:
                     results.append({'item': item, 'error': gps_error})
                     continue

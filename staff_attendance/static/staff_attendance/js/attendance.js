@@ -22,6 +22,8 @@
 const dbName = 'StaffAttendanceDB';
 const storeName = 'attendance_records';
 const settingsCacheKey = 'staffAttendanceSettingsCache';
+const locationTimeoutMs = 12000;
+const fallbackLocationTimeoutMs = 8000;
 let messageTimeoutId = null;
 
 function initializeAttendancePage() {
@@ -230,28 +232,22 @@ function getCurrentPositionAsync() {
 }
 
 function getBestPositionAsync(onUpdate = null) {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not available.'));
-      return;
-    }
+  if (!navigator.geolocation) {
+    return Promise.reject(new Error('Geolocation is not available.'));
+  }
 
+  const collectReadings = (enableHighAccuracy, timeoutMs = locationTimeoutMs) => new Promise((resolve, reject) => {
     const readings = [];
     let settled = false;
     let watchId = null;
-    const startedAt = Date.now();
-    const collectionWindowMs = 8000;
 
     const finish = (position) => {
       if (settled) return;
       settled = true;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       clearTimeout(timeoutId);
-      if (position) {
-        resolve(position);
-      } else {
-        reject(new Error('Unable to obtain a location reading.'));
-      }
+      if (position) resolve(position);
+      else reject(new Error('Unable to obtain a location reading.'));
     };
 
     const handleReading = (position) => {
@@ -259,35 +255,44 @@ function getBestPositionAsync(onUpdate = null) {
       readings.sort((first, second) => first.coords.accuracy - second.coords.accuracy);
       const best = readings[0];
       if (typeof onUpdate === 'function') onUpdate(best, readings.length);
-
-      // Finish early when the device provides a reasonably precise reading.
-      if (best.coords.accuracy <= attendanceState.maxGpsAccuracy) {
-        finish(best);
-      } else if (Date.now() - startedAt >= collectionWindowMs) {
-        finish(best);
-      }
+      if (best.coords.accuracy <= attendanceState.maxGpsAccuracy) finish(best);
     };
 
     const handleError = (error) => {
-      if (readings.length) {
-        finish(readings[0]);
-      } else {
-        reject(error);
-      }
+      if (readings.length) finish(readings[0]);
+      else reject(error);
     };
+    const timeoutId = setTimeout(() => finish(readings[0]), timeoutMs);
 
-    const timeoutId = setTimeout(() => finish(readings[0]), collectionWindowMs);
     try {
       watchId = navigator.geolocation.watchPosition(handleReading, handleError, {
-      enableHighAccuracy: true,
-        timeout: collectionWindowMs,
-        maximumAge: 5000,
+        enableHighAccuracy,
+        timeout: timeoutMs,
+        maximumAge: 60000,
       });
     } catch (error) {
       clearTimeout(timeoutId);
       reject(error);
     }
   });
+
+  const collectFallback = (firstPosition = null) => collectReadings(false, fallbackLocationTimeoutMs)
+    .then((fallbackPosition) => {
+      if (!firstPosition || fallbackPosition.coords.accuracy < firstPosition.coords.accuracy) {
+        return fallbackPosition;
+      }
+      return firstPosition;
+    })
+    .catch((error) => {
+      if (firstPosition) return firstPosition;
+      throw error;
+    });
+
+  return collectReadings(true)
+    .then((position) => position.coords.accuracy <= attendanceState.maxGpsAccuracy
+      ? position
+      : collectFallback(position))
+    .catch(() => collectFallback());
 }
 
 function validateGpsAccuracy(accuracy) {
@@ -398,6 +403,7 @@ function buildClockPayload(action, coords, syncId) {
     attendance_type: action,
     latitude: coords.latitude,
     longitude: coords.longitude,
+    accuracy: coords.accuracy,
     device_info: navigator.userAgent,
     offline_record: false,
     timestamp: new Date().toISOString(),
@@ -517,6 +523,7 @@ async function handleOfflineFallback(action, errorMessage, payload = null) {
         timestamp: new Date().toISOString(),
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
         device_info: navigator.userAgent,
         offline_record: true,
         offline_sync_id: createOfflineSyncId(),

@@ -7,9 +7,10 @@ from django.utils import timezone
 from school_classes.models import Teacher
 from settingsapp.models import Tenant
 from settingsapp.tenant_utils import clear_current_tenant, set_current_tenant
-from staff_attendance.models import StaffAttendance, StudentAttendanceSettings
+from staff_attendance.models import AttendanceSettings, StaffAttendance, StudentAttendanceSettings
 from staff_attendance.views import (
     AdminStaffAttendanceReportView,
+    StaffAttendanceBaseAPI,
     StudentAttendanceSettingsView,
     get_or_create_attendance_teacher_for_user,
 )
@@ -79,6 +80,46 @@ class StaffAttendanceAdminAccessTests(TestCase):
 
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0].teacher, teacher_one)
+
+
+class StaffAttendanceGpsValidationTests(TestCase):
+    def setUp(self):
+        self.settings = AttendanceSettings(
+            school_latitude=0,
+            school_longitude=0,
+            allowed_radius_meters=200,
+            enable_gps_verification=True,
+        )
+        self.api = StaffAttendanceBaseAPI()
+
+    def test_approximate_location_can_use_reported_uncertainty(self):
+        error = self.api.validate_gps(
+            self.settings,
+            latitude=0,
+            longitude='0.0025',
+            accuracy='100',
+        )
+
+        self.assertIsNone(error)
+
+    def test_missing_accuracy_does_not_expand_school_radius(self):
+        error = self.api.validate_gps(
+            self.settings,
+            latitude=0,
+            longitude='0.0025',
+        )
+
+        self.assertIsNotNone(error)
+
+    def test_reported_accuracy_allowance_is_capped(self):
+        error = self.api.validate_gps(
+            self.settings,
+            latitude=0,
+            longitude='0.0045',
+            accuracy='500',
+        )
+
+        self.assertIsNotNone(error)
 
 
 class StudentAttendanceSettingsTests(TestCase):

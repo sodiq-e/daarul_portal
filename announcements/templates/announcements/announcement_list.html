@@ -31,45 +31,76 @@
     </div>
 
     {% if announcements %}
-        <div class="row g-4">
-            {% for announcement in announcements %}
-                <div class="col-md-6">
-                    <article class="card h-100 shadow-sm">
-                        <div class="row g-0">
-                            <div class="col-4 d-none d-sm-block">
-                                {% if announcement.featured_image %}
-                                    <img src="{{ announcement.featured_image.url }}" alt="{{ announcement.title }}" class="img-fluid h-100" style="object-fit:cover; border-top-left-radius:.25rem; border-bottom-left-radius:.25rem;">
-                                {% elif announcement.gallery_cover %}
-                                    <img src="{{ announcement.gallery_cover }}" alt="{{ announcement.title }}" class="img-fluid h-100" style="object-fit:cover; border-top-left-radius:.25rem; border-bottom-left-radius:.25rem;">
-                                {% else %}
-                                    <div style="background:#f5f5f7; height:100%; display:flex; align-items:center; justify-content:center;">No image</div>
-                                {% endif %}
-                            </div>
-                            <div class="col-12 col-sm-8">
-                                <div class="card-body d-flex flex-column h-100">
-                                    <h5 class="card-title">{{ announcement.title }}</h5>
-                                    <div class="mb-2">
-                                        {% if announcement.category %}
-                                            <span class="badge bg-secondary">{{ announcement.category.name }}</span>
-                                        {% endif %}
-                                        {% if announcement.has_gallery %}
-                                            <span class="badge bg-info text-dark">Gallery Available</span>
-                                        {% endif %}
-                                        {% if announcement.video_url %}
-                                            <span class="badge bg-warning text-dark">Video</span>
-                                        {% endif %}
-                                        <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
-                                    </div>
-                                    <p class="card-text text-muted">{{ announcement.excerpt|default:announcement.content|striptags|truncatechars:160 }}</p>
-                                    <div class="mt-auto d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">By {{ announcement.created_by.get_full_name|default:announcement.created_by.username }} • {{ announcement.created_at|date:"M j, Y" }}</small>
-                                        <a href="{% url 'announcement_detail' announcement.pk %}" class="btn btn-sm btn-outline-primary">Read More</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
+        {% with first_announcement=announcements|first %}
+        <section class="news-featured">
+            <div class="news-featured-image-wrap">
+                {% if first_announcement.featured_image %}
+                    <img src="{{ first_announcement.featured_image.url }}" alt="{{ first_announcement.title }}" class="news-featured-image">
+                {% elif first_announcement.gallery_cover %}
+                    <img src="{{ first_announcement.gallery_cover }}" alt="{{ first_announcement.title }}" class="news-featured-image">
+                {% else %}
+                    <div class="news-featured-image news-featured-image--placeholder">
+                        <span>News</span>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="news-featured-content">
+                <div class="announcement-meta">
+                    {% if first_announcement.category %}
+                        <span class="badge bg-secondary">{{ first_announcement.category.name }}</span>
+                    {% endif %}
+                    <span class="badge bg-{{ first_announcement.get_priority_color }}">{{ first_announcement.get_priority_display }}</span>
                 </div>
+                <h2 class="announcement-title feature-title">{{ first_announcement.title }}</h2>
+                <p class="announcement-excerpt feature-excerpt">{{ first_announcement.excerpt|default:first_announcement.content|striptags|truncatechars:220 }}</p>
+                <div class="announcement-footer feature-footer">
+                    <small class="text-muted">By {{ first_announcement.created_by.get_full_name|default:first_announcement.created_by.username }} • {{ first_announcement.created_at|date:"M j, Y" }}</small>
+                    <a href="{% url 'announcement_detail' first_announcement.pk %}" class="btn btn-sm btn-primary">Read story</a>
+                </div>
+            </div>
+        </section>
+        {% endwith %}
+
+        <div class="announcement-feed">
+            {% for announcement in announcements|slice:"1:" %}
+                <article class="announcement-news-card">
+                    {% if announcement.featured_image %}
+                        <div class="announcement-media">
+                            <img src="{{ announcement.featured_image.url }}" alt="{{ announcement.title }}">
+                        </div>
+                    {% elif announcement.gallery_cover %}
+                        <div class="announcement-media">
+                            <img src="{{ announcement.gallery_cover }}" alt="{{ announcement.title }}">
+                        </div>
+                    {% else %}
+                        <div class="announcement-media announcement-media--placeholder" aria-label="No image available">
+                            <div class="announcement-placeholder">News</div>
+                        </div>
+                    {% endif %}
+
+                    <div class="announcement-body">
+                        <div class="announcement-meta">
+                            {% if announcement.category %}
+                                <span class="badge bg-secondary">{{ announcement.category.name }}</span>
+                            {% endif %}
+                            {% if announcement.has_gallery %}
+                                <span class="badge bg-info text-dark">Gallery</span>
+                            {% endif %}
+                            {% if announcement.video_url %}
+                                <span class="badge bg-warning text-dark">Video</span>
+                            {% endif %}
+                            <span class="badge bg-{{ announcement.get_priority_color }}">{{ announcement.get_priority_display }}</span>
+                        </div>
+
+                        <h2 class="announcement-title">{{ announcement.title }}</h2>
+                        <p class="announcement-excerpt">{{ announcement.excerpt|default:announcement.content|striptags|truncatechars:160 }}</p>
+
+                        <div class="announcement-footer">
+                            <small class="text-muted">By {{ announcement.created_by.get_full_name|default:announcement.created_by.username }} • {{ announcement.created_at|date:"M j, Y" }}</small>
+                            <a href="{% url 'announcement_detail' announcement.pk %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                        </div>
+                    </div>
+                </article>
             {% endfor %}
         </div>
 
@@ -94,5 +125,206 @@
     {% endif %}
 
 </div>
+
+<style>
+    .news-featured {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+        gap: 28px;
+        margin-bottom: 32px;
+        padding: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 26px;
+        background: linear-gradient(180deg, #ffffff, #f8fafc);
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .news-featured-image-wrap {
+        overflow: hidden;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        min-height: 280px;
+    }
+
+    .news-featured-image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 280px;
+        object-fit: cover;
+    }
+
+    .news-featured-image--placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        color: #334155;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+    }
+
+    .news-featured-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 10px 12px 10px 0;
+    }
+
+    .feature-title {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: clamp(2rem, 2.8vw, 3.3rem);
+    }
+
+    .feature-excerpt {
+        font-size: 1.04rem;
+        line-height: 1.8;
+        margin-bottom: 18px;
+    }
+
+    .feature-footer {
+        margin-top: 0;
+    }
+
+    .announcement-feed {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 28px;
+    }
+
+    .announcement-news-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 22px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .announcement-news-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(79, 70, 229, 0.18);
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+    }
+
+    .announcement-media {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        overflow: hidden;
+        background: linear-gradient(135deg, #f8fafc, #eef2ff);
+    }
+
+    .announcement-media img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.35s ease;
+    }
+
+    .announcement-news-card:hover .announcement-media img {
+        transform: scale(1.03);
+    }
+
+    .announcement-media--placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    }
+
+    .announcement-placeholder {
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.05);
+        color: #334155;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .announcement-body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        padding: 22px 20px 18px;
+    }
+
+    .announcement-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .announcement-meta .badge {
+        border-radius: 999px;
+        padding: 0.42rem 0.7rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .announcement-title {
+        margin: 0 0 10px;
+        color: #0f172a;
+        font-size: clamp(1.55rem, 2vw, 2.2rem);
+        line-height: 1.18;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+    }
+
+    .announcement-excerpt {
+        margin: 0 0 18px;
+        color: #475569;
+        font-size: 0.98rem;
+        line-height: 1.75;
+    }
+
+    .announcement-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid #edf2f7;
+    }
+
+    .announcement-footer small {
+        color: #64748b;
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+
+    .announcement-footer .btn {
+        border-radius: 999px;
+        padding: 0.5rem 0.9rem;
+        font-weight: 600;
+    }
+
+    @media (max-width: 575.98px) {
+        .announcement-feed {
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+
+        .announcement-body {
+            padding: 18px 16px 14px;
+        }
+
+        .announcement-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
 
 {% endblock %}

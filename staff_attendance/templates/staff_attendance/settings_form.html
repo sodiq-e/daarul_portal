@@ -17,6 +17,7 @@
         <div class="col-md-6">{{ form.school_longitude.label_tag }}{{ form.school_longitude }}</div>
         <div class="col-12">
           <button type="button" id="useCurrentLocation" class="btn btn-outline-secondary">Use Current Location</button>
+          <div id="locationCaptureStatus" class="form-text mt-2" aria-live="polite">The reported GPS accuracy is a device estimate; the allowed radius controls how far clock-ins may be from this saved point.</div>
         </div>
         <div class="col-md-4">{{ form.allowed_radius_meters.label_tag }}{{ form.allowed_radius_meters }}</div>
         <div class="col-md-4">{{ form.normal_clock_in_time.label_tag }}{{ form.normal_clock_in_time }}</div>
@@ -36,21 +37,88 @@
 </div>
 
 <script>
-  document.getElementById('useCurrentLocation').addEventListener('click', function() {
+  const captureLocationStatus = document.getElementById('locationCaptureStatus');
+  const maxSetupAccuracyMeters = 100;
+
+  function readLocation(enableHighAccuracy, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      let bestPosition = null;
+      let watchId = null;
+      let timeoutId = null;
+      let settled = false;
+
+      function finish(position, error = null) {
+        if (settled) return;
+        settled = true;
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        if (timeoutId !== null) clearTimeout(timeoutId);
+        if (position) resolve(position);
+        else reject(error || new Error('Unable to obtain a location reading.'));
+      }
+
+      timeoutId = setTimeout(() => finish(bestPosition), timeoutMs);
+      try {
+        watchId = navigator.geolocation.watchPosition((position) => {
+          if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+            bestPosition = position;
+            captureLocationStatus.textContent = `Best reading so far: approximately ${Math.round(position.coords.accuracy)}m accuracy.`;
+          }
+          if (bestPosition.coords.accuracy <= maxSetupAccuracyMeters) finish(bestPosition);
+        }, (error) => finish(bestPosition, error), {
+          enableHighAccuracy,
+          timeout: timeoutMs,
+          maximumAge: enableHighAccuracy ? 0 : 30000,
+        });
+      } catch (error) {
+        finish(null, error);
+      }
+    });
+  }
+
+  async function getBestSetupLocation() {
+    let firstPosition = null;
+    try {
+      firstPosition = await readLocation(true, 12000);
+    } catch (error) {
+      captureLocationStatus.textContent = 'GPS did not return a fix. Trying the phone’s network location.';
+    }
+
+    if (firstPosition && firstPosition.coords.accuracy <= maxSetupAccuracyMeters) return firstPosition;
+
+    try {
+      const fallbackPosition = await readLocation(false, 8000);
+      return !firstPosition || fallbackPosition.coords.accuracy < firstPosition.coords.accuracy
+        ? fallbackPosition
+        : firstPosition;
+    } catch (error) {
+      if (firstPosition) return firstPosition;
+      throw error;
+    }
+  }
+
+  document.getElementById('useCurrentLocation').addEventListener('click', async function() {
     if (!navigator.geolocation) {
-      alert('GPS is not available in this browser.');
+      captureLocationStatus.textContent = 'Location is not available in this browser.';
       return;
     }
-    navigator.geolocation.getCurrentPosition(function(position) {
+
+    const button = this;
+    button.disabled = true;
+    captureLocationStatus.textContent = 'Getting the best location reading. Keep this page open for up to 20 seconds.';
+    try {
+      const position = await getBestSetupLocation();
+      if (!Number.isFinite(position.coords.accuracy) || position.coords.accuracy > maxSetupAccuracyMeters) {
+        captureLocationStatus.textContent = `Location estimate is too imprecise (about ${Math.round(position.coords.accuracy)}m). The school coordinates were not changed. Enable precise location, try a GPS-capable phone at the school, or enter verified coordinates manually.`;
+        return;
+      }
       document.getElementById('id_school_latitude').value = position.coords.latitude.toFixed(6);
       document.getElementById('id_school_longitude').value = position.coords.longitude.toFixed(6);
-    }, function(error) {
-      alert('Unable to read current location: ' + error.message);
-    }, {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 10000,
-    });
+      captureLocationStatus.textContent = `Location captured with approximately ${Math.round(position.coords.accuracy)}m reported accuracy. The allowed radius does not change this estimate.`;
+    } catch (error) {
+      captureLocationStatus.textContent = `Unable to read current location: ${error.message}`;
+    } finally {
+      button.disabled = false;
+    }
   });
 </script>
 {% endblock %}

@@ -72,10 +72,11 @@
       ? isMobileOpen
       : !sidebar.classList.contains('collapsed');
     document.body.classList.toggle('sidebar-open', isMobileOpen);
-    menuButtonIcon.classList.toggle('fa-bars', !isOpen);
-    menuButtonIcon.classList.toggle('fa-xmark', isOpen);
+    menuButtonIcon.classList.remove('fa-bars', 'fa-xmark');
+    menuButtonIcon.classList.add(isOpen ? 'fa-xmark' : 'fa-bars');
     menuButton.setAttribute('aria-expanded', String(isOpen));
     menuButton.setAttribute('aria-label', isOpen ? 'Close sidebar' : 'Open sidebar');
+    menuButton.setAttribute('title', isOpen ? 'Close sidebar' : 'Open sidebar');
   }
 
   function getSidebarState() {
