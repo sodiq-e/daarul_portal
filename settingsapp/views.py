@@ -5,8 +5,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.db import transaction
-from .models import DidYouKnowTip, SchoolSettings, GalleryImage, HeroText, HeroButton, Tenant
-from .forms import DidYouKnowTipForm, SchoolSettingsForm, TenantForm, TenantMembershipForm, GalleryImageFormSet, GalleryImageForm, HeroTextFormSet, HeroButtonFormSet
+from .models import DidYouKnowTip, SchoolSettings, GalleryImage, HeroText, HeroButton, Tenant, SchoolAboutProfile, SchoolAboutSection
+from .forms import DidYouKnowTipForm, SchoolSettingsForm, TenantForm, TenantMembershipForm, GalleryImageFormSet, GalleryImageForm, HeroTextFormSet, HeroButtonFormSet, SchoolAboutProfileForm, SchoolAboutSectionFormSet
 from .tenant_utils import user_is_tenant_admin
 
 
@@ -327,3 +327,69 @@ def gallery(request):
         'gallery_images': gallery_images,
     }
     return render(request, 'gallery.html', context)
+
+
+def about_us(request):
+    """Public About Us page for the current tenant/school."""
+    settings_obj = _get_request_settings_obj(request)
+    about_profile = getattr(settings_obj, 'about_profile', None)
+    if about_profile is None:
+        about_profile = SchoolAboutProfile.objects.create(
+            school_settings=settings_obj,
+            page_title='About Us',
+            motto=settings_obj.motto or '',
+            intro=''
+        )
+    sections = about_profile.sections.filter(is_active=True).order_by('order', 'created_at')
+    context = {
+        'school_settings': settings_obj,
+        'about_profile': about_profile,
+        'sections': sections,
+    }
+    return render(request, 'about_us.html', context)
+
+
+@login_required
+def school_about_settings(request):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        allowed = request.user.is_staff or request.user.is_superuser
+    else:
+        allowed = user_is_tenant_admin(request.user, tenant=tenant)
+    if not allowed:
+        raise Http404
+
+    settings_obj = _get_request_settings_obj(request)
+    about_profile, _ = SchoolAboutProfile.objects.get_or_create(school_settings=settings_obj)
+    about_profile.motto = about_profile.motto or settings_obj.motto or ''
+    about_profile.page_title = about_profile.page_title or 'About Us'
+    about_profile.save(update_fields=['motto', 'page_title'])
+
+    sections_qs = about_profile.sections.all().order_by('order', 'created_at')
+
+    if request.method == 'POST':
+        profile_form = SchoolAboutProfileForm(request.POST, request.FILES, instance=about_profile)
+        section_formset = SchoolAboutSectionFormSet(request.POST, request.FILES, queryset=sections_qs, prefix='about_sections')
+        if profile_form.is_valid() and section_formset.is_valid():
+            profile_form.save()
+            section_instances = section_formset.save(commit=False)
+            for instance in section_instances:
+                if not instance.school_about_id:
+                    instance.school_about = about_profile
+                instance.save()
+            for obj in section_formset.deleted_objects:
+                obj.delete()
+            messages.success(request, 'About Us profile updated successfully.')
+            return redirect('school_about_settings')
+        messages.error(request, 'Please correct the errors in the About Us profile form.')
+    else:
+        profile_form = SchoolAboutProfileForm(instance=about_profile)
+        section_formset = SchoolAboutSectionFormSet(queryset=sections_qs, prefix='about_sections')
+
+    context = {
+        'profile_form': profile_form,
+        'section_formset': section_formset,
+        'tenant': tenant,
+        'about_profile': about_profile,
+    }
+    return render(request, 'settingsapp/about_us_settings.html', context)

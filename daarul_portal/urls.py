@@ -39,6 +39,7 @@ urlpatterns = [
     path('results-admin/', include('results.admin_urls')),
     path('settings/', include('settingsapp.urls')),
     path('gallery/', settings_views.gallery, name='gallery'),
+    path('about-us/', settings_views.about_us, name='about_us'),
     path('classes/', include((class_urlpatterns, 'school_classes'))),
     path('students/', include('students.urls')),
     path('student/cbt/', include('cbt.student_urls')),

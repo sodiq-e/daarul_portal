@@ -1,8 +1,10 @@
+from django.apps import apps
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.contrib.auth import get_user_model
+from importlib import import_module
 
 from .forms import SchoolSettingsForm
-from .models import DidYouKnowTip, GalleryImage, SchoolSettings, Tenant, TenantMembership
+from .models import DidYouKnowTip, GalleryImage, SchoolAboutProfile, SchoolAboutSection, SchoolSettings, Tenant, TenantMembership
 from .print_utils import build_document_verification, generate_document_reference
 from .tenant_utils import clear_current_tenant, resolve_tenant, set_current_tenant, user_has_tenant_access
 from .middleware import TenantMiddleware
@@ -434,3 +436,84 @@ class TenantQueryProtectionTests(TestCase):
         self.assertEqual(AttendanceSettings.objects.current().allowed_radius_meters, 200)
         set_current_tenant(tenant_a)
         self.assertEqual(AttendanceSettings.objects.current().allowed_radius_meters, 100)
+
+
+class AboutProfileSeedTests(TestCase):
+    def setUp(self):
+        self.tenant = Tenant.objects.get(slug='daarulbayaan')
+        self.school_settings = SchoolSettings.objects.get(tenant=self.tenant)
+        self.profile = SchoolAboutProfile.objects.get(school_settings=self.school_settings)
+
+    def test_seeded_about_profile_and_sections_render_for_daarulbayaan(self):
+        self.assertEqual(self.profile.motto, 'Knowledge for the Fear of Allah')
+        self.assertIn('Daarul Bayaan Islamic School is an educational institution', self.profile.intro)
+        self.assertTrue(self.profile.vision)
+        self.assertTrue(self.profile.mission)
+        self.assertTrue(self.profile.leadership_message)
+        self.assertTrue(self.profile.educational_approach)
+        self.assertFalse(self.profile.cover_image)
+        self.assertFalse(self.profile.featured_image)
+
+        sections = SchoolAboutSection.objects.filter(school_about=self.profile)
+        self.assertEqual(sections.filter(section_type='value').count(), 7)
+        self.assertEqual(sections.filter(section_type='custom').count(), 5)
+        self.assertFalse(any(sections.values_list('image', flat=True)))
+
+        response = self.client.get('/about-us/', HTTP_HOST=self.tenant.hostname)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Welcome to Daarul Bayaan Islamic School')
+        self.assertContains(response, 'Faith and God-consciousness')
+        self.assertContains(response, 'Early Childhood Education')
+        self.assertContains(response, 'Knowledge for the Fear of Allah')
+
+    def test_seed_is_idempotent_and_preserves_existing_content(self):
+        self.profile.intro = '<p>Administrator-written introduction.</p>'
+        self.profile.motto = 'Administrator motto'
+        self.profile.save(update_fields=['intro', 'motto'])
+
+        first_section = SchoolAboutSection.objects.filter(school_about=self.profile).first()
+        first_section.content = '<p>Administrator-written section.</p>'
+        first_section.save(update_fields=['content'])
+        section_count = SchoolAboutSection.objects.filter(school_about=self.profile).count()
+
+        migration = import_module('settingsapp.migrations.0033_seed_daarulbayaan_about_profile')
+        migration.seed_daarulbayaan_about_profile(apps, None)
+
+        self.profile.refresh_from_db()
+        first_section.refresh_from_db()
+        self.assertEqual(self.profile.intro, '<p>Administrator-written introduction.</p>')
+        self.assertEqual(self.profile.motto, 'Administrator motto')
+        self.assertEqual(first_section.content, '<p>Administrator-written section.</p>')
+        self.assertEqual(
+            SchoolAboutSection.objects.filter(school_about=self.profile).count(),
+            section_count,
+        )
+
+    def test_seed_does_not_create_about_content_for_other_tenants(self):
+        other_tenant = Tenant.objects.create(
+            name='Another School',
+            slug='another-school',
+            hostname='another-school.localhost',
+        )
+        other_settings = SchoolSettings.objects.create(tenant=other_tenant)
+
+        self.assertFalse(
+            SchoolAboutProfile.objects.filter(school_settings=other_settings).exists()
+        )
+
+    def test_motto_migration_replaces_only_the_exact_legacy_value(self):
+        migration = import_module('settingsapp.migrations.0034_correct_legacy_daarulbayaan_motto')
+        self.profile.motto = 'Knowledge for the Fear of God'
+        self.profile.save(update_fields=['motto'])
+
+        migration.correct_legacy_daarulbayaan_motto(apps, None)
+
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.motto, 'Knowledge for the Fear of Allah')
+
+        self.profile.motto = 'Administrator-selected motto'
+        self.profile.save(update_fields=['motto'])
+        migration.correct_legacy_daarulbayaan_motto(apps, None)
+
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.motto, 'Administrator-selected motto')

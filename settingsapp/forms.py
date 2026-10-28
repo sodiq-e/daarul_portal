@@ -1,7 +1,8 @@
 from django import forms
 from urllib.parse import urlsplit
 from django.contrib.auth import get_user_model
-from .models import DidYouKnowTip, SchoolSettings, PageTheme, GalleryImage, Tenant, TenantMembership
+from ckeditor.widgets import CKEditorWidget
+from .models import DidYouKnowTip, SchoolSettings, PageTheme, GalleryImage, Tenant, TenantMembership, SchoolAboutProfile, SchoolAboutSection
 from .tenant_utils import get_tenant_base_domain
 
 
@@ -478,6 +479,53 @@ HeroButtonFormSet = forms.modelformset_factory(
     HeroButton,
     form=HeroButtonForm,
     extra=3,
+    can_delete=True,
+    can_order=False,
+)
+
+
+class SchoolAboutProfileForm(forms.ModelForm):
+    intro = forms.CharField(widget=CKEditorWidget(), required=False)
+    history = forms.CharField(widget=CKEditorWidget(), required=False)
+    vision = forms.CharField(widget=CKEditorWidget(), required=False)
+    mission = forms.CharField(widget=CKEditorWidget(), required=False)
+    core_values = forms.CharField(widget=CKEditorWidget(), required=False)
+    leadership_message = forms.CharField(widget=CKEditorWidget(), required=False)
+    educational_approach = forms.CharField(widget=CKEditorWidget(), required=False)
+
+    class Meta:
+        model = SchoolAboutProfile
+        fields = [
+            'page_title', 'intro', 'history', 'motto', 'vision', 'mission',
+            'core_values', 'leadership_message', 'educational_approach',
+            'cover_image', 'featured_image', 'is_active'
+        ]
+        widgets = {
+            'page_title': forms.TextInput(attrs={'class': 'form-control'}),
+            'motto': forms.TextInput(attrs={'class': 'form-control'}),
+            'cover_image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'featured_image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+        }
+
+
+class SchoolAboutSectionForm(forms.ModelForm):
+    content = forms.CharField(widget=CKEditorWidget(), required=False)
+
+    class Meta:
+        model = SchoolAboutSection
+        fields = ['section_type', 'title', 'content', 'image', 'order', 'is_active']
+        widgets = {
+            'section_type': forms.Select(attrs={'class': 'form-select'}),
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'image': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+        }
+
+
+SchoolAboutSectionFormSet = forms.modelformset_factory(
+    SchoolAboutSection,
+    form=SchoolAboutSectionForm,
+    extra=2,
     can_delete=True,
     can_order=False,
 )

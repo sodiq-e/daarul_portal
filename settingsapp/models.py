@@ -901,6 +901,70 @@ class HeroButton(models.Model):
         return self.label
 
 
+class SchoolAboutProfile(models.Model):
+    """School profile content used in the public About Us page."""
+
+    school_settings = models.OneToOneField(
+        SchoolSettings,
+        on_delete=models.CASCADE,
+        related_name='about_profile'
+    )
+    page_title = models.CharField(max_length=120, default='About Us', blank=True)
+    intro = models.TextField(blank=True, default='')
+    history = models.TextField(blank=True, default='')
+    motto = models.CharField(max_length=255, blank=True, default='')
+    vision = models.TextField(blank=True, default='')
+    mission = models.TextField(blank=True, default='')
+    core_values = models.TextField(blank=True, default='')
+    leadership_message = models.TextField(blank=True, default='')
+    educational_approach = models.TextField(blank=True, default='')
+    cover_image = models.ImageField(upload_to='school/about/', blank=True, null=True)
+    featured_image = models.ImageField(upload_to='school/about/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['page_title']
+
+    def __str__(self):
+        return self.page_title or f'About Us for {self.school_settings.school_name}'
+
+
+class SchoolAboutSection(models.Model):
+    """Optional repeatable blocks displayed on the About Us page."""
+
+    SECTION_TYPE_CHOICES = [
+        ('overview', 'Overview'),
+        ('story', 'School Story'),
+        ('value', 'Core Value'),
+        ('leadership', 'Leadership'),
+        ('approach', 'Educational Approach'),
+        ('highlight', 'Highlight'),
+        ('custom', 'Custom'),
+    ]
+
+    school_about = models.ForeignKey(
+        SchoolAboutProfile,
+        on_delete=models.CASCADE,
+        related_name='sections'
+    )
+    section_type = models.CharField(max_length=25, choices=SECTION_TYPE_CHOICES, default='custom')
+    title = models.CharField(max_length=200, blank=True, default='')
+    content = models.TextField(blank=True, default='')
+    image = models.ImageField(upload_to='school/about/sections/', blank=True, null=True)
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return self.title or self.get_section_type_display()
+
+
 class DidYouKnowTip(TenantModel):
     message = models.CharField(max_length=280)
     order = models.PositiveIntegerField(default=0)

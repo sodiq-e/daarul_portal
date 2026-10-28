@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+  .about-intro-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+  }
+  .about-intro-content.has-image {
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, .8fr);
+  }
+  @media (max-width: 768px) {
+    .about-intro-content.has-image {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+<section class="about-us-page" style="max-width:1200px; margin:0 auto; padding:32px 20px 80px;">
+  {% if about_profile.cover_image %}
+    <div class="about-hero-image" style="position:relative; overflow:hidden; border-radius:22px; min-height:350px; margin-bottom:32px; background:linear-gradient(135deg, rgba(15,118,110,.75), rgba(17,94,89,.82));">
+      <img src="{{ about_profile.cover_image.url }}" alt="{{ school_settings.school_name }}" style="width:100%; height:100%; min-height:350px; object-fit:cover; display:block; opacity:.8;">
+      <div style="position:absolute; inset:0; display:flex; align-items:end; padding:32px; background:linear-gradient(180deg, rgba(15,23,42,.15), rgba(15,23,42,.65));">
+        <div>
+          <p style="margin:0 0 8px; text-transform:uppercase; letter-spacing:0.18em; font-size:12px; color:#e2e8f0; font-weight:700;">{{ about_profile.page_title|default:'About Us' }}</p>
+          <h1 style="margin:0; color:#fff; font-size:clamp(2.2rem, 5vw, 4rem); line-height:1.08;">{{ school_settings.school_name }}</h1>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div style="padding:32px 24px; border-radius:22px; margin-bottom:28px; background:linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color:#fff; box-shadow:0 18px 45px rgba(15,118,110,.18);">
+      <p style="margin:0 0 8px; text-transform:uppercase; letter-spacing:0.18em; font-size:12px; opacity:.9; font-weight:700;">{{ about_profile.page_title|default:'About Us' }}</p>
+      <h1 style="margin:0; color:#fff; font-size:clamp(2.2rem, 5vw, 4rem); line-height:1.08;">{{ school_settings.school_name }}</h1>
+    </div>
+  {% endif %}
+
+  {% if about_profile.motto %}
+    <div style="display:flex; justify-content:center; margin-bottom:32px;">
+      <div style="padding:14px 22px; border-radius:999px; background:rgba(15,118,110,.08); border:1px solid rgba(15,118,110,.16); color:var(--primary-color); font-weight:700; letter-spacing:0.05em; text-transform:uppercase; font-size:12px;">
+        {{ about_profile.motto }}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if about_profile.intro %}
+    <div class="card" style="padding:28px; margin-bottom:28px;">
+      <div class="about-intro-content{% if about_profile.featured_image %} has-image{% endif %}">
+        <div>
+          <h2 style="margin-top:0; margin-bottom:14px;">Welcome to {{ school_settings.school_name }}</h2>
+          <div>{{ about_profile.intro|safe }}</div>
+        </div>
+        {% if about_profile.featured_image %}
+          <div>
+            <img src="{{ about_profile.featured_image.url }}" alt="{{ school_settings.school_name }}" style="width:100%; border-radius:18px; object-fit:cover; min-height:260px; box-shadow:0 24px 48px rgba(15,23,42,.12);">
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="row g-4 mb-4">
+    {% if about_profile.history %}
+      <div class="col-md-6">
+        <div class="card" style="padding:24px; height:100%;">
+          <h3 style="margin-top:0;">Our History</h3>
+          <div>{{ about_profile.history|safe }}</div>
+        </div>
+      </div>
+    {% endif %}
+    {% if about_profile.vision or about_profile.mission %}
+      <div class="col-md-6">
+        <div class="card" style="padding:24px; height:100%;">
+          <h3 style="margin-top:0;">Our Vision & Mission</h3>
+          {% if about_profile.vision %}<div style="margin-bottom:16px;"><strong>Vision:</strong><div>{{ about_profile.vision|safe }}</div></div>{% endif %}
+          {% if about_profile.mission %}<div><strong>Mission:</strong><div>{{ about_profile.mission|safe }}</div></div>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if about_profile.core_values or about_profile.educational_approach or about_profile.leadership_message %}
+    <div class="row g-4 mb-4">
+      {% if about_profile.core_values %}
+        <div class="col-lg-4">
+          <div class="card" style="padding:24px; height:100%;">
+            <h3 style="margin-top:0;">Core Values</h3>
+            <div>{{ about_profile.core_values|safe }}</div>
+          </div>
+        </div>
+      {% endif %}
+      {% if about_profile.educational_approach %}
+        <div class="col-lg-4">
+          <div class="card" style="padding:24px; height:100%;">
+            <h3 style="margin-top:0;">Educational Approach</h3>
+            <div>{{ about_profile.educational_approach|safe }}</div>
+          </div>
+        </div>
+      {% endif %}
+      {% if about_profile.leadership_message %}
+        <div class="col-lg-4">
+          <div class="card" style="padding:24px; height:100%;">
+            <h3 style="margin-top:0;">Leadership Message</h3>
+            <div>{{ about_profile.leadership_message|safe }}</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if sections %}
+    <div class="about-sections" style="display:grid; gap:24px;">
+      {% for section in sections %}
+        <div class="card" style="padding:24px;">
+          {% if section.image %}
+            <div style="margin-bottom:18px;">
+              <img src="{{ section.image.url }}" alt="{{ section.title|default:'School highlight' }}" style="width:100%; max-height:320px; object-fit:cover; border-radius:16px;">
+            </div>
+          {% endif %}
+          {% if section.title %}<h3 style="margin-top:0;">{{ section.title }}</h3>{% endif %}
+          {% if section.content %}<div>{{ section.content|safe }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if not about_profile.intro and not about_profile.history and not about_profile.vision and not about_profile.mission and not about_profile.core_values and not about_profile.educational_approach and not about_profile.leadership_message and not sections %}
+    <div class="card" style="padding:28px; text-align:center;">
+      <h2>About Us</h2>
+      <p style="margin:0; color:#64748b;">This school profile is not configured yet. Administrators can add school history, values, leadership notes, and other information in Portal Settings.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
