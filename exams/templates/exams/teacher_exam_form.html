@@ -94,13 +94,6 @@
   touch-action: none;
   background: #fff;
 }
-.diagram-builder-dialog {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: 0;
-  background: #fff;
-}
 .diagram-builder-header {
   position: absolute;
   top: 0;
@@ -128,6 +121,9 @@
 }
 .diagram-builder-canvas {
   position: absolute;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100vw;
   top: calc(52px + min(30vh, 220px));
   top: calc(52px + min(30dvh, 220px));
   right: 0;
@@ -167,12 +163,12 @@
 }
 @media (max-width: 600px) {
   .diagram-builder-toolbar {
-    height: min(28vh, 220px);
-    height: min(28dvh, 220px);
+    height: min(max(140px, 28vh), 240px);
+    height: min(max(140px, 28dvh), 240px);
   }
   .diagram-builder-canvas {
-    top: calc(52px + min(28vh, 220px));
-    top: calc(52px + min(28dvh, 220px));
+    top: calc(52px + min(max(140px, 28vh), 240px));
+    top: calc(52px + min(max(140px, 28dvh), 240px));
   }
   .diagram-builder-footer {
     justify-content: center !important;
@@ -1050,27 +1046,24 @@ function openDiagramModal(){
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-label', 'Full-screen diagram builder');
 
-    const box = document.createElement('div');
-    box.className = 'diagram-builder-dialog';
-
     // Header with title
     const header = document.createElement('div');
     header.className = 'diagram-builder-header';
     header.style.cssText = 'padding:12px 16px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;align-items:center';
     header.innerHTML = '<h4 style="margin:0;font-size:16px;font-weight:600">Diagram Builder</h4>';
-    box.appendChild(header);
+    modal.appendChild(header);
 
     // Toolbar
     const toolbar = document.createElement('div');
     toolbar.className = 'diagram-builder-toolbar';
     toolbar.style.cssText = 'padding:8px 12px;border-bottom:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f9f9f9';
-    box.appendChild(toolbar);
+    modal.appendChild(toolbar);
 
     // Canvas container
     const canvasContainer = document.createElement('div');
     canvasContainer.className = 'diagram-builder-canvas';
     canvasContainer.style.cssText = 'border:1px solid #ddd;overflow:hidden;background:#fafafa';
-    box.appendChild(canvasContainer);
+    modal.appendChild(canvasContainer);
 
     // Footer with buttons
     const footer = document.createElement('div');
@@ -1078,7 +1071,6 @@ function openDiagramModal(){
     footer.style.cssText = 'padding:12px 16px;border-top:1px solid #ddd;display:flex;gap:8px;justify-content:flex-end';
     modal.appendChild(footer);
 
-    modal.appendChild(box);
     document.documentElement.appendChild(modal);
 
     // Initialize diagram builder
