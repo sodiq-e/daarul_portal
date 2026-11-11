@@ -99,10 +99,10 @@
 .diagram-builder-dialog {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100dvh;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
   border-radius: 0;
   background: #fff;
@@ -129,13 +129,14 @@
 }
 .ck-content figure.image {
   display: inline-block;
+  width: auto !important;
   max-width: 100%;
   margin: 0 0.2em;
   vertical-align: middle;
 }
 .ck-content figure.image img {
   display: block;
-  width: 100%;
+  width: auto !important;
   max-width: 100%;
   max-height: none;
   height: auto;
@@ -758,7 +759,35 @@ function uploadDataURL(dataURL){
   const fd = new FormData();
   fd.append('upload', blob, 'export.png');
   const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-  return fetch('/exams/exam-papers/upload-image/', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } }).then(r => r.json());
+  return fetch('/exams/exam-papers/upload-image/', { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-CSRFToken': csrftoken } }).then(async response => {
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'The image upload failed.');
+    return result;
+  });
+}
+
+function resizeImageDataURL(source, width) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      if (!image.naturalWidth || !image.naturalHeight) {
+        reject(new Error('The diagram image has no valid dimensions.'));
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * canvas.width / image.naturalWidth));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        reject(new Error('Could not prepare the resized diagram image.'));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    image.onerror = () => reject(new Error('Could not load the diagram image for resizing.'));
+    image.src = source;
+  });
 }
 
 function attachDiagramAndChartHandlers(questionCard){
@@ -798,14 +827,16 @@ function attachDiagramAndChartHandlers(questionCard){
       showStatus('Create or insert a diagram first, then render its size.', true);
       return;
     }
-    renderDiagramPreview(options, url);
     const editor = options.textarea && options.textarea._editor;
     if (editor) {
       try {
-        if (resizeInsertedImage(editor, url, options.width)) {
-          const saved = await saveDraft();
-          if (!saved) showStatus('Diagram size changed in the editor, but the draft could not be saved.', true);
-        }
+        const resizedDataURL = await resizeImageDataURL(url, options.width);
+        const result = await uploadDataURL(resizedDataURL);
+        if (!result || !result.url) throw new Error('The resized diagram upload did not return an image URL.');
+        const resizedUrl = resizeInsertedImage(editor, url, result.url);
+        renderDiagramPreview(options, resizedUrl);
+        const saved = await saveDraft();
+        if (!saved) showStatus('Diagram size changed in the editor, but the draft could not be saved.', true);
       } catch (error) {
         console.error('Could not update the inserted diagram size.', error);
         showStatus(error.message, true);
@@ -846,35 +877,13 @@ function attachDiagramAndChartHandlers(questionCard){
     );
   }
 
-  function editorImageWidth(width) {
-    const printContentWidth = 832;
-    return `${Math.min(100, Math.max(1, (width / printContentWidth) * 100)).toFixed(2)}%`;
-  }
+  function resizeInsertedImage(editor, oldUrl, newUrl) {
+    const image = findInsertedImage(editor, oldUrl);
+    if (!image) throw new Error('The diagram is no longer present in the editor.');
 
-  function resizeInsertedImage(editor, url, width) {
-    const schema = editor.model.schema;
-    const image = findInsertedImage(editor, url);
-    if (!image) return false;
-    const resizedWidth = editorImageWidth(width);
-
-    editor.model.change(writer => {
-      if (schema.checkAttribute(image, 'resizedWidth')) {
-        writer.setAttribute('resizedWidth', resizedWidth, image);
-      } else {
-        throw new Error('The rich-text editor does not support saved image resizing.');
-      }
-    });
-    if (!editor.getData().includes(resizedWidth)) {
-      const resizeCommand = editor.commands.get('resizeImage');
-      if (resizeCommand) {
-        editor.model.change(writer => writer.setSelection(image, 'on'));
-        editor.execute('resizeImage', { width: resizedWidth });
-      }
-    }
-    if (!editor.getData().includes(resizedWidth)) {
-      throw new Error('The editor did not retain the diagram size. Try another size or use the editor image resize control.');
-    }
-    return true;
+    editor.model.change(writer => writer.setAttribute('src', newUrl, image));
+    if (!editor.getData().includes(newUrl)) throw new Error('The editor did not retain the resized diagram.');
+    return newUrl;
   }
 
   function insertImageUrl(editor, textarea, url, options, insertionSelection) {
@@ -904,24 +913,15 @@ function attachDiagramAndChartHandlers(questionCard){
       if (!findInsertedImage(editor, url)) {
         throw new Error('The editor did not retain the inserted image.');
       }
-      if (!resizeInsertedImage(editor, url, options.width)) return false;
       editor.editing.view.focus();
       return true;
     } catch (error) {
       console.error('Could not insert diagram into the selected question text.', error);
       try {
-        if (findInsertedImage(editor, url)) {
-          if (resizeInsertedImage(editor, url, options.width)) {
-            editor.editing.view.focus();
-            return true;
-          }
-          throw error;
-        }
+        if (findInsertedImage(editor, url)) throw error;
         if (!editor.commands.get('insertImage')) throw error;
         editor.execute('insertImage', { source: url });
-        if (!findInsertedImage(editor, url) || !resizeInsertedImage(editor, url, options.width)) {
-          throw new Error('The editor did not retain the inserted image.');
-        }
+        if (!findInsertedImage(editor, url)) throw new Error('The editor did not retain the inserted image.');
         editor.editing.view.focus();
         showStatus('Diagram inserted using the editor fallback. Check its rendered size and placement.', false);
         return true;
@@ -945,7 +945,8 @@ function attachDiagramAndChartHandlers(questionCard){
         : null;
       const dataURL = await openDiagramModal();
       if (!dataURL) return;
-      const result = await uploadDataURL(dataURL);
+      const resizedDataURL = await resizeImageDataURL(dataURL, options.width);
+      const result = await uploadDataURL(resizedDataURL);
       if (!result || !result.url) throw new Error('The diagram upload did not return an image URL.');
       renderDiagramPreview(options, result.url);
       if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection)) {
@@ -970,7 +971,8 @@ function attachDiagramAndChartHandlers(questionCard){
         : null;
       const dataURL = await openChartModal();
       if (!dataURL) return;
-      const result = await uploadDataURL(dataURL);
+      const resizedDataURL = await resizeImageDataURL(dataURL, options.width);
+      const result = await uploadDataURL(resizedDataURL);
       if (!result || !result.url) throw new Error('The chart upload did not return an image URL.');
       renderDiagramPreview(options, result.url);
       if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection)) {
@@ -1020,7 +1022,7 @@ function openDiagramModal(){
     box.appendChild(footer);
 
     modal.appendChild(box);
-    document.body.appendChild(modal);
+    document.documentElement.appendChild(modal);
 
     // Initialize diagram builder
     const builder = new DiagramBuilder(canvasContainer, toolbar, footer);
@@ -1066,8 +1068,8 @@ class DiagramBuilder {
   constructor(container, toolbarContainer, footerContainer) {
     this.container = container;
     this.toolbarContainer = toolbarContainer;
-    this.width = Math.max(320, container.clientWidth || 880);
-    this.height = Math.max(240, container.clientHeight || 360);
+    this.width = Math.max(1, container.clientWidth);
+    this.height = Math.max(1, container.clientHeight);
     this.currentTool = 'select';
     this.selectedObject = null;
     this.history = [];
@@ -1104,6 +1106,23 @@ class DiagramBuilder {
     this.setupToolbar();
     this.setupEventHandlers();
     this.saveHistory();
+    this.resizeObserver = new ResizeObserver(() => this.resizeToContainer());
+    this.resizeObserver.observe(this.container);
+    requestAnimationFrame(() => this.resizeToContainer());
+  }
+
+  resizeToContainer() {
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    if (!width || !height || (width === this.width && height === this.height)) return;
+
+    this.width = width;
+    this.height = height;
+    this.stage.size({ width, height });
+    this.gridLayer.destroy();
+    this.gridLayer = null;
+    this.drawGrid();
+    this.stage.batchDraw();
   }
 
   drawGrid() {
@@ -1580,6 +1599,7 @@ class DiagramBuilder {
   }
 
   destroy() {
+    this.resizeObserver.disconnect();
     window.removeEventListener('mouseup', this.handleWindowMouseUp);
     window.removeEventListener('touchend', this.handleWindowTouchEnd);
     this.stage.destroy();
