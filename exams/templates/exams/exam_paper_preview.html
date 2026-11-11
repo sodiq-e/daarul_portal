@@ -68,12 +68,27 @@
   .exam-paper-question-content p {
     margin: 0 0 0.45em;
   }
+  .exam-paper-question-content figure.image {
+    display: inline-block;
+    max-width: 120px !important;
+    max-height: 90px;
+    margin: 0 0.2em;
+    vertical-align: middle;
+  }
+  .exam-paper-question-content figure.image img {
+    display: block;
+    width: 100%;
+    max-width: 120px !important;
+    max-height: 90px !important;
+    height: auto;
+  }
   .exam-paper-question-content img {
     display: inline-block;
-    max-width: 100%;
-    max-height: 360px;
+    max-width: 120px !important;
+    max-height: 90px !important;
     height: auto;
     vertical-align: middle;
+    object-fit: contain;
   }
   .exam-paper-options {
     display: grid;

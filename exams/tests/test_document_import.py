@@ -85,7 +85,8 @@ class ExamDocumentImportTests(SimpleTestCase):
             'page_title': 'Create Exam Paper',
         })
 
-        self.assertIn('class="diagram-width" min="40" max="1200" value="180"', rendered)
+        self.assertIn('class="diagram-width" min="20" max="1200" value="180"', rendered)
+        self.assertIn('class="diagram-width-slider" min="20" max="600" step="5" value="180"', rendered)
         self.assertIn('<option value="inline" selected>In the paragraph</option>', rendered)
         self.assertIn('<option value="block">Own line</option>', rendered)
         self.assertIn("options.placement === 'inline' ? 'imageInline' : 'imageBlock'", rendered)
@@ -109,6 +110,35 @@ class ExamDocumentImportTests(SimpleTestCase):
         self.assertNotIn('return this.layer.toDataURL({', rendered)
         self.assertNotIn('return this.stage.toDataURL({ pixelRatio: 2 });', rendered)
         self.assertIn('this.finishDrawing();', rendered)
+        self.assertIn('touch-action: none;', rendered)
+        self.assertIn('document.body.style.overflow = \'hidden\';', rendered)
+        self.assertIn('this.width = Math.max(320, container.clientWidth || 880);', rendered)
+        self.assertIn('this.gridLayer.listening(false);', rendered)
+
+        preview_template = render_to_string('exams/exam_paper_preview.html', {
+            'exam': SimpleNamespace(
+                pk=1, school_class='Class 1', subject='Mathematics', duration='1 hour',
+                term='First Term', academic_session='2026/2027', scoring_enabled=False,
+                total_marks=100, instructions='',
+            ),
+            'sections_data': [],
+        })
+        self.assertIn('.exam-paper-question-content figure.image', preview_template)
+        self.assertIn('.exam-paper-question-content figure.image img', preview_template)
+        self.assertIn('max-width: 120px !important;', preview_template)
+        self.assertIn('max-height: 90px !important;', preview_template)
+
+        print_template = render_to_string('exams/print_exam_paper.html', {
+            'exam_paper': SimpleNamespace(
+                pk=1, school_class='Class 1', subject='Mathematics', duration='1 hour',
+                term='First Term', academic_session='2026/2027', scoring_enabled=False,
+                total_marks=100, instructions='',
+            ),
+            'sections_data': [],
+        })
+        self.assertIn('.exam-paper-question-content figure.image', print_template)
+        self.assertIn('max-width: 120px !important;', print_template)
+        self.assertIn('max-height: 90px !important;', print_template)
 
     def test_scoring_controls_are_opt_in_and_student_preview_hides_disabled_marks(self):
         rendered_form = render_to_string('exams/teacher_exam_form.html', {

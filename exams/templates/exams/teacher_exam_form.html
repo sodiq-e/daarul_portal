@@ -84,6 +84,63 @@
 .hidden {
   display: none !important;
 }
+.diagram-builder-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  background: #fff;
+}
+.diagram-builder-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  border-radius: 0;
+  background: #fff;
+}
+.diagram-builder-toolbar {
+  flex: 0 0 auto;
+  max-height: 30dvh;
+  overflow: auto;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+}
+.diagram-builder-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.diagram-builder-footer {
+  flex: 0 0 auto;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+.ck-content figure.image {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0.2em;
+  vertical-align: middle;
+}
+.ck-content figure.image img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: none;
+  height: auto;
+  object-fit: contain;
+}
 </style>
 {% endblock %}
 
@@ -508,7 +565,8 @@ function addQuestion(sectionCard, questionData = {}) {
     <div class="field-block">
       <label>Question Text</label>
        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
-        <label>Diagram width (px) <input type="number" class="diagram-width" min="40" max="1200" value="180" style="width:90px;padding:6px;"></label>
+        <label>Diagram width (px) <input type="number" class="diagram-width" min="20" max="1200" value="180" style="width:90px;padding:6px;"></label>
+        <input type="range" class="diagram-width-slider" min="20" max="600" step="5" value="180" aria-label="Drag to resize diagram" style="width:140px;">
         <button type="button" class="button render-diagram-size">Render size</button>
         <label>Placement
           <select class="diagram-placement" style="width:auto;padding:6px;">
@@ -579,7 +637,8 @@ function addQuestion(sectionCard, questionData = {}) {
         <div class="col-md-12 field-block">
           <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
           <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
-            <label>Diagram width (px) <input type="number" class="diagram-width" min="40" max="1200" value="180" style="width:90px;padding:6px;"></label>
+            <label>Diagram width (px) <input type="number" class="diagram-width" min="20" max="1200" value="180" style="width:90px;padding:6px;"></label>
+            <input type="range" class="diagram-width-slider" min="20" max="600" step="5" value="180" aria-label="Drag to resize diagram" style="width:140px;">
             <button type="button" class="button render-diagram-size">Render size</button>
             <label>Placement
               <select class="diagram-placement" style="width:auto;padding:6px;">
@@ -710,6 +769,8 @@ function attachDiagramAndChartHandlers(questionCard){
   const diagramButtons = questionCard.querySelectorAll('.add-diagram-btn');
   const chartButtons = questionCard.querySelectorAll('.add-chart-btn');
   const renderButtons = questionCard.querySelectorAll('.render-diagram-size');
+  const widthInputs = questionCard.querySelectorAll('.diagram-width');
+  const widthSliders = questionCard.querySelectorAll('.diagram-width-slider');
 
   function getInsertionOptions(button) {
     const controls = button.closest('.field-block');
@@ -717,7 +778,7 @@ function attachDiagramAndChartHandlers(questionCard){
     return {
       textarea: controls.querySelector('textarea.rich-editor'),
       controls,
-      width: Number.isFinite(widthValue) && widthValue > 0 ? Math.min(1200, Math.max(40, widthValue)) : 180,
+      width: Number.isFinite(widthValue) && widthValue > 0 ? Math.min(1200, Math.max(20, widthValue)) : 180,
       placement: controls.querySelector('.diagram-placement').value,
     };
   }
@@ -757,6 +818,23 @@ function attachDiagramAndChartHandlers(questionCard){
       const preview = controls.querySelector('.diagram-render-preview');
       const url = preview.dataset.diagramUrl;
       if (url) renderDiagramPreview(getInsertionOptions(controls.querySelector('.render-diagram-size')), url);
+    });
+  });
+  widthSliders.forEach(slider => {
+    const numberInput = slider.closest('.field-block').querySelector('.diagram-width');
+    slider.addEventListener('input', () => {
+      numberInput.value = slider.value;
+      numberInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    slider.addEventListener('change', () => {
+      const renderButton = slider.closest('.field-block').querySelector('.render-diagram-size');
+      if (renderButton) renderButton.click();
+    });
+  });
+  widthInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      const slider = input.closest('.field-block').querySelector('.diagram-width-slider');
+      slider.value = String(Math.min(Number(slider.max), Math.max(Number(slider.min), Number(input.value) || Number(slider.min))));
     });
   });
 
@@ -909,10 +987,13 @@ function attachDiagramAndChartHandlers(questionCard){
 function openDiagramModal(){
   return new Promise(resolve => {
     const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:10001';
+    modal.className = 'diagram-builder-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Full-screen diagram builder');
 
     const box = document.createElement('div');
-    box.style.cssText = 'width:900px;height:650px;background:#fff;padding:0;border-radius:6px;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+    box.className = 'diagram-builder-dialog';
 
     // Header with title
     const header = document.createElement('div');
@@ -922,16 +1003,19 @@ function openDiagramModal(){
 
     // Toolbar
     const toolbar = document.createElement('div');
+    toolbar.className = 'diagram-builder-toolbar';
     toolbar.style.cssText = 'padding:8px 12px;border-bottom:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f9f9f9';
     box.appendChild(toolbar);
 
     // Canvas container
     const canvasContainer = document.createElement('div');
+    canvasContainer.className = 'diagram-builder-canvas';
     canvasContainer.style.cssText = 'flex:1;border:1px solid #ddd;position:relative;overflow:hidden;background:#fafafa';
     box.appendChild(canvasContainer);
 
     // Footer with buttons
     const footer = document.createElement('div');
+    footer.className = 'diagram-builder-footer';
     footer.style.cssText = 'padding:12px 16px;border-top:1px solid #ddd;display:flex;gap:8px;justify-content:flex-end';
     box.appendChild(footer);
 
@@ -940,6 +1024,8 @@ function openDiagramModal(){
 
     // Initialize diagram builder
     const builder = new DiagramBuilder(canvasContainer, toolbar, footer);
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
 
     // Export button
     const exportBtn = document.createElement('button');
@@ -970,6 +1056,7 @@ function openDiagramModal(){
     function closeModal(dataURL) {
       builder.destroy();
       modal.remove();
+      document.body.style.overflow = previousBodyOverflow;
       resolve(dataURL);
     }
   });
@@ -979,8 +1066,8 @@ class DiagramBuilder {
   constructor(container, toolbarContainer, footerContainer) {
     this.container = container;
     this.toolbarContainer = toolbarContainer;
-    this.width = 880;
-    this.height = 360;
+    this.width = Math.max(320, container.clientWidth || 880);
+    this.height = Math.max(240, container.clientHeight || 360);
     this.currentTool = 'select';
     this.selectedObject = null;
     this.history = [];
@@ -1026,13 +1113,15 @@ class DiagramBuilder {
       return;
     }
     this.gridLayer = new Konva.Layer();
+    this.gridLayer.listening(false);
     this.stage.add(this.gridLayer);
 
     for (let i = 0; i < this.width; i += this.gridSize) {
       this.gridLayer.add(new Konva.Line({
         points: [i, 0, i, this.height],
         stroke: '#e0e0e0',
-        strokeWidth: 0.5
+        strokeWidth: 0.5,
+        listening: false
       }));
     }
 
@@ -1040,7 +1129,8 @@ class DiagramBuilder {
       this.gridLayer.add(new Konva.Line({
         points: [0, i, this.width, i],
         stroke: '#e0e0e0',
-        strokeWidth: 0.5
+        strokeWidth: 0.5,
+        listening: false
       }));
     }
 
@@ -1239,9 +1329,18 @@ class DiagramBuilder {
     this.stage.on('mouseup', (e) => this.handleMouseUp(e));
 
     // Touch support for mobile
-    this.stage.on('touchstart', (e) => this.handleMouseDown(e));
-    this.stage.on('touchmove', (e) => this.handleMouseMove(e));
-    this.stage.on('touchend', (e) => this.handleMouseUp(e));
+    this.stage.on('touchstart', (e) => {
+      if (e.evt.cancelable) e.evt.preventDefault();
+      this.handleMouseDown(e);
+    });
+    this.stage.on('touchmove', (e) => {
+      if (e.evt.cancelable) e.evt.preventDefault();
+      this.handleMouseMove(e);
+    });
+    this.stage.on('touchend', (e) => {
+      if (e.evt.cancelable) e.evt.preventDefault();
+      this.handleMouseUp(e);
+    });
 
     this.handleWindowMouseUp = () => this.handleMouseUp();
     this.handleWindowTouchEnd = () => this.handleMouseUp();
