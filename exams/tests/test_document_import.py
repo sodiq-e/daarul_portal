@@ -114,7 +114,7 @@ class ExamDocumentImportTests(SimpleTestCase):
         self.assertIn('this.finishDrawing();', rendered)
         self.assertIn('touch-action: none;', rendered)
         self.assertIn('document.body.style.overflow = \'hidden\';', rendered)
-        self.assertIn('name="viewport" content="width=device-width, initial-scale=1.0"', rendered)
+        self.assertIn('name="viewport" content="width=device-width, initial-scale=0.6"', rendered)
         self.assertIn('document.documentElement.appendChild(modal);', rendered)
         self.assertIn('className = \'diagram-builder-header\';', rendered)
         self.assertIn('modal.appendChild(header);', rendered)
