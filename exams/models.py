@@ -143,6 +143,10 @@ class ExamPaper(TenantModel):
     academic_session = models.CharField(max_length=20, help_text='e.g., 2023/2024')
     duration = models.CharField(max_length=50, blank=True)
     total_marks = models.PositiveIntegerField(default=100)
+    scoring_enabled = models.BooleanField(
+        default=False,
+        help_text='Include question marks and correct-answer fields in this exam.'
+    )
     instructions = RichTextField(blank=True, help_text='Instructions for students')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     approval_status = models.CharField(max_length=20, choices=APPROVAL_STATUS_CHOICES, default='draft')
@@ -167,12 +171,29 @@ class ExamSection(models.Model):
         ('german', 'German Questions'),
         ('other', 'Custom / Optional'),
     ]
+    FONT_FAMILY_CHOICES = [
+        ('Arial', 'Arial'),
+        ('Calibri', 'Calibri'),
+        ('Georgia', 'Georgia'),
+        ('Times New Roman', 'Times New Roman'),
+    ]
+    FONT_SIZE_CHOICES = [
+        ('9pt', '9 pt'),
+        ('10pt', '10 pt'),
+        ('11pt', '11 pt'),
+        ('12pt', '12 pt'),
+        ('13pt', '13 pt'),
+        ('14pt', '14 pt'),
+        ('16pt', '16 pt'),
+    ]
 
     exam = models.ForeignKey(ExamPaper, on_delete=models.CASCADE, related_name='sections')
     title = models.CharField(max_length=120, blank=True)
     section_type = models.CharField(max_length=30, choices=SECTION_TYPES, default='theory')
     instruction = models.TextField(blank=True)
     marks_allocation = models.PositiveIntegerField(default=0)
+    font_family = models.CharField(max_length=30, choices=FONT_FAMILY_CHOICES, default='Arial')
+    font_size = models.CharField(max_length=5, choices=FONT_SIZE_CHOICES, default='12pt')
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -180,6 +201,16 @@ class ExamSection(models.Model):
 
     def __str__(self):
         return f"{self.title or self.get_section_type_display()} ({self.exam})"
+
+    @property
+    def print_font_family(self):
+        allowed = dict(self.FONT_FAMILY_CHOICES)
+        return self.font_family if self.font_family in allowed else 'Arial'
+
+    @property
+    def print_font_size(self):
+        allowed = dict(self.FONT_SIZE_CHOICES)
+        return self.font_size if self.font_size in allowed else '12pt'
 
 
 class Question(models.Model):

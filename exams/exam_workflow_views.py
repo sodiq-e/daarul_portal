@@ -69,13 +69,14 @@ class ExamPaperPreviewView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         
         # Build sections with questions
         sections_data = []
-        for section in exam.sections.all():
+        for section in exam.sections.prefetch_related('questions__options'):
             questions_data = []
             for q in section.questions.all():
                 questions_data.append({
                     'object': q,
                     'text': q.question_text,
                     'marks': q.marks,
+                    'resource_notes': q.resource_notes,
                     'options': q.options.all(),
                 })
             
@@ -87,7 +88,13 @@ class ExamPaperPreviewView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context['sections_data'] = sections_data
         context['can_submit'] = exam.approval_status == 'draft' and exam.teacher == self.request.user
         context['can_approve'] = exam.approval_status == 'pending' and user_is_admin(self.request.user)
-        context['font_size'] = self.request.GET.get('font_size', '12pt')
+        requested_font_size = self.request.GET.get('font_size', '')
+        context['font_size_override'] = (
+            requested_font_size
+            if requested_font_size in {'10pt', '11pt', '12pt', '13pt', '14pt', '15pt'}
+            else ''
+        )
+        context['font_size'] = context['font_size_override'] or '12pt'
         
         return context
 
@@ -112,6 +119,7 @@ class ExamPaperSubmitForApprovalView(LoginRequiredMixin, UserPassesTestMixin, Vi
         
         # Change status
         exam.approval_status = 'pending'
+        exam.status = 'submitted'
         exam.submitted_at = timezone.now()
         exam.save()
         
@@ -231,6 +239,7 @@ class ExamApprovalActionView(LoginRequiredMixin, UserPassesTestMixin, View):
         # Update exam status
         if action == 'approve':
             exam.approval_status = 'approved'
+            exam.status = 'approved'
             exam.approved_at = timezone.now()
             exam.approved_by = request.user
             exam.approval_notes = notes
@@ -238,11 +247,13 @@ class ExamApprovalActionView(LoginRequiredMixin, UserPassesTestMixin, View):
             action_display = 'Approved'
         elif action == 'reject':
             exam.approval_status = 'rejected'
+            exam.status = 'rejected'
             exam.approval_notes = notes
             status_display = 'rejected'
             action_display = 'Rejected'
         elif action == 'return':
             exam.approval_status = 'draft'
+            exam.status = 'returned'
             exam.approval_notes = notes
             status_display = 'returned for revision'
             action_display = 'Returned for Review'

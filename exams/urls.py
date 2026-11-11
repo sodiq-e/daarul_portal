@@ -25,6 +25,7 @@ urlpatterns = [
     path('exam-papers/<int:pk>/', views.TeacherExamPaperDetailView.as_view(), name='exam_paper_detail'),
     path('exam-papers/save-draft/', views.ExamPaperSaveView.as_view(), name='exam_paper_save'),
     path('exam-papers/submit/', views.ExamPaperSubmitView.as_view(), name='exam_paper_submit'),
+    path('exam-papers/import-document/', views.ExamPaperImportView.as_view(), name='exam_paper_import_document'),
     path('exam-papers/upload-image/', views.upload_image, name='exam_upload_image'),
 
     # New simplified workflow with CKEditor

@@ -188,7 +188,7 @@
                     <div class="exam-meta">
                         <strong>Teacher:</strong> {{ exam.teacher.get_full_name|default:exam.teacher.username }} |
                         <strong>Duration:</strong> {{ exam.duration|default:"N/A" }} |
-                        <strong>Total Marks:</strong> {{ exam.total_marks }}
+                        {% if exam.scoring_enabled %}<strong>Total Marks:</strong> {{ exam.total_marks }}{% endif %}
                     </div>
                     <div class="exam-meta">
                         <strong>Submitted:</strong> {{ exam.submitted_at|date:"SHORT_DATETIME_FORMAT" }}
@@ -210,7 +210,7 @@
                 <div class="section-block">
                     <div class="section-title">
                         {{ section_data.object.get_section_type_display }}
-                        {% if section_data.object.marks_allocation %}
+                        {% if exam.scoring_enabled and section_data.object.marks_allocation %}
                         <span style="color: #666; font-size: 14px; font-weight: normal;">
                             ({{ section_data.object.marks_allocation }} marks)
                         </span>
@@ -228,7 +228,7 @@
                         <div>
                             <span class="question-number">{{ forloop.counter }}.</span>
                             {{ question.text|safe }}
-                            {% if question.marks %}
+                            {% if exam.scoring_enabled and question.marks %}
                             <span class="question-marks">{{ question.marks }} marks</span>
                             {% endif %}
                         </div>

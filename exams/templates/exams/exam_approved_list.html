@@ -138,10 +138,12 @@
                         <span class="exam-info-value">{{ exam.academic_session }}</span>
                     </div>
                     
+                    {% if exam.scoring_enabled %}
                     <div class="exam-info-row">
                         <span class="exam-info-label">Total Marks:</span>
                         <span class="exam-info-value">{{ exam.total_marks }}</span>
                     </div>
+                    {% endif %}
                     
                     <div class="exam-info-row">
                         <span class="exam-info-label">Duration:</span>

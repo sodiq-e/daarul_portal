@@ -1300,18 +1300,23 @@
       position: fixed;
       right: -350px;
       top: 0;
-      width: 350px;
+      width: min(350px, calc(100vw - 24px));
       height: 100vh;
       background: white;
       border-left: 1px solid #ddd;
-      z-index: 9997;
+      z-index: 1990;
       overflow-y: auto;
-      transition: right 0.3s ease;
+      visibility: hidden;
+      pointer-events: none;
+      transition: right 0.3s ease, visibility 0s linear 0.3s;
       box-shadow: -2px 0 12px rgba(0,0,0,0.1);
     }
 
     .theme-customizer.show {
       right: 0;
+      visibility: visible;
+      pointer-events: auto;
+      transition-delay: 0s;
     }
 
     body[data-theme="dark"] .theme-customizer {
@@ -3548,13 +3553,13 @@
   {% endif %}
 
   <!-- ✅ ACCESSIBILITY TOGGLE BUTTON -->
-  <button id="accessibilityToggle" class="accessibility-toggle" title="Accessibility options">♿</button>
+  <button id="accessibilityToggle" class="accessibility-toggle" type="button" title="Accessibility options" aria-label="Open accessibility and theme settings" aria-controls="themeCustomizer" aria-expanded="false">♿</button>
 
   <!-- ✅ THEME CUSTOMIZER PANEL -->
-  <div class="theme-customizer" id="themeCustomizer">
+  <div class="theme-customizer" id="themeCustomizer" aria-hidden="true" inert>
     <div class="theme-customizer-header">
       <span>Theme Settings</span>
-      <button class="theme-customizer-close" onclick="document.getElementById('themeCustomizer').classList.remove('show')">✕</button>
+      <button class="theme-customizer-close" type="button" aria-label="Close settings">✕</button>
     </div>
 
     <div class="theme-customizer-section">
@@ -5154,9 +5159,25 @@ class ThemeManager {
 
   setupAccessibility() {
     const toggle = document.getElementById('accessibilityToggle');
-    if (toggle) toggle.addEventListener('click', () => {
-      document.getElementById('themeCustomizer').classList.toggle('show');
+    const customizer = document.getElementById('themeCustomizer');
+    if (!toggle || !customizer) return;
+
+    const setOpen = (isOpen) => {
+      customizer.classList.toggle('show', isOpen);
+      customizer.setAttribute('aria-hidden', String(!isOpen));
+      customizer.inert = !isOpen;
+      toggle.setAttribute('aria-expanded', String(isOpen));
+      toggle.setAttribute('aria-label', isOpen ? 'Close accessibility and theme settings' : 'Open accessibility and theme settings');
+    };
+
+    setOpen(false);
+    toggle.addEventListener('click', () => setOpen(!customizer.classList.contains('show')));
+    customizer.querySelector('.theme-customizer-close')?.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && customizer.classList.contains('show')) setOpen(false);
     });
+
+    this.setAccessibilityPanelOpen = setOpen;
   }
 
   applyAccessibility(settings) {
@@ -5175,7 +5196,16 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const customizer = document.getElementById('themeCustomizer');
     const shortcutsPanel = document.getElementById('shortcutsPanel');
-    if (customizer && customizer.classList.contains('show')) customizer.classList.remove('show');
+    if (customizer && customizer.classList.contains('show')) {
+      if (window.themeManager && window.themeManager.setAccessibilityPanelOpen) {
+        window.themeManager.setAccessibilityPanelOpen(false);
+      } else {
+        customizer.classList.remove('show');
+        customizer.setAttribute('aria-hidden', 'true');
+        customizer.inert = true;
+        document.getElementById('accessibilityToggle')?.setAttribute('aria-expanded', 'false');
+      }
+    }
     if (shortcutsPanel && shortcutsPanel.classList.contains('show')) {
       shortcutsPanel.classList.remove('show');
       document.getElementById('shortcutsOverlay').classList.remove('show');
@@ -5194,7 +5224,9 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     document.getElementById('themeToggle').click();
   }
-  if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+  const isEditingText = e.target instanceof HTMLElement &&
+    (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName));
+  if (!isEditingText && !e.repeat && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
     e.preventDefault();
     document.getElementById('accessibilityToggle').click();
   }

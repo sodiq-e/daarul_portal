@@ -4,137 +4,181 @@
 
 {% block extra_css %}
 <style>
-.report-card {
-  max-width: 900px;
-  margin: 0 auto;
-  background: white;
-  border: 1px solid #ddd;
-  padding: 20px;
-  font-family: Arial, sans-serif;
-}
-.header-grid {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  align-items: start;
-  margin-bottom: 24px;
-}
-.header-grid h2 {
-  margin-bottom: 0.5rem;
-}
-.header-grid p {
-  margin: 0;
-}
-.report-card-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
-}
-.meta-box {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  border-radius: 10px;
-  padding: 12px;
-}
-.section-title {
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-.section-instruction {
-  color: #475569;
-  margin-bottom: 14px;
-}
-.option-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0;
-}
-@media (max-width: 768px) {
-  .header-grid,
-  .report-card-meta {
-    grid-template-columns: 1fr;
+  :root {
+    --paper-font-size: {{ font_size|default:'12pt' }};
   }
-  .option-grid {
-    grid-template-columns: 1fr;
+  .exam-paper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 28px 34px;
+    background: #fff;
+    border: 1px solid #d5d9de;
+    color: #111;
+    font-family: Arial, sans-serif;
+    font-size: var(--paper-font-size);
   }
-  .header-grid {
-    text-align: left;
+  .exam-paper-title {
+    margin: 0 0 18px;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
   }
-}
-@media print {
-  .no-print {
-    display: none !important;
+  .exam-paper-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 26px;
+    margin-bottom: 18px;
+    font-size: 0.94rem;
+    font-weight: 600;
+    text-transform: uppercase;
   }
-  .report-card {
-    border-color: #ccc;
+  .exam-paper-meta > div {
+    min-width: 0;
   }
-}
+  .exam-paper-instructions {
+    margin: 14px 0 22px;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .exam-paper-section {
+    margin: 0 0 22px;
+    break-inside: auto;
+  }
+  .exam-paper-section-title {
+    margin: 0 0 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .exam-paper-section-instruction {
+    margin: 0 0 12px;
+  }
+  .exam-paper-question {
+    position: relative;
+    margin: 0 0 14px;
+    padding-left: 1.8rem;
+    break-inside: avoid;
+  }
+  .exam-paper-question-number {
+    position: absolute;
+    left: 0;
+    font-weight: 700;
+  }
+  .exam-paper-question-content p {
+    margin: 0 0 0.45em;
+  }
+  .exam-paper-question-content img {
+    display: inline-block;
+    max-width: 100%;
+    max-height: 360px;
+    height: auto;
+    vertical-align: middle;
+  }
+  .exam-paper-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 20px;
+    margin: 8px 0 0;
+  }
+  .exam-paper-option {
+    break-inside: avoid;
+  }
+  .exam-paper-marks {
+    margin: 4px 0 0;
+    text-align: right;
+    font-size: 0.9em;
+  }
+  .exam-paper-resource {
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    border-left: 2px solid #9aa4af;
+  }
+  @media (max-width: 700px) {
+    .exam-paper {
+      padding: 20px 16px;
+    }
+    .exam-paper-meta,
+    .exam-paper-options {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .container-fluid {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .exam-paper {
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    .exam-paper-meta,
+    .exam-paper-options {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-3 mb-5">
   <div class="no-print mb-3 d-flex gap-2">
-    <button class="btn btn-primary" onclick="window.print()">🖨️ Print Preview</button>
-    <a href="{% url 'exam_paper_detail' exam.pk %}" class="btn btn-secondary">← Back to Edit</a>
+    <button class="btn btn-primary" type="button" onclick="window.print()">Print</button>
+    <a href="{% url 'exam_paper_detail' exam.pk %}" class="btn btn-secondary">Back to Exam Paper</a>
   </div>
 
-  <div class="report-card">
-    <div class="header-grid">
-      <div>
-        <h2>Exam Paper Preview</h2>
-        <p class="text-muted mb-1">{{ exam.subject.name|default:exam.subject }} — {{ exam.school_class }} • {{ exam.academic_session }}</p>
-        <p class="text-muted">Term: {{ exam.term }}</p>
-      </div>
-      <div style="text-align: right;">
-        {% if SCHOOL_LOGO %}
-        <img src="{{ SCHOOL_LOGO }}" alt="{{ SCHOOL_NAME }}" style="max-height: 64px; width: auto; display: block; margin-left: auto;" />
-        {% endif %}
-        <h5 class="mb-1">{{ SCHOOL_NAME|default:'School Name' }}</h5>
-        {% if SCHOOL_ADDRESS %}<p class="text-muted mb-1">{{ SCHOOL_ADDRESS }}</p>{% endif %}
-        {% if SCHOOL_CONTACT %}<p class="text-muted mb-0">{{ SCHOOL_CONTACT }}</p>{% endif %}
-      </div>
+  <main class="exam-paper">
+    <h1 class="exam-paper-title">Examination Paper</h1>
+
+    <div class="exam-paper-meta">
+      <div><strong>Class:</strong> {{ exam.school_class }}</div>
+      <div><strong>Subject:</strong> {{ exam.subject }}</div>
+      <div><strong>Time:</strong> {{ exam.duration|default:'________________' }}</div>
+      <div><strong>Date:</strong> __________________</div>
+      <div><strong>Term:</strong> {{ exam.term }}</div>
+      <div><strong>Session:</strong> {{ exam.academic_session }}</div>
+      {% if exam.scoring_enabled %}<div><strong>Total Marks:</strong> {{ exam.total_marks }}</div>{% endif %}
     </div>
 
-    <div class="report-card-meta">
-      <div class="meta-box"><strong>Subject</strong><div>{{ exam.subject.name|default:exam.subject }}</div></div>
-      <div class="meta-box"><strong>Class</strong><div>{{ exam.school_class }}</div></div>
-      <div class="meta-box"><strong>Term</strong><div>{{ exam.term }}</div></div>
-      <div class="meta-box"><strong>Session</strong><div>{{ exam.academic_session }}</div></div>
-      <div class="meta-box"><strong>Duration</strong><div>{{ exam.duration|default:'N/A' }}</div></div>
-      <div class="meta-box"><strong>Total Marks</strong><div>{{ exam.total_marks }}</div></div>
+    <div class="exam-paper-instructions">
+      {% if exam.instructions %}{{ exam.instructions|safe }}{% else %}Answer all questions.{% endif %}
     </div>
-
-    {% if exam.instructions %}
-    <div class="alert alert-light border-start border-primary py-3 px-3 mb-4">{{ exam.instructions|linebreaksbr }}</div>
-    {% endif %}
 
     {% for section_data in sections_data %}
-    <div class="mb-4">
-      <div class="section-title">{{ section_data.object.title|default:section_data.object.get_section_type_display }}</div>
+    <section class="exam-paper-section" style="font-family: {{ section_data.object.print_font_family }}; font-size: {{ font_size_override|default:section_data.object.print_font_size }};">
+      <h2 class="exam-paper-section-title">{{ section_data.object.title|default:section_data.object.get_section_type_display }}</h2>
       {% if section_data.object.instruction %}
-      <div class="section-instruction">{{ section_data.object.instruction }}</div>
+      <div class="exam-paper-section-instruction">{{ section_data.object.instruction|linebreaksbr }}</div>
       {% endif %}
+
       {% for question in section_data.questions %}
-      <div class="mb-3">
-        <div><strong>{{ forloop.counter }}.</strong> {{ question.text|safe }}</div>
-        {% if question.resource_notes %}
-        <div class="alert alert-secondary py-2 px-3 mt-2">{{ question.resource_notes|safe }}</div>
-        {% endif %}
+      <article class="exam-paper-question">
+        <span class="exam-paper-question-number">{{ forloop.counter }}.</span>
+        <div class="exam-paper-question-content">{{ question.text|safe }}</div>
         {% if question.options %}
-        <div class="option-grid">
+        <div class="exam-paper-options">
           {% for option in question.options %}
-          <div><strong>{{ option.option_label }}.</strong> {{ option.option_text }}</div>
+          <div class="exam-paper-option"><strong>{{ option.option_label }}.</strong> {{ option.option_text }}</div>
           {% endfor %}
         </div>
         {% endif %}
-      </div>
+        {% if exam.scoring_enabled and question.marks %}
+        <div class="exam-paper-marks">({{ question.marks }} marks)</div>
+        {% endif %}
+        {% if question.resource_notes %}
+        <div class="exam-paper-resource">{{ question.resource_notes|safe }}</div>
+        {% endif %}
+      </article>
       {% endfor %}
-    </div>
+    </section>
+    {% empty %}
+    <p>No sections have been added to this exam yet.</p>
     {% endfor %}
-  </div>
+  </main>
 </div>
 {% endblock %}

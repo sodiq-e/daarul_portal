@@ -11,6 +11,21 @@
   gap: 12px;
   margin-bottom: 18px;
 }
+.exam-import-panel {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 18px;
+  border: 1px solid #dfe5eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.exam-import-panel .field-block {
+  flex: 1 1 190px;
+  margin: 0;
+}
 .section-card, .question-card {
   border: 1px solid #e1e7ee;
   border-radius: 10px;
@@ -118,9 +133,16 @@
             {{ form.duration }}
           </div>
         </div>
-        <div class="col-lg-4">
+        <div class="col-12 field-block">
+          <label>
+            <input id="id_scoring_enabled" type="checkbox">
+            Include marks and correct-answer fields
+          </label>
+          <small class="text-muted d-block">Turn this on only when this paper needs scoring. The answer key stays out of the student preview and printout.</small>
+        </div>
+        <div class="col-lg-4 scoring-field">
           <div class="field-block">
-            <label for="id_total_marks">Total Marks</label>
+            <label for="id_total_marks">Total Marks <span class="text-muted">(optional)</span></label>
             {{ form.total_marks }}
           </div>
         </div>
@@ -133,8 +155,29 @@
 
       <form method="post" id="exam-builder-form">
         {% csrf_token %}
+        <input type="hidden" id="exam-json" value="{{ exam_json|escape }}" />
+        <input type="hidden" id="class-subject-map" value="{{ class_subject_map|escape }}" />
+        <input type="hidden" id="save-draft-url" value="{{ save_draft_url }}" />
+        <input type="hidden" id="submit-url" value="{{ submit_url }}" />
+        <input type="hidden" id="import-document-url" value="{{ import_document_url }}" />
+        <input type="hidden" id="preview-url-template" value="{{ preview_url_template }}" />
         <div class="exam-builder-toolbar">
           <div class="text-muted">Tip: Save frequently. Drafts autosave every 30 seconds.</div>
+        </div>
+        <div class="exam-import-panel">
+          <div class="field-block">
+            <label for="exam-import-file">Import .docx or .json</label>
+            <input id="exam-import-file" type="file" accept=".docx,.json,application/json,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          </div>
+          <div class="field-block">
+            <label for="exam-docx-mode">Word import mode</label>
+            <select id="exam-docx-mode">
+              <option value="editable_questions">Parse into editable questions</option>
+              <option value="preserve_document">Preserve document as one question</option>
+            </select>
+          </div>
+          <button id="exam-import-btn" type="button" class="button">Import File</button>
+          <div id="exam-import-status" class="small text-muted" role="status" aria-live="polite"></div>
         </div>
 
         <div id="sections-container"></div>
@@ -153,11 +196,6 @@
 </div>
 {% endblock %}
 
-<input type="hidden" id="exam-json" value="{{ exam_json|escapejs }}" />
-<input type="hidden" id="class-subject-map" value="{{ class_subject_map|escapejs }}" />
-<input type="hidden" id="save-draft-url" value="{{ save_draft_url }}" />
-<input type="hidden" id="submit-url" value="{{ submit_url }}" />
-
 {% block extra_js %}
 <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/konva@8/konva.min.js"></script>
@@ -169,6 +207,8 @@ let examJson = {};
 let classSubjectMap = {};
 let saveDraftUrl = '';
 let submitUrl = '';
+let importDocumentUrl = '';
+let previewUrlTemplate = '';
 let sectionsContainer = null;
 let savedStatus = null;
 let previewLink = null;
@@ -196,10 +236,7 @@ function escapeHTML(value) {
 }
 
 function escapeTemplateText(value) {
-  return String(value || '')
-    .replace(/\\/g, '\\\\')
-    .replace(/`/g, '\\`')
-    .replace(/\$\{/g, '\\${');
+  return escapeHTML(value);
 }
 
 function initializeBuilderElements() {
@@ -207,6 +244,8 @@ function initializeBuilderElements() {
   classSubjectMap = JSON.parse(getInputValue('class-subject-map', '{}') || '{}');
   saveDraftUrl = getInputValue('save-draft-url');
   submitUrl = getInputValue('submit-url');
+  importDocumentUrl = getInputValue('import-document-url');
+  previewUrlTemplate = getInputValue('preview-url-template');
 
   // Fallbacks: if template didn't provide URLs, use known endpoints so fetch doesn't POST to the current page
   if (!saveDraftUrl) {
@@ -230,7 +269,7 @@ function initializeBuilderElements() {
   }
 
   console.log('Exam builder initialized with:', {
-    examJson, classSubjectMap, saveDraftUrl, submitUrl,
+    examJson, classSubjectMap, saveDraftUrl, submitUrl, importDocumentUrl, previewUrlTemplate,
     sectionsContainer, savedStatus, previewLink, subjectSelect
   });
 }
@@ -256,6 +295,11 @@ function populateSubjectOptions(classId) {
   });
 }
 
+function examPreviewUrl(examId) {
+  if (!previewUrlTemplate || !examId) return '#';
+  return previewUrlTemplate.replace(/\/0\/preview\/?$/, `/${examId}/preview/`);
+}
+
 function initBuilder() {
   console.log('initBuilder() called, sections container:', sectionsContainer);
   console.log('examJson:', examJson);
@@ -263,6 +307,13 @@ function initBuilder() {
   if (!sectionsContainer) {
     console.error('Exam builder cannot initialize because #sections-container is missing.');
     return;
+  }
+
+  const scoringToggle = document.getElementById('id_scoring_enabled');
+  if (scoringToggle) {
+    scoringToggle.checked = Boolean(examJson.scoring_enabled);
+    updateScoringFields();
+    scoringToggle.addEventListener('change', updateScoringFields);
   }
 
   if (examJson && examJson.sections && examJson.sections.length) {
@@ -277,14 +328,28 @@ function initBuilder() {
   }
 
   if (previewLink) {
+    previewLink.addEventListener('click', event => {
+      if (!examJson.id || examPreviewUrl(examJson.id) === '#') {
+        event.preventDefault();
+        showStatus('Save the exam draft before opening its preview.', true);
+      }
+    });
     if (examJson.id) {
-      previewLink.href = `/exams/exam-papers/${examJson.id}/`;
+      previewLink.href = examPreviewUrl(examJson.id);
       previewLink.classList.remove('disabled');
     } else {
       previewLink.href = '#';
       previewLink.classList.add('disabled');
     }
   }
+}
+
+function updateScoringFields() {
+  const scoringToggle = document.getElementById('id_scoring_enabled');
+  if (!scoringToggle) return;
+  document.querySelectorAll('.scoring-field').forEach(field => {
+    field.classList.toggle('d-none', !scoringToggle.checked);
+  });
 }
 
 function createElementFromHTML(htmlString) {
@@ -328,10 +393,33 @@ function addSection(sectionData = {}) {
           <textarea class="section-instruction" rows="3">${escapeHTML(sectionData.instruction || '')}</textarea>
         </div>
       </div>
-      <div class="row g-3">
+      <div class="row g-3 scoring-field">
         <div class="col-md-6 field-block">
           <label>Marks Allocation</label>
           <input type="number" min="0" class="section-marks" value="${escapeHTML(sectionData.marks_allocation || 0)}" placeholder="Total marks for section">
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6 field-block">
+          <label>Section Font</label>
+          <select class="section-font-family">
+            <option value="Arial" ${!sectionData.font_family || sectionData.font_family === 'Arial' ? 'selected' : ''}>Arial</option>
+            <option value="Calibri" ${sectionData.font_family === 'Calibri' ? 'selected' : ''}>Calibri</option>
+            <option value="Georgia" ${sectionData.font_family === 'Georgia' ? 'selected' : ''}>Georgia</option>
+            <option value="Times New Roman" ${sectionData.font_family === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
+          </select>
+        </div>
+        <div class="col-md-6 field-block">
+          <label>Section Font Size</label>
+          <select class="section-font-size">
+            <option value="9pt" ${sectionData.font_size === '9pt' ? 'selected' : ''}>9 pt</option>
+            <option value="10pt" ${sectionData.font_size === '10pt' ? 'selected' : ''}>10 pt</option>
+            <option value="11pt" ${sectionData.font_size === '11pt' ? 'selected' : ''}>11 pt</option>
+            <option value="12pt" ${!sectionData.font_size || sectionData.font_size === '12pt' ? 'selected' : ''}>12 pt</option>
+            <option value="13pt" ${sectionData.font_size === '13pt' ? 'selected' : ''}>13 pt</option>
+            <option value="14pt" ${sectionData.font_size === '14pt' ? 'selected' : ''}>14 pt</option>
+            <option value="16pt" ${sectionData.font_size === '16pt' ? 'selected' : ''}>16 pt</option>
+          </select>
         </div>
       </div>
       <div class="question-list"></div>
@@ -376,6 +464,7 @@ function addSection(sectionData = {}) {
   } else {
     addQuestion(sectionCard);
   }
+  updateScoringFields();
 }
 
 function refreshSectionLabels() {
@@ -410,7 +499,7 @@ function addQuestion(sectionCard, questionData = {}) {
       <h5>Question ${questionIndex}</h5>
       <button type="button" class="button" style="background:#dc3545;color:white;" data-action="remove-question">Remove</button>
     </div>
-    <div class="row g-3">
+    <div class="row g-3 scoring-field">
       <div class="col-md-6 field-block">
         <label>Marks</label>
         <input type="number" min="0" class="question-marks" value="${escapeHTML(questionData.marks || 0)}" placeholder="Marks allocation">
@@ -418,10 +507,19 @@ function addQuestion(sectionCard, questionData = {}) {
     </div>
     <div class="field-block">
       <label>Question Text</label>
-       <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button type="button" class="button add-diagram-btn">Add Diagram</button>
-            <button type="button" class="button add-chart-btn">Add Chart</button>
-          </div>
+       <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
+        <label>Diagram width (px) <input type="number" class="diagram-width" min="40" max="1200" value="180" style="width:90px;padding:6px;"></label>
+        <button type="button" class="button render-diagram-size">Render size</button>
+        <label>Placement
+          <select class="diagram-placement" style="width:auto;padding:6px;">
+            <option value="inline" selected>In the paragraph</option>
+            <option value="block">Own line</option>
+          </select>
+        </label>
+        <button type="button" class="button add-diagram-btn">Add Diagram</button>
+        <button type="button" class="button add-chart-btn">Add Chart</button>
+      </div>
+      <div class="diagram-render-preview" hidden style="margin:8px 0;padding:8px;border:1px solid #d1d8df;border-radius:6px;background:#fff;" aria-live="polite"></div>
       <textarea class="question-text rich-editor" rows="3">${questionTextValue}</textarea>
     </div>
     <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
@@ -458,7 +556,7 @@ function addQuestion(sectionCard, questionData = {}) {
       </div>
     </div>
     <div class="row g-3">
-      <div class="col-md-6 field-block">
+      <div class="col-md-6 field-block scoring-field">
         <label>Correct Answer</label>
         <input type="text" class="correct-answer" value="${correctAnswerValue}" placeholder="A, B, C...">
       </div>
@@ -480,10 +578,19 @@ function addQuestion(sectionCard, questionData = {}) {
       <div class="row g-3" style="margin-top:6px;">
         <div class="col-md-12 field-block">
           <label>Supplementary Resources (diagram, graph, table, image URLs, notes)</label>
-          <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
+            <label>Diagram width (px) <input type="number" class="diagram-width" min="40" max="1200" value="180" style="width:90px;padding:6px;"></label>
+            <button type="button" class="button render-diagram-size">Render size</button>
+            <label>Placement
+              <select class="diagram-placement" style="width:auto;padding:6px;">
+                <option value="inline" selected>In the paragraph</option>
+                <option value="block">Own line</option>
+              </select>
+            </label>
             <button type="button" class="button add-diagram-btn">Add Diagram</button>
             <button type="button" class="button add-chart-btn">Add Chart</button>
           </div>
+          <div class="diagram-render-preview" hidden style="margin:8px 0;padding:8px;border:1px solid #d1d8df;border-radius:6px;background:#fff;" aria-live="polite"></div>
           <textarea class="resource-notes rich-editor" rows="3">${resourceNotesValue}</textarea>
         </div>
       </div>
@@ -495,6 +602,7 @@ function addQuestion(sectionCard, questionData = {}) {
   `;
 
   questionList.appendChild(questionCard);
+  updateScoringFields();
   console.log('Question card added to list. List now has', questionList.children.length, 'questions');
   questionCard.querySelector('[data-action="remove-question"]').addEventListener('click', () => {
     questionCard.remove();
@@ -545,10 +653,10 @@ function updateOptionFields(questionCard, count) {
 
 function initRichEditors() {
   function initEditorFor(ta) {
-    if (!ta || ta._editor) return;
+    if (!ta || ta._editor || ta._editorPromise) return;
     if (typeof ClassicEditor === 'undefined') return;
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    ClassicEditor.create(ta, {
+    ta._editorPromise = ClassicEditor.create(ta, {
       toolbar: ['heading', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'insertTable', 'imageUpload', 'undo', 'redo'],
       table: {
         contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
@@ -565,8 +673,12 @@ function initRichEditors() {
       activeEditor = editor;
       editor.editing.view.document.on('focus', () => { activeEditor = editor; });
       editor.editing.view.document.on('click', () => { activeEditor = editor; });
+      return editor;
     }).catch(err => {
       console.warn('CKEditor init failed for textarea:', ta, err);
+      return null;
+    }).finally(() => {
+      ta._editorPromise = null;
     });
   }
 
@@ -595,93 +707,202 @@ function attachDiagramAndChartHandlers(questionCard){
   if (!questionCard || questionCard.dataset.diagramHandlersAttached) return;
   questionCard.dataset.diagramHandlersAttached = '1';
 
-  const addDiagramBtn = questionCard.querySelector('.add-diagram-btn');
-  const addChartBtn = questionCard.querySelector('.add-chart-btn');
-  const ta = questionCard.querySelector('.resource-notes');
+  const diagramButtons = questionCard.querySelectorAll('.add-diagram-btn');
+  const chartButtons = questionCard.querySelectorAll('.add-chart-btn');
+  const renderButtons = questionCard.querySelectorAll('.render-diagram-size');
 
-  function insertHtml(editor, html) {
+  function getInsertionOptions(button) {
+    const controls = button.closest('.field-block');
+    const widthValue = Number(controls.querySelector('.diagram-width').value);
+    return {
+      textarea: controls.querySelector('textarea.rich-editor'),
+      controls,
+      width: Number.isFinite(widthValue) && widthValue > 0 ? Math.min(1200, Math.max(40, widthValue)) : 180,
+      placement: controls.querySelector('.diagram-placement').value,
+    };
+  }
+
+  function renderDiagramPreview(options, url) {
+    const preview = options.controls.querySelector('.diagram-render-preview');
+    preview.dataset.diagramUrl = url;
+    preview.textContent = `Diagram in the editor: ${options.width}px wide, ${options.placement === 'inline' ? 'inline' : 'on its own line'}.`;
+    preview.hidden = false;
+  }
+
+  renderButtons.forEach(button => button.addEventListener('click', async () => {
+    const options = getInsertionOptions(button);
+    const preview = options.controls.querySelector('.diagram-render-preview');
+    const url = preview.dataset.diagramUrl;
+    if (!url) {
+      showStatus('Create or insert a diagram first, then render its size.', true);
+      return;
+    }
+    renderDiagramPreview(options, url);
+    const editor = options.textarea && options.textarea._editor;
+    if (editor) {
+      try {
+        if (resizeInsertedImage(editor, url, options.width)) {
+          const saved = await saveDraft();
+          if (!saved) showStatus('Diagram size changed in the editor, but the draft could not be saved.', true);
+        }
+      } catch (error) {
+        console.error('Could not update the inserted diagram size.', error);
+        showStatus(error.message, true);
+      }
+    }
+  }));
+  questionCard.querySelectorAll('.diagram-width, .diagram-placement').forEach(input => {
+    input.addEventListener('change', () => {
+      const controls = input.closest('.field-block');
+      const preview = controls.querySelector('.diagram-render-preview');
+      const url = preview.dataset.diagramUrl;
+      if (url) renderDiagramPreview(getInsertionOptions(controls.querySelector('.render-diagram-size')), url);
+    });
+  });
+
+  function findInsertedImage(editor, url) {
+    const root = editor.model.document.getRoot();
+    return Array.from(editor.model.createRangeIn(root).getItems()).find(item =>
+      (item.is('element', 'imageBlock') || item.is('element', 'imageInline')) &&
+      item.getAttribute('src') === url
+    );
+  }
+
+  function editorImageWidth(width) {
+    const printContentWidth = 832;
+    return `${Math.min(100, Math.max(1, (width / printContentWidth) * 100)).toFixed(2)}%`;
+  }
+
+  function resizeInsertedImage(editor, url, width) {
+    const schema = editor.model.schema;
+    const image = findInsertedImage(editor, url);
+    if (!image) return false;
+    const resizedWidth = editorImageWidth(width);
+
+    editor.model.change(writer => {
+      if (schema.checkAttribute(image, 'resizedWidth')) {
+        writer.setAttribute('resizedWidth', resizedWidth, image);
+      } else {
+        throw new Error('The rich-text editor does not support saved image resizing.');
+      }
+    });
+    if (!editor.getData().includes(resizedWidth)) {
+      const resizeCommand = editor.commands.get('resizeImage');
+      if (resizeCommand) {
+        editor.model.change(writer => writer.setSelection(image, 'on'));
+        editor.execute('resizeImage', { width: resizedWidth });
+      }
+    }
+    if (!editor.getData().includes(resizedWidth)) {
+      throw new Error('The editor did not retain the diagram size. Try another size or use the editor image resize control.');
+    }
+    return true;
+  }
+
+  function insertImageUrl(editor, textarea, url, options, insertionSelection) {
+    if (!editor) {
+      const imageHtml = `<img src="${url}" style="width:${options.width}px;height:auto;vertical-align:middle">`;
+      const currentValue = textarea.value || '';
+      textarea.value = options.placement === 'inline'
+        ? `${currentValue}${imageHtml}`
+        : `${currentValue}<p>${imageHtml}</p>`;
+      return true;
+    }
+
     try {
-      if (!editor) throw new Error('Editor not ready');
-      if (editor.model && typeof editor.model.change === 'function' && editor.data && editor.data.processor) {
-        // Convert HTML to view, then to model and insert at selection
-        editor.model.change(writer => {
-          const viewFragment = editor.data.processor.toView(html);
-          const modelFragment = editor.data.toModel(viewFragment);
-          writer.insert(modelFragment, editor.model.document.selection);
-        });
+      const schema = editor.model.schema;
+      const requestedImage = options.placement === 'inline' ? 'imageInline' : 'imageBlock';
+      const imageName = schema.isRegistered(requestedImage)
+        ? requestedImage
+        : schema.isRegistered('imageBlock') ? 'imageBlock' : null;
+      if (!imageName) {
+        throw new Error('The rich-text editor does not support image insertion.');
+      }
+
+      editor.model.change(writer => {
+        const image = writer.createElement(imageName, { src: url });
+        editor.model.insertContent(image, insertionSelection || editor.model.document.selection);
+      });
+      if (!findInsertedImage(editor, url)) {
+        throw new Error('The editor did not retain the inserted image.');
+      }
+      if (!resizeInsertedImage(editor, url, options.width)) return false;
+      editor.editing.view.focus();
+      return true;
+    } catch (error) {
+      console.error('Could not insert diagram into the selected question text.', error);
+      try {
+        if (findInsertedImage(editor, url)) {
+          if (resizeInsertedImage(editor, url, options.width)) {
+            editor.editing.view.focus();
+            return true;
+          }
+          throw error;
+        }
+        if (!editor.commands.get('insertImage')) throw error;
+        editor.execute('insertImage', { source: url });
+        if (!findInsertedImage(editor, url) || !resizeInsertedImage(editor, url, options.width)) {
+          throw new Error('The editor did not retain the inserted image.');
+        }
         editor.editing.view.focus();
-        return;
-      }
-      if (typeof editor.setData === 'function') {
-        const current = editor.getData ? (editor.getData() || '') : '';
-        editor.setData(current + html);
-        editor.editing && editor.editing.view && editor.editing.view.focus();
-        return;
-      }
-      throw new Error('Editor API not available');
-    } catch (e) {
-      console.warn('Could not insert HTML into editor, falling back to append:', e);
-      if (ta) {
-        ta.value += `\n${html}`;
+        showStatus('Diagram inserted using the editor fallback. Check its rendered size and placement.', false);
+        return true;
+      } catch (fallbackError) {
+        console.error('The editor could not insert the diagram using its fallback command.', fallbackError);
+        showStatus(`Could not insert diagram: ${fallbackError.message}`, true);
+        return false;
       }
     }
   }
 
- function insertImageUrl(editor, url) {
-    if (!editor) {
-        if (ta) ta.value += `\n<img src="${url}" />`;
-        return;
-    }
-
+  diagramButtons.forEach(button => button.addEventListener('click', async () => {
+    const options = getInsertionOptions(button);
     try {
-      // Prefer model insertion (works reliably across CKEditor builds)
-      if (editor.model && typeof editor.model.change === 'function') {
-        editor.model.change(writer => {
-          // Use imageBlock for block images; fallback to image
-          const imageElement = writer.createElement('imageBlock', { src: url });
-          editor.model.insertContent(imageElement, editor.model.document.selection);
-        });
-        editor.editing.view.focus();
-        return;
+      if (options.textarea && options.textarea._editorPromise) {
+        await options.textarea._editorPromise;
       }
-
-      // As a fallback, try the registered command
-      if (typeof editor.execute === 'function') {
-        try { editor.execute('imageInsert', { source: url }); editor.editing.view.focus(); return; } catch(e) {}
-        try { editor.execute('insertImage', { source: { src: url } }); editor.editing.view.focus(); return; } catch(e) {}
+      const editor = options.textarea && options.textarea._editor;
+      const insertionSelection = editor
+        ? editor.model.createSelection(editor.model.document.selection)
+        : null;
+      const dataURL = await openDiagramModal();
+      if (!dataURL) return;
+      const result = await uploadDataURL(dataURL);
+      if (!result || !result.url) throw new Error('The diagram upload did not return an image URL.');
+      renderDiagramPreview(options, result.url);
+      if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection)) {
+        const saved = await saveDraft();
+        if (!saved) showStatus('Diagram is in the editor, but the draft could not be saved. Save the exam and retry.', true);
       }
-
-      // Last resort: append raw img HTML to the textarea
-      if (ta) ta.value += `\n<img src="${url}" />`;
-    } catch (e) {
-      console.warn('Failed to insert image into editor, falling back to textarea:', e);
-      if (ta) ta.value += `\n<img src="${url}" />`;
+    } catch (error) {
+      console.error('Diagram upload failed:', error);
+      showStatus(`Diagram upload failed: ${error.message}`, true);
     }
-}
-
-  // Prefer the specific textarea's editor instance, then the globally active editor
-  const targetEditor = () => (ta && ta._editor) || activeEditor || null;
-
-  if (addDiagramBtn) addDiagramBtn.addEventListener('click', () => openDiagramModal().then(dataURL => {
-    if (!dataURL) return;
-    uploadDataURL(dataURL).then(res => {
-      if (res && res.url) {
-        insertImageUrl(targetEditor(), res.url);
-      }
-    }).catch(err => {
-      console.error('Diagram upload failed:', err);
-    });
   }));
 
-  if (addChartBtn) addChartBtn.addEventListener('click', () => openChartModal().then(dataURL => {
-    if (!dataURL) return;
-    uploadDataURL(dataURL).then(res => {
-      if (res && res.url) {
-        insertImageUrl(targetEditor(), res.url);
+  chartButtons.forEach(button => button.addEventListener('click', async () => {
+    const options = getInsertionOptions(button);
+    try {
+      if (options.textarea && options.textarea._editorPromise) {
+        await options.textarea._editorPromise;
       }
-    }).catch(err => {
-      console.error('Chart upload failed:', err);
-    });
+      const editor = options.textarea && options.textarea._editor;
+      const insertionSelection = editor
+        ? editor.model.createSelection(editor.model.document.selection)
+        : null;
+      const dataURL = await openChartModal();
+      if (!dataURL) return;
+      const result = await uploadDataURL(dataURL);
+      if (!result || !result.url) throw new Error('The chart upload did not return an image URL.');
+      renderDiagramPreview(options, result.url);
+      if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection)) {
+        const saved = await saveDraft();
+        if (!saved) showStatus('Chart is in the editor, but the draft could not be saved. Save the exam and retry.', true);
+      }
+    } catch (error) {
+      console.error('Chart upload failed:', error);
+      showStatus(`Chart upload failed: ${error.message}`, true);
+    }
   }));
 }
 
@@ -727,9 +948,13 @@ function openDiagramModal(){
     exportBtn.style.background = '#0d6efd';
     exportBtn.style.color = 'white';
     exportBtn.addEventListener('click', () => {
-      const dataURL = builder.export();
-      document.body.removeChild(modal);
-      resolve(dataURL);
+      try {
+        const dataURL = builder.export();
+        closeModal(dataURL);
+      } catch (error) {
+        console.error('Diagram export failed:', error);
+        showStatus(error.message, true);
+      }
     });
     footer.appendChild(exportBtn);
 
@@ -738,10 +963,15 @@ function openDiagramModal(){
     closeBtn.textContent = 'Close';
     closeBtn.className = 'button';
     closeBtn.addEventListener('click', () => {
-      document.body.removeChild(modal);
-      resolve(null);
+      closeModal(null);
     });
     footer.appendChild(closeBtn);
+
+    function closeModal(dataURL) {
+      builder.destroy();
+      modal.remove();
+      resolve(dataURL);
+    }
   });
 }
 
@@ -1012,6 +1242,11 @@ class DiagramBuilder {
     this.stage.on('touchstart', (e) => this.handleMouseDown(e));
     this.stage.on('touchmove', (e) => this.handleMouseMove(e));
     this.stage.on('touchend', (e) => this.handleMouseUp(e));
+
+    this.handleWindowMouseUp = () => this.handleMouseUp();
+    this.handleWindowTouchEnd = () => this.handleMouseUp();
+    window.addEventListener('mouseup', this.handleWindowMouseUp);
+    window.addEventListener('touchend', this.handleWindowTouchEnd);
   }
 
   snapCoord(coord) {
@@ -1109,7 +1344,11 @@ class DiagramBuilder {
       return;
     }
 
-    this.clearPreviewShapes();
+    if (this.isDrawing) {
+      this.finishDrawing();
+    } else {
+      this.clearPreviewShapes();
+    }
     this.isDrawing = true;
     const pos = this.stage.getPointerPosition();
     this.startX = this.snapCoord(pos.x);
@@ -1224,44 +1463,27 @@ class DiagramBuilder {
       return;
     }
 
+    this.finishDrawing();
+  }
+
+  finishDrawing() {
     if (!this.isDrawing) return;
     this.isDrawing = false;
+    const shape = this.previewShape;
+    this.previewShape = null;
+    this.drawingPoints = [];
+    if (!shape || !shape.getParent()) return;
 
-    // Handle pen drawing - finalize the freehand line
-    if (this.currentTool === 'pen') {
-      const previewShapes = this.layer.getChildren().toArray().filter(c => c._isPreview);
-      previewShapes.forEach(shape => {
-        shape._isPreview = false;
-        shape.isShape = true;
-      });
-      if (this.previewShape && this.previewShape._isPreview) {
-        this.previewShape._isPreview = false;
-        this.previewShape.isShape = true;
-        this.previewShape = null;
-      }
-      if (previewShapes.length > 0) {
-        this.layer.draw();
-        this.saveHistory();
-      }
-      this.drawingPoints = [];
-      return;
-    }
+    shape._isPreview = false;
+    shape.isShape = true;
+    this.layer.draw();
+    this.saveHistory();
+  }
 
-    const previewShapes = this.layer.getChildren().toArray().filter(c => c._isPreview);
-    previewShapes.forEach(shape => {
-      shape._isPreview = false;
-      shape.isShape = true;
-    });
-    if (this.previewShape && this.previewShape._isPreview) {
-      this.previewShape._isPreview = false;
-      this.previewShape.isShape = true;
-      this.previewShape = null;
-    }
-
-    if (previewShapes.length > 0) {
-      this.layer.draw();
-      this.saveHistory();
-    }
+  destroy() {
+    window.removeEventListener('mouseup', this.handleWindowMouseUp);
+    window.removeEventListener('touchend', this.handleWindowTouchEnd);
+    this.stage.destroy();
   }
 
   selectObject(obj) {
@@ -1334,7 +1556,39 @@ class DiagramBuilder {
   }
 
   export() {
-    return this.stage.toDataURL({ pixelRatio: 2 });
+    const shapes = Array.from(this.layer.getChildren()).filter(shape => !shape._isPreview);
+    if (!shapes.length) {
+      throw new Error('Draw at least one shape before exporting the diagram.');
+    }
+
+    const bounds = shapes.map(shape => shape.getClientRect({ relativeTo: this.layer }));
+    const padding = 8;
+    const left = Math.floor(Math.min(...bounds.map(rect => rect.x)) - padding);
+    const top = Math.floor(Math.min(...bounds.map(rect => rect.y)) - padding);
+    const right = Math.ceil(Math.max(...bounds.map(rect => rect.x + rect.width)) + padding);
+    const bottom = Math.ceil(Math.max(...bounds.map(rect => rect.y + rect.height)) + padding);
+
+    if (right <= left || bottom <= top) {
+      throw new Error('The diagram has no visible drawing area to export.');
+    }
+
+    const exportStage = new Konva.Stage({
+      container: document.createElement('div'),
+      width: right - left,
+      height: bottom - top
+    });
+    const exportLayer = new Konva.Layer();
+    const drawingGroup = new Konva.Group({ x: -left, y: -top });
+    shapes.forEach(shape => drawingGroup.add(shape.clone({ listening: false })));
+    exportLayer.add(drawingGroup);
+    exportStage.add(exportLayer);
+    exportLayer.draw();
+
+    try {
+      return exportStage.toDataURL({ pixelRatio: 2 });
+    } finally {
+      exportStage.destroy();
+    }
   }
 }
 
@@ -1399,6 +1653,7 @@ function openChartModal(){
 }
 
 function gatherPayload() {
+  const scoringEnabled = document.getElementById('id_scoring_enabled').checked;
   const subject = document.getElementById('id_subject').value;
   const school_class = document.getElementById('id_school_class').value;
   const term = document.getElementById('id_term').value;
@@ -1412,6 +1667,7 @@ function gatherPayload() {
     academic_session: academic_session,
     duration: document.getElementById('id_duration').value,
     total_marks: document.getElementById('id_total_marks').value,
+    scoring_enabled: scoringEnabled,
     instructions: document.getElementById('id_instructions').value,
     sections: []
   };
@@ -1423,6 +1679,7 @@ function gatherPayload() {
     }
     return field.value || '';
   }
+  payload.instructions = getEditorFieldValue(document.getElementById('id_instructions'));
 
   Array.from(sectionsContainer.children).forEach(sectionCard => {
     const sectionPayload = {
@@ -1430,6 +1687,8 @@ function gatherPayload() {
       section_type: sectionCard.querySelector('.section-type').value,
       instruction: sectionCard.querySelector('.section-instruction').value,
       marks_allocation: sectionCard.querySelector('.section-marks').value,
+      font_family: sectionCard.querySelector('.section-font-family').value,
+      font_size: sectionCard.querySelector('.section-font-size').value,
       questions: []
     };
 
@@ -1486,7 +1745,7 @@ function sendPayload(url, payload, callback) {
     setTimeout(() => reject(new Error('Request timeout (30s)')), 30000)
   );
 
-  Promise.race([
+  return Promise.race([
     fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
@@ -1503,20 +1762,29 @@ function sendPayload(url, payload, callback) {
       if (!ok) {
         const msg = data && (data.error || data.errors) ? (data.error || JSON.stringify(data.errors)) : `Server error (HTTP ${status}) while saving.`;
         showStatus(msg, true);
+        if (callback) callback(data);
+        return false;
       } else {
         if (data && !data.error && !data.errors) {
           examJson.id = data.exam_paper_id;
-          previewLink.href = `/exams/exam-papers/${examJson.id}/`;
+          if (previewLink) {
+            previewLink.href = examPreviewUrl(examJson.id);
+            previewLink.classList.remove('disabled');
+          }
           showStatus(`Saved at ${data.saved_at || new Date().toLocaleTimeString()}`);
+          if (callback) callback(data);
+          return true;
         } else {
           showStatus(data && (data.error || 'Unable to save draft.') || 'Saved.', !!(data && (data.error || data.errors)));
+          if (callback) callback(data);
+          return false;
         }
       }
-      if (callback) callback(data);
     })
     .catch(err => {
       console.error('sendPayload error:', err.message || err);
       showStatus(`Failed to save: ${err.message || 'Network error'}`, true);
+      return false;
     });
 }
 
@@ -1529,6 +1797,136 @@ function showStatus(message, isError = false) {
   }
 }
 
+function normalizeImportedSections(sections) {
+  const allowedTypes = ['objective', 'theory', 'german', 'other'];
+  const allowedFonts = ['Arial', 'Calibri', 'Georgia', 'Times New Roman'];
+  const allowedSizes = ['9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '16pt'];
+  if (!Array.isArray(sections) || sections.length === 0) {
+    throw new Error('The imported file must contain at least one section.');
+  }
+  return sections.map(section => {
+    if (!section || typeof section !== 'object' || !Array.isArray(section.questions)) {
+      throw new Error('Each imported section must contain a questions list.');
+    }
+    return {
+      title: typeof section.title === 'string' ? section.title : '',
+      section_type: allowedTypes.includes(section.section_type) ? section.section_type : 'theory',
+      instruction: typeof section.instruction === 'string' ? section.instruction : '',
+      marks_allocation: section.marks_allocation || 0,
+      font_family: allowedFonts.includes(section.font_family) ? section.font_family : 'Arial',
+      font_size: allowedSizes.includes(section.font_size) ? section.font_size : '12pt',
+      questions: section.questions.map(question => ({
+        question_type: question && question.question_type === 'objective' ? 'objective' : 'theory',
+        question_text: question && typeof question.question_text === 'string' ? question.question_text : '',
+        marks: question && question.marks != null ? question.marks : '',
+        correct_answer: question && typeof question.correct_answer === 'string' ? question.correct_answer : '',
+        teacher_guide: question && typeof question.teacher_guide === 'string' ? question.teacher_guide : '',
+        resource_notes: question && typeof question.resource_notes === 'string' ? question.resource_notes : '',
+        subnumbering_style: question && typeof question.subnumbering_style === 'string' ? question.subnumbering_style : '',
+        options: question && Array.isArray(question.options)
+          ? question.options.slice(0, 5).map((option, index) => ({
+              option_label: option && typeof option.option_label === 'string' ? option.option_label : String.fromCharCode(65 + index),
+              option_text: option && typeof option.option_text === 'string' ? option.option_text : '',
+            }))
+          : [],
+      })),
+    };
+  });
+}
+
+async function replaceBuilderSections(sections) {
+  const fields = Array.from(sectionsContainer.querySelectorAll('textarea.rich-editor'));
+  await Promise.all(fields.map(field => field._editorPromise).filter(Boolean));
+  const editors = fields.map(field => field._editor).filter(Boolean);
+  await Promise.all(editors.map(editor => editor.destroy()));
+  activeEditor = null;
+  sectionsContainer.innerHTML = '';
+  sections.forEach(section => addSection(section));
+  initRichEditors();
+}
+
+function setSelectIfAvailable(element, value) {
+  if (!element || value == null || value === '') return;
+  const optionExists = Array.from(element.options).some(option => option.value === String(value));
+  if (optionExists) element.value = String(value);
+}
+
+async function applyImportedPayload(payload) {
+  if (!payload || !Array.isArray(payload.sections)) {
+    throw new Error('The JSON file must use the exam editor payload format and contain a sections list.');
+  }
+  const sections = normalizeImportedSections(payload.sections);
+  const scoringToggle = document.getElementById('id_scoring_enabled');
+  if (scoringToggle && payload.scoring_enabled != null) {
+    scoringToggle.checked = Boolean(payload.scoring_enabled);
+    updateScoringFields();
+  }
+  const classSelect = document.getElementById('id_school_class');
+  setSelectIfAvailable(classSelect, payload.school_class);
+  if (classSelect) populateSubjectOptions(classSelect.value);
+  setSelectIfAvailable(subjectSelect, payload.subject);
+  setSelectIfAvailable(document.getElementById('id_term'), payload.term);
+
+  [
+    ['id_academic_session', 'academic_session'],
+    ['id_duration', 'duration'],
+    ['id_total_marks', 'total_marks'],
+  ].forEach(([elementId, fieldName]) => {
+    const element = document.getElementById(elementId);
+    if (element && payload[fieldName] != null) element.value = payload[fieldName];
+  });
+
+  const instructionsField = document.getElementById('id_instructions');
+  if (instructionsField && typeof payload.instructions === 'string') {
+    if (instructionsField._editor) instructionsField._editor.setData(payload.instructions);
+    else instructionsField.value = payload.instructions;
+  }
+
+  await replaceBuilderSections(sections);
+  showStatus('Imported JSON payload. Review the content, then save the draft.');
+}
+
+async function importExamFile() {
+  const fileInput = document.getElementById('exam-import-file');
+  const modeSelect = document.getElementById('exam-docx-mode');
+  const status = document.getElementById('exam-import-status');
+  const file = fileInput && fileInput.files[0];
+  if (!file) {
+    if (status) status.textContent = 'Choose a .docx or .json file first.';
+    return;
+  }
+  if (status) status.textContent = 'Importing file…';
+
+  try {
+    if (file.name.toLowerCase().endsWith('.json')) {
+      const payload = JSON.parse(await file.text());
+      await applyImportedPayload(payload);
+    } else if (file.name.toLowerCase().endsWith('.docx')) {
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('mode', modeSelect ? modeSelect.value : 'editable_questions');
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+      const response = await fetch(importDocumentUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Import failed (HTTP ${response.status}).`);
+      await replaceBuilderSections(normalizeImportedSections(result.sections));
+      showStatus('Imported Word document. Review the content, then save the draft.');
+    } else {
+      throw new Error('Choose a .docx or .json file.');
+    }
+    if (status) status.textContent = 'Import complete. Review the content before saving.';
+  } catch (error) {
+    console.error('Exam paper import failed:', error);
+    if (status) status.textContent = error.message || 'The selected file could not be imported.';
+    showStatus(error.message || 'The selected file could not be imported.', true);
+  }
+}
+
 function saveDraft() {
   const subject = document.getElementById('id_subject').value;
   const school_class = document.getElementById('id_school_class').value;
@@ -1537,11 +1935,11 @@ function saveDraft() {
 
   if (!subject || !school_class || !term || !academic_session) {
     showStatus('Please fill in Subject, Class, Term, and Academic Session before saving.', true);
-    return;
+    return Promise.resolve(false);
   }
 
   const payload = gatherPayload();
-  sendPayload(saveDraftUrl, payload);
+  return sendPayload(saveDraftUrl, payload);
 }
 
 function submitForApproval() {
@@ -1603,6 +2001,7 @@ onReady(() => {
   const addSectionBtn = document.getElementById('add-section-btn');
   const saveDraftBtn = document.getElementById('save-draft-btn');
   const submitBtn = document.getElementById('submit-btn');
+  const importBtn = document.getElementById('exam-import-btn');
 
   console.log('Button elements:', { addSectionBtn, saveDraftBtn, submitBtn });
 
@@ -1617,6 +2016,7 @@ onReady(() => {
     if (dups && dups.length){ showStatus('Duplicate question text detected. Remove duplicates before submitting.', true); return; }
     submitForApproval();
   });
+  if (importBtn) importBtn.addEventListener('click', importExamFile);
 
   // Initialize builder
   console.log('Calling initBuilder()');
@@ -1644,6 +2044,3 @@ onReady(() => {
 });
 </script>
 {% endblock %}
-
-
-

@@ -148,7 +148,7 @@
         <div class="title">{{ exam.subject.name }}</div>
         <div class="exam-info">Class: {{ exam.school_class }}</div>
         <div class="exam-info">{{ exam.term }} ({{ exam.academic_session }})</div>
-        <div class="exam-info">Duration: {{ exam.duration|default:"N/A" }} | Total Marks: {{ exam.total_marks }}</div>
+        <div class="exam-info">Duration: {{ exam.duration|default:"N/A" }}{% if include_marks %} | Total Marks: {{ exam.total_marks }}{% endif %}</div>
     </div>
     
     {% if exam.instructions %}

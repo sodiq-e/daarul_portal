@@ -26,6 +26,7 @@ except ImportError:
     WEASYPRINT_AVAILABLE = False
 
 from .models import Subject, Exam, ExamPaper, ExamSection, Question, QuestionOption, ApprovalLog, ClassSubject
+from .document_import import import_docx
 from .forms import SubjectForm, ExamForm, ExamPaperForm, ExamReviewForm
 from school_classes.models import SchoolClasses, ClassTeacher
 from settingsapp.models import SchoolSettings
@@ -311,10 +312,13 @@ class TeacherExamPaperCreateView(LoginRequiredMixin, UserPassesTestMixin, Templa
         form = ExamPaperForm(teacher=self.request.user.teacher_profile)
         context['form'] = form
         context['exam_json'] = json.dumps({})
+        context['scoring_enabled'] = False
         context['class_subject_map'] = json.dumps(_build_class_subject_map(self.request.user.teacher_profile))
         context['page_title'] = 'Create Exam Paper'
         context['save_draft_url'] = reverse_lazy('exam_paper_save')
         context['submit_url'] = reverse_lazy('exam_paper_submit')
+        context['import_document_url'] = reverse_lazy('exam_paper_import_document')
+        context['preview_url_template'] = reverse_lazy('exam_paper_preview', args=[0])
         return context
 
 
@@ -338,7 +342,10 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
         context['page_title'] = 'Edit Exam Paper'
         context['save_draft_url'] = reverse_lazy('exam_paper_save')
         context['submit_url'] = reverse_lazy('exam_paper_submit')
+        context['import_document_url'] = reverse_lazy('exam_paper_import_document')
+        context['preview_url_template'] = reverse_lazy('exam_paper_preview', args=[0])
         context['exam_paper'] = exam_paper
+        context['scoring_enabled'] = exam_paper.scoring_enabled
         return context
 
     def _exam_to_payload(self, exam_paper):
@@ -350,6 +357,7 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
             'academic_session': exam_paper.academic_session,
             'duration': exam_paper.duration,
             'total_marks': exam_paper.total_marks,
+            'scoring_enabled': exam_paper.scoring_enabled,
             'instructions': exam_paper.instructions,
             'sections': [
                 {
@@ -358,6 +366,8 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
                     'section_type': section.section_type,
                     'instruction': section.instruction,
                     'marks_allocation': section.marks_allocation,
+                    'font_family': section.print_font_family,
+                    'font_size': section.print_font_size,
                     'order': section.order,
                     'questions': [
                         {
@@ -452,12 +462,18 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
 
     def get(self, request, pk, *args, **kwargs):
         exam_paper = get_object_or_404(ExamPaper, pk=pk)
-        if exam_paper.status != 'approved' and not user_is_admin(request.user):
+        is_approved = exam_paper.approval_status == 'approved' or (
+            exam_paper.approval_status == 'draft' and exam_paper.status == 'approved'
+        )
+        if not is_approved and not user_is_admin(request.user):
             return HttpResponse('Only approved exam papers can be printed.', status=403)
 
         font_size = request.GET.get('font_size', '12pt')
         if font_size not in ['10pt', '11pt', '12pt', '13pt', '14pt', '15pt']:
             font_size = '12pt'
+        font_size_override = request.GET.get('font_size', '')
+        if font_size_override not in ['10pt', '11pt', '12pt', '13pt', '14pt', '15pt']:
+            font_size_override = ''
 
         school_settings = SchoolSettings.objects.first()
         school_name = school_settings.school_name if school_settings else 'School Name'
@@ -470,6 +486,7 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
         context = {
             'exam_paper': exam_paper,
             'font_size': font_size,
+            'font_size_override': font_size_override,
             'school_name': school_name,
             'school_address': school_address,
             'school_phone': school_phone,
@@ -479,10 +496,19 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
             'SCHOOL_NAME': school_name,
             'SCHOOL_ADDRESS': school_address,
             'SCHOOL_CONTACT': ' '.join(filter(None, [school_phone, school_email])),
+            'sections_data': [
+                {
+                    'object': section,
+                    'questions': section.questions.all(),
+                }
+                for section in exam_paper.sections.prefetch_related('questions__options')
+            ],
         }
         html_string = render_to_string('exams/print_exam_paper.html', context, request=request)
 
-        if request.GET.get('format') == 'pdf' and WEASYPRINT_AVAILABLE:
+        if request.GET.get('format') == 'pdf':
+            if not WEASYPRINT_AVAILABLE:
+                return HttpResponse('PDF export is unavailable because WeasyPrint is not installed.', status=503)
             html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
             pdf = html.write_pdf(stylesheets=[])
             response = HttpResponse(pdf, content_type='application/pdf')
@@ -490,6 +516,30 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
             return response
 
         return HttpResponse(html_string)
+
+
+@method_decorator([login_required, require_POST], name='dispatch')
+class ExamPaperImportView(View):
+    def post(self, request, *args, **kwargs):
+        if not user_profile_approved(request.user) or not hasattr(request.user, 'teacher_profile'):
+            return JsonResponse({'error': 'An approved teacher profile is required.'}, status=403)
+
+        uploaded_file = request.FILES.get('document')
+        if not uploaded_file:
+            return JsonResponse({'error': 'Choose a .docx file to import.'}, status=400)
+        if not uploaded_file.name.lower().endswith('.docx'):
+            return JsonResponse({'error': 'Only .docx Word documents are supported.'}, status=400)
+
+        max_size = getattr(settings, 'EXAM_IMPORT_MAX_SIZE', 10 * 1024 * 1024)
+        if uploaded_file.size > max_size:
+            return JsonResponse({'error': f'The document exceeds the {max_size}-byte upload limit.'}, status=400)
+
+        try:
+            sections = import_docx(uploaded_file, request.POST.get('mode', ''))
+        except ValueError as error:
+            return JsonResponse({'error': str(error)}, status=400)
+
+        return JsonResponse({'sections': sections})
 
 
 @method_decorator([login_required, require_POST], name='dispatch')
@@ -516,13 +566,17 @@ class AdminExamPaperActionView(LoginRequiredMixin, UserPassesTestMixin, View):
 
         if action == 'approve':
             exam_paper.status = 'approved'
+            exam_paper.approval_status = 'approved'
+            exam_paper.approved_by = request.user
             exam_paper.approved_at = timezone.now()
             messages.success(request, 'Exam paper approved successfully.')
         elif action == 'reject':
             exam_paper.status = 'rejected'
+            exam_paper.approval_status = 'rejected'
             messages.success(request, 'Exam paper rejected.')
         elif action == 'return':
             exam_paper.status = 'returned'
+            exam_paper.approval_status = 'draft'
             messages.success(request, 'Exam paper returned for correction.')
 
         exam_paper.save()
@@ -564,6 +618,7 @@ class ExamPaperSaveView(View):
         exam_paper = form.save(commit=False)
         exam_paper.teacher = request.user
         exam_paper.status = 'draft'
+        exam_paper.scoring_enabled = payload.get('scoring_enabled') is True
         exam_paper.save()
         self._save_sections(exam_paper, payload.get('sections', []))
 
@@ -581,13 +636,27 @@ class ExamPaperSaveView(View):
 
     def _save_sections(self, exam_paper, sections_payload):
         exam_paper.sections.all().delete()
+        allowed_font_families = dict(ExamSection.FONT_FAMILY_CHOICES)
+        allowed_font_sizes = dict(ExamSection.FONT_SIZE_CHOICES)
         for index, section_data in enumerate(sections_payload, start=1):
+            font_family = section_data.get('font_family', 'Arial')
+            font_size = section_data.get('font_size', '12pt')
             section = ExamSection.objects.create(
                 exam=exam_paper,
                 title=section_data.get('title', '').strip(),
                 section_type=section_data.get('section_type', 'theory'),
                 instruction=section_data.get('instruction', '').strip(),
                 marks_allocation=section_data.get('marks_allocation') or 0,
+                font_family=(
+                    font_family
+                    if isinstance(font_family, str) and font_family in allowed_font_families
+                    else 'Arial'
+                ),
+                font_size=(
+                    font_size
+                    if isinstance(font_size, str) and font_size in allowed_font_sizes
+                    else '12pt'
+                ),
                 order=index
             )
             for q_index, question_data in enumerate(section_data.get('questions', []), start=1):

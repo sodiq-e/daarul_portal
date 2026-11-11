@@ -219,6 +219,7 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
     Returns:
         BytesIO object with DOCX content
     """
+    include_marks = include_marks and exam_paper.scoring_enabled
     doc = Document()
     
     # Set default font
@@ -244,7 +245,9 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
     # Add duration and marks
     duration_marks = doc.add_paragraph()
     duration_marks.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    dm_text = f"Duration: {exam_paper.duration or 'N/A'} | Total Marks: {exam_paper.total_marks}"
+    dm_text = f"Duration: {exam_paper.duration or 'N/A'}"
+    if include_marks:
+        dm_text += f" | Total Marks: {exam_paper.total_marks}"
     dm_run = duration_marks.add_run(dm_text)
     dm_run.font.size = Pt(10)
     
@@ -321,6 +324,7 @@ def export_exam_to_pdf_html(exam_paper, include_answers=False, include_marks=Tru
     Returns:
         HTML string
     """
+    include_marks = include_marks and exam_paper.scoring_enabled
     
     sections_data = []
     
@@ -459,7 +463,7 @@ EXAM_EXPORT_TEMPLATE = """
     <div class="header">
         <div class="title">{{ exam.subject.name }}</div>
         <div class="exam-info">{{ exam.school_class }} | {{ exam.term }} | {{ exam.academic_session }}</div>
-        <div class="exam-info">Duration: {{ exam.duration|default:"N/A" }} | Total Marks: {{ exam.total_marks }}</div>
+        <div class="exam-info">Duration: {{ exam.duration|default:"N/A" }}{% if include_marks %} | Total Marks: {{ exam.total_marks }}{% endif %}</div>
     </div>
     
     {% if exam.instructions %}

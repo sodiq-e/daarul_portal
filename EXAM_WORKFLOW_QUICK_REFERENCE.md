@@ -7,7 +7,9 @@
 **1. Start New Exam**
 - Go to Exams → Create Exam Paper
 - Select: Subject, Class, Term, Academic Year
-- Enter: Duration, Total Marks, Instructions (with rich editor)
+- Enter: Duration and Instructions (with rich editor)
+- Enable **Include marks and correct-answer fields** at the top of the settings only if this paper uses scoring; this reveals total, section, and question marks plus the correct-answer inputs.
+- When disabled, the fields are hidden and marks are omitted from student-facing preview, printout, and exports; existing values are preserved if the setting is turned off.
 - Click Save
 
 **2. Create Sections**
@@ -15,6 +17,7 @@
 - Select type: Objective, Theory, etc.
 - Add section instruction (optional)
 - Set marks allocation for section
+- Choose the section font family and size for preview and print
 - Save
 
 **3. Add Questions**
@@ -23,6 +26,7 @@
   - Use CKEditor toolbar to format
   - Add Bold, Italic, Lists as needed
   - **Insert Image:** Click Image icon → Upload → Place in text
+  - **Add Diagram:** Set a custom width (40–1200 px), choose inline placement or its own line, then use **Render size** to update the diagram in the editor; a text status confirms the applied size without displaying a second copy. The requested pixel width is saved as a proportional image size for the printed page so the whole drawing scales without cropping. Export includes only the shapes, with a small transparent margin—not the drawing board or grid. Inserted diagrams autosave with the exam. Drawings are committed when the pointer is released, even if it leaves the canvas.
   - **Add Table:** Click Table icon → Customize rows/columns
   - **Add Math:** Type LaTeX notation (e.g., `$x^2 + y^2 = z^2$`)
   
@@ -59,6 +63,52 @@
   - ✓ Question marks are correct
   - ✓ No dashboard styling (clean layout)
 - Print/Save as PDF to check print layout
+
+### Importing an Exam
+
+- Select a `.docx` or `.json` file in the exam builder and click **Import File**.
+- For Word documents, choose either:
+  - **Parse into editable questions** to detect numbered questions, section headings, and A–E choices.
+  - **Preserve document as one question** to keep the document’s text, basic formatting, tables, and supported embedded images together.
+- JSON imports must use the exam editor’s save-payload format, including a `sections` array. Metadata fields such as `subject`, `school_class`, and `term` use the corresponding record IDs:
+
+```json
+{
+  "subject": 1,
+  "school_class": 1,
+  "term": 1,
+  "academic_session": "2026/2027",
+  "duration": "1 hour",
+  "total_marks": 100,
+  "scoring_enabled": true,
+  "instructions": "",
+  "sections": [
+    {
+      "title": "Section A",
+      "section_type": "objective",
+      "instruction": "",
+      "marks_allocation": 10,
+      "font_family": "Arial",
+      "font_size": "12pt",
+      "questions": [
+        {
+          "question_type": "objective",
+          "question_text": "<p>Example question</p>",
+          "marks": 1,
+          "options": [
+            {"option_label": "A", "option_text": "Option one"},
+            {"option_label": "B", "option_text": "Option two"}
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+- Word imports support `.docx`; legacy `.doc` files are not supported.
+- Review imported questions and embedded images before saving. Use the rich-text editor’s image upload to add or adjust question images.
+- The preview and print layout use the school portal header and the compact exam-paper layout. Each section’s chosen font family and size are saved with the paper.
 
 **6. Submit for Approval**
 - Click "Submit for Approval" button
