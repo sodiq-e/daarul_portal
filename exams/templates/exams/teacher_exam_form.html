@@ -97,8 +97,8 @@
   background: #fff;
 }
 .diagram-builder-dialog {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -108,14 +108,15 @@
   background: #fff;
 }
 .diagram-builder-toolbar {
-  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 30vh;
   max-height: 30dvh;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   touch-action: pan-x pan-y;
   overscroll-behavior: contain;
 }
 .diagram-builder-canvas {
-  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
   touch-action: none;
@@ -124,8 +125,32 @@
   -webkit-user-select: none;
 }
 .diagram-builder-footer {
-  flex: 0 0 auto;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+.diagram-builder-tools {
+  display: flex;
+  flex: 0 0 100%;
+  gap: 4px;
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+.diagram-builder-tools button {
+  flex: 0 0 auto;
+  min-height: 36px;
+}
+@media (max-width: 600px) {
+  .diagram-builder-toolbar {
+    max-height: 26vh;
+    max-height: 26dvh;
+  }
+  .diagram-builder-footer {
+    padding: 8px 12px max(8px, env(safe-area-inset-bottom)) !important;
+  }
+  .diagram-builder-footer button {
+    min-height: 40px;
+  }
 }
 .ck-content figure.image {
   display: inline-block;
@@ -1169,6 +1194,7 @@ class DiagramBuilder {
     ];
 
     const toolGroup = document.createElement('div');
+    toolGroup.className = 'diagram-builder-tools';
     toolGroup.style.cssText = 'display:flex;gap:4px';
 
     tools.forEach(tool => {
