@@ -78,6 +78,7 @@ class ExamPaperPreviewView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
                     'text': q.question_text,
                     'marks': q.marks,
                     'resource_notes': q.resource_notes,
+                    'sub_questions': q.sub_questions or [],
                     'options': q.options.all(),
                 })
             
@@ -89,10 +90,18 @@ class ExamPaperPreviewView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context['sections_data'] = sections_data
         context['can_submit'] = exam.approval_status == 'draft' and exam.teacher == self.request.user
         context['can_approve'] = exam.approval_status == 'pending' and user_is_admin(self.request.user)
+        requested_font_family = self.request.GET.get('font_family', '')
+        allowed_font_families = dict(ExamSection.FONT_FAMILY_CHOICES)
+        context['font_family_override'] = (
+            requested_font_family
+            if requested_font_family in allowed_font_families
+            else ''
+        )
         requested_font_size = self.request.GET.get('font_size', '')
+        allowed_font_sizes = dict(ExamSection.FONT_SIZE_CHOICES)
         context['font_size_override'] = (
             requested_font_size
-            if requested_font_size in {'10pt', '11pt', '12pt', '13pt', '14pt', '15pt'}
+            if requested_font_size in allowed_font_sizes
             else ''
         )
         context['font_size'] = context['font_size_override'] or '12pt'
@@ -194,6 +203,7 @@ class ExamApprovalDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView
                     'teacher_guide': q.teacher_guide,
                     'answer_explanation': q.answer_explanation,
                     'resource_notes': q.resource_notes,
+                    'sub_questions': q.sub_questions or [],
                     'options': q.options.all(),
                 })
             

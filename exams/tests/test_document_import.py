@@ -13,6 +13,7 @@ from PIL import Image
 
 from exams.document_import import import_docx
 from exams.export_utils import export_exam_to_docx, export_exam_to_pdf_html
+from exams.models import Question
 from exams.views import ExamPaperImportView
 
 
@@ -99,6 +100,18 @@ class ExamDocumentImportTests(SimpleTestCase):
         self.assertIn('08012345678', header_text)
         self.assertIn('office@example.test', header_text)
 
+    def test_question_supports_sub_questions_metadata(self):
+        question = Question(
+            question_text='Explain the process.',
+            sub_questions=[
+                {'label': 'a', 'text': 'State the first step.'},
+                {'label': 'b', 'text': 'Describe the second step.'},
+            ],
+        )
+
+        self.assertEqual(question.sub_questions[0]['label'], 'a')
+        self.assertEqual(question.sub_questions[1]['text'], 'Describe the second step.')
+
     def test_builder_json_values_survive_html_attribute_rendering(self):
         rendered = render_to_string('exams/teacher_exam_form.html', {
             'exam_json': json.dumps({'sections': [], 'subject': 12}),
@@ -143,6 +156,11 @@ class ExamDocumentImportTests(SimpleTestCase):
 
         self.assertIn('id="preview-url-template" value="/exams/papers/0/preview/"', rendered)
         self.assertIn('id="exam-json" value="{}"', rendered)
+        self.assertIn('Drafts autosave every 10 seconds.', rendered)
+        self.assertIn('setInterval(() => {', rendered)
+        self.assertIn('}, 10000);', rendered)
+        self.assertIn("window.addEventListener('online'", rendered)
+        self.assertIn('localStorage.setItem(draftStorageKey', rendered)
 
     def test_diagrams_can_be_resized_and_inserted_inline_or_on_their_own_line(self):
         rendered = render_to_string('exams/teacher_exam_form.html', {
@@ -244,6 +262,42 @@ class ExamDocumentImportTests(SimpleTestCase):
         self.assertIn('.exam-paper-question-content figure.image', print_template)
         self.assertIn('max-width: 120px !important;', print_template)
         self.assertIn('max-height: 90px !important;', print_template)
+
+    def test_preview_context_includes_sub_questions_and_font_overrides(self):
+        from exams.exam_workflow_views import ExamPaperPreviewView
+
+        question = SimpleNamespace(
+            question_text='Explain the process.',
+            marks=5,
+            resource_notes='',
+            sub_questions=[{'label': 'a', 'text': 'State the first step.'}],
+            options=SimpleNamespace(all=lambda: []),
+        )
+        section = SimpleNamespace(
+            questions=SimpleNamespace(all=lambda: [question]),
+        )
+        exam = SimpleNamespace(
+            teacher=SimpleNamespace(username='teacher'),
+            approval_status='draft',
+            sections=SimpleNamespace(prefetch_related=lambda *args, **kwargs: [section]),
+        )
+
+        view = ExamPaperPreviewView()
+        view.request = SimpleNamespace(
+            user=SimpleNamespace(username='teacher'),
+            GET={'font_family': 'Cambria', 'font_size': '20pt'},
+        )
+        view.get_object = lambda: exam
+        view.object = exam
+
+        context = view.get_context_data()
+
+        self.assertEqual(
+            context['sections_data'][0]['questions'][0]['sub_questions'],
+            [{'label': 'a', 'text': 'State the first step.'}],
+        )
+        self.assertEqual(context['font_family_override'], 'Cambria')
+        self.assertEqual(context['font_size_override'], '20pt')
 
     def test_scoring_controls_are_opt_in_and_student_preview_hides_disabled_marks(self):
         rendered_form = render_to_string('exams/teacher_exam_form.html', {

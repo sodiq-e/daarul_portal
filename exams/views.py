@@ -312,6 +312,7 @@ class TeacherExamPaperCreateView(LoginRequiredMixin, UserPassesTestMixin, Templa
         form = ExamPaperForm(teacher=self.request.user.teacher_profile)
         context['form'] = form
         context['exam_json'] = json.dumps({})
+        context['draft_storage_owner'] = self.request.user.pk
         context['scoring_enabled'] = False
         context['class_subject_map'] = json.dumps(_build_class_subject_map(self.request.user.teacher_profile))
         context['page_title'] = 'Create Exam Paper'
@@ -338,6 +339,7 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
 
         context['form'] = ExamPaperForm(instance=exam_paper, teacher=self.request.user.teacher_profile)
         context['exam_json'] = json.dumps(self._exam_to_payload(exam_paper))
+        context['draft_storage_owner'] = self.request.user.pk
         context['class_subject_map'] = json.dumps(_build_class_subject_map(self.request.user.teacher_profile, extra_school_class=exam_paper.school_class))
         context['page_title'] = 'Edit Exam Paper'
         context['save_draft_url'] = reverse_lazy('exam_paper_save')
@@ -380,6 +382,7 @@ class TeacherExamPaperEditView(LoginRequiredMixin, UserPassesTestMixin, Template
                             'teacher_guide': question.teacher_guide,
                             'resource_notes': question.resource_notes,
                             'subnumbering_style': question.subnumbering_style,
+                            'sub_questions': question.sub_questions or [],
                             'options': [
                                 {
                                     'id': option.id,
@@ -469,11 +472,17 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
             return HttpResponse('Only approved exam papers can be printed.', status=403)
 
         font_size = request.GET.get('font_size', '12pt')
-        if font_size not in ['10pt', '11pt', '12pt', '13pt', '14pt', '15pt']:
+        allowed_font_sizes = dict(ExamSection.FONT_SIZE_CHOICES)
+        if font_size not in allowed_font_sizes:
             font_size = '12pt'
         font_size_override = request.GET.get('font_size', '')
-        if font_size_override not in ['10pt', '11pt', '12pt', '13pt', '14pt', '15pt']:
+        if font_size_override not in allowed_font_sizes:
             font_size_override = ''
+
+        font_family = request.GET.get('font_family', '')
+        allowed_font_families = dict(ExamSection.FONT_FAMILY_CHOICES)
+        if font_family not in allowed_font_families:
+            font_family = ''
 
         school_settings = SchoolSettings.objects.first()
         school_name = school_settings.school_name if school_settings else 'School Name'
@@ -487,6 +496,7 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
             'exam_paper': exam_paper,
             'font_size': font_size,
             'font_size_override': font_size_override,
+            'font_family_override': font_family,
             'school_name': school_name,
             'school_address': school_address,
             'school_phone': school_phone,
@@ -669,7 +679,8 @@ class ExamPaperSaveView(View):
                     correct_answer=question_data.get('correct_answer', '').strip(),
                     teacher_guide=question_data.get('teacher_guide', '').strip(),
                     resource_notes=question_data.get('resource_notes', '').strip(),
-                    subnumbering_style=question_data.get('subnumbering_style', '')
+                    subnumbering_style=question_data.get('subnumbering_style', ''),
+                    sub_questions=question_data.get('sub_questions') if isinstance(question_data.get('sub_questions'), list) else []
                 )
                 for option in question_data.get('options', []):
                     if option.get('option_label'):

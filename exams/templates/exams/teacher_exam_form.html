@@ -288,13 +288,14 @@
       <form method="post" id="exam-builder-form">
         {% csrf_token %}
         <input type="hidden" id="exam-json" value="{{ exam_json|escape }}" />
+        <input type="hidden" id="draft-storage-owner" value="{{ draft_storage_owner|default:'anonymous' }}" />
         <input type="hidden" id="class-subject-map" value="{{ class_subject_map|escape }}" />
         <input type="hidden" id="save-draft-url" value="{{ save_draft_url }}" />
         <input type="hidden" id="submit-url" value="{{ submit_url }}" />
         <input type="hidden" id="import-document-url" value="{{ import_document_url }}" />
         <input type="hidden" id="preview-url-template" value="{{ preview_url_template }}" />
         <div class="exam-builder-toolbar">
-          <div class="text-muted">Tip: Save frequently. Drafts autosave every 30 seconds.</div>
+          <div class="text-muted">Drafts autosave every 10 seconds. Offline changes sync when you reconnect.</div>
         </div>
         <div class="exam-import-panel">
           <div class="field-block">
@@ -348,6 +349,10 @@ let subjectSelect = null;
 let initialSubjectOptions = [];
 let autosaveTimer;
 let activeEditor = null;
+let draftStorageKey = '';
+let saveInProgress = false;
+let saveRequested = false;
+let lastSavedPayloadJson = '';
 
 function getInputValue(id, defaultValue = '') {
   const el = document.getElementById(id);
@@ -356,6 +361,66 @@ function getInputValue(id, defaultValue = '') {
     return defaultValue;
   }
   return el.value;
+}
+
+function getDraftStorageKey() {
+  const ownerId = getInputValue('draft-storage-owner', 'anonymous');
+  if (examJson.id) return `exam-paper-draft:${ownerId}:exam-${examJson.id}`;
+
+  const sessionKey = `exam-paper-draft-id:${window.location.pathname}`;
+  try {
+    let draftId = sessionStorage.getItem(sessionKey);
+    if (!draftId) {
+      draftId = `new-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(sessionKey, draftId);
+    }
+    return `exam-paper-draft:${ownerId}:${draftId}`;
+  } catch (error) {
+    console.warn('Could not access session storage for draft identity.', error);
+    return `exam-paper-draft:${ownerId}:${window.location.pathname}`;
+  }
+}
+
+function persistLocalDraft(payload) {
+  if (!draftStorageKey) return false;
+  try {
+    localStorage.setItem(draftStorageKey, JSON.stringify({ payload, updatedAt: Date.now() }));
+    return true;
+  } catch (error) {
+    console.error('Could not store the exam draft on this device.', error);
+    return false;
+  }
+}
+
+function getPendingLocalDraft() {
+  if (!draftStorageKey) return null;
+  try {
+    const saved = localStorage.getItem(draftStorageKey);
+    const record = saved ? JSON.parse(saved) : null;
+    return record && record.payload && Array.isArray(record.payload.sections) ? record : null;
+  } catch (error) {
+    console.error('Could not read the saved exam draft from this device.', error);
+    return null;
+  }
+}
+
+function clearLocalDraftIfUnchanged(payload) {
+  const record = getPendingLocalDraft();
+  if (!record || JSON.stringify(record.payload) !== JSON.stringify(payload)) return false;
+  try {
+    localStorage.removeItem(draftStorageKey);
+    return true;
+  } catch (error) {
+    console.error('Could not clear the synced local exam draft.', error);
+    return false;
+  }
+}
+
+function attachServerIdToPendingDraft(examPaperId) {
+  const record = getPendingLocalDraft();
+  if (!record || record.payload.id) return;
+  record.payload.id = examPaperId;
+  persistLocalDraft(record.payload);
 }
 
 function escapeHTML(value) {
@@ -373,6 +438,7 @@ function escapeTemplateText(value) {
 
 function initializeBuilderElements() {
   examJson = JSON.parse(getInputValue('exam-json', '{}') || '{}');
+  draftStorageKey = getDraftStorageKey();
   classSubjectMap = JSON.parse(getInputValue('class-subject-map', '{}') || '{}');
   saveDraftUrl = getInputValue('save-draft-url');
   submitUrl = getInputValue('submit-url');
@@ -484,6 +550,98 @@ function updateScoringFields() {
   });
 }
 
+function buildSubquestionLabel(index, style) {
+  if (style === 'parent_alpha') {
+    return `${index + 1}(${String.fromCharCode(97 + (index % 26))})`;
+  }
+  if (style === 'roman') {
+    const romanMap = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+    return romanMap[index] || `(${index + 1})`;
+  }
+  if (style === 'alpha') {
+    return String.fromCharCode(97 + (index % 26));
+  }
+  if (style === 'custom') {
+    return `Sub-question ${index + 1}`;
+  }
+  return `Item ${index + 1}`;
+}
+
+function getSubQuestionsFromCard(questionCard) {
+  return Array.from(questionCard.querySelectorAll('.subquestion-item')).map((item, index) => {
+    const labelEl = item.querySelector('.subquestion-label');
+    const inputEl = item.querySelector('.subquestion-input');
+    const text = inputEl ? (inputEl.value || '').trim() : '';
+    const label = labelEl ? labelEl.textContent.trim() : buildSubquestionLabel(index, questionCard.querySelector('.subnumbering-style')?.value || 'alpha');
+    if (!text && !label) return null;
+    return { label: label || buildSubquestionLabel(index, questionCard.querySelector('.subnumbering-style')?.value || 'alpha'), text };
+  }).filter(Boolean);
+}
+
+function renderSubquestionEditors(questionCard) {
+  const hasSubquestions = questionCard.querySelector('.has-subquestions');
+  const styleSelect = questionCard.querySelector('.subnumbering-style');
+  const wrapper = questionCard.querySelector('.subquestion-wrapper');
+  const list = questionCard.querySelector('.subquestion-list');
+  if (!wrapper || !list || !hasSubquestions) return;
+
+  const style = styleSelect ? styleSelect.value : '';
+  const enabled = hasSubquestions.checked && Boolean(style);
+  wrapper.classList.toggle('hidden', !enabled);
+  if (!enabled) {
+    list.innerHTML = '';
+    return;
+  }
+
+  const existingEntries = Array.from(list.querySelectorAll('.subquestion-item')).map(item => ({
+    label: item.dataset.label || buildSubquestionLabel(0, style),
+    text: item.querySelector('.subquestion-input')?.value || '',
+  }));
+
+  let values = existingEntries.length ? existingEntries : (
+    Array.isArray(questionCard._subquestionSeed) && questionCard._subquestionSeed.length
+      ? questionCard._subquestionSeed
+      : [{ label: buildSubquestionLabel(0, style), text: '' }]
+  );
+
+  if (!Array.isArray(values) || !values.length) {
+    values = [{ label: buildSubquestionLabel(0, style), text: '' }];
+  }
+
+  list.innerHTML = values.map((entry, index) => {
+    const label = entry.label || buildSubquestionLabel(index, style);
+    const text = entry.text || '';
+    return `
+      <div class="subquestion-item" data-label="${escapeHTML(label)}">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <strong class="subquestion-label">${escapeHTML(label)}</strong>
+        </div>
+        <textarea class="subquestion-input" rows="2" placeholder="Write the ${escapeHTML(label)} part here...">${escapeHTML(text)}</textarea>
+      </div>
+    `;
+  }).join('');
+
+  questionCard._subquestionSeed = values;
+}
+
+function createSubquestionEntry(questionCard, style, indexOverride = null) {
+  const styleValue = style || questionCard.querySelector('.subnumbering-style')?.value || 'alpha';
+  const list = questionCard.querySelector('.subquestion-list');
+  if (!list) return;
+  const currentCount = list.querySelectorAll('.subquestion-item').length;
+  const nextIndex = indexOverride ?? currentCount;
+  const entry = document.createElement('div');
+  entry.className = 'subquestion-item';
+  entry.dataset.label = buildSubquestionLabel(nextIndex, styleValue);
+  entry.innerHTML = `
+    <div class="d-flex align-items-center justify-content-between mb-1">
+      <strong class="subquestion-label">${escapeHTML(buildSubquestionLabel(nextIndex, styleValue))}</strong>
+    </div>
+    <textarea class="subquestion-input" rows="2" placeholder="Write the ${escapeHTML(buildSubquestionLabel(nextIndex, styleValue))} part here..."></textarea>
+  `;
+  list.appendChild(entry);
+}
+
 function createElementFromHTML(htmlString) {
   const div = document.createElement('div');
   div.innerHTML = htmlString.trim();
@@ -519,6 +677,17 @@ function addSection(sectionData = {}) {
           </select>
         </div>
       </div>
+      <div class="row g-3 objective-settings ${sectionData.section_type === 'objective' ? '' : 'hidden'}">
+        <div class="col-md-6 field-block">
+          <label>Default Objective Options</label>
+          <select class="section-option-count">
+            <option value="2">A–B</option>
+            <option value="3">A–C</option>
+            <option value="4">A–D</option>
+            <option value="5">A–E</option>
+          </select>
+        </div>
+      </div>
       <div class="row g-3">
         <div class="col-md-12 field-block">
           <label>Section Instruction / Important Note</label>
@@ -529,29 +698,6 @@ function addSection(sectionData = {}) {
         <div class="col-md-6 field-block">
           <label>Marks Allocation</label>
           <input type="number" min="0" class="section-marks" value="${escapeHTML(sectionData.marks_allocation || 0)}" placeholder="Total marks for section">
-        </div>
-      </div>
-      <div class="row g-3">
-        <div class="col-md-6 field-block">
-          <label>Section Font</label>
-          <select class="section-font-family">
-            <option value="Arial" ${!sectionData.font_family || sectionData.font_family === 'Arial' ? 'selected' : ''}>Arial</option>
-            <option value="Calibri" ${sectionData.font_family === 'Calibri' ? 'selected' : ''}>Calibri</option>
-            <option value="Georgia" ${sectionData.font_family === 'Georgia' ? 'selected' : ''}>Georgia</option>
-            <option value="Times New Roman" ${sectionData.font_family === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
-          </select>
-        </div>
-        <div class="col-md-6 field-block">
-          <label>Section Font Size</label>
-          <select class="section-font-size">
-            <option value="9pt" ${sectionData.font_size === '9pt' ? 'selected' : ''}>9 pt</option>
-            <option value="10pt" ${sectionData.font_size === '10pt' ? 'selected' : ''}>10 pt</option>
-            <option value="11pt" ${sectionData.font_size === '11pt' ? 'selected' : ''}>11 pt</option>
-            <option value="12pt" ${!sectionData.font_size || sectionData.font_size === '12pt' ? 'selected' : ''}>12 pt</option>
-            <option value="13pt" ${sectionData.font_size === '13pt' ? 'selected' : ''}>13 pt</option>
-            <option value="14pt" ${sectionData.font_size === '14pt' ? 'selected' : ''}>14 pt</option>
-            <option value="16pt" ${sectionData.font_size === '16pt' ? 'selected' : ''}>16 pt</option>
-          </select>
         </div>
       </div>
       <div class="question-list"></div>
@@ -572,22 +718,22 @@ function addSection(sectionData = {}) {
     refreshSectionLabels();
   });
 
-  // When section type changes, update existing question cards to show/hide objective fields
   const sectionTypeSelect = sectionCard.querySelector('.section-type');
+  const sectionOptionSelect = sectionCard.querySelector('.section-option-count');
+  const defaultOptionCount = sectionData.questions && sectionData.questions.length
+    ? Math.max(2, Math.min(5, ...sectionData.questions.map(q => inferOptionCountFromData(q))))
+    : 3;
+
+  if (sectionOptionSelect) {
+    sectionOptionSelect.value = String(defaultOptionCount);
+    sectionOptionSelect.addEventListener('change', () => {
+      syncObjectiveOptionCounts(sectionCard, getSectionOptionCount(sectionCard));
+    });
+  }
+
   if (sectionTypeSelect) {
     sectionTypeSelect.addEventListener('change', () => {
-      const val = sectionTypeSelect.value;
-      sectionCard.querySelectorAll('.question-card').forEach(qc => {
-        const objectiveFields = qc.querySelector('.question-objective-fields');
-        const optionGroup = qc.querySelector('.question-option-group');
-        if (val === 'objective') {
-          objectiveFields && objectiveFields.classList.remove('hidden');
-          optionGroup && optionGroup.classList.remove('hidden');
-        } else {
-          objectiveFields && objectiveFields.classList.add('hidden');
-          optionGroup && optionGroup.classList.add('hidden');
-        }
-      });
+      updateSectionObjectiveControls(sectionCard);
     });
   }
 
@@ -596,6 +742,7 @@ function addSection(sectionData = {}) {
   } else {
     addQuestion(sectionCard);
   }
+  updateSectionObjectiveControls(sectionCard);
   updateScoringFields();
 }
 
@@ -610,9 +757,12 @@ function addQuestion(sectionCard, questionData = {}) {
   console.log('addQuestion() called with data:', questionData);
   const questionList = sectionCard.querySelector('.question-list');
   const questionIndex = questionList.children.length + 1;
-  // Question type inherits from section-type by default (to reduce per-question clutter)
+  // Question type inherits from the parent section's type.
   const sectionTypeEl = sectionCard.querySelector('.section-type');
   const questionType = questionData.question_type || (sectionTypeEl ? sectionTypeEl.value : 'objective');
+  const inferredOptionCount = questionData.options && Array.isArray(questionData.options) && questionData.options.length
+    ? inferOptionCountFromData(questionData)
+    : getSectionOptionCount(sectionCard);
 
   const questionTextValue = escapeTemplateText(questionData.question_text || '');
   const teacherGuideValue = escapeTemplateText(questionData.teacher_guide || '');
@@ -655,6 +805,13 @@ function addQuestion(sectionCard, questionData = {}) {
       <div class="diagram-render-preview" hidden style="margin:8px 0;padding:8px;border:1px solid #d1d8df;border-radius:6px;background:#fff;" aria-live="polite"></div>
       <textarea class="question-text rich-editor" rows="3">${questionTextValue}</textarea>
     </div>
+    <div class="subquestion-wrapper ${questionType === 'theory' && questionData.subnumbering_style ? '' : 'hidden'}" style="margin-top:10px;">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong>Sub-questions</strong>
+        <button type="button" class="button add-subquestion-btn">Add Sub-question</button>
+      </div>
+      <div class="subquestion-list"></div>
+    </div>
     <div class="row g-3 question-objective-fields ${questionType === 'objective' ? '' : 'hidden'}">
       <div class="col-md-4 field-block">
         <label>Option A</label>
@@ -667,10 +824,10 @@ function addQuestion(sectionCard, questionData = {}) {
       <div class="col-md-4 field-block">
         <label>Number of Options</label>
         <select class="option-count">
-          <option value="2">A–B</option>
-          <option value="3" ${questionData.options && questionData.options.length >= 3 ? 'selected' : ''}>A–C</option>
-          <option value="4" ${questionData.options && questionData.options.length >= 4 ? 'selected' : ''}>A–D</option>
-          <option value="5" ${questionData.options && questionData.options.length >= 5 ? 'selected' : ''}>A–E</option>
+          <option value="2" ${inferredOptionCount === 2 ? 'selected' : ''}>A–B</option>
+          <option value="3" ${inferredOptionCount === 3 ? 'selected' : ''}>A–C</option>
+          <option value="4" ${inferredOptionCount === 4 ? 'selected' : ''}>A–D</option>
+          <option value="5" ${inferredOptionCount === 5 ? 'selected' : ''}>A–E</option>
         </select>
       </div>
     </div>
@@ -748,12 +905,18 @@ function addQuestion(sectionCard, questionData = {}) {
 
   const optionCount = questionCard.querySelector('.option-count');
   optionCount.addEventListener('change', () => {
-    updateOptionFields(questionCard, parseInt(optionCount.value, 10));
+    const updatedCount = parseInt(optionCount.value, 10) || getSectionOptionCount(sectionCard);
+    syncObjectiveOptionCounts(sectionCard, updatedCount);
+    updateOptionFields(questionCard, updatedCount);
   });
   updateOptionFields(questionCard, parseInt(optionCount.value, 10));
 
   const subquestionToggle = questionCard.querySelector('.has-subquestions');
   const subquestionGroup = questionCard.querySelector('.subquestion-style-group');
+  const subnumberingStyle = questionCard.querySelector('.subnumbering-style');
+  const addSubquestionBtn = questionCard.querySelector('.add-subquestion-btn');
+  const subquestionList = questionCard.querySelector('.subquestion-list');
+
   if (subquestionToggle) {
     subquestionToggle.addEventListener('change', () => {
       if (subquestionToggle.checked) {
@@ -761,12 +924,89 @@ function addQuestion(sectionCard, questionData = {}) {
       } else {
         subquestionGroup.classList.add('hidden');
       }
+      renderSubquestionEditors(questionCard);
     });
+  }
+
+  if (subnumberingStyle) {
+    subnumberingStyle.addEventListener('change', () => renderSubquestionEditors(questionCard));
+  }
+
+  if (addSubquestionBtn) {
+    addSubquestionBtn.addEventListener('click', () => {
+      if (!subquestionList) return;
+      const style = subnumberingStyle ? subnumberingStyle.value : 'alpha';
+      createSubquestionEntry(questionCard, style, subquestionList.querySelectorAll('.subquestion-item').length);
+    });
+  }
+
+  if (subquestionList) {
+    const initialSeed = Array.isArray(questionData.sub_questions) && questionData.sub_questions.length
+      ? questionData.sub_questions
+      : [{ label: buildSubquestionLabel(0, subnumberingStyle ? subnumberingStyle.value : 'alpha'), text: '' }];
+    questionCard._subquestionSeed = initialSeed;
+    renderSubquestionEditors(questionCard);
   }
 
   // Initialize rich editor and media handlers for new question cards
   initRichEditors();
   attachDiagramAndChartHandlers(questionCard);
+}
+
+function inferOptionCountFromData(data) {
+  const count = Number(data && Array.isArray(data.options) ? data.options.length : 0);
+  if (Number.isFinite(count) && count >= 2 && count <= 5) {
+    return count;
+  }
+  return 3;
+}
+
+function getSectionOptionCount(sectionCard) {
+  const sectionOptionSelect = sectionCard.querySelector('.section-option-count');
+  if (!sectionOptionSelect) return 3;
+  const parsed = parseInt(sectionOptionSelect.value, 10);
+  return Number.isFinite(parsed) ? Math.min(5, Math.max(2, parsed)) : 3;
+}
+
+function syncObjectiveOptionCounts(sectionCard, count) {
+  const normalized = Math.min(5, Math.max(2, Number(count) || 3));
+  const sectionOptionSelect = sectionCard.querySelector('.section-option-count');
+  if (sectionOptionSelect) {
+    sectionOptionSelect.value = String(normalized);
+  }
+  sectionCard.querySelectorAll('.question-card').forEach(questionCard => {
+    const countSelect = questionCard.querySelector('.option-count');
+    if (!countSelect) return;
+    countSelect.value = String(normalized);
+    updateOptionFields(questionCard, normalized);
+  });
+}
+
+function updateSectionObjectiveControls(sectionCard) {
+  const sectionType = sectionCard.querySelector('.section-type')?.value || 'theory';
+  const objectiveSettings = sectionCard.querySelector('.objective-settings');
+  const objectiveFields = sectionCard.querySelectorAll('.question-objective-fields');
+  const optionGroup = sectionCard.querySelectorAll('.question-option-group');
+
+  if (objectiveSettings) {
+    objectiveSettings.classList.toggle('hidden', sectionType !== 'objective');
+  }
+
+  sectionCard.querySelectorAll('.question-card').forEach(questionCard => {
+    const objectiveFieldGroup = questionCard.querySelector('.question-objective-fields');
+    const optionGroupField = questionCard.querySelector('.question-option-group');
+    if (sectionType === 'objective') {
+      objectiveFieldGroup && objectiveFieldGroup.classList.remove('hidden');
+      optionGroupField && optionGroupField.classList.remove('hidden');
+    } else {
+      objectiveFieldGroup && objectiveFieldGroup.classList.add('hidden');
+      optionGroupField && optionGroupField.classList.add('hidden');
+    }
+  });
+
+  if (sectionType === 'objective') {
+    syncObjectiveOptionCounts(sectionCard, getSectionOptionCount(sectionCard));
+  }
 }
 
 function refreshQuestionLabels(sectionCard) {
@@ -780,9 +1020,9 @@ function updateOptionFields(questionCard, count) {
   const optionC = questionCard.querySelector('.option-label-c');
   const optionD = questionCard.querySelector('.option-label-d');
   const optionE = questionCard.querySelector('.option-label-e');
-  optionC.parentElement.style.display = count >= 3 ? 'block' : 'none';
-  optionD.parentElement.style.display = count >= 4 ? 'block' : 'none';
-  optionE.parentElement.style.display = count >= 5 ? 'block' : 'none';
+  if (optionC && optionC.parentElement) optionC.parentElement.style.display = count >= 3 ? 'block' : 'none';
+  if (optionD && optionD.parentElement) optionD.parentElement.style.display = count >= 4 ? 'block' : 'none';
+  if (optionE && optionE.parentElement) optionE.parentElement.style.display = count >= 5 ? 'block' : 'none';
 }
 
 function initRichEditors() {
@@ -2025,13 +2265,15 @@ function gatherPayload() {
   payload.instructions = getEditorFieldValue(document.getElementById('id_instructions'));
 
   Array.from(sectionsContainer.children).forEach(sectionCard => {
+    const sectionFontFamily = sectionCard.querySelector('.section-font-family');
+    const sectionFontSize = sectionCard.querySelector('.section-font-size');
     const sectionPayload = {
       title: sectionCard.querySelector('.section-title').value,
       section_type: sectionCard.querySelector('.section-type').value,
       instruction: sectionCard.querySelector('.section-instruction').value,
       marks_allocation: sectionCard.querySelector('.section-marks').value,
-      font_family: sectionCard.querySelector('.section-font-family').value,
-      font_size: sectionCard.querySelector('.section-font-size').value,
+      font_family: sectionFontFamily ? sectionFontFamily.value : 'Arial',
+      font_size: sectionFontSize ? sectionFontSize.value : '12pt',
       questions: []
     };
 
@@ -2053,6 +2295,7 @@ function gatherPayload() {
         teacher_guide: teacherGuideValue,
         resource_notes: resourceNotesValue,
         subnumbering_style: subquestionCheckbox && !subquestionCheckbox.checked ? '' : questionCard.querySelector('.subnumbering-style').value,
+        sub_questions: getSubQuestionsFromCard(questionCard),
         options: []
       };
 
@@ -2110,6 +2353,9 @@ function sendPayload(url, payload, callback) {
       } else {
         if (data && !data.error && !data.errors) {
           examJson.id = data.exam_paper_id;
+          clearLocalDraftIfUnchanged(payload);
+          attachServerIdToPendingDraft(data.exam_paper_id);
+          lastSavedPayloadJson = JSON.stringify({ ...payload, id: data.exam_paper_id });
           if (previewLink) {
             previewLink.href = examPreviewUrl(examJson.id);
             previewLink.classList.remove('disabled');
@@ -2126,7 +2372,13 @@ function sendPayload(url, payload, callback) {
     })
     .catch(err => {
       console.error('sendPayload error:', err.message || err);
-      showStatus(`Failed to save: ${err.message || 'Network error'}`, true);
+      const savedLocally = persistLocalDraft(payload);
+      showStatus(
+        savedLocally
+          ? 'Saved on this device. It will sync when your connection returns.'
+          : `Failed to save: ${err.message || 'Network error'}`,
+        !savedLocally
+      );
       return false;
     });
 }
@@ -2142,8 +2394,8 @@ function showStatus(message, isError = false) {
 
 function normalizeImportedSections(sections) {
   const allowedTypes = ['objective', 'theory', 'german', 'other'];
-  const allowedFonts = ['Arial', 'Calibri', 'Georgia', 'Times New Roman'];
-  const allowedSizes = ['9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '16pt'];
+  const allowedFonts = ['Arial', 'Calibri', 'Cambria', 'Courier New', 'Garamond', 'Georgia', 'Palatino Linotype', 'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Verdana'];
+  const allowedSizes = ['8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '15pt', '16pt', '18pt', '20pt', '22pt', '24pt'];
   if (!Array.isArray(sections) || sections.length === 0) {
     throw new Error('The imported file must contain at least one section.');
   }
@@ -2166,6 +2418,7 @@ function normalizeImportedSections(sections) {
         teacher_guide: question && typeof question.teacher_guide === 'string' ? question.teacher_guide : '',
         resource_notes: question && typeof question.resource_notes === 'string' ? question.resource_notes : '',
         subnumbering_style: question && typeof question.subnumbering_style === 'string' ? question.subnumbering_style : '',
+        sub_questions: Array.isArray(question && question.sub_questions) ? question.sub_questions : [],
         options: question && Array.isArray(question.options)
           ? question.options.slice(0, 5).map((option, index) => ({
               option_label: option && typeof option.option_label === 'string' ? option.option_label : String.fromCharCode(65 + index),
@@ -2194,7 +2447,7 @@ function setSelectIfAvailable(element, value) {
   if (optionExists) element.value = String(value);
 }
 
-async function applyImportedPayload(payload) {
+async function applyImportedPayload(payload, showImportedStatus = true) {
   if (!payload || !Array.isArray(payload.sections)) {
     throw new Error('The JSON file must use the exam editor payload format and contain a sections list.');
   }
@@ -2226,7 +2479,7 @@ async function applyImportedPayload(payload) {
   }
 
   await replaceBuilderSections(sections);
-  showStatus('Imported JSON payload. Review the content, then save the draft.');
+  if (showImportedStatus) showStatus('Imported JSON payload. Review the content, then save the draft.');
 }
 
 async function importExamFile() {
@@ -2270,19 +2523,63 @@ async function importExamFile() {
   }
 }
 
-function saveDraft() {
-  const subject = document.getElementById('id_subject').value;
-  const school_class = document.getElementById('id_school_class').value;
-  const term = document.getElementById('id_term').value;
-  const academic_session = document.getElementById('id_academic_session').value;
+async function saveDraft() {
+  const payload = gatherPayload();
+  const savedLocally = persistLocalDraft(payload);
+  const missingRequiredFields = !payload.subject || !payload.school_class || !payload.term || !payload.academic_session;
 
-  if (!subject || !school_class || !term || !academic_session) {
-    showStatus('Please fill in Subject, Class, Term, and Academic Session before saving.', true);
-    return Promise.resolve(false);
+  if (!navigator.onLine) {
+    showStatus(
+      savedLocally
+        ? (missingRequiredFields
+          ? 'Saved on this device. Complete Subject, Class, Term, and Academic Session before syncing.'
+          : 'Saved on this device. It will sync when your connection returns.')
+        : 'You are offline and this browser could not store the draft locally.',
+      !savedLocally
+    );
+    return savedLocally;
   }
 
-  const payload = gatherPayload();
-  return sendPayload(saveDraftUrl, payload);
+  if (missingRequiredFields) {
+    showStatus(savedLocally
+      ? 'Draft saved on this device. Fill in Subject, Class, Term, and Academic Session to sync it.'
+      : 'Please fill in Subject, Class, Term, and Academic Session before saving.', !savedLocally);
+    return false;
+  }
+
+  if (saveInProgress) {
+    saveRequested = true;
+    return true;
+  }
+
+  saveInProgress = true;
+  let result = false;
+  let currentPayload = payload;
+  try {
+    do {
+      saveRequested = false;
+      result = await sendPayload(saveDraftUrl, currentPayload);
+      if (saveRequested && navigator.onLine) {
+        currentPayload = gatherPayload();
+        const queuedDraftSavedLocally = persistLocalDraft(currentPayload);
+        if (!currentPayload.subject || !currentPayload.school_class || !currentPayload.term || !currentPayload.academic_session) {
+          showStatus(
+            queuedDraftSavedLocally
+              ? 'Draft saved on this device. Fill in Subject, Class, Term, and Academic Session to sync it.'
+              : 'Please fill in Subject, Class, Term, and Academic Session before saving.',
+            !queuedDraftSavedLocally
+          );
+          result = false;
+          break;
+        }
+      } else {
+        break;
+      }
+    } while (true);
+  } finally {
+    saveInProgress = false;
+  }
+  return result;
 }
 
 function submitForApproval() {
@@ -2335,7 +2632,7 @@ function detectDuplicateQuestions(){
   return Array.from(duplicates);
 }
 
-onReady(() => {
+onReady(async () => {
   initializeBuilderElements();
   console.log('=== Exam builder ready handler ===');
   console.log('sectionsContainer element:', sectionsContainer);
@@ -2365,6 +2662,34 @@ onReady(() => {
   console.log('Calling initBuilder()');
   initBuilder();
 
+  const pendingDraft = getPendingLocalDraft();
+  if (pendingDraft) {
+    examJson.id = pendingDraft.payload.id || examJson.id;
+    if (examJson.id && previewLink) {
+      previewLink.href = examPreviewUrl(examJson.id);
+      previewLink.classList.remove('disabled');
+    }
+    await applyImportedPayload(pendingDraft.payload, false);
+    showStatus('Restored an unsynced draft from this device.');
+  }
+
+  window.addEventListener('offline', () => {
+    saveDraft();
+  });
+  window.addEventListener('online', () => {
+    showStatus('Connection restored. Syncing your draft…');
+    saveDraft();
+  });
+  window.addEventListener('pagehide', () => {
+    if (!navigator.onLine || JSON.stringify(gatherPayload()) !== lastSavedPayloadJson) {
+      persistLocalDraft(gatherPayload());
+    }
+  });
+
+  if (pendingDraft && navigator.onLine) {
+    saveDraft();
+  }
+
   const classSelect = document.getElementById('id_school_class');
   if (classSelect) {
     classSelect.addEventListener('change', () => {
@@ -2376,7 +2701,10 @@ onReady(() => {
       populateSubjectOptions(classSelect.value);
     }
   }
-  autosaveTimer = setInterval(saveDraft, 30000);
+  autosaveTimer = setInterval(() => {
+    const payloadJson = JSON.stringify(gatherPayload());
+    if (!navigator.onLine || payloadJson !== lastSavedPayloadJson) saveDraft();
+  }, 10000);
   console.log('Autosave timer started');
 
   setTimeout(() => {

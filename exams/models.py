@@ -174,17 +174,30 @@ class ExamSection(models.Model):
     FONT_FAMILY_CHOICES = [
         ('Arial', 'Arial'),
         ('Calibri', 'Calibri'),
+        ('Cambria', 'Cambria'),
+        ('Courier New', 'Courier New'),
         ('Georgia', 'Georgia'),
+        ('Garamond', 'Garamond'),
+        ('Palatino Linotype', 'Palatino Linotype'),
         ('Times New Roman', 'Times New Roman'),
+        ('Tahoma', 'Tahoma'),
+        ('Trebuchet MS', 'Trebuchet MS'),
+        ('Verdana', 'Verdana'),
     ]
     FONT_SIZE_CHOICES = [
+        ('8pt', '8 pt'),
         ('9pt', '9 pt'),
         ('10pt', '10 pt'),
         ('11pt', '11 pt'),
         ('12pt', '12 pt'),
         ('13pt', '13 pt'),
         ('14pt', '14 pt'),
+        ('15pt', '15 pt'),
         ('16pt', '16 pt'),
+        ('18pt', '18 pt'),
+        ('20pt', '20 pt'),
+        ('22pt', '22 pt'),
+        ('24pt', '24 pt'),
     ]
 
     exam = models.ForeignKey(ExamPaper, on_delete=models.CASCADE, related_name='sections')
@@ -237,6 +250,7 @@ class Question(models.Model):
     answer_explanation = RichTextField(blank=True, help_text='Explanation shown to students after submission')
     resource_notes = RichTextField(blank=True, help_text='Additional supplementary resources and notes')
     subnumbering_style = models.CharField(max_length=20, choices=SUBNUMBERING_STYLES, blank=True, default='')
+    sub_questions = models.JSONField(default=list, blank=True, help_text='Nested sub-questions for numbered theory questions')
 
     class Meta:
         ordering = ['order']

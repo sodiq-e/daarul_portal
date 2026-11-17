@@ -165,7 +165,7 @@
     </div>
 
     {% for section_data in sections_data %}
-    <section class="exam-paper-section" style="font-family: {{ section_data.object.print_font_family }}; font-size: {{ font_size_override|default:section_data.object.print_font_size }};">
+    <section class="exam-paper-section" style="font-family: {{ font_family_override|default:section_data.object.print_font_family }}; font-size: {{ font_size_override|default:section_data.object.print_font_size }};">
       <h2 class="exam-paper-section-title">{{ section_data.object.title|default:section_data.object.get_section_type_display }}</h2>
       {% if section_data.object.instruction %}
       <div class="exam-paper-section-instruction">{{ section_data.object.instruction|linebreaksbr }}</div>
@@ -179,6 +179,13 @@
         <div class="exam-paper-options">
           {% for option in question.options %}
           <div class="exam-paper-option"><strong>{{ option.option_label }}.</strong> {{ option.option_text }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if question.sub_questions %}
+        <div class="exam-paper-resource" style="margin-top:10px;">
+          {% for sub in question.sub_questions %}
+          <div style="margin-bottom:6px;"><strong>{{ sub.label|default:forloop.counter }}.</strong> {{ sub.text|safe }}</div>
           {% endfor %}
         </div>
         {% endif %}
