@@ -87,18 +87,23 @@ class ExamPaperForm(forms.ModelForm):
         else:
             class_ids = []
 
+        if selected_class_id and class_ids:
+            try:
+                selected_class_id = int(selected_class_id)
+            except (TypeError, ValueError):
+                selected_class_id = None
+
+        subject_class_ids = class_ids
         if selected_class_id:
-            self.fields['subject'].queryset = Subject.objects.filter(
-                class_assignments__school_class_id=selected_class_id,
-                is_active=True
-            ).distinct()
-        elif class_ids:
-            self.fields['subject'].queryset = Subject.objects.filter(
-                class_assignments__school_class_id__in=class_ids,
+            subject_class_ids = [selected_class_id] if selected_class_id in class_ids else []
+
+        if subject_class_ids:
+            self.fields['subject'].queryset = Subject._base_manager.filter(
+                class_assignments__school_class_id__in=subject_class_ids,
                 is_active=True
             ).distinct()
         else:
-            self.fields['subject'].queryset = Subject.objects.filter(is_active=True)
+            self.fields['subject'].queryset = Subject._base_manager.none()
 
 
 class ExamReviewForm(forms.Form):
