@@ -11,7 +11,8 @@ class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
         fields = [
-            'admission_no', 'surname', 'other_names', 'dob', 'gender', 'student_class', 'photo',
+            'admission_no', 'surname', 'other_names', 'dob', 'student_address', 'student_phone',
+            'student_email', 'gender', 'student_class', 'photo',
             'guardian_name', 'guardian_relationship', 'guardian_phone', 'guardian_email',
             'guardian_address', 'guardian_occupation', 'guardian_employer',
             'emergency_contact_name', 'emergency_contact_phone'
@@ -21,6 +22,9 @@ class StudentForm(forms.ModelForm):
             'admission_no': forms.TextInput(attrs={'class': 'form-control'}),
             'surname': forms.TextInput(attrs={'class': 'form-control'}),
             'other_names': forms.TextInput(attrs={'class': 'form-control'}),
+            'student_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'student_phone': forms.TextInput(attrs={'class': 'form-control', 'type': 'tel'}),
+            'student_email': forms.EmailInput(attrs={'class': 'form-control'}),
             'gender': forms.Select(attrs={'class': 'form-select'}),
             'student_class': forms.Select(attrs={'class': 'form-select'}),
             'photo': forms.ClearableFileInput(attrs={
@@ -36,6 +40,11 @@ class StudentForm(forms.ModelForm):
             'guardian_employer': forms.TextInput(attrs={'class': 'form-control'}),
             'emergency_contact_name': forms.TextInput(attrs={'class': 'form-control'}),
             'emergency_contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'student_address': 'Student Address',
+            'student_phone': 'Student Phone',
+            'student_email': 'Student Email',
         }
 
 
@@ -180,5 +189,4 @@ class StudentApplicationReviewForm(forms.ModelForm):
         labels = {
             'reviewer_notes': 'Review Notes',
         }
-
 

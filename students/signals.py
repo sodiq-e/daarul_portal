@@ -1,6 +1,10 @@
+import logging
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import StudentApplication, Student
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=StudentApplication)
@@ -15,6 +19,9 @@ def create_student_on_approval(sender, instance, created, **kwargs):
                 surname=instance.last_name,
                 other_names=f"{instance.first_name} {instance.other_names}".strip(),
                 dob=instance.dob,
+                student_address=instance.student_address,
+                student_phone=instance.student_phone,
+                student_email=instance.student_email,
                 gender=instance.gender,
                 photo=instance.photo,
                 student_class=instance.desired_class,
@@ -30,6 +37,9 @@ def create_student_on_approval(sender, instance, created, **kwargs):
                 emergency_contact_name=instance.emergency_contact_name,
                 emergency_contact_phone=instance.emergency_contact_phone
             )
-            print(f"✓ Created student record: {student}")
+            logger.info("Created student record: %s", student)
         else:
-            print(f"⚠ Student with admission number {instance.admission_number_requested} already exists")
+            logger.warning(
+                "Student with admission number %s already exists",
+                instance.admission_number_requested,
+            )

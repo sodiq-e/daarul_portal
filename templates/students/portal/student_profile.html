@@ -43,6 +43,24 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
+                            <p><strong>Phone Number:</strong></p>
+                            <p>{% if student.student_phone %}<a href="tel:{{ student.student_phone }}">{{ student.student_phone }}</a>{% else %}Not provided{% endif %}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong></p>
+                            <p>{% if student.student_email %}<a href="mailto:{{ student.student_email }}">{{ student.student_email }}</a>{% else %}Not provided{% endif %}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <p><strong>Address:</strong></p>
+                            <p>{{ student.student_address|default:"Not provided"|linebreaksbr }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <p><strong>Date of Birth:</strong></p>
                             <p>{{ student.dob|date:"d/m/Y"|default:"Not provided" }}</p>
                         </div>
@@ -56,6 +74,52 @@
                         <div class="col-md-12">
                             <p><strong>Current Class:</strong></p>
                             <p>{{ student.student_class.class_name|default:"Not assigned" }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">Parent / Guardian Information</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong></p>
+                            <p>{{ student.guardian_name|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Relationship:</strong></p>
+                            <p>{{ student.guardian_relationship|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Phone:</strong></p>
+                            <p>{% if student.guardian_phone %}<a href="tel:{{ student.guardian_phone }}">{{ student.guardian_phone }}</a>{% else %}Not provided{% endif %}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong></p>
+                            <p>{% if student.guardian_email %}<a href="mailto:{{ student.guardian_email }}">{{ student.guardian_email }}</a>{% else %}Not provided{% endif %}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Occupation:</strong></p>
+                            <p>{{ student.guardian_occupation|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Employer:</strong></p>
+                            <p>{{ student.guardian_employer|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-12">
+                            <p><strong>Address:</strong></p>
+                            <p>{{ student.guardian_address|default:"Not provided"|linebreaksbr }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5 class="mb-3">Emergency Contact</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong></p>
+                            <p>{{ student.emergency_contact_name|default:"Not provided" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Phone:</strong></p>
+                            <p>{% if student.emergency_contact_phone %}<a href="tel:{{ student.emergency_contact_phone }}">{{ student.emergency_contact_phone }}</a>{% else %}Not provided{% endif %}</p>
                         </div>
                     </div>
 

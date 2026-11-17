@@ -57,6 +57,7 @@
                         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Student Name</th>
                         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Date of Birth</th>
                         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Gender</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Profile</th>
                         {% if can_modify %}
                         <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Actions</th>
                         {% endif %}
@@ -73,6 +74,9 @@
                         </td>
                         <td style="padding: 10px; border: 1px solid #ddd;">{{ student.dob|date:"d M Y"|default:"N/A" }}</td>
                         <td style="padding: 10px; border: 1px solid #ddd;">{{ student.get_gender_display|default:"N/A" }}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-sm btn-outline-primary">View Full Profile</a>
+                        </td>
                         {% if can_modify %}
                         <td style="padding: 10px; border: 1px solid #ddd;">
                             <a href="{% url 'students:student_edit' student.pk %}" style="color: #007bff; text-decoration: none; margin-right: 10px;">Edit</a>

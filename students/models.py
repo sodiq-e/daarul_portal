@@ -18,6 +18,9 @@ class Student(TenantModel):
     surname = models.CharField(max_length=120)
     other_names = models.CharField(max_length=200, blank=True)
     dob = models.DateField(null=True, blank=True)
+    student_address = models.TextField(blank=True)
+    student_phone = models.CharField(max_length=50, blank=True)
+    student_email = models.EmailField(blank=True)
     gender = models.CharField(
         max_length=1,
         choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')],

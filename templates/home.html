@@ -729,16 +729,6 @@
 </section>
 {% else %}
 <section class="welcome-authenticated">
-  <div class="authenticated-header">
-    {% if is_platform_admin or is_tenant_admin %}
-      <h1>Welcome, Administrator!</h1>
-      <p>You're logged in as <strong>{{ user.first_name|default:user.username }}</strong>. Use the admin panel below to manage school settings, classes, results, and more.</p>
-    {% else %}
-      <h1>Welcome, {{ user.first_name|default:user.username }}!</h1>
-      <p>You're logged in to the DAARUL BAYAAN ISLAMIC SCHOOL Portal. Use the navigation below to access your information and manage your account.</p>
-    {% endif %}
-  </div>
-
   <div class="task-launcher-header">
     <div class="authenticated-header">
       {% if is_platform_admin or is_tenant_admin %}
@@ -877,11 +867,6 @@
         <div class="nav-icon icon-hover">📢</div>
         <h3>School Updates</h3>
         <p>Read announcements, news, and important school notices.</p>
-      </a>
-      <a href="{% url 'students:student_portal_fees' %}" class="nav-card card-hover stagger-item">
-        <div class="nav-icon icon-hover">💳</div>
-        <h3>{{ school_settings.homepage_overview_card_4_title|default:"School fees" }}</h3>
-        <p>{{ school_settings.homepage_overview_card_4_description|default:"View invoices, balances, and payment records." }}</p>
       </a>
       <a href="{% url 'profile' %}" class="nav-card card-hover stagger-item">
         <div class="nav-icon icon-hover">👤</div>

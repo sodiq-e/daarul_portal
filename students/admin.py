@@ -17,9 +17,19 @@ class StudentAdmin(admin.ModelAdmin):
     readonly_fields = ("get_user_link",)
     
     fieldsets = (
-        (None, {
+        ('Student Information', {
             'fields': (
                 'admission_no', 'surname', 'other_names', 'dob', 'gender', 'student_class', 'photo', 'status', 'date_left'
+            )
+        }),
+        ('Student Contact Information', {
+            'fields': ('student_phone', 'student_email', 'student_address')
+        }),
+        ('Guardian / Emergency Contact', {
+            'fields': (
+                'guardian_name', 'guardian_relationship', 'guardian_phone', 'guardian_email',
+                'guardian_address', 'guardian_occupation', 'guardian_employer',
+                'emergency_contact_name', 'emergency_contact_phone',
             )
         }),
         ('Student Login Account', {

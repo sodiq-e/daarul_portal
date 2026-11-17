@@ -130,6 +130,14 @@ class StudentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
             is_class_teacher
         )
         context['is_class_teacher'] = is_class_teacher
+        context['can_view_full_profile'] = (
+            self.request.user.is_superuser or
+            user_is_tenant_admin(
+                self.request.user,
+                tenant=get_request_tenant(self.request),
+            ) or
+            is_class_teacher
+        )
         return context
 
 
@@ -508,12 +516,18 @@ class StudentFeesView(LoginRequiredMixin, TemplateView):
             context['selected_academic_session'] = academic_session
             context['selected_term'] = term_id
 
-            # Summary calculations
+            # Summary calculations: only amounts actually applied to the student's
+            # invoices should count as paid. Raw payment records can include wallet
+            # credit/remaining balances that are not actual school collections.
             total_due = sum(Decimal(str(inv.amount_due or 0)) for inv in invoices)
-            total_paid = sum(Decimal(str(p.amount or 0)) for p in payments)
+            total_paid = sum(Decimal(str(inv.total_paid or 0)) for inv in invoices)
+            total_owing = sum(
+                max(Decimal('0.00'), Decimal(str(inv.balance or 0)))
+                for inv in invoices
+            )
             context['total_due'] = total_due
             context['total_paid'] = total_paid
-            context['total_owing'] = max(Decimal('0.00'), student.net_amount_owing)
+            context['total_owing'] = total_owing
         except Student.DoesNotExist:
             context['student'] = None
         except Exception as e:
