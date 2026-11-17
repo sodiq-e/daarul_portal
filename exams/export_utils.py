@@ -5,6 +5,7 @@ Handles PDF and DOCX export for exam papers with formatting preservation.
 """
 
 from io import BytesIO
+import logging
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
@@ -13,6 +14,7 @@ from django.http import FileResponse
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from docx import Document
+from docx.image.exceptions import UnrecognizedImageError
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
@@ -20,6 +22,8 @@ from docx.oxml import OxmlElement
 import os
 import re
 from html.parser import HTMLParser
+
+logger = logging.getLogger(__name__)
 
 
 class HTMLToDocXConverter(HTMLParser):
@@ -207,7 +211,7 @@ def add_html_to_doc(doc, html, style_name=None, left_indent=0):
             paragraph.paragraph_format.left_indent = Inches(left_indent)
 
 
-def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
+def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True, school_settings=None):
     """
     Export exam paper to DOCX format
     
@@ -215,6 +219,7 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
         exam_paper: ExamPaper instance
         include_answers: Include teacher guide and answers
         include_marks: Include mark allocations
+        school_settings: Optional school branding and contact information
         
     Returns:
         BytesIO object with DOCX content
@@ -227,7 +232,51 @@ def export_exam_to_docx(exam_paper, include_answers=False, include_marks=True):
     font = style.font
     font.name = 'Calibri'
     font.size = Pt(11)
-    
+
+    header = doc.sections[0].header
+    school_name = (
+        getattr(school_settings, 'school_name', None)
+        or getattr(exam_paper.tenant, 'name', None)
+        or 'School Name'
+    )
+    logo = getattr(school_settings, 'logo', None)
+    if logo:
+        try:
+            logo.open('rb')
+            logo_bytes = logo.read()
+            logo.close()
+            logo_paragraph = header.paragraphs[0]
+            logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            logo_paragraph.add_run().add_picture(BytesIO(logo_bytes), width=Inches(0.8))
+        except (OSError, UnrecognizedImageError, ValueError):
+            logger.warning("Unable to add school logo to exam DOCX export.", exc_info=True)
+
+    school_heading = header.add_paragraph()
+    school_heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    school_heading_run = school_heading.add_run(school_name)
+    school_heading_run.bold = True
+    school_heading_run.font.size = Pt(15)
+
+    motto = getattr(school_settings, 'motto', None)
+    if motto:
+        motto_paragraph = header.add_paragraph()
+        motto_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        motto_run = motto_paragraph.add_run(motto)
+        motto_run.italic = True
+        motto_run.font.size = Pt(9)
+
+    contact_details = [
+        getattr(school_settings, 'school_address', None),
+        getattr(school_settings, 'school_phone', None),
+        getattr(school_settings, 'school_email', None),
+    ]
+    contact_line = ' | '.join(str(detail).strip() for detail in contact_details if detail)
+    if contact_line:
+        contact_paragraph = header.add_paragraph()
+        contact_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        contact_run = contact_paragraph.add_run(contact_line)
+        contact_run.font.size = Pt(8)
+
     # Add title
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER

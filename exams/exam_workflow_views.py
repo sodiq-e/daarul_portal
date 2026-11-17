@@ -22,6 +22,7 @@ from .models import ExamPaper, ExamSection, Question, ApprovalLog
 from .forms import ExamApprovalForm, ExamExportForm
 from .export_utils import export_exam_to_docx, export_exam_to_pdf_html
 from accounts.models import User
+from settingsapp.models import SchoolSettings
 from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_has_tenant_access
 
 
@@ -277,12 +278,11 @@ class ExamApprovalActionView(LoginRequiredMixin, UserPassesTestMixin, View):
 
 class ExamPaperExportView(LoginRequiredMixin, UserPassesTestMixin, View):
     """
-    Admin exports approved exam paper to PDF or DOCX
+    Admin exports exam papers to PDF or DOCX
     """
     
     def test_func(self):
-        exam = self.get_object()
-        return user_is_admin(self.request.user) and exam.approval_status == 'approved'
+        return user_is_admin(self.request.user)
     
     def get_object(self):
         return get_object_or_404(ExamPaper, pk=self.kwargs['pk'])
@@ -304,6 +304,9 @@ class ExamPaperExportView(LoginRequiredMixin, UserPassesTestMixin, View):
             if export_format == 'docx':
                 return self._export_docx(exam, include_answers, include_marks)
             elif export_format == 'pdf':
+                if exam.approval_status != 'approved':
+                    messages.error(request, 'Only approved exam papers can be exported as PDF.')
+                    return redirect('admin_exam_paper_detail', pk=pk)
                 return self._export_pdf(exam, include_answers, include_marks)
             else:
                 messages.error(request, 'Unsupported format.')
@@ -314,10 +317,14 @@ class ExamPaperExportView(LoginRequiredMixin, UserPassesTestMixin, View):
     
     def _export_docx(self, exam, include_answers, include_marks):
         """Export to DOCX format"""
+        school_settings = SchoolSettings.objects.filter(tenant_id=exam.tenant_id).first()
+        if school_settings is None:
+            school_settings = SchoolSettings.objects.filter(tenant__isnull=True).first()
         output = export_exam_to_docx(
             exam,
             include_answers=include_answers,
-            include_marks=include_marks
+            include_marks=include_marks,
+            school_settings=school_settings,
         )
         
         filename = f"{exam.subject.name}_{exam.school_class}_{exam.term}.docx"

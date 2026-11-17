@@ -504,17 +504,17 @@ class ExamPaperPrintView(LoginRequiredMixin, UserPassesTestMixin, View):
                 for section in exam_paper.sections.prefetch_related('questions__options')
             ],
         }
-        html_string = render_to_string('exams/print_exam_paper.html', context, request=request)
-
         if request.GET.get('format') == 'pdf':
             if not WEASYPRINT_AVAILABLE:
                 return HttpResponse('PDF export is unavailable because WeasyPrint is not installed.', status=503)
+            html_string = render_to_string('exams/exam_paper_pdf.html', context, request=request)
             html = HTML(string=html_string, base_url=request.build_absolute_uri('/'))
             pdf = html.write_pdf(stylesheets=[])
             response = HttpResponse(pdf, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="ExamPaper_{exam_paper.id}.pdf"'
             return response
 
+        html_string = render_to_string('exams/print_exam_paper.html', context, request=request)
         return HttpResponse(html_string)
 
 

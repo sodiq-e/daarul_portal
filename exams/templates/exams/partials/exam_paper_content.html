@@ -1,0 +1,48 @@
+<main id="exam-paper">
+  <h1 class="exam-paper-title">Examination Paper</h1>
+
+  <div class="exam-paper-meta">
+    <div><strong>Class:</strong> {{ exam_paper.school_class }}</div>
+    <div><strong>Subject:</strong> {{ exam_paper.subject }}</div>
+    <div><strong>Time:</strong> {{ exam_paper.duration|default:'________________' }}</div>
+    <div><strong>Date:</strong> __________________</div>
+    <div><strong>Term:</strong> {{ exam_paper.term }}</div>
+    <div><strong>Session:</strong> {{ exam_paper.academic_session }}</div>
+    {% if exam_paper.scoring_enabled %}<div><strong>Total Marks:</strong> {{ exam_paper.total_marks }}</div>{% endif %}
+  </div>
+
+  <div class="exam-paper-instructions">
+    {% if exam_paper.instructions %}{{ exam_paper.instructions|safe }}{% else %}Answer all questions.{% endif %}
+  </div>
+
+  {% for section_data in sections_data %}
+  <section class="exam-paper-section" style="font-family: {{ section_data.object.print_font_family }}; font-size: {{ font_size_override|default:section_data.object.print_font_size }};">
+    <h2 class="exam-paper-section-title">{{ section_data.object.title|default:section_data.object.get_section_type_display }}</h2>
+    {% if section_data.object.instruction %}
+    <div class="exam-paper-section-instruction">{{ section_data.object.instruction|linebreaksbr }}</div>
+    {% endif %}
+
+    {% for question in section_data.questions %}
+    <article class="exam-paper-question">
+      <span class="exam-paper-question-number">{{ forloop.counter }}.</span>
+      <div class="exam-paper-question-content">{{ question.question_text|safe }}</div>
+      {% if question.question_type == 'objective' %}
+      <div class="exam-paper-options">
+        {% for option in question.options.all %}
+        <div class="exam-paper-option"><strong>{{ option.option_label }}.</strong> {{ option.option_text }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if exam_paper.scoring_enabled and question.marks %}
+      <div class="exam-paper-marks">({{ question.marks }} marks)</div>
+      {% endif %}
+      {% if question.resource_notes %}
+      <div class="exam-paper-resource">{{ question.resource_notes|safe }}</div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% empty %}
+  <p>No sections have been added to this exam yet.</p>
+  {% endfor %}
+</main>

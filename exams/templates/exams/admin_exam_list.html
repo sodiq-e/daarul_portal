@@ -53,7 +53,15 @@
           <td>{{ paper.teacher.user.get_full_name }}</td>
           <td>{{ paper.get_status_display }}</td>
           <td>{{ paper.updated_at|date:'M d, Y H:i' }}</td>
-          <td><a href="{% url 'admin_exam_paper_detail' paper.id %}">Review</a></td>
+          <td class="d-flex flex-wrap gap-2">
+            <a href="{% url 'admin_exam_paper_detail' paper.id %}">Review</a>
+            <form method="post" action="{% url 'exam_paper_export' paper.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="format" value="docx">
+              <input type="hidden" name="include_marks" value="on">
+              <button type="submit" class="btn btn-sm btn-outline-primary">Download Word</button>
+            </form>
+          </td>
         </tr>
         {% empty %}
         <tr>

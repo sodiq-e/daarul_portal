@@ -12,7 +12,7 @@ from docx import Document
 from PIL import Image
 
 from exams.document_import import import_docx
-from exams.export_utils import export_exam_to_pdf_html
+from exams.export_utils import export_exam_to_docx, export_exam_to_pdf_html
 from exams.views import ExamPaperImportView
 
 
@@ -29,6 +29,76 @@ def make_docx():
 
 
 class ExamDocumentImportTests(SimpleTestCase):
+    def test_pdf_template_renders_and_converts_without_sitewide_layout_css(self):
+        exam = SimpleNamespace(
+            school_class='Primary 1',
+            subject='Mathematics',
+            duration='1 Hour',
+            term='First Term (2026/2027)',
+            academic_session='2026/2027',
+            scoring_enabled=False,
+            instructions='Answer all questions.',
+            sections=SimpleNamespace(all=lambda: []),
+        )
+        rendered = render_to_string('exams/exam_paper_pdf.html', {
+            'exam_paper': exam,
+            'sections_data': [],
+            'school_name': 'Test School',
+            'school_address': '12 School Road',
+            'school_phone': '08012345678',
+            'school_email': 'office@example.test',
+            'school_logo': None,
+            'motto': 'Knowledge for all',
+            'font_size': '12pt',
+            'font_size_override': '',
+        })
+
+        self.assertIn('Test School', rendered)
+        self.assertNotIn('base.html', rendered)
+        self.assertNotIn('.skip-link', rendered)
+        self.assertNotIn('@keyframes', rendered)
+
+        try:
+            from weasyprint import HTML
+        except ImportError:
+            self.skipTest('WeasyPrint is not installed')
+        pdf = HTML(string=rendered).write_pdf()
+        self.assertTrue(pdf.startswith(b'%PDF'))
+
+    def test_docx_export_includes_school_branding_in_page_header(self):
+        exam = SimpleNamespace(
+            scoring_enabled=False,
+            subject=SimpleNamespace(name='Mathematics'),
+            school_class='Primary 1',
+            term='First Term (2026/2027)',
+            academic_session='2026/2027',
+            duration='1 Hour',
+            total_marks=100,
+            instructions='',
+            sections=SimpleNamespace(all=lambda: []),
+            tenant=SimpleNamespace(name='Tenant School'),
+        )
+        school_settings = SimpleNamespace(
+            school_name='Daarul Bayaan School',
+            motto='Knowledge for all',
+            school_address='12 School Road',
+            school_phone='08012345678',
+            school_email='office@example.test',
+            logo=None,
+        )
+
+        output = export_exam_to_docx(exam, school_settings=school_settings)
+        document = Document(BytesIO(output.getvalue()))
+        header_text = '\n'.join(
+            paragraph.text for paragraph in document.sections[0].header.paragraphs
+        )
+
+        self.assertIn('Daarul Bayaan School', header_text)
+        self.assertIn('Knowledge for all', header_text)
+        self.assertIn('12 School Road', header_text)
+        self.assertIn('08012345678', header_text)
+        self.assertIn('office@example.test', header_text)
+
     def test_builder_json_values_survive_html_attribute_rendering(self):
         rendered = render_to_string('exams/teacher_exam_form.html', {
             'exam_json': json.dumps({'sections': [], 'subject': 12}),
