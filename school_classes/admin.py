@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.contrib import messages
+from settingsapp.tenant_utils import get_request_tenant
+from .approval import approve_teacher_account
 from .models import SchoolClasses, Teacher, ClassTeacher, SchemeOfWork, SchemeWeek, TeacherPermission
 
 
@@ -14,6 +17,18 @@ class TeacherAdmin(admin.ModelAdmin):
     list_filter = ('is_approved', 'is_active', 'qualification')
     search_fields = ('user__username', 'user__first_name', 'user__last_name', 'employee_id')
     readonly_fields = ('approved_at', 'approved_by')
+
+    def save_model(self, request, obj, form, change):
+        approval_tenant = obj.tenant or get_request_tenant(request)
+        if obj.is_approved and approval_tenant is None:
+            obj.is_approved = False
+            messages.error(request, 'Assign this teacher to a school before approving the account.')
+            super().save_model(request, obj, form, change)
+            return
+
+        super().save_model(request, obj, form, change)
+        if obj.is_approved:
+            approve_teacher_account(obj, request.user, tenant=approval_tenant)
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user', 'approved_by')
