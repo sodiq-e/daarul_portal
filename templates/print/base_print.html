@@ -29,10 +29,11 @@
         }
 
         .print-verification-footer {
-            margin-top: 8px;
-            padding: 4px 0;
+            margin-top: 4px;
+            padding: 3px 0 0;
             border-top: 1px solid #ccc;
-            font-size: 10px;
+            font-size: 8pt;
+            line-height: 1.25;
             color: #444;
             box-sizing: border-box;
             width: 100%;
@@ -46,14 +47,17 @@
             box-sizing: border-box;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 10px;
+            min-height: 54px;
         }
         .print-verification-footer .verification-grid > div:first-child {
             flex: 1 1 auto;
             min-width: 0;
         }
         .print-verification-footer .qr-box {
-            width: 64px;
+            flex: 0 0 54px;
+            width: 54px;
+            height: 54px;
             max-width: 100%;
             padding: 0;
             border: 0;
@@ -67,8 +71,8 @@
         }
         .print-verification-footer .qr-box img,
         .print-verification-footer .qr-box svg {
-            width: 100%;
-            height: auto;
+            width: 54px;
+            height: 54px;
             display: block;
         }
     </style>
