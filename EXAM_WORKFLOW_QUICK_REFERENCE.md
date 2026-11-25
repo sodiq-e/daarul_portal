@@ -26,7 +26,7 @@
   - Use CKEditor toolbar to format
   - Add Bold, Italic, Lists as needed
   - **Insert Image:** Click Image icon → Upload → Place in text
-  - **Add Diagram:** Set a custom width (40–1200 px), choose inline placement or its own line, then use **Render size** to update the diagram in the editor; a text status confirms the applied size without displaying a second copy. The requested pixel width is saved as a proportional image size for the printed page so the whole drawing scales without cropping. Export includes only the shapes, with a small transparent margin—not the drawing board or grid. Inserted diagrams autosave with the exam. Drawings are committed when the pointer is released, even if it leaves the canvas.
+  - **Add Diagram:** Draw rectangles, rounded rectangles, circles, ovals, triangles, stars, hearts, cylinders, arcs, diamonds, pentagons, hexagons, parallelograms, trapezoids, lines, and arrows; use the freehand tool for custom outlines. Drag to size each shape, with ovals stretched freely in both directions. Set a custom width (40–1200 px), choose inline placement or its own line, then use **Render size** to update the diagram in the editor; a text status confirms the applied size without displaying a second copy. The requested pixel width is saved as a proportional image size for the printed page so the whole drawing scales without cropping. Export includes only the shapes, with a small transparent margin—not the drawing board or grid. Inserted diagrams autosave with the exam. Drawings are committed when the pointer is released, even if it leaves the canvas.
   - **Add Table:** Click Table icon → Customize rows/columns
   - **Add Math:** Type LaTeX notation (e.g., `$x^2 + y^2 = z^2$`)
   

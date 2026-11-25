@@ -196,9 +196,8 @@ Draft (Back to teacher)
 
 ## Future Enhancements
 
-1. **Diagram Builder Integration**
-   - Embed custom diagram tool in CKEditor
-   - Save diagrams as SVG inline
+1. **Diagram Builder Enhancements**
+   - Save diagrams as SVG inline instead of inserting them as images
 
 2. **Template Support**
    - Question templates for common question types

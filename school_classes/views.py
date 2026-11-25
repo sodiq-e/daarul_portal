@@ -10,6 +10,7 @@ from django.urls import reverse_lazy, reverse
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.db import IntegrityError
+from django.db import transaction
 from django.http import HttpResponseForbidden
 from .models import (
     SchoolClasses, Teacher, ClassTeacher, SchemeOfWork, SchemeWeek, TeacherPermission
@@ -25,7 +26,13 @@ from students.models import Student
 
 from django.http import JsonResponse
 
-from settingsapp.tenant_utils import get_request_tenant, user_is_tenant_admin, user_is_tenant_staff
+from settingsapp.tenant_utils import (
+    ensure_user_tenant_membership,
+    get_request_tenant,
+    user_is_tenant_admin,
+    user_is_tenant_staff,
+)
+from accounts.models import Profile
 
 
 @login_required
@@ -514,6 +521,7 @@ class TeacherDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
 
 @login_required
+@transaction.atomic
 def approve_teacher(request, pk):
     """Admin approves a teacher"""
     if not user_is_admin(request.user):
@@ -521,12 +529,27 @@ def approve_teacher(request, pk):
         return redirect('teacher_list')
 
     teacher = get_object_or_404(Teacher, pk=pk)
+    tenant = teacher.tenant or get_request_tenant(request)
+    if tenant is None:
+        messages.error(request, 'This teacher cannot be approved until a school is assigned.')
+        return redirect('teacher_list')
+
+    approved_at = timezone.now()
+    teacher.tenant = tenant
     teacher.is_approved = True
-    teacher.approved_at = timezone.now()
+    teacher.approved_at = approved_at
     teacher.approved_by = request.user
-    teacher.user.is_active = True
-    teacher.user.save()
     teacher.save()
+    ensure_user_tenant_membership(teacher.user, tenant, 'teacher', is_active=True)
+
+    profile, _ = Profile.objects.get_or_create(user=teacher.user)
+    profile.requested_group = 'Teacher'
+    profile.is_approved = True
+    profile.approved_at = approved_at
+    profile.approved_by = request.user
+    profile.save(update_fields=['requested_group', 'is_approved', 'approved_at', 'approved_by'])
+    teacher.user.is_active = True
+    teacher.user.save(update_fields=['is_active'])
 
     # Add to Teacher group
     from django.contrib.auth.models import Group

@@ -1600,8 +1600,19 @@ class DiagramBuilder {
     const tools = [
       { id: 'select', label: '✓ Select', icon: '→' },
       { id: 'rect', label: '▭ Rectangle', icon: '◻' },
+      { id: 'roundedRect', label: '▢ Rounded rectangle', icon: '▢' },
       { id: 'circle', label: '◯ Circle', icon: '●' },
+      { id: 'oval', label: '⬭ Oval', icon: '⬭' },
       { id: 'triangle', label: '▲ Triangle', icon: '△' },
+      { id: 'star', label: '☆ Star', icon: '☆' },
+      { id: 'heart', label: '♡ Heart', icon: '♡' },
+      { id: 'cylinder', label: '▤ Cylinder', icon: '▤' },
+      { id: 'arc', label: '⌒ Arc', icon: '⌒' },
+      { id: 'diamond', label: '◇ Diamond', icon: '◇' },
+      { id: 'pentagon', label: '⬠ Pentagon', icon: '⬠' },
+      { id: 'hexagon', label: '⬡ Hexagon', icon: '⬡' },
+      { id: 'parallelogram', label: '▱ Parallelogram', icon: '▱' },
+      { id: 'trapezoid', label: '⏢ Trapezoid', icon: '⏢' },
       { id: 'line', label: '/ Line', icon: '/' },
       { id: 'arrow', label: '→ Arrow', icon: '→' },
       { id: 'pen', label: '✏ Draw', icon: '✏' },
@@ -1844,11 +1855,95 @@ class DiagramBuilder {
     this.previewShape = null;
   }
 
+  getShapeBounds(startX, startY, currentX, currentY) {
+    return {
+      x: Math.min(startX, currentX),
+      y: Math.min(startY, currentY),
+      width: Math.abs(currentX - startX),
+      height: Math.abs(currentY - startY)
+    };
+  }
+
+  createArcPoints(x, y, width, height) {
+    const points = [];
+    for (let i = 0; i <= 32; i++) {
+      const angle = Math.PI * i / 32;
+      points.push(
+        x + width * (1 - Math.cos(angle)) / 2,
+        y + height / 2 - height * Math.sin(angle) / 2
+      );
+    }
+    return points;
+  }
+
+  createCylinder(x, y, width, height) {
+    const group = new Konva.Group({
+      x,
+      y,
+      scaleX: width / 100,
+      scaleY: height / 80,
+      isShape: true
+    });
+    const bottomArcPoints = [];
+    for (let i = 0; i <= 16; i++) {
+      const angle = Math.PI * i / 16;
+      bottomArcPoints.push(50 - 50 * Math.cos(angle), 72 + 8 * Math.sin(angle));
+    }
+
+    group.add(new Konva.Rect({
+      x: 1,
+      y: 8,
+      width: 98,
+      height: 64,
+      fill: this.fillColor
+    }));
+    group.add(new Konva.Line({
+      points: [0, 8, 0, 72, ...bottomArcPoints, 100, 72, 100, 8],
+      stroke: this.strokeColor,
+      strokeWidth: this.lineThickness,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }));
+    group.add(new Konva.Ellipse({
+      x: 50,
+      y: 8,
+      radiusX: 50,
+      radiusY: 8,
+      fill: this.fillColor,
+      stroke: this.strokeColor,
+      strokeWidth: this.lineThickness
+    }));
+    return group;
+  }
+
+  getPolygonPoints(tool, width, height) {
+    const inset = width * 0.2;
+    if (tool === 'diamond') {
+      return [width / 2, 0, width, height / 2, width / 2, height, 0, height / 2];
+    }
+    if (tool === 'parallelogram') {
+      return [inset, 0, width, 0, width - inset, height, 0, height];
+    }
+    return [inset, 0, width - inset, 0, width, height, 0, height];
+  }
+
+  createPolygon(tool, x, y, width, height) {
+    return new Konva.Line({
+      x,
+      y,
+      points: this.getPolygonPoints(tool, width, height),
+      closed: true,
+      fill: this.fillColor,
+      stroke: this.strokeColor,
+      strokeWidth: this.lineThickness,
+      isShape: true
+    });
+  }
+
   createPreviewShape(tool, startX, startY, currentX, currentY) {
-    const width = Math.abs(currentX - startX);
-    const height = Math.abs(currentY - startY);
-    const x = Math.min(startX, currentX);
-    const y = Math.min(startY, currentY);
+    const { x, y, width, height } = this.getShapeBounds(startX, startY, currentX, currentY);
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
 
     if (tool === 'rect') {
       return new Konva.Rect({
@@ -1860,11 +1955,10 @@ class DiagramBuilder {
         isShape: true
       });
     }
-    if (tool === 'circle') {
-      return new Konva.Circle({
-        x: startX,
-        y: startY,
-        radius: Math.sqrt(width * width + height * height) / 2,
+    if (tool === 'roundedRect') {
+      return new Konva.Rect({
+        x, y, width, height,
+        cornerRadius: Math.min(width, height) * 0.12,
         fill: this.fillColor,
         stroke: this.strokeColor,
         strokeWidth: this.lineThickness,
@@ -1872,15 +1966,94 @@ class DiagramBuilder {
         isShape: true
       });
     }
-    if (tool === 'triangle') {
-      return new Konva.RegularPolygon({
-        x: startX,
-        y: startY,
-        sides: 3,
-        radius: Math.sqrt(width * width + height * height) / 2,
+    if (tool === 'circle') {
+      return new Konva.Circle({
+        x: centerX,
+        y: centerY,
+        radius: Math.min(width, height) / 2,
         fill: this.fillColor,
         stroke: this.strokeColor,
         strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'oval') {
+      return new Konva.Ellipse({
+        x: centerX,
+        y: centerY,
+        radiusX: width / 2,
+        radiusY: height / 2,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'triangle' || tool === 'pentagon' || tool === 'hexagon') {
+      const sides = tool === 'triangle' ? 3 : (tool === 'pentagon' ? 5 : 6);
+      return new Konva.RegularPolygon({
+        x: centerX,
+        y: centerY,
+        sides,
+        radius: 50,
+        scaleX: width / 100,
+        scaleY: height / 100,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'star') {
+      return new Konva.Star({
+        x: centerX,
+        y: centerY,
+        numPoints: 5,
+        innerRadius: 22,
+        outerRadius: 50,
+        scaleX: width / 100,
+        scaleY: height / 100,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'heart') {
+      return new Konva.Path({
+        x,
+        y,
+        data: 'M 50 90 C 44 84 5 58 5 30 C 5 12 18 2 32 2 C 41 2 47 7 50 14 C 53 7 59 2 68 2 C 82 2 95 12 95 30 C 95 58 56 84 50 90 Z',
+        scaleX: width / 100,
+        scaleY: height / 90,
+        fill: this.fillColor,
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        _isPreview: true,
+        isShape: true
+      });
+    }
+    if (tool === 'cylinder') {
+      const cylinder = this.createCylinder(x, y, width, height);
+      cylinder._isPreview = true;
+      return cylinder;
+    }
+    if (tool === 'diamond' || tool === 'parallelogram' || tool === 'trapezoid') {
+      const polygon = this.createPolygon(tool, x, y, width, height);
+      polygon._isPreview = true;
+      return polygon;
+    }
+    if (tool === 'arc') {
+      return new Konva.Line({
+        points: this.createArcPoints(x, y, width, height),
+        stroke: this.strokeColor,
+        strokeWidth: this.lineThickness,
+        lineCap: 'round',
+        lineJoin: 'round',
         _isPreview: true,
         isShape: true
       });
@@ -1916,12 +2089,17 @@ class DiagramBuilder {
       const clickedObject = e.target;
       if (clickedObject === this.stage) {
         this.deselectAll();
-      } else if (clickedObject.isShape) {
-        this.selectObject(clickedObject);
+      } else {
+        let shape = clickedObject;
+        while (shape && shape !== this.stage && !(shape.isShape || shape.getAttr('isShape'))) {
+          shape = shape.getParent();
+        }
+        if (!shape || shape === this.stage) return;
+        this.selectObject(shape);
         this.isDragging = true;
         const pointer = this.getDrawingPointerPosition();
-        this.dragOffsetX = clickedObject.x() - pointer.x;
-        this.dragOffsetY = clickedObject.y() - pointer.y;
+        this.dragOffsetX = shape.x() - pointer.x;
+        this.dragOffsetY = shape.y() - pointer.y;
       }
       return;
     }
@@ -2014,19 +2192,51 @@ class DiagramBuilder {
         this.layer.add(this.previewShape);
       }
     } else {
-      const width = Math.abs(currentX - this.startX);
-      const height = Math.abs(currentY - this.startY);
-      const x = Math.min(this.startX, currentX);
-      const y = Math.min(this.startY, currentY);
+      const { x, y, width, height } = this.getShapeBounds(this.startX, this.startY, currentX, currentY);
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
 
       if (this.currentTool === 'rect') {
         this.previewShape.width(width);
         this.previewShape.height(height);
         this.previewShape.x(x);
         this.previewShape.y(y);
-      } else if (this.currentTool === 'circle' || this.currentTool === 'triangle') {
-        const radius = Math.sqrt(width * width + height * height) / 2;
-        this.previewShape.radius(radius);
+      } else if (this.currentTool === 'roundedRect') {
+        this.previewShape.width(width);
+        this.previewShape.height(height);
+        this.previewShape.cornerRadius(Math.min(width, height) * 0.12);
+        this.previewShape.x(x);
+        this.previewShape.y(y);
+      } else if (this.currentTool === 'circle') {
+        this.previewShape.radius(Math.min(width, height) / 2);
+        this.previewShape.x(centerX);
+        this.previewShape.y(centerY);
+      } else if (this.currentTool === 'oval') {
+        this.previewShape.radiusX(width / 2);
+        this.previewShape.radiusY(height / 2);
+        this.previewShape.x(centerX);
+        this.previewShape.y(centerY);
+      } else if (this.currentTool === 'triangle' || this.currentTool === 'pentagon' || this.currentTool === 'hexagon' || this.currentTool === 'star') {
+        this.previewShape.x(centerX);
+        this.previewShape.y(centerY);
+        this.previewShape.scaleX(width / 100);
+        this.previewShape.scaleY(height / 100);
+      } else if (this.currentTool === 'heart') {
+        this.previewShape.x(x);
+        this.previewShape.y(y);
+        this.previewShape.scaleX(width / 100);
+        this.previewShape.scaleY(height / 90);
+      } else if (this.currentTool === 'cylinder') {
+        this.previewShape.x(x);
+        this.previewShape.y(y);
+        this.previewShape.scaleX(width / 100);
+        this.previewShape.scaleY(height / 80);
+      } else if (this.currentTool === 'diamond' || this.currentTool === 'parallelogram' || this.currentTool === 'trapezoid') {
+        this.previewShape.x(x);
+        this.previewShape.y(y);
+        this.previewShape.points(this.getPolygonPoints(this.currentTool, width, height));
+      } else if (this.currentTool === 'arc') {
+        this.previewShape.points(this.createArcPoints(x, y, width, height));
       } else if (this.currentTool === 'line' || this.currentTool === 'arrow') {
         this.previewShape.points([this.startX, this.startY, currentX, currentY]);
       }
