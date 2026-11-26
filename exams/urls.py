@@ -22,6 +22,7 @@ urlpatterns = [
     path('exam-papers/', views.TeacherExamPaperListView.as_view(), name='exam_paper_list'),
     path('exam-papers/add/', views.TeacherExamPaperCreateView.as_view(), name='exam_paper_add'),
     path('exam-papers/<int:pk>/edit/', views.TeacherExamPaperEditView.as_view(), name='exam_paper_edit'),
+    path('exam-papers/<int:pk>/duplicate/', views.TeacherExamPaperDuplicateView.as_view(), name='exam_paper_duplicate'),
     path('exam-papers/<int:pk>/', views.TeacherExamPaperDetailView.as_view(), name='exam_paper_detail'),
     path('exam-papers/save-draft/', views.ExamPaperSaveView.as_view(), name='exam_paper_save'),
     path('exam-papers/submit/', views.ExamPaperSubmitView.as_view(), name='exam_paper_submit'),

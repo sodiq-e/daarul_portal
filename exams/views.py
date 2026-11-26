@@ -1,3 +1,32 @@
+class TeacherExamPaperDuplicateView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'exams/teacher_exam_form.html'
+
+    def test_func(self):
+        return user_profile_approved(self.request.user) and hasattr(self.request.user, 'teacher_profile')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        original_exam_paper = get_object_or_404(
+            ExamPaper,
+            pk=kwargs.get('pk'),
+            teacher=self.request.user
+        )
+
+        # Prepare payload but remove id to ensure it's treated as new
+        payload = TeacherExamPaperEditView._exam_to_payload(self, original_exam_paper)
+        payload['id'] = None
+        context['form'] = ExamPaperForm(teacher=self.request.user.teacher_profile)
+        context['exam_json'] = json.dumps(payload)
+        context['draft_storage_owner'] = self.request.user.pk
+        context['class_subject_map'] = json.dumps(_build_class_subject_map(self.request.user.teacher_profile, extra_school_class=original_exam_paper.school_class))
+        context['page_title'] = 'Duplicate Exam Paper'
+        context['save_draft_url'] = reverse_lazy('exam_paper_save')
+        context['submit_url'] = reverse_lazy('exam_paper_submit')
+        context['import_document_url'] = reverse_lazy('exam_paper_import_document')
+        context['preview_url_template'] = reverse_lazy('exam_paper_preview', args=[0])
+        context['scoring_enabled'] = original_exam_paper.scoring_enabled
+        context['is_duplicate'] = True
+        return context
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages

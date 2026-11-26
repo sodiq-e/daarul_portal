@@ -33,6 +33,7 @@
         {% if can_edit %}
         <a class="button" href="{% url 'exam_paper_edit' exam_paper.id %}">Continue Editing</a>
         {% endif %}
+        <a class="button" href="{% url 'exam_paper_duplicate' exam_paper.id %}">Duplicate for Another Class</a>
         <a class="button" id="examPreviewBtn" href="{% url 'exam_paper_preview' exam_paper.id %}">Preview</a>
         <a class="button" id="examPrintBtn" href="{% url 'exam_paper_print' exam_paper.id %}">Print Preview</a>
         <a class="button" id="examPdfBtn" href="{% url 'exam_paper_print' exam_paper.id %}?format=pdf">Export PDF</a>
