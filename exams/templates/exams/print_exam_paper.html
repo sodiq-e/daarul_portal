@@ -24,7 +24,7 @@
     font-size: var(--paper-font-size);
   }
   .exam-paper-title {
-    margin: 0 0 18px;
+    margin: 0 0 10px;
     font-size: 1.15em;
     font-weight: 700;
     text-align: center;
@@ -32,15 +32,18 @@
   }
   .exam-paper-meta {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 26px;
-    margin-bottom: 18px;
-    font-size: 0.94em;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px 14px;
+    margin-bottom: 8px;
+    font-size: 0.9em;
     font-weight: 600;
     text-transform: uppercase;
   }
+  .exam-paper-meta > div {
+    min-width: 0;
+  }
   .exam-paper-instructions {
-    margin: 14px 0 22px;
+    margin: 8px 0 14px;
     font-weight: 700;
     text-align: center;
     text-transform: uppercase;
@@ -94,12 +97,14 @@
     object-fit: contain;
   }
   .exam-paper-options {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 20px;
-    margin: 8px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 14px;
+    margin: 5px 0 0;
   }
   .exam-paper-option {
+    flex: 0 1 auto;
+    max-width: 100%;
     break-inside: avoid;
   }
   .exam-paper-marks {
@@ -150,7 +155,14 @@
       text-align: center !important;
     }
     header .header-center a > div:first-child {
-      font-size: 20px !important;
+      font-size: 30px !important;
+      line-height: 1.05 !important;
+    }
+    header .header-center > div:nth-child(2) {
+      font-size: 12px !important;
+    }
+    header .header-center div[style*="font-size:11px"] {
+      font-size: 9px !important;
     }
     header .header-right,
     header .menu-btn,
@@ -178,10 +190,12 @@
       box-shadow: none !important;
       background: #fff !important;
     }
-    .exam-paper-meta,
-    .exam-paper-options {
+    .exam-paper-meta {
       display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    .exam-paper-options {
+      display: flex !important;
     }
     .exam-paper-question-content img {
       max-width: 120px !important;
