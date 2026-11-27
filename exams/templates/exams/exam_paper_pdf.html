@@ -5,6 +5,7 @@
   <title>{{ school_name }} - Examination Paper</title>
   <style>
     @page { size: A4; margin: 6mm 15mm 15mm; }
+    @page :first { margin-top: 3mm; }
     body {
       margin: 0;
       color: #111;
@@ -17,8 +18,8 @@
       border-bottom: 1px solid #222;
       text-align: center;
     }
-    .school-logo { max-width: 70px; max-height: 55px; object-fit: contain; }
-    .school-name { margin: 4px 0; font-size: 30px; font-weight: bold; line-height: 1.05; }
+    .school-logo { max-width: 100px; max-height: 75px; object-fit: contain; filter: contrast(1.25) saturate(1.1); print-color-adjust: exact; }
+    .school-name { margin: 4px 0; font-size: 32px; font-weight: 900; line-height: 1.05; }
     .school-motto { margin: 2px 0; font-size: 10pt; font-style: italic; }
     .school-contact { margin: 2px 0; font-size: 9pt; }
     #exam-paper { width: 100%; }

@@ -124,18 +124,30 @@
     @page {
       margin: 6mm 10mm 10mm;
     }
+    @page :first {
+      margin-top: 3mm;
+    }
     .no-print {
       display: none !important;
     }
     .skip-link {
       display: none !important;
     }
-    header {
+    body header {
       margin: 0 !important;
       padding: 0 0 2px !important;
     }
+    header .header-left img {
+      height: 72px !important;
+      max-width: 110px !important;
+      max-height: 72px !important;
+      filter: contrast(1.25) saturate(1.1) !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
     header .header-center div:first-child {
       font-size: 30px !important;
+      font-weight: 900 !important;
       line-height: 1.05 !important;
     }
     header .header-center > div:nth-child(2) {

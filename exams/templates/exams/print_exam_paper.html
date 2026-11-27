@@ -119,13 +119,16 @@
     @page {
       margin: 6mm 10mm 10mm;
     }
+    @page :first {
+      margin-top: 3mm;
+    }
     body {
       margin: 0 !important;
       padding: 0 !important;
       background: #fff !important;
       color: #000 !important;
     }
-    header {
+    body header {
       display: block !important;
       visibility: visible !important;
       position: static !important;
@@ -144,9 +147,12 @@
     }
     header .header-left img {
       width: auto !important;
-      height: 55px !important;
-      max-width: 80px !important;
-      max-height: 55px !important;
+      height: 72px !important;
+      max-width: 110px !important;
+      max-height: 72px !important;
+      filter: contrast(1.25) saturate(1.1) !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
     header .header-center {
       flex: 1 !important;
@@ -156,6 +162,7 @@
     }
     header .header-center a > div:first-child {
       font-size: 30px !important;
+      font-weight: 900 !important;
       line-height: 1.05 !important;
     }
     header .header-center > div:nth-child(2) {
