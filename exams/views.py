@@ -1,3 +1,5 @@
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 class TeacherExamPaperDuplicateView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'exams/teacher_exam_form.html'
 
