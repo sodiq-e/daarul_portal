@@ -121,6 +121,9 @@
     }
   }
   @media print {
+    @page {
+      margin: 6mm 10mm 10mm;
+    }
     .no-print {
       display: none !important;
     }
@@ -128,8 +131,8 @@
       display: none !important;
     }
     header {
-      margin: 0 0 4px !important;
-      padding: 4px 0 !important;
+      margin: 0 !important;
+      padding: 0 0 2px !important;
     }
     header .header-center div:first-child {
       font-size: 30px !important;
