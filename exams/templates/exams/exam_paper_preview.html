@@ -29,7 +29,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px 14px;
     margin-bottom: 8px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
   }
@@ -123,6 +123,13 @@
   @media print {
     .no-print {
       display: none !important;
+    }
+    .skip-link {
+      display: none !important;
+    }
+    header {
+      margin: 0 0 4px !important;
+      padding: 4px 0 !important;
     }
     header .header-center div:first-child {
       font-size: 30px !important;
