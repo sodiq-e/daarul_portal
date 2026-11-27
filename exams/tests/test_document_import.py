@@ -278,6 +278,7 @@ class ExamDocumentImportTests(SimpleTestCase):
         })
         self.assertIn('.exam-paper-question-content figure.image', preview_template)
         self.assertIn('.exam-paper-question-content figure.image img', preview_template)
+        self.assertIn('.exam-paper-question-content img[alt="Editable diagram"]', preview_template)
         self.assertIn('max-width: 120px !important;', preview_template)
         self.assertIn('max-height: 90px !important;', preview_template)
 
@@ -290,6 +291,7 @@ class ExamDocumentImportTests(SimpleTestCase):
             'sections_data': [],
         })
         self.assertIn('.exam-paper-question-content figure.image', print_template)
+        self.assertIn('.exam-paper-question-content img[alt="Editable diagram"]', print_template)
         self.assertIn('max-width: 120px !important;', print_template)
         self.assertIn('max-height: 90px !important;', print_template)
 

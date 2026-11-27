@@ -96,6 +96,16 @@
     vertical-align: middle;
     object-fit: contain;
   }
+  .exam-paper-question-content figure.image {
+    max-width: 100% !important;
+    max-height: none;
+  }
+  .exam-paper-question-content img[alt="Editable diagram"] {
+    max-width: 100% !important;
+    max-height: none !important;
+    width: auto !important;
+    height: auto !important;
+  }
   .exam-paper-options {
     display: flex;
     flex-wrap: wrap;
@@ -209,6 +219,10 @@
       max-width: 120px !important;
       max-height: 90px !important;
       height: auto !important;
+    }
+    .exam-paper-question-content img[alt="Editable diagram"] {
+      max-width: 100% !important;
+      max-height: none !important;
     }
   }
 </style>
