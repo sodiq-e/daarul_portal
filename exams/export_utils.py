@@ -6,7 +6,7 @@ Handles PDF and DOCX export for exam papers with formatting preservation.
 
 from io import BytesIO
 import logging
-from urllib.parse import urlparse
+from urllib.parse import urldefrag, urlparse
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
 from django.conf import settings
@@ -145,6 +145,7 @@ def fetch_image_bytes(src):
     if not src:
         return None
     src = src.strip()
+    src, _ = urldefrag(src)
     if src.startswith('//'):
         src = 'https:' + src
     parsed = urlparse(src)

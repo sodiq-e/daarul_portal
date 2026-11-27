@@ -1,6 +1,7 @@
 import json
 from html.parser import HTMLParser
 from io import BytesIO
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -12,7 +13,7 @@ from docx import Document
 from PIL import Image
 
 from exams.document_import import import_docx
-from exams.export_utils import export_exam_to_docx, export_exam_to_pdf_html
+from exams.export_utils import export_exam_to_docx, export_exam_to_pdf_html, fetch_image_bytes
 from exams.models import Question
 from exams.views import ExamPaperImportView
 
@@ -30,6 +31,17 @@ def make_docx():
 
 
 class ExamDocumentImportTests(SimpleTestCase):
+    def test_local_image_fetch_ignores_editable_diagram_fragment(self):
+        with TemporaryDirectory() as temp_dir:
+            diagram_path = Path(temp_dir) / 'diagram.png'
+            diagram_path.write_bytes(b'diagram-image')
+
+            with override_settings(BASE_DIR=temp_dir):
+                self.assertEqual(
+                    fetch_image_bytes('/diagram.png#daarul-diagram-v1=editable-source'),
+                    b'diagram-image',
+                )
+
     def test_pdf_template_renders_and_converts_without_sitewide_layout_css(self):
         exam = SimpleNamespace(
             school_class='Primary 1',
@@ -177,8 +189,16 @@ class ExamDocumentImportTests(SimpleTestCase):
         self.assertIn('class="diagram-width-slider" min="20" max="600" step="5" value="180"', rendered)
         self.assertIn('<option value="inline" selected>In the paragraph</option>', rendered)
         self.assertIn('<option value="block">Own line</option>', rendered)
+        self.assertIn('class="button edit-diagram-btn">Edit Selected Diagram</button>', rendered)
+        self.assertIn("editTextBtn.textContent = 'Edit Text';", rendered)
+        self.assertIn("this.selectedObject.text(updatedText);", rendered)
         self.assertIn("options.placement === 'inline' ? 'imageInline' : 'imageBlock'", rendered)
-        self.assertIn("editor.execute('insertImage', { source: url })", rendered)
+        self.assertIn("editor.execute('insertImage', { source: imageUrl, alt: 'Editable diagram' })", rendered)
+        self.assertIn("DIAGRAM_SOURCE_FRAGMENT = 'daarul-diagram-v1='", rendered)
+        self.assertIn('function decodeDiagramSource(imageUrl)', rendered)
+        self.assertIn('loadFromSource(source) {', rendered)
+        self.assertIn('node.listening(true);', rendered)
+        self.assertIn('const clone = shape.clone();', rendered)
         self.assertIn('render-diagram-size">Render size</button>', rendered)
         self.assertIn('class="diagram-render-preview" hidden', rendered)
         self.assertIn('preview.dataset.diagramUrl = url;', rendered)
@@ -187,16 +207,16 @@ class ExamDocumentImportTests(SimpleTestCase):
         self.assertIn("editor.model.document.getRoot()", rendered)
         self.assertIn('function resizeImageDataURL(source, width)', rendered)
         self.assertIn('canvas.height = Math.max(1, Math.round(image.naturalHeight * canvas.width / image.naturalWidth));', rendered)
-        self.assertIn("writer.setAttribute('src', newUrl, image)", rendered)
+        self.assertIn("writer.setAttribute('src', resizedUrl, image)", rendered)
         self.assertNotIn('resizedWidth', rendered)
-        self.assertIn('const resizedDataURL = await resizeImageDataURL(dataURL, options.width);', rendered)
-        self.assertIn('if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection)) {', rendered)
+        self.assertIn('const resizedDataURL = await resizeImageDataURL(diagram.dataURL, options.width);', rendered)
+        self.assertIn('if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection, diagram.source)) {', rendered)
         self.assertIn('const saved = await saveDraft();', rendered)
         self.assertIn('window.addEventListener(\'mouseup\', this.handleWindowMouseUp)', rendered)
         self.assertIn('const shapes = Array.from(this.layer.getChildren()).filter(shape => !shape._isPreview);', rendered)
         self.assertIn('const exportStage = new Konva.Stage({', rendered)
         self.assertIn('shapes.forEach(shape => drawingGroup.add(shape.clone({ listening: false })));', rendered)
-        self.assertIn('return exportStage.toDataURL({ pixelRatio: 2 });', rendered)
+        self.assertIn('return { dataURL: exportStage.toDataURL({ pixelRatio: 2 }), source };', rendered)
         self.assertNotIn('return this.layer.toDataURL({', rendered)
         self.assertNotIn('return this.stage.toDataURL({ pixelRatio: 2 });', rendered)
         self.assertIn('this.finishDrawing();', rendered)

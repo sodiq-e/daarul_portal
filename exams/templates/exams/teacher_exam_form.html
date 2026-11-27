@@ -800,6 +800,7 @@ function addQuestion(sectionCard, questionData = {}) {
           </select>
         </label>
         <button type="button" class="button add-diagram-btn">Add Diagram</button>
+        <button type="button" class="button edit-diagram-btn">Edit Selected Diagram</button>
         <button type="button" class="button add-chart-btn">Add Chart</button>
       </div>
       <div class="diagram-render-preview" hidden style="margin:8px 0;padding:8px;border:1px solid #d1d8df;border-radius:6px;background:#fff;" aria-live="polite"></div>
@@ -879,6 +880,7 @@ function addQuestion(sectionCard, questionData = {}) {
               </select>
             </label>
             <button type="button" class="button add-diagram-btn">Add Diagram</button>
+            <button type="button" class="button edit-diagram-btn">Edit Selected Diagram</button>
             <button type="button" class="button add-chart-btn">Add Chart</button>
           </div>
           <div class="diagram-render-preview" hidden style="margin:8px 0;padding:8px;border:1px solid #d1d8df;border-radius:6px;background:#fff;" aria-live="polite"></div>
@@ -1080,6 +1082,36 @@ function uploadDataURL(dataURL){
   });
 }
 
+const DIAGRAM_SOURCE_FRAGMENT = 'daarul-diagram-v1=';
+
+function encodeDiagramSource(source) {
+  const bytes = new TextEncoder().encode(JSON.stringify(source));
+  let binary = '';
+  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function decodeDiagramSource(imageUrl) {
+  const fragment = String(imageUrl || '').split('#').slice(1).join('#');
+  const match = fragment.match(/(?:^|&)daarul-diagram-v1=([^&]*)/);
+  if (!match) return null;
+
+  try {
+    const base64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const binary = atob(paddedBase64);
+    const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (error) {
+    return null;
+  }
+}
+
+function attachDiagramSource(imageUrl, source) {
+  const cleanUrl = String(imageUrl).split('#')[0];
+  return `${cleanUrl}#${DIAGRAM_SOURCE_FRAGMENT}${encodeDiagramSource(source)}`;
+}
+
 function resizeImageDataURL(source, width) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -1110,6 +1142,7 @@ function attachDiagramAndChartHandlers(questionCard){
   questionCard.dataset.diagramHandlersAttached = '1';
 
   const diagramButtons = questionCard.querySelectorAll('.add-diagram-btn');
+  const editDiagramButtons = questionCard.querySelectorAll('.edit-diagram-btn');
   const chartButtons = questionCard.querySelectorAll('.add-chart-btn');
   const renderButtons = questionCard.querySelectorAll('.render-diagram-size');
   const widthInputs = questionCard.querySelectorAll('.diagram-width');
@@ -1195,14 +1228,17 @@ function attachDiagramAndChartHandlers(questionCard){
     const image = findInsertedImage(editor, oldUrl);
     if (!image) throw new Error('The diagram is no longer present in the editor.');
 
-    editor.model.change(writer => writer.setAttribute('src', newUrl, image));
-    if (!editor.getData().includes(newUrl)) throw new Error('The editor did not retain the resized diagram.');
-    return newUrl;
+    const source = decodeDiagramSource(oldUrl);
+    const resizedUrl = source ? attachDiagramSource(newUrl, source) : newUrl;
+    editor.model.change(writer => writer.setAttribute('src', resizedUrl, image));
+    if (!editor.getData().includes(resizedUrl)) throw new Error('The editor did not retain the resized diagram.');
+    return resizedUrl;
   }
 
-  function insertImageUrl(editor, textarea, url, options, insertionSelection) {
+  function insertImageUrl(editor, textarea, url, options, insertionSelection, diagramSource) {
+    const imageUrl = attachDiagramSource(url, diagramSource);
     if (!editor) {
-      const imageHtml = `<img src="${url}" style="width:${options.width}px;height:auto;vertical-align:middle">`;
+      const imageHtml = `<img src="${imageUrl}" alt="Editable diagram" style="width:${options.width}px;height:auto;vertical-align:middle">`;
       const currentValue = textarea.value || '';
       textarea.value = options.placement === 'inline'
         ? `${currentValue}${imageHtml}`
@@ -1221,10 +1257,10 @@ function attachDiagramAndChartHandlers(questionCard){
       }
 
       editor.model.change(writer => {
-        const image = writer.createElement(imageName, { src: url });
+        const image = writer.createElement(imageName, { src: imageUrl, alt: 'Editable diagram' });
         editor.model.insertContent(image, insertionSelection || editor.model.document.selection);
       });
-      if (!findInsertedImage(editor, url)) {
+      if (!findInsertedImage(editor, imageUrl)) {
         throw new Error('The editor did not retain the inserted image.');
       }
       editor.editing.view.focus();
@@ -1232,10 +1268,10 @@ function attachDiagramAndChartHandlers(questionCard){
     } catch (error) {
       console.error('Could not insert diagram into the selected question text.', error);
       try {
-        if (findInsertedImage(editor, url)) throw error;
+        if (findInsertedImage(editor, imageUrl)) throw error;
         if (!editor.commands.get('insertImage')) throw error;
-        editor.execute('insertImage', { source: url });
-        if (!findInsertedImage(editor, url)) throw new Error('The editor did not retain the inserted image.');
+        editor.execute('insertImage', { source: imageUrl, alt: 'Editable diagram' });
+        if (!findInsertedImage(editor, imageUrl)) throw new Error('The editor did not retain the inserted image.');
         editor.editing.view.focus();
         showStatus('Diagram inserted using the editor fallback. Check its rendered size and placement.', false);
         return true;
@@ -1247,6 +1283,46 @@ function attachDiagramAndChartHandlers(questionCard){
     }
   }
 
+  editDiagramButtons.forEach(button => {
+    const options = getInsertionOptions(button);
+    button.addEventListener('pointerdown', () => {
+      const editor = options.textarea && options.textarea._editor;
+      button._selectedDiagram = editor && editor.model.document.selection.getSelectedElement();
+    });
+    button.addEventListener('click', async () => {
+      try {
+        if (options.textarea && options.textarea._editorPromise) {
+          await options.textarea._editorPromise;
+        }
+        const editor = options.textarea && options.textarea._editor;
+        if (!editor) throw new Error('Select a diagram in the rich-text editor to edit it.');
+
+        const selectedImage = button._selectedDiagram || editor.model.document.selection.getSelectedElement();
+        button._selectedDiagram = null;
+        if (!selectedImage || !['imageBlock', 'imageInline'].some(name => selectedImage.is('element', name))) {
+          throw new Error('Select a diagram image in the question text first.');
+        }
+
+        const source = decodeDiagramSource(selectedImage.getAttribute('src'));
+        if (!source) throw new Error('This image has no editable diagram source. Recreate it with Add Diagram first.');
+
+        const updatedDiagram = await openDiagramModal(source);
+        if (!updatedDiagram) return;
+        const resizedDataURL = await resizeImageDataURL(updatedDiagram.dataURL, options.width);
+        const result = await uploadDataURL(resizedDataURL);
+        if (!result || !result.url) throw new Error('The updated diagram upload did not return an image URL.');
+        const updatedUrl = attachDiagramSource(result.url, updatedDiagram.source);
+        editor.model.change(writer => writer.setAttribute('src', updatedUrl, selectedImage));
+        renderDiagramPreview(options, updatedUrl);
+        const saved = await saveDraft();
+        if (!saved) showStatus('Diagram changes are in the editor, but the draft could not be saved.', true);
+      } catch (error) {
+        console.error('Could not edit the selected diagram.', error);
+        showStatus(error.message, true);
+      }
+    });
+  });
+
   diagramButtons.forEach(button => button.addEventListener('click', async () => {
     const options = getInsertionOptions(button);
     try {
@@ -1257,13 +1333,14 @@ function attachDiagramAndChartHandlers(questionCard){
       const insertionSelection = editor
         ? editor.model.createSelection(editor.model.document.selection)
         : null;
-      const dataURL = await openDiagramModal();
-      if (!dataURL) return;
-      const resizedDataURL = await resizeImageDataURL(dataURL, options.width);
+      const diagram = await openDiagramModal();
+      if (!diagram) return;
+      const resizedDataURL = await resizeImageDataURL(diagram.dataURL, options.width);
       const result = await uploadDataURL(resizedDataURL);
       if (!result || !result.url) throw new Error('The diagram upload did not return an image URL.');
-      renderDiagramPreview(options, result.url);
-      if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection)) {
+      const imageUrl = attachDiagramSource(result.url, diagram.source);
+      renderDiagramPreview(options, imageUrl);
+      if (insertImageUrl(editor, options.textarea, result.url, options, insertionSelection, diagram.source)) {
         const saved = await saveDraft();
         if (!saved) showStatus('Diagram is in the editor, but the draft could not be saved. Save the exam and retry.', true);
       }
@@ -1300,8 +1377,8 @@ function attachDiagramAndChartHandlers(questionCard){
   }));
 }
 
-function openDiagramModal(){
-  return new Promise(resolve => {
+function openDiagramModal(initialSource = null){
+  return new Promise((resolve, reject) => {
     const modal = document.createElement('div');
     modal.className = 'diagram-builder-modal';
     modal.setAttribute('role', 'dialog');
@@ -1337,6 +1414,14 @@ function openDiagramModal(){
 
     // Initialize diagram builder
     const builder = new DiagramBuilder(canvasContainer, toolbar, footer);
+    try {
+      if (initialSource) builder.loadFromSource(initialSource);
+    } catch (error) {
+      builder.destroy();
+      modal.remove();
+      reject(error);
+      return;
+    }
     const zoomControls = document.createElement('div');
     zoomControls.className = 'diagram-zoom-controls';
     zoomControls.setAttribute('aria-label', 'Canvas zoom controls');
@@ -1393,8 +1478,7 @@ function openDiagramModal(){
     exportBtn.style.color = 'white';
     exportBtn.addEventListener('click', () => {
       try {
-        const dataURL = builder.export();
-        closeModal(dataURL);
+        closeModal(builder.export());
       } catch (error) {
         console.error('Diagram export failed:', error);
         showStatus(error.message, true);
@@ -1758,6 +1842,22 @@ class DiagramBuilder {
       }
     });
     editGroup.appendChild(deleteBtn);
+
+    const editTextBtn = document.createElement('button');
+    editTextBtn.textContent = 'Edit Text';
+    editTextBtn.style.cssText = 'padding:6px 10px;font-size:12px;border:1px solid #ddd;background:#fff;border-radius:4px;cursor:pointer';
+    editTextBtn.addEventListener('click', () => {
+      if (!this.selectedObject || this.selectedObject.getClassName() !== 'Text') {
+        showStatus('Select a text item in the diagram first.', true);
+        return;
+      }
+      const updatedText = prompt('Edit text:', this.selectedObject.text());
+      if (updatedText === null) return;
+      this.selectedObject.text(updatedText);
+      this.layer.draw();
+      this.saveHistory();
+    });
+    editGroup.appendChild(editTextBtn);
 
     const bringForwardBtn = document.createElement('button');
     bringForwardBtn.textContent = '↑ Bring Forward';
@@ -2348,6 +2448,31 @@ class DiagramBuilder {
     }
   }
 
+  loadFromSource(source) {
+    if (!source || source.version !== 1 || !source.layer) {
+      throw new Error('The saved diagram source is not supported.');
+    }
+    const loadedLayer = Konva.Node.create(source.layer);
+    if (!loadedLayer || !loadedLayer.getChildren) {
+      throw new Error('The saved diagram could not be opened.');
+    }
+    this.layer.destroy();
+    this.layer = loadedLayer;
+    const enableShapeInteraction = node => {
+      node.listening(true);
+      node.getChildren && node.getChildren().forEach(enableShapeInteraction);
+    };
+    this.layer.getChildren().forEach(shape => {
+      shape.setAttr('isShape', true);
+      enableShapeInteraction(shape);
+    });
+    this.stage.add(this.layer);
+    this.layer.draw();
+    this.history = [];
+    this.historyStep = -1;
+    this.saveHistory();
+  }
+
   export() {
     const shapes = Array.from(this.layer.getChildren()).filter(shape => !shape._isPreview);
     if (!shapes.length) {
@@ -2377,8 +2502,22 @@ class DiagramBuilder {
     exportStage.add(exportLayer);
     exportLayer.draw();
 
+    const sourceLayer = new Konva.Layer();
+    shapes.forEach(shape => {
+      const clone = shape.clone();
+      clone.setAttr('isShape', true);
+      sourceLayer.add(clone);
+    });
+    const source = {
+      version: 1,
+      width: this.width,
+      height: this.height,
+      layer: sourceLayer.toJSON()
+    };
+    sourceLayer.destroy();
+
     try {
-      return exportStage.toDataURL({ pixelRatio: 2 });
+      return { dataURL: exportStage.toDataURL({ pixelRatio: 2 }), source };
     } finally {
       exportStage.destroy();
     }
