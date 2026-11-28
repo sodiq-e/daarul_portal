@@ -444,17 +444,23 @@ class AdminExamPaperListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         queryset = ExamPaper.objects.all().select_related('subject', 'school_class', 'term', 'teacher')
         status = self.request.GET.get('status')
         query = self.request.GET.get('q')
+        class_filter = self.request.GET.get('school_class')
+        subject_filter = self.request.GET.get('subject')
         if status:
             queryset = queryset.filter(status=status)
+        if class_filter:
+            queryset = queryset.filter(school_class_id=class_filter)
+        if subject_filter:
+            queryset = queryset.filter(subject_id=subject_filter)
         if query:
             queryset = queryset.filter(
                 models.Q(subject__name__icontains=query) |
                 models.Q(school_class__class_name__icontains=query) |
                 models.Q(term__academic_year__icontains=query) |
                 models.Q(academic_session__icontains=query) |
-                models.Q(teacher__user__first_name__icontains=query) |
-                models.Q(teacher__user__last_name__icontains=query) |
-                models.Q(teacher__user__username__icontains=query)
+                models.Q(teacher__first_name__icontains=query) |
+                models.Q(teacher__last_name__icontains=query) |
+                models.Q(teacher__username__icontains=query)
             )
         return queryset.order_by('-submitted_at', '-updated_at')
 
@@ -462,6 +468,10 @@ class AdminExamPaperListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['status_filter'] = self.request.GET.get('status', '')
         context['query'] = self.request.GET.get('q', '')
+        context['class_filter'] = self.request.GET.get('school_class', '')
+        context['classes'] = SchoolClasses.objects.order_by('class_name')
+        context['subject_filter'] = self.request.GET.get('subject', '')
+        context['subjects'] = Subject.objects.order_by('name')
         return context
 
 

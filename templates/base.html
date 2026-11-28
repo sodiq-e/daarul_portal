@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{% static 'css/animation-utilities.css' %}">
   <link rel="stylesheet" href="{% static 'css/portal-lists.css' %}">
   <link rel="stylesheet" href="{% static 'css/calculator.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dictionary.css' %}">
   {% block extra_css %}{% endblock %}
    <style>
     :root {
@@ -3610,6 +3611,12 @@
   </button>
   {% endif %}
 
+  {% if not attempt or attempt.is_submitted %}
+  <button id="globalDictionaryToggle" class="global-dictionary-toggle" type="button" aria-label="Open dictionary" aria-controls="siteDictionary" aria-expanded="false" title="English–Arabic Dictionary">
+    <i class="fas fa-book-open" aria-hidden="true"></i>
+  </button>
+  {% endif %}
+
   <!-- ✅ ACCESSIBILITY TOGGLE BUTTON -->
   <button id="accessibilityToggle" class="accessibility-toggle" type="button" title="Accessibility options" aria-label="Open accessibility and theme settings" aria-controls="themeCustomizer" aria-expanded="false">♿</button>
 
@@ -3746,6 +3753,31 @@
       <button class="site-calculator-key operator" type="button" data-calculator-value="+" data-simple-position="3-4">+</button>
       <button class="site-calculator-key" type="button" data-calculator-full-only data-calculator-value="abs(">abs</button>
     </div>
+  </section>
+  {% endif %}
+
+  {% if not attempt or attempt.is_submitted %}
+  <section class="site-dictionary" id="siteDictionary" role="dialog" aria-modal="false" aria-labelledby="siteDictionaryTitle" data-dictionary-url="{% static 'data/english-arabic-dictionary-v2.json' %}" hidden>
+    <div class="site-dictionary-header">
+      <div>
+        <h2 id="siteDictionaryTitle">English–Arabic Dictionary</h2>
+        <p>Search in either language to see the English meaning and Arabic translation. Works offline after first load.</p>
+      </div>
+      <button class="site-dictionary-close" id="siteDictionaryClose" type="button" aria-label="Close dictionary">&times;</button>
+    </div>
+    <label for="siteDictionarySearch">Word or phrase</label>
+    <input id="siteDictionarySearch" type="search" autocomplete="off" spellcheck="false" dir="auto" placeholder="Type in English or Arabic" disabled>
+    <p class="site-dictionary-status" id="siteDictionaryStatus" role="status" aria-live="polite">Open the dictionary to load its offline word list.</p>
+    <div class="site-dictionary-results" id="siteDictionaryResults" aria-live="polite"></div>
+    <p class="site-dictionary-attribution">
+      Data: FreeDict Eng–Ara
+      (<a href="{% static 'data/freedict/AUTHORS' %}" target="_blank" rel="noopener">contributors</a>,
+      <a href="{% static 'data/freedict/english-arabic.tei.gz' %}" download>source</a>).
+      Licensed under <a href="{% static 'data/freedict/COPYING' %}" target="_blank" rel="noopener">GPL-2.0</a>.
+      Meanings: WordNet 3.0 © Princeton University
+      (<a href="{% static 'data/wordnet/LICENSE' %}" target="_blank" rel="noopener">license</a>,
+      <a href="{% static 'data/wordnet/wordnet-3.0.zip' %}" download>source</a>).
+    </p>
   </section>
   {% endif %}
 
@@ -5781,5 +5813,6 @@ window.showNotification = (title, message, type = 'info', duration = 5000) => {
 
 <script src="{% static 'js/navigation.js' %}"></script>
 <script src="{% static 'js/calculator.js' %}"></script>
+<script src="{% static 'js/dictionary.js' %}"></script>
 </body>
 </html>
